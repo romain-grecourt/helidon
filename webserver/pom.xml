@@ -36,6 +36,7 @@
         <module>netty</module>
         <module>jersey</module>
         <module>json</module>
+        <module>jsonb</module>
         <module>test-support</module>
         <module>zipkin</module>
         <module>prometheus</module>

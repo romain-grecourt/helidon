@@ -20,6 +20,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 
 import io.helidon.common.reactive.Flow;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 
 /**
  * The Reader transforms a {@link DataChunk} publisher into a completion stage of the associated type.
@@ -27,7 +29,7 @@ import io.helidon.common.reactive.Flow;
  * @param <R> the requested type
  */
 @FunctionalInterface
-public interface Reader<R> extends BiFunction<Flow.Publisher<DataChunk>, Class<? super R>, CompletionStage<? extends R>> {
+public interface Reader<R> extends BiFunction<Flow.Publisher<DataChunk>, Type, CompletionStage<? extends R>> {
 
     /**
      * Transforms a publisher into a completion stage.
@@ -35,12 +37,12 @@ public interface Reader<R> extends BiFunction<Flow.Publisher<DataChunk>, Class<?
      * {@link Content#as(Class)} method call ends exceptionally.
      *
      * @param publisher the publisher to transform
-     * @param clazz     the requested type to be returned as a completion stage. The purpose of
+     * @param type     the requested type to be returned as a completion stage. The purpose of
      *                  this parameter is to know what the user of this Reader actually requested.
      * @return the result as a completion stage
      */
     @Override
-    CompletionStage<? extends R> apply(Flow.Publisher<DataChunk> publisher, Class<? super R> clazz);
+    CompletionStage<? extends R> apply(Flow.Publisher<DataChunk> publisher, Type type);
 
     /**
      * Transforms a publisher into a completion stage.
@@ -72,9 +74,18 @@ public interface Reader<R> extends BiFunction<Flow.Publisher<DataChunk>, Class<?
      * {@link ClassCastException} if the {@code R} type wasn't possible to cast
      * to {@code T}
      */
-    default <T extends R> CompletionStage<? extends T> applyAndCast(Flow.Publisher<DataChunk> publisher, Class<T> type) {
+    @SuppressWarnings("unchecked")
+    default <T extends R> CompletionStage<? extends T> applyAndCast(Flow.Publisher<DataChunk> publisher, Type type) {
         // if this was implemented as (CompletionStage<? extends T>) apply(publisher, (Class<R>) clazz);
         // the class cast exception might occur outside of the completion stage which might be confusing
-        return apply(publisher, (Class<R>) type).thenApply(type::cast);
+        if(type instanceof Class){
+            return (CompletionStage<T>)apply(publisher, type).thenApply(((Class)type)::cast);
+        } else if(type instanceof ParameterizedType){
+            return (CompletionStage<T>)apply(publisher, type).thenApply(obj -> {
+                System.out.println("cast generic!");
+                return (T)null;
+            });
+        }
+        throw new IllegalArgumentException("Unsupported type: " + type);
     }
 }

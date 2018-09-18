@@ -21,6 +21,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.helidon.common.reactive.Flow;
+import java.lang.reflect.Type;
 
 /**
  * Represents an HTTP entity as a {@link Flow.Publisher publisher} of {@link DataChunk chunks} with specific
@@ -90,7 +91,7 @@ public interface Content extends Flow.Publisher<DataChunk> {
      *               {@link #as(Class)} method call ends exceptionally.
      * @param <T>    the requested type
      */
-    <T> void registerReader(Class<T> type, Reader<T> reader);
+    <T> void registerReader(Type type, Reader<T> reader);
 
     /**
      * Registers a reader for a later use with an appropriate {@link #as(Class)} method call.
@@ -111,7 +112,7 @@ public interface Content extends Flow.Publisher<DataChunk> {
      *                  {@link #as(Class)} method call ends exceptionally.
      * @param <T>       the requested type
      */
-    <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader);
+    <T> void registerReader(Predicate<Type> predicate, Reader<T> reader);
 
     /**
      * Consumes and converts the request content into a completion stage of the requested type.
@@ -124,5 +125,5 @@ public interface Content extends Flow.Publisher<DataChunk> {
      * @param <T>  the requested type
      * @return a completion stage of the requested type
      */
-    <T> CompletionStage<T> as(Class<T> type);
+    <T> CompletionStage<T> as(Type type);
 }

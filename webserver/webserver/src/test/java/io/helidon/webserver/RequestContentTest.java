@@ -203,7 +203,8 @@ public class RequestContentTest {
                    return future;
                });
 
-        List result = request.content().as(List.class).toCompletableFuture().get(10, TimeUnit.SECONDS);
+        CompletionStage<List> stage = request.content().as(List.class);
+        List result = stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
         assertThat((List<String>) result, hasItems(
                 is("FIRST"),
                 is("SECOND"),

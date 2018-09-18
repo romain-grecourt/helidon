@@ -49,6 +49,7 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 
 import static io.helidon.webserver.StringContentReader.requestContentCharset;
+import java.lang.reflect.Type;
 
 /**
  * The basic abstract implementation of {@link ServerRequest}.
@@ -181,21 +182,21 @@ abstract class Request implements ServerRequest {
 
     private static class InternalReader<T> implements Reader<T> {
 
-        private final Predicate<Class<?>> predicate;
+        private final Predicate<Type> predicate;
         private final Reader<T> reader;
 
-        InternalReader(Predicate<Class<?>> predicate, Reader<T> reader) {
+        InternalReader(Predicate<Type> predicate, Reader<T> reader) {
             this.predicate = predicate;
             this.reader = reader;
         }
 
-        public boolean accept(Class<?> o) {
+        public boolean accept(Type o) {
             return o != null && predicate != null && predicate.test(o);
         }
 
         @Override
-        public CompletionStage<? extends T> apply(Flow.Publisher<DataChunk> publisher, Class<? super T> clazz) {
-            return reader.apply(publisher, clazz);
+        public CompletionStage<? extends T> apply(Flow.Publisher<DataChunk> publisher, Type type) {
+            return reader.apply(publisher, type);
         }
     }
 
@@ -236,12 +237,12 @@ abstract class Request implements ServerRequest {
         }
 
         @Override
-        public <T> void registerReader(Class<T> type, Reader<T> reader) {
+        public <T> void registerReader(Type type, Reader<T> reader) {
             register(reader(type, reader));
         }
 
         @Override
-        public <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader) {
+        public <T> void registerReader(Predicate<Type> predicate, Reader<T> reader) {
             register(new InternalReader<>(predicate, reader));
         }
 
@@ -254,14 +255,18 @@ abstract class Request implements ServerRequest {
             }
         }
 
-        private <T> InternalReader<T> reader(Class<T> clazz, Reader<T> reader) {
-            return new InternalReader<>(aClass -> aClass.isAssignableFrom(clazz), reader);
+        private <T> InternalReader<T> reader(Type type, Reader<T> reader) {
+            return new InternalReader<>((Type aType) -> {
+                if ((aType instanceof Class) && (type instanceof Class)) {
+                    return ((Class) aType).isAssignableFrom((Class) type);
+                }
+                return null;
+            }, reader);
         }
-
 
         @Override
         @SuppressWarnings("unchecked")
-        public <T> CompletionStage<T> as(Class<T> type) {
+        public <T> CompletionStage<T> as(Type type) {
             Span readSpan = createReadSpan(type);
             CompletionStage<T> result;
             try {
@@ -297,13 +302,13 @@ abstract class Request implements ServerRequest {
             readSpan.finish();
         }
 
-        private <T> Span createReadSpan(Class<T> type) {
+        private <T> Span createReadSpan(Type type) {
             Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-read");
             if (span() != null) {
                 spanBuilder.asChildOf(span());
             }
             if (type != null) {
-                spanBuilder.withTag("requested.type", type.getName());
+                spanBuilder.withTag("requested.type", type.getTypeName());
             }
             return spanBuilder.start();
         }
