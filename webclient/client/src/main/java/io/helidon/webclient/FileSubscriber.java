@@ -46,6 +46,10 @@ public final class FileSubscriber implements Flow.Subscriber<DataChunk> {
         this.channel = channel;
     }
 
+    public void subscribeTo(Flow.Publisher<DataChunk> publisher) {
+        publisher.subscribe(this);
+    }
+
     /**
      * Create a subscriber that consumes {@link DataChunk DataChunks} and writes them to a file.
      * A temporary file is created first to download the whole content and it is then moved to the final

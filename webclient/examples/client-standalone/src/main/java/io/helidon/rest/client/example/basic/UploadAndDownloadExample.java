@@ -18,10 +18,10 @@ package io.helidon.rest.client.example.basic;
 
 import java.nio.file.Path;
 
-import io.helidon.rest.client.ClientResponse;
-import io.helidon.rest.client.FilePublisher;
-import io.helidon.rest.client.FileSubscriber;
-import io.helidon.rest.client.RestClient;
+import io.helidon.webclient.ClientResponse;
+import io.helidon.webclient.FilePublisher;
+import io.helidon.webclient.FileSubscriber;
+import io.helidon.webclient.RestClient;
 
 /**
  * TODO javadoc.
@@ -42,11 +42,13 @@ public class UploadAndDownloadExample {
 
     void download(String uri, Path filePath) {
         RestClient client = RestClient.create();
+        FileSubscriber sub = FileSubscriber.create(filePath);
+
         client.get(uri)
                 .build()
                 .send()
                 .thenApply(ClientResponse::content)
-                .thenAccept(content -> content.subscribe(FileSubscriber.create(filePath)))
+                .thenAccept(sub::subscribeTo)
                 .thenAccept(o -> System.out.println("Download completed"));
     }
 }
