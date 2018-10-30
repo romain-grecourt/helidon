@@ -32,8 +32,8 @@ Declare the following dependency in your project:
 .Webserver JSON-P Dependency
 ----
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver-json</artifactId>
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver-json</artifactId>
 </dependency>
 ----
 

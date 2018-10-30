@@ -30,7 +30,7 @@ resource methods with authentication, to a MicroProfile application, add the Hel
 .Maven Dependency
 ----
 <dependency>
-  <groupId>io.helidon.microprofile</groupId>
+  <groupId>io.helidon.mp</groupId>
   <artifactId>helidon-microprofile-security</artifactId>
 </dependency>
 ----

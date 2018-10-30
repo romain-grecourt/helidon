@@ -55,12 +55,12 @@ Declare the following dependencies in your project:
 [source,xml,subs="verbatim,attributes"]
 ----
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver</artifactId> <!--1-->
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver</artifactId> <!--1-->
 </dependency>
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver-netty</artifactId> <!--2-->
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver-netty</artifactId> <!--2-->
 </dependency>
 ----
 

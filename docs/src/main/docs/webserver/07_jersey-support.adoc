@@ -32,8 +32,8 @@ Declare the following dependency in your project:
 .WebServer Jersey Dependency
 ----
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver-jersey</artifactId>
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver-jersey</artifactId>
 </dependency>
 ----
 

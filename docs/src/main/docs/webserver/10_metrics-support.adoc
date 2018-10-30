@@ -45,7 +45,7 @@ To enable Metrics, register it with the WebServer.
 [source,java]
 .Configuring Metrics in WebServer
 ----
-import io.helidon.metrics.MetricsSupport;
+import io.helidon.se.metrics.MetricsSupport;
 . . .
 
 Routing.builder()
@@ -59,7 +59,7 @@ Then you can use metrics in your service.
 [source,java]
 .Define and use a Metrics Counter
 ----
-import io.helidon.metrics.RegistryFactory;
+import io.helidon.se.metrics.RegistryFactory;
 import org.eclipse.microprofile.metrics.Counter;
 import org.eclipse.microprofile.metrics.MetricRegistry;
 . . .

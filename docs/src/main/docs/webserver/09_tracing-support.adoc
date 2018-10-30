@@ -32,8 +32,8 @@ Declare the following dependency in your project:
 .WebServer Zipkin Support Dependency
 ----
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver-zipkin</artifactId>
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver-zipkin</artifactId>
 </dependency>
 ----
 

@@ -33,184 +33,184 @@
         <dependencies>
             <!-- webserver -->
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-jersey</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-jersey</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-netty</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-netty</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-json</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-json</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-prometheus</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-prometheus</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-zipkin</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-zipkin</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-bundle</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-bundle</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-jersey-bundle</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-jersey-bundle</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.webserver</groupId>
-                <artifactId>helidon-webserver-test-support</artifactId>
+                <groupId>io.helidon.se.webserver</groupId>
+                <artifactId>helidon-se-webserver-test-support</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- config -->
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-bundle</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-bundle</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-yaml</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-yaml</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-git</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-git</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-hocon</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-hocon</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-etcd</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-etcd</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.config</groupId>
-                <artifactId>helidon-config-testing</artifactId>
+                <groupId>io.helidon.se.config</groupId>
+                <artifactId>helidon-se-config-testing</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- security -->
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-tools-config</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-providers-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-google-login</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-oidc</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-jwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-idcs-mapper</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-http-auth</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-http-signature</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-integration-jersey</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-integration-webserver</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-integration-annotations</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-provider-abac</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-abac-time</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-abac-role</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-abac-scope</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-abac-policy</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-abac-policy-el</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-jwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.security</groupId>
+                <groupId>io.helidon.se.security</groupId>
                 <artifactId>helidon-security-bundle</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -226,12 +226,12 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.microprofile</groupId>
+                <groupId>io.helidon.mp</groupId>
                 <artifactId>helidon-microprofile-security</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.microprofile</groupId>
+                <groupId>io.helidon.mp</groupId>
                 <artifactId>helidon-microprofile-oidc</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -254,23 +254,23 @@
 
             <!-- common -->
             <dependency>
-                <groupId>io.helidon.common</groupId>
-                <artifactId>helidon-common</artifactId>
+                <groupId>io.helidon.se.common</groupId>
+                <artifactId>helidon-se-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.common</groupId>
-                <artifactId>helidon-common-reactive</artifactId>
+                <groupId>io.helidon.se.common</groupId>
+                <artifactId>helidon-se-common-reactive</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.common</groupId>
-                <artifactId>helidon-common-configurable</artifactId>
+                <groupId>io.helidon.se.common</groupId>
+                <artifactId>helidon-se-common-configurable</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.common</groupId>
-                <artifactId>helidon-common-key-util</artifactId>
+                <groupId>io.helidon.se.common</groupId>
+                <artifactId>helidon-se-common-key-util</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

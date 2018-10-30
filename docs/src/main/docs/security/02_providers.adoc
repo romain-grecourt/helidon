@@ -69,7 +69,7 @@ This provider is:
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-jwt</artifactId>
 </dependency>
 ----
@@ -181,7 +181,7 @@ This provider is:
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-http-auth</artifactId>
 </dependency>
 ----
@@ -270,7 +270,7 @@ This provider is:
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-http-auth</artifactId>
 </dependency>
 ----
@@ -347,7 +347,7 @@ This provider is:
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-header-atn</artifactId>
 </dependency>
 ----
@@ -406,7 +406,7 @@ Support for HTTP Signatures (both inbound and outbound).
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-http-signature</artifactId>
 </dependency>
 ----
@@ -593,7 +593,7 @@ the request is denied.
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-provider-abac</artifactId>
 </dependency>
 ----

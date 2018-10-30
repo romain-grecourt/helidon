@@ -139,123 +139,123 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-netty</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-netty</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-json</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-json</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-zipkin</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-zipkin</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-prometheus</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-prometheus</artifactId>
         </dependency>
         <!-- config -->
         <dependency>
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-bundle</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-bundle</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-etcd</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-etcd</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-git</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-git</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-testing</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-testing</artifactId>
         </dependency>
         <!-- security -->
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-tools-config</artifactId>
         </dependency>
         <dependency>
             <!-- Support for outbound security filtering -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-providers-common</artifactId>
         </dependency>
         <dependency>
             <!-- Support for Google access token -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-provider-google-login</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-provider-jwt</artifactId>
         </dependency>
         <dependency>
             <!-- Basic and digest authentication -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-provider-http-auth</artifactId>
         </dependency>
         <dependency>
             <!-- Authentication provider supporting Signatures -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-provider-http-signature</artifactId>
         </dependency>
         <dependency>
             <!-- Jersey integration -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-integration-jersey</artifactId>
         </dependency>
         <dependency>
             <!-- Web server integration -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-integration-webserver</artifactId>
         </dependency>
         <dependency>
             <!-- Integration annotations -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-integration-annotations</artifactId>
         </dependency>
         <dependency>
             <!-- Attribute based access control support -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-provider-abac</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-abac-time</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-abac-role</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-abac-scope</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-abac-policy</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-abac-policy-el</artifactId>
         </dependency>
         <dependency>
             <!-- JWT and JWK support -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-jwt</artifactId>
         </dependency>
         <dependency>
             <!-- A full-bundle except integrations with containers -->
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-bundle</artifactId>
         </dependency>
         <!-- microprofile -->
@@ -264,7 +264,7 @@
             <artifactId>helidon-microprofile-1.2</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.microprofile</groupId>
+            <groupId>io.helidon.mp</groupId>
             <artifactId>helidon-microprofile-security</artifactId>
         </dependency>
 

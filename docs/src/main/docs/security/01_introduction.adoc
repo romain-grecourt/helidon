@@ -173,7 +173,7 @@ You need to declare the following dependency in your project:
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security</artifactId>
 </dependency>
 ----

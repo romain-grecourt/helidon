@@ -24,7 +24,7 @@ import javax.ws.rs.client.ClientBuilder;
 
 import io.helidon.config.Config;
 import io.helidon.config.PollingStrategies;
-import io.helidon.metrics.MetricsSupport;
+import io.helidon.se.metrics.MetricsSupport;
 import io.helidon.security.Security;
 import io.helidon.security.jersey.ClientSecurityFeature;
 import io.helidon.security.tools.config.SecureConfigFilter;

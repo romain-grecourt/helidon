@@ -61,8 +61,8 @@ Add the following dependency in your project:
 ----
 <dependencies>
     <dependency>
-        <groupId>io.helidon.config</groupId>
-        <artifactId>helidon-config-yaml</artifactId>
+        <groupId>io.helidon.se.config</groupId>
+        <artifactId>helidon-se-config-yaml</artifactId>
     </dependency>
 </dependencies>
 ----
@@ -139,8 +139,8 @@ Add the following dependency in your project:
 ----
 <dependencies>
     <dependency>
-        <groupId>io.helidon.config</groupId>
-        <artifactId>helidon-config-hocon</artifactId>
+        <groupId>io.helidon.se.config</groupId>
+        <artifactId>helidon-se-config-hocon</artifactId>
     </dependency>
 </dependencies>
 ----
@@ -244,8 +244,8 @@ Add the following dependency to your project:
 ----
 <dependencies>
     <dependency>
-        <groupId>io.helidon.config</groupId>
-        <artifactId>helidon-config-etcd</artifactId>
+        <groupId>io.helidon.se.config</groupId>
+        <artifactId>helidon-se-config-etcd</artifactId>
     </dependency>
 </dependencies>
 ----
@@ -352,8 +352,8 @@ Add the following dependency to your project:
 ----
 <dependencies>
     <dependency>
-        <groupId>io.helidon.config</groupId>
-        <artifactId>helidon-config-git</artifactId>
+        <groupId>io.helidon.se.config</groupId>
+        <artifactId>helidon-se-config-git</artifactId>
     </dependency>
 </dependencies>
 ----

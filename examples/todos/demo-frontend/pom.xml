@@ -39,8 +39,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common</artifactId>
+            <groupId>io.helidon.se.common</groupId>
+            <artifactId>helidon-se-common</artifactId>
         </dependency>
         <!-- needed by Google client -->
         <dependency>
@@ -89,41 +89,41 @@
 
         <!-- Helidon Web Server -->
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-netty</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-netty</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-json</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-json</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-zipkin</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-zipkin</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-prometheus</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-prometheus</artifactId>
         </dependency>
         <!-- Helidon Config -->
         <dependency>
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-bundle</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-bundle</artifactId>
         </dependency>
         <!-- Helidon Security -->
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-bundle</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-integration-webserver</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.security</groupId>
+            <groupId>io.helidon.se.security</groupId>
             <artifactId>helidon-security-integration-jersey</artifactId>
         </dependency>
         <!-- Metrics -->

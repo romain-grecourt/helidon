@@ -32,7 +32,7 @@ Integration of <<webserver/01_introduction.adoc,reactive web server>>
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-integration-webserver</artifactId>
 </dependency>
 ----
@@ -100,7 +100,7 @@ Integration of Jersey (JAX-RS implementation) both for inbound and outbound secu
 .Maven Dependency
 ----
 <dependency>
-    <groupId>io.helidon.security</groupId>
+    <groupId>io.helidon.se.security</groupId>
     <artifactId>helidon-security-integration-jersey</artifactId>
 </dependency>
 ----

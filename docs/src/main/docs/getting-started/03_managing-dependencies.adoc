@@ -55,7 +55,7 @@ Once you have imported the BOM, you can declare dependencies on Helidon componen
 .Component dependency
 ----
 <dependency>
-    <groupId>io.helidon.webserver</groupId>
-    <artifactId>helidon-webserver</artifactId>
+    <groupId>io.helidon.se.webserver</groupId>
+    <artifactId>helidon-se-webserver</artifactId>
 </dependency>
 ----

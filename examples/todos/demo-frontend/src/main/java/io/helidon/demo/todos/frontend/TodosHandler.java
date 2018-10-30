@@ -23,7 +23,7 @@ import javax.json.JsonObject;
 
 import io.helidon.common.OptionalHelper;
 import io.helidon.common.http.Http;
-import io.helidon.metrics.RegistryFactory;
+import io.helidon.se.metrics.RegistryFactory;
 import io.helidon.security.SecurityContext;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;

@@ -93,12 +93,12 @@
             <artifactId>helidon-microprofile-1.2</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.microprofile</groupId>
+            <groupId>io.helidon.mp</groupId>
             <artifactId>helidon-microprofile-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-zipkin</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-zipkin</artifactId>
         </dependency>
         <!-- cassandra -->
         <dependency>

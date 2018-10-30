@@ -199,12 +199,9 @@
     </properties>
 
     <modules>
-        <module>common</module>
-        <module>config</module>
-        <module>webserver</module>
-        <module>security</module>
         <module>bom</module>
-        <module>microprofile</module>
+        <module>se</module>
+        <module>mp</module>
     </modules>
 
     <build>

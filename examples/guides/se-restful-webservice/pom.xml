@@ -188,14 +188,14 @@
     <dependencies>
 <!-- tag::webserverBundleDependency[] -->
         <dependency> <!--1-->
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver-bundle</artifactId>
+            <groupId>io.helidon.se.webserver</groupId>
+            <artifactId>helidon-se-webserver-bundle</artifactId>
         </dependency>
 <!-- end::webserverBundleDependency[] -->
 <!-- tag::configYamlDependency[] -->
         <dependency> <!--2-->
-            <groupId>io.helidon.config</groupId>
-            <artifactId>helidon-config-yaml</artifactId>
+            <groupId>io.helidon.se.config</groupId>
+            <artifactId>helidon-se-config-yaml</artifactId>
         </dependency>
 <!-- end::configYamlDependency[] -->
         <dependency>
