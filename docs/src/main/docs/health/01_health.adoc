@@ -16,25 +16,79 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// TODO check javadoc for health check (both helidon and microprofile)
+// TODO check microprofile spec for health check
+
 = Health Checks
 :description: Helidon health checks
 :keywords: helidon, health-checks, health, check
 
-== Overview
-Helidon SE provides the following to support health checks:
+This document describes the health check API for Helidon SE.
 
-1. The endpoint `/health`: A configurable endpoint that exposes health checks in JSON
-    format as described by the MicroProfile Health specification
-2. A base set of health checks (a separate library `io.helidon.health:helidon-health-checks`)
+== About health checks
 
-The Health Check component in Helidon SE is the core for the Helidon MP implementation of the MicroProfile Health specification.
+It's a good practice to monitor your microservice's health in order to ensure
+ it is available and performs correctly.
 
+Health checks work with your application exposing health statuses and a
+ tool that collects those statuses at regular intervals. Such tool is usually
+ the deployment orchestrator, it analyses the collected statuses and takes
+ action accordingly.
+
+NOTE: Network traffic can be routed to new instances of your application based
+ on health check statuses.
+
+A typical health check combines the statuses of all the dependencies that can
+ impact availability and the ability to perform correctly:
+
+* Network latency
+* Storage
+* Database
+* Other services used by your application
+
+TIP: Be wise with the amount of collected information to avoid overloading the
+ application and impacting users.
+
+== API
+
+The API allows to register multiple health checks that are combined and exposed
+ in an HTTP endpoint at `/health`.
+
+A health check is a function that reports a state: `UP` or `DOWN` with a
+ description.
+
+The overall status is computed from all the registered health checks and mapped
+ to a response code:
+
+* `200`: all health checks succeeded
+* `503`: some health check failed
+* `500`: an an error occurred while reporting the health
+
+A set of built-ins health checks can be optionally enabled to report various
+ health check statuses that are commonly used:
+
+* Deadlock detection
+* Available disk space
+* Available heap memory
+
+The API is composed of the following classes:
+
+* `io.helidon.health.HealthSupport`: a WebServer Service class that contains all
+ the registered health check functions and exposes `/health`
+* `io.helidon.health.HealthSupport.Builder`: a builder class for `HealthSupport`
+* `org.eclipse.microprofile.health.HealthCheckResponse`: a class that represents
+ the result of a health check function, it contains a state and a description.
+* `org.eclipse.microprofile.health.HealthCheckResponseBuilder` a builder class
+ for `HealthCheckResponse`
+
+NOTE: `HealthCheckResponse` and `HealthCheckResponseBuilder` are part of the
+ MicroProfile API.
 
 === Prerequisites
 
 Declare the following dependency in your project:
 
-[source,xml,subs="verbatim,attributes"]
+[source,xml]
 ----
     <dependency>
         <groupId>io.helidon.health</groupId>
@@ -42,9 +96,55 @@ Declare the following dependency in your project:
     </dependency>
 ----
 
+=== Basic example
+
+The following example registers a health check that is always `UP` with a
+ description that contains the current time in milliseconds.
+
+[source,java]
+----
+HealthSupport health = HealthSuport.builder()
+    .add(() -> HealthCheckResponse.named("exampleHealthCheck")
+                 .up()
+                 .withData("time", System.currentTimeMillis())
+                 .build())                          // <1>
+    .build();
+
+Routing.builder()
+        .register(JsonSupport.create()) // <2>
+        .register(health) // <3>
+        .build();
+----
+<1> Add a custom health check. This example returns `UP` and current time
+<2> Enable support for `JSON`
+<3> Register health support with web server routing (adds the `/health` endpoint)
+
+You can get health-check data through the `/health` endpoint.
+
+The following is an example of the response (in JSON format) to a health-check
+ request, based on the snippet above:
+
+[source,json]
+----
+{
+    "outcome": "UP",
+    "checks": [
+        {
+            "name": "exampleHealthCheck",
+            "state": "UP",
+            "data": {
+                "time": 1546958376613
+            }
+        }
+    ]
+}
+----
+
+=== Built-in health-check
+
 To enable the built-in health checks, add the following dependency:
 
-[source,xml,subs="verbatim,attributes"]
+[source,xml]
 ----
     <dependency>
         <groupId>io.helidon.health</groupId>
@@ -52,37 +152,24 @@ To enable the built-in health checks, add the following dependency:
     </dependency>
 ----
 
-
-=== Adding health checks to your application
-To enable health checks, register them with the web server.
+The following example registers the built-in health checks.
 
 [source,java]
 ----
-import io.helidon.metrics.MetricsSupport;
-//...
 HealthSupport health = HealthSuport.builder()
-    .add(HealthChecks.healthChecks())               // <1>
-    .add(() -> HealthCheckResponse.named("exampleHealthCheck")
-                 .up()
-                 .withData("time", System.currentTimeMillis())
-                 .build())                          // <2>
+    .add(HealthChecks.healthChecks()) // <1>
     .build();
 
 Routing.builder()
-        .register(health)                           // <3>
-        .register("/hello", (req, res) -> res.send("HelloWorld"))
+        .register(JsonSupport.create()) // <2>
+        .register(health) // <3>
         .build();
 ----
 <1> Add built-in health checks (requires the `helidon-health-checks` dependency)
-<2> Add a custom health check. This example returns `UP` and current time
+<2> Enable support for `JSON`
 <3> Register health support with web server routing (adds the `/health` endpoint)
 
-=== Accessing the health check endpoint
-
-You can get health-check data through the `/health` endpoint.
-
-The following is an example of the response (in JSON format) to a health-check request, based on the built-in and custom
-    health checks implemented in the example provided earlier:
+The response looks as follow:
 
 [source,json]
 ----
@@ -102,13 +189,6 @@ The following is an example of the response (in JSON format) to a health-check r
                 "percentFree": "45.31%",
                 "total": "465.72 GB",
                 "totalBytes": 500068036608
-            }
-        },
-        {
-            "name": "exampleHealthCheck",
-            "state": "UP",
-            "data": {
-                "time": 1546958376613
             }
         },
         {
