@@ -16,7 +16,6 @@
 
 package io.helidon.common.http;
 
-import java.text.Normalizer;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -131,5 +130,7 @@ public interface Content extends Flow.Publisher<DataChunk> {
     <T> Flow.Publisher<T> asPublisherOf(Class<T> type);
 
     <T> Flow.Publisher<T> asPublisherOf(GenericType<T> type);
+
+    <T> void registerStreamReader(Class<T> type, Function<Flow.Publisher<DataChunk>, Flow.Publisher<T>> reader);
 
 }

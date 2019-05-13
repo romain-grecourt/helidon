@@ -41,7 +41,6 @@ import io.helidon.common.CollectionsHelper;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.FormParam;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
@@ -56,7 +55,8 @@ import io.opentracing.tag.Tags;
 /**
  * The basic abstract implementation of {@link ServerRequest}.
  */
-abstract class Request implements ServerRequest {
+// HACK - made public to expose InternalReader
+public abstract class Request implements ServerRequest {
 
     /**
      * The default charset to use in case that no charset or no mime-type is defined in the content type header.
@@ -201,12 +201,12 @@ abstract class Request implements ServerRequest {
         return result;
     }
 
-    private static class InternalReader<T> implements Reader<T> {
+    public static class InternalReader<T> implements Reader<T> {
 
         private final Predicate<Class<?>> predicate;
         private final Reader<T> reader;
 
-        InternalReader(Predicate<Class<?>> predicate, Reader<T> reader) {
+        public InternalReader(Predicate<Class<?>> predicate, Reader<T> reader) {
             this.predicate = predicate;
             this.reader = reader;
         }
@@ -221,7 +221,7 @@ abstract class Request implements ServerRequest {
         }
     }
 
-    class Content implements io.helidon.common.http.Content {
+    public class Content implements io.helidon.common.http.Content {
 
         private final Flow.Publisher<DataChunk> originalPublisher;
         private final Deque<InternalReader<?>> readers;
@@ -252,6 +252,14 @@ abstract class Request implements ServerRequest {
             return readers;
         }
 
+        public Deque<InternalReader<?>> getReaders() {
+            return readers;
+        }
+
+        public List<Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>>> getFilters() {
+            return filters;
+        }
+
         @Override
         public void registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function) {
 
@@ -262,6 +270,11 @@ abstract class Request implements ServerRequest {
             } finally {
                 filtersLock.writeLock().unlock();
             }
+        }
+
+        @Override
+        public <T> void registerStreamReader(Class<T> type, Function<Flow.Publisher<DataChunk>, Flow.Publisher<T>> reader) {
+            throw new UnsupportedOperationException("Not supported yet.");
         }
 
         @Override

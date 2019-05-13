@@ -48,7 +48,8 @@ import reactor.core.publisher.Mono;
 /**
  * The basic implementation of {@link ServerResponse}.
  */
-abstract class Response implements ServerResponse {
+// HACK - made public expose Writer for now
+public abstract class Response implements ServerResponse {
 
     private final WebServer webServer;
     private final BareResponse bareResponse;
@@ -91,6 +92,10 @@ abstract class Response implements ServerResponse {
         this.sendLockSupport = response.sendLockSupport;
         this.writers = response.writers;
         this.filters = response.filters;
+    }
+
+    public ArrayList<Writer> getWriters() {
+        return writers;
     }
 
     /**
@@ -380,7 +385,7 @@ abstract class Response implements ServerResponse {
         return completionStage;
     }
 
-    class BaseWriter {
+    public class BaseWriter {
         private final MediaType requestedContentType;
 
         BaseWriter(MediaType contentType) {
@@ -404,7 +409,7 @@ abstract class Response implements ServerResponse {
         }
     }
 
-    class Writer<T> extends BaseWriter {
+    public class Writer<T> extends BaseWriter {
         private final Predicate<Object> acceptPredicate;
         private final Function<T, Flow.Publisher<DataChunk>> function;
 
@@ -423,7 +428,11 @@ abstract class Response implements ServerResponse {
                  function);
         }
 
-        boolean accept(Object o) {
+        public Function<T, Flow.Publisher<DataChunk>> getFunction() {
+            return function;
+        }
+
+        public boolean accept(Object o) {
             if (o == null || !acceptPredicate.test(o)) {
                 return false;
             }
