@@ -123,63 +123,66 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 return;
             }
 
-            // XXX: need to loop over all remaining events here
-            MIMEEvent event = eventIterator.next();
+            while (eventIterator.hasNext()) {
+                MIMEEvent event = eventIterator.next();
 
-            switch (event.getEventType()) {
-                case START_MESSAGE:
-                    LOGGER.log(Level.FINE, "MIMEEvent={0}",
-                            MIMEEvent.EVENT_TYPE.START_MESSAGE);
-                    break;
+                switch (event.getEventType()) {
+                    case START_MESSAGE:
+                        LOGGER.log(Level.FINE, "MIMEEvent={0}",
+                                MIMEEvent.EVENT_TYPE.START_MESSAGE);
+                        break;
 
-                case START_PART:
-                    LOGGER.log(Level.FINE, "MIMEEvent={0}",
-                            MIMEEvent.EVENT_TYPE.START_PART);
-                    bodyPartContent = new BodyPartContentPublisher(this);
-                    bodyPartHeaderBuilder = BodyPartHeaders.builder();
-                    bodyPartBuilder = BodyPart.builder()
-                            .publisher(bodyPartContent);
-                    break;
+                    case START_PART:
+                        LOGGER.log(Level.FINE, "MIMEEvent={0}",
+                                MIMEEvent.EVENT_TYPE.START_PART);
+                        bodyPartContent = new BodyPartContentPublisher(this);
+                        bodyPartHeaderBuilder = BodyPartHeaders.builder();
+                        bodyPartBuilder = BodyPart.builder()
+                                .publisher(bodyPartContent);
+                        break;
 
-                case HEADER:
-                    LOGGER.log(Level.FINE, "MIMEEvent={0}",
-                            MIMEEvent.EVENT_TYPE.HEADER);
-                    MIMEEvent.Header header = (MIMEEvent.Header) event;
-                    bodyPartHeaderBuilder.header(header.getName(),
-                            header.getValue());
-                    break;
+                    case HEADER:
+                        LOGGER.log(Level.FINE, "MIMEEvent={0}",
+                                MIMEEvent.EVENT_TYPE.HEADER);
+                        MIMEEvent.Header header = (MIMEEvent.Header) event;
+                        bodyPartHeaderBuilder.header(header.getName(),
+                                header.getValue());
+                        break;
 
-                case END_HEADERS:
-                    BodyPart bodyPart = bodyPartBuilder
-                            .headers(bodyPartHeaderBuilder.build())
-                            .build();
-                    bodyPart.registerRequestReaders(request);
-                    itemsSubscriber.onNext(bodyPart);
-                    break;
+                    case END_HEADERS:
+                        LOGGER.log(Level.FINE, "MIMEEvent={0}",
+                                MIMEEvent.EVENT_TYPE.END_HEADERS);
+                        BodyPart bodyPart = bodyPartBuilder
+                                .headers(bodyPartHeaderBuilder.build())
+                                .build();
+                        bodyPart.registerRequestReaders(request);
+                        itemsSubscriber.onNext(bodyPart);
+                        break;
 
-                case CONTENT:
-                    LOGGER.log(Level.FINER, "MIMEEvent={0}",
-                            MIMEEvent.EVENT_TYPE.CONTENT);
-                    MIMEEvent.Content content = (MIMEEvent.Content) event;
-                    DataChunk partChunk = DataChunk.create(content.getData());
-                    bodyPartContent.subscriber.onNext(partChunk);
-                    break;
+                    case CONTENT:
+                        LOGGER.log(Level.FINER, "MIMEEvent={0}",
+                                MIMEEvent.EVENT_TYPE.CONTENT);
+                        DataChunk partChunk = DataChunk.create(
+                                ((MIMEEvent.Content) event).getData());
+                        bodyPartContent.subscriber.onNext(partChunk);
+                        break;
 
-                case END_PART:
-                    LOGGER.log(Level.FINE, "Event={0}",
-                            MIMEEvent.EVENT_TYPE.END_PART);
-                    bodyPartContent.subscriber.onComplete();
-                    requestNextPart();
-                    break;
+                    case END_PART:
+                        LOGGER.log(Level.FINE, "Event={0}",
+                                MIMEEvent.EVENT_TYPE.END_PART);
+                        bodyPartContent.subscriber.onComplete();
+                        requestNextPart();
+                        break;
 
-                case END_MESSAGE:
-                    LOGGER.log(Level.FINE, "Event={0}",
-                            MIMEEvent.EVENT_TYPE.END_MESSAGE);
-                    break;
+                    case END_MESSAGE:
+                        LOGGER.log(Level.FINE, "Event={0}",
+                                MIMEEvent.EVENT_TYPE.END_MESSAGE);
+                        break;
 
-                default:
-                    throw new MIMEParsingException("Unknown Parser state = "
-                            + event.getEventType());
+                    default:
+                        throw new MIMEParsingException("Unknown Parser state = "
+                                + event.getEventType());
+                }
             }
         }
 
