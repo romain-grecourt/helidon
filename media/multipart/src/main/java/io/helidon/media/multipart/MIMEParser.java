@@ -18,11 +18,7 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.Utils;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -396,7 +392,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
             // boundary is not at beginning of a line
             int bodyBegin = position;
             position = bodyEnd + 1;
-            return createBuffer(bodyBegin, position++);
+            return createBuffer(bodyBegin, position);
         }
 
         // check if this is a "closing" boundary
@@ -443,6 +439,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
         if (bndStart + bl + lwsp + 1 < buf.length) {
             // boundary string in a part data
             int bodyBegin = position;
+            position = bodyEnd + 1;
             return createBuffer(bodyBegin, bodyEnd + 1);
         }
 
@@ -493,11 +490,11 @@ class MIMEParser implements Iterable<MIMEEvent> {
     /**
      * Read the lines for a single header.
      *
-     * @return a header line or {@code null} if the blank line separating the
-     * header from the body has been reached
-     * @throws UnsupportedEncodingException if an error occurs while decoding
-     * the buffer
-     * @throws MIMEParsingException if the end of the buffer has been reached
+     * @return a header line or an empty string if the blank line separating the
+     * header from the body has been reached, or {@code null} if the there is
+     *  no more data in the buffer
+     * @throws MIMEParsingException if an error occurs while decoding
+     * from the buffer
      */
     private String readHeaderLine() {
         int offset = position;

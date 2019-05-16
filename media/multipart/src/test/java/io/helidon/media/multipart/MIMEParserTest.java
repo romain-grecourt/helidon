@@ -15,7 +15,6 @@
  */
 package io.helidon.media.multipart;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -39,9 +38,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class MIMEParserTest {
 
     @Test
-    public void testBoundaryWhiteSpace() throws IOException {
+    public void testBoundaryWhiteSpace() {
         String boundary = "boundary";
-        final byte[] chunk1 = ("--" + boundary + "\n"
+        final byte[] chunk1 = ("--" + boundary + "   \n"
                 + "Content-Id: part1\n"
                 + "\n"
                 + "1\n"
@@ -54,20 +53,18 @@ public class MIMEParserTest {
         assertThat(parts.size(), is(equalTo(2)));
 
         MIMEPart part1 = parts.get(0);
-        assertThat(part1.headers, is(notNullValue()));
         assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
         assertThat(part1.content, is(notNullValue()));
         assertThat(new String(part1.content), is(equalTo("1")));
 
         MIMEPart part2 = parts.get(1);
-        assertThat(part2.headers, is(notNullValue()));
         assertThat(part2.headers.get("Content-Id"), hasItems("part2"));
         assertThat(part2.content, is(notNullValue()));
         assertThat(new String(part2.content), is(equalTo("2")));
     }
 
     @Test
-    public void testMsg() throws IOException {
+    public void testMsg() {
         String boundary = "----=_Part_4_910054940.1065629194743";
         final byte[] chunk1 = concat(("--" + boundary + "\n"
                 + "Content-Type: text/xml; charset=UTF-8\n"
@@ -88,7 +85,6 @@ public class MIMEParserTest {
         assertThat(parts.size(), is(equalTo(2)));
 
         MIMEPart part1 = parts.get(0);
-        assertThat(part1.headers, is(notNullValue()));
         assertThat(part1.headers.get("Content-Type"),
                 hasItems("text/xml; charset=UTF-8"));
         assertThat(part1.headers.get("Content-Transfer-Encoding"),
@@ -100,7 +96,6 @@ public class MIMEParserTest {
         assertThat(new String(part1.content), is(equalTo("<foo>bar</foo>")));
 
         MIMEPart part2 = parts.get(1);
-        assertThat(part2.headers, is(notNullValue()));
         assertThat(part2.headers.get("Content-Type"), hasItems("image/jpeg"));
         assertThat(part2.headers.get("Content-Transfer-Encoding"),
                 hasItems("binary"));
@@ -111,7 +106,7 @@ public class MIMEParserTest {
     }
 
     @Test
-    public void testEmptyPart() throws IOException {
+    public void testEmptyPart() {
         String boundary = "----=_Part_7_10584188.1123489648993";
         final byte[] chunk1 = ("--" + boundary + "\n"
                 + "Content-Type: text/xml; charset=utf-8\n"
@@ -128,7 +123,6 @@ public class MIMEParserTest {
         assertThat(parts.size(), is(equalTo(2)));
 
         MIMEPart part1 = parts.get(0);
-        assertThat(part1.headers, is(notNullValue()));
         assertThat(part1.headers.get("Content-Type"),
                 hasItems("text/xml; charset=utf-8"));
         assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
@@ -143,7 +137,7 @@ public class MIMEParserTest {
     }
 
     @Test
-    public void testNoHeaders() throws IOException {
+    public void testNoHeaders() {
         String boundary = "----=_Part_7_10584188.1123489648993";
         final byte[] chunk1 = ("--" + boundary + "\n"
                 + "\n"
@@ -157,20 +151,18 @@ public class MIMEParserTest {
         assertThat(parts.size(), is(equalTo(2)));
 
         MIMEPart part1 = parts.get(0);
-        assertThat(part1.headers, is(notNullValue()));
         assertThat(part1.headers.size(), is(equalTo(0)));
         assertThat(part1.content, is(notNullValue()));
         assertThat(new String(part1.content), is(equalTo("<foo>bar</foo>")));
 
         MIMEPart part2 = parts.get(1);
-        assertThat(part2.headers, is(notNullValue()));
         assertThat(part2.headers.size(), is(equalTo(0)));
         assertThat(part2.content, is(notNullValue()));
         assertThat(new String(part2.content), is(equalTo("<bar>foo</bar>")));
     }
 
     @Test
-    public void testNoClosingBoundary() throws IOException {
+    public void testNoClosingBoundary() {
         String boundary = "----=_Part_4_910054940.1065629194743";
         final byte[] chunk1 = concat(("--" + boundary + "\n"
                 + "Content-Type: text/xml; charset=UTF-8\n"
@@ -196,7 +188,40 @@ public class MIMEParserTest {
     }
 
     @Test
-    public void testInvalidClosingBoundary() throws IOException {
+    public void testBoundaryInBody() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "1 --" + boundary + " in body\n"
+                + "--" + boundary + "\n"
+                + "Content-Id: part2\n"
+                + "\n"
+                + "2 --" + boundary + " in body\n"
+                + "--" + boundary + " starts on a new line\n"
+                + "--" + boundary + "--         ").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1);
+        assertThat(parts.size(), is(equalTo(2)));
+
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content),
+                is(equalTo("1 --" + boundary + " in body")));
+
+        MIMEPart part2 = parts.get(1);
+        assertThat(part2.headers.size(), is(equalTo(1)));
+        assertThat(part2.headers.get("Content-Id"), hasItems("part2"));
+        assertThat(part2.content, is(notNullValue()));
+        assertThat(new String(part2.content),
+                is(equalTo("2 --" + boundary + " in body\n"
+                        + "--" + boundary + " starts on a new line")));
+    }
+
+    @Test
+    public void testInvalidClosingBoundary() {
         String boundary = "----=_Part_4_910054940.1065629194743";
         final byte[] chunk1 = concat(("--" + boundary + "\n"
                 + "Content-Type: text/xml; charset=UTF-8\n"
@@ -254,7 +279,7 @@ public class MIMEParserTest {
         MIMEParser parser = new MIMEParser(boundary);
         Iterator<MIMEEvent> it = parser.iterator();
         Map<String, List<String>> partHeaders = new HashMap<>();
-        ByteBuffer partContent = null;
+        byte[] partContent = null;
         for (byte[] chunk : requestChunks) {
             parser.offer(ByteBuffer.wrap(chunk));
             while (it.hasNext()) {
@@ -280,8 +305,15 @@ public class MIMEParserTest {
                         break;
 
                     case CONTENT:
-                        partContent = ((MIMEEvent.Content) event).getData();
-                        assertThat(partContent, notNullValue());
+                        ByteBuffer content = ((MIMEEvent.Content) event)
+                                .getData();
+                        assertThat(content, notNullValue());
+                        if (partContent == null) {
+                            partContent = Utils.toByteArray(content);
+                        } else {
+                            partContent = concat(partContent,
+                                    Utils.toByteArray(content));
+                        }
                         break;
 
                     case END_PART:
@@ -302,9 +334,9 @@ public class MIMEParserTest {
         final Map<String, List<String>> headers;
         final byte[] content;
 
-        MIMEPart(Map<String, List<String>> headers, ByteBuffer content) {
+        MIMEPart(Map<String, List<String>> headers, byte[] content) {
             this.headers = headers;
-            this.content = Utils.toByteArray(content);
+            this.content = content;
         }
     }
 }
