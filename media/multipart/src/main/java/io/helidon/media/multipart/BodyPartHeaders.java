@@ -18,9 +18,9 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.Headers;
 import io.helidon.common.http.ReadOnlyParameters;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Body part headers.
@@ -39,7 +39,8 @@ public final class BodyPartHeaders extends ReadOnlyParameters
     public static final class Builder
             implements io.helidon.common.Builder<BodyPartHeaders> {
 
-        private final Map<String, List<String>> headers = new HashMap<>();
+        private final Map<String, List<String>> headers =
+                new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         public Builder header(String name, String value) {
             List<String> values = headers.get(name);

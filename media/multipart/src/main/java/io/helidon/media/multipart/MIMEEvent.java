@@ -7,37 +7,66 @@ import java.nio.ByteBuffer;
  */
 abstract class MIMEEvent {
 
+    /**
+     * Represents the parser state.
+     */
     enum EVENT_TYPE {
+        /**
+         * This event is the first event issued by the parser.
+         * It is generated only once.
+         */
         START_MESSAGE,
+        /**
+         * This event is issued when a new part is detected.
+         * It is generated for each part.
+         */
         START_PART,
+        /**
+         * This event is issued for each header line of a part.
+         * It may be generated more than once for each part.
+         */
         HEADER,
+        /**
+         * This event is issued when the header blank line is detected. The
+         * next event is {@link #CONTENT}.
+         * It is generated once for each part.
+         */
         END_HEADERS,
+        /**
+         * This event is issued for each part chunk parsed.
+         * It may be generated more than once for each part.
+         */
         CONTENT,
+        /**
+         * This event is issued when the content for a part is complete.
+         * It is generated only once for each part.
+         */
         END_PART,
+        /**
+         * This event is issued when all parts are complete.
+         * It is generated only once.
+         */
         END_MESSAGE,
+        /**
+         * This event is issued when there is not enough data in the buffer
+         * to continue parsing.
+         * If issued after:
+         * <ul>
+         * <li>{@link #START_MESSAGE} - the parser did not detect the end of the
+         * preamble</li>
+         * <li>{@link #HEADER} - the parser did not detect the blank line that
+         * separates the part headers and the part body</li>
+         * <li>{@link #CONTENT} - the parser did not detect the next starting
+         * boundary or closing boundary</li>
+         * </ul>
+         */
         DATA_REQUIRED
     }
 
     /**
-     * Returns a event for the parser current cursor location in the MIME
-     * message.
+     * Returns a event for the parser current cursor location.
      *
-     * <p>
-     * {@link EVENT_TYPE#START_MESSAGE} and {@link EVENT_TYPE#START_MESSAGE}
-     * events are generated only once.
-     *
-     * <p>
-     * {@link EVENT_TYPE#START_PART}, {@link EVENT_TYPE#END_PART} events are
-     * generated only once for each attachment part.
-     *
-     * <p>
-     * {@link EVENT_TYPE#END_HEADERS} event may be generated only once for each
-     * attachment part.
-     *
-     * <p>
-     * {@link EVENT_TYPE#CONTENT}, {@link EVENT_TYPE#HEADER} events may be
-     * generated more than once for an attachment part.
-     *
+     * @see EVENT_TYPE
      * @return event type
      */
     abstract EVENT_TYPE getEventType();

@@ -95,11 +95,6 @@ class MIMEParser implements Iterable<MIMEEvent> {
     private boolean bol;
 
     /**
-     * The current byte buffer being processed.
-     */
-    private ByteBuffer data;
-
-    /**
      * Read-only byte array of the current byte buffer being processed.
      */
     private byte[] buf;
@@ -133,22 +128,20 @@ class MIMEParser implements Iterable<MIMEEvent> {
      * Push new data to the parsing buffer. If the parsing buffer has non
      * processed data, it will be concatenated with the given new data.
      *
-     * @param byteBuffer data new data add to the parsing buffer
+     * @param data new data add to the parsing buffer
      * @throws MIMEParsingException if the parser state is not
      * {@code START_MESSAGE} or {@code DATA_REQUIRED}
      */
-    void offer(ByteBuffer byteBuffer) {
+    void offer(ByteBuffer data) {
         if (closed) {
             throw new MIMEParsingException("Parser is closed");
         }
         switch (state) {
             case START_MESSAGE:
-                data = byteBuffer.asReadOnlyBuffer();
                 buf = Utils.toByteArray(data);
                 position = 0;
                 break;
             case DATA_REQUIRED:
-                data = byteBuffer.asReadOnlyBuffer();
                 // resume the previous state
                 state = resumeState;
                 resumeState = null;
@@ -157,7 +150,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
                 int remaining = buf.length - position;
                 buf = new byte[remaining + data.remaining()];
                 System.arraycopy(temp, position, buf, 0, remaining);
-                buf = Utils.copyBuffer(byteBuffer, buf, remaining + 1);
+                buf = Utils.copyBuffer(data, buf, remaining);
                 position = 0;
                 break;
             default:
@@ -184,6 +177,9 @@ class MIMEParser implements Iterable<MIMEEvent> {
             if (resumeState == STATE.BODY) {
                 throw new MIMEParsingException("No closing MIME boundary");
             }
+            if (resumeState == STATE.HEADERS) {
+                throw new MIMEParsingException("No blank line found");
+            }
         }
         throw new MIMEParsingException("Invalid state: " + state);
     }
@@ -202,11 +198,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
                 || begin > end) {
             throw new IllegalArgumentException("invalid range");
         }
-        // create a "virtual buffer" for the specified range
-        data.position(begin);
-        ByteBuffer tmp = data.slice();
-        tmp.limit(end - begin);
-        return tmp.asReadOnlyBuffer();
+        return ByteBuffer.wrap(buf, begin, end - begin).asReadOnlyBuffer();
     }
 
     /**
@@ -497,6 +489,11 @@ class MIMEParser implements Iterable<MIMEEvent> {
      * from the buffer
      */
     private String readHeaderLine() {
+        // need more data to progress
+        // need at least one blank line to read (no headers)
+        if (position >= buf.length - 1) {
+            return null;
+        }
         int offset = position;
         int hdrLen = 0;
         int lwsp = 0;

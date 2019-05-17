@@ -31,9 +31,10 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * MIMEParser test.
+ * Tests {@link MIMEParser}.
  */
 public class MIMEParserTest {
 
@@ -176,15 +177,11 @@ public class MIMEParserTest {
                 + "\n").getBytes(),
                 new byte[] { (byte)0xff, (byte)0xd8 });
 
-        boolean gotException = false;
-        try {
-            parseParts(boundary, chunk1);
-        } catch (MIMEParsingException ex) {
-            gotException = true;
-            String msg = ex.getMessage();
-            assertThat(msg, is(equalTo("No closing MIME boundary")));
-        }
-        assertThat(gotException, is(equalTo(true)));
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1);
+                });
+        assertThat(ex.getMessage(), is(equalTo("No closing MIME boundary")));
     }
 
     @Test
@@ -236,15 +233,269 @@ public class MIMEParserTest {
                 new byte[] { (byte)0xff, (byte)0xd8 },
                 ("\n--" + boundary).getBytes());
 
-        boolean gotException = false;
-        try {
-            parseParts(boundary, chunk1);
-        } catch (MIMEParsingException ex) {
-            gotException = true;
-            String msg = ex.getMessage();
-            assertThat(msg, is(equalTo("No closing MIME boundary")));
-        }
-        assertThat(gotException, is(equalTo(true)));
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1);
+                });
+        assertThat(ex.getMessage(), is(equalTo("No closing MIME boundary")));
+    }
+
+    @Test
+    public void testOneExactPartPerChunk() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "body 1\n"
+                + "--" + boundary + "\n").getBytes();
+        final byte[] chunk2 = ("Content-Id: part2\n"
+                + "\n"
+                + "body 2\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(2)));
+
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("body 1")));
+
+        MIMEPart part2 = parts.get(1);
+        assertThat(part2.headers.size(), is(equalTo(1)));
+        assertThat(part2.headers.get("Content-Id"), hasItems("part2"));
+        assertThat(part2.content, is(notNullValue()));
+        assertThat(new String(part2.content), is(equalTo("body 2")));
+    }
+
+    @Test
+    public void testPartInMultipleChunks() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "this-is-the-1st-slice-of-the-body\n").getBytes();
+        final byte[] chunk2 = ("this-is-the-2nd-slice-of-the-body\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content),is(equalTo(
+                "this-is-the-1st-slice-of-the-body\n"
+                + "this-is-the-2nd-slice-of-the-body")));
+    }
+
+    @Test
+    public void testBoundaryAcrossChunks() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "this-is-the-body-of-part1\n"
+                + "--" + boundary.substring(0, 3)).getBytes();
+        final byte[] chunk2 = (boundary.substring(3) + "\n"
+                + "\n"
+                + "this-is-the-body-of-part2\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(2)));
+
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content),
+                is(equalTo("this-is-the-body-of-part1")));
+
+        MIMEPart part2 = parts.get(1);
+        assertThat(part2.headers.size(), is(equalTo(0)));
+        assertThat(part2.content, is(notNullValue()));
+        assertThat(new String(part2.content),
+                is(equalTo("this-is-the-body-of-part2")));
+    }
+
+    @Test
+    public void testClosingBoundaryAcrossChunks() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "this-is-the-body-of-part1\n"
+                + "--" + boundary.substring(0, 3)).getBytes();
+        final byte[] chunk2 = (boundary.substring(3) + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content),
+                is(equalTo("this-is-the-body-of-part1")));
+    }
+
+    @Test
+    public void testPreamble() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("\n\n\n\r\r\r\n\n\n\n\r\n"
+                + "--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1);
+        assertThat(parts.size(), is(equalTo(1)));
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("part1")));
+    }
+
+    @Test
+    public void testPreambleWithNoStartingBoundary() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("       \t   \t\t      \t \r\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "part1\n").getBytes();
+
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1);
+                });
+        assertThat(ex.getMessage(), is(equalTo("Missing start boundary")));
+    }
+
+    @Test
+    public void testPreambleWithStartingBoundaryInNextChunk() {
+        String boundary = "boundary";
+        final byte[] chunk1 = "      \t    \t    \r\n".getBytes();
+        final byte[] chunk2 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("part1")));
+    }
+
+    @Test
+    public void testPreambleAcrossChunks() {
+        String boundary = "boundary";
+        final byte[] chunk1 = "      \t    \t    ".getBytes();
+        final byte[] chunk2 = ("\t      \t     \r\n"
+                + "--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(1)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("part1")));
+    }
+
+    @Test
+    public void testPreambleAcrossChunksWithNoStartingBoundary() {
+        String boundary = "boundary";
+        final byte[] chunk1 = "      \t    \t    ".getBytes();
+        final byte[] chunk2 = ("\t      \t     \r\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "part1\n").getBytes();
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1, chunk2);
+                });
+        assertThat(ex.getMessage(), is(equalTo("Missing start boundary")));
+    }
+
+    @Test
+    public void testHeadersWithNoBlankLine() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1);
+                });
+        assertThat(ex.getMessage(), is(equalTo("No blank line found")));
+    }
+
+    @Test
+    public void testHeadersAcrossChunksWithNoBlankLine() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "Content-Type: text/plain\n").getBytes();
+        final byte[] chunk2 = ("Content-Description: this is part1\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+        MIMEParsingException ex
+                = assertThrows(MIMEParsingException.class, () -> {
+                    parseParts(boundary, chunk1, chunk2);
+                });
+        assertThat(ex.getMessage(), is(equalTo("No blank line found")));
+    }
+
+    @Test
+    public void testHeadersAcrossChunks() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n").getBytes();
+        final byte[] chunk2 = ("Content-Type: text/plain\n"
+                + "\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(2)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.headers.get("Content-Type"), hasItems("text/plain"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("part1")));
+    }
+
+    @Test
+    public void testHeaderBlankLineInNextChunk() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "Content-Type: text/plain\n").getBytes();
+        final byte[] chunk2 = ("\n"
+                + "part1\n"
+                + "--" + boundary + "--").getBytes();
+        List<MIMEPart> parts = parseParts(boundary, chunk1, chunk2);
+        assertThat(parts.size(), is(equalTo(1)));
+        MIMEPart part1 = parts.get(0);
+        assertThat(part1.headers.size(), is(equalTo(2)));
+        assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
+        assertThat(part1.headers.get("Content-Type"), hasItems("text/plain"));
+        assertThat(part1.content, is(notNullValue()));
+        assertThat(new String(part1.content), is(equalTo("part1")));
     }
 
     /**

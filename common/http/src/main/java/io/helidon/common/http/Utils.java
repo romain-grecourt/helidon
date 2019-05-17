@@ -122,7 +122,7 @@ public final class Utils {
      */
     public static byte[] copyBuffer(ByteBuffer byteBuffer, byte[] buff, int destPos){
         if (byteBuffer.hasArray()) {
-            System.arraycopy(byteBuffer.array(),byteBuffer.arrayOffset() + byteBuffer.position(), buff, destPos, buff.length);
+            System.arraycopy(byteBuffer.array(),byteBuffer.arrayOffset() + byteBuffer.position(), buff, destPos, byteBuffer.remaining());
         } else {
             byteBuffer.get(buff);
         }
