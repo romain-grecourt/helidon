@@ -36,7 +36,7 @@ import io.helidon.common.http.Utils;
 /**
  * A {@link RequestHeaders} implementation on top of {@link ReadOnlyParameters}.
  */
-class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
+public class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
 
     /**
      * Header value of the non compliant {@code Accept} header sent by
@@ -61,7 +61,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
     /**
      * Creates a new instance.
      */
-    HashRequestHeaders() {
+    public HashRequestHeaders() {
         this(null);
     }
 
@@ -71,7 +71,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
      *
      * @param initialContent initial content.
      */
-    HashRequestHeaders(Map<String, List<String>> initialContent) {
+    public HashRequestHeaders(Map<String, List<String>> initialContent) {
         super(initialContent);
     }
 

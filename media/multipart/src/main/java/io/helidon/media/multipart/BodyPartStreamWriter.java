@@ -18,6 +18,7 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow;
 import io.helidon.webserver.BaseStreamWriter;
+import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 
@@ -108,7 +109,7 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
         @Override
         public void onNext(BodyPart bodyPart) {
             bodyPartContent = new BodyPartContentSubscriber(this);
-            bodyPart.registerResponseWriters(response);
+            bodyPart.registerWriters(((Response)response).getWriters());
             bodyPart.content().subscribe(bodyPartContent);
             // TODO write boundaries
         }

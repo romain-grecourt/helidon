@@ -33,6 +33,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.helidon.common.OptionalHelper;
+import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
@@ -230,7 +231,7 @@ public abstract class Response implements ServerResponse {
         synchronized (sendLockSupport) {
             for (int i = streamWriters.size() - 1; i >= 0; i--) {
                 StreamWriter<T> streamWriter = (StreamWriter<T>) streamWriters.get(i);
-                if (streamWriter.accept(itemClass)) {
+                if (streamWriter.accept(itemClass, headers)) {
                     return streamWriter.function.apply(content);
                 }
             }
@@ -277,7 +278,7 @@ public abstract class Response implements ServerResponse {
         synchronized (sendLockSupport) {
             for (int i = writers.size() - 1; i >= 0; i--) {
                 Writer<T> writer = writers.get(i);
-                if (writer.accept(content)) {
+                if (writer.accept(content, headers)) {
                     return writer.function.apply(content);
                 }
             }
@@ -385,22 +386,23 @@ public abstract class Response implements ServerResponse {
         return completionStage;
     }
 
-    public class BaseWriter {
+    public static class BaseWriter {
         private final MediaType requestedContentType;
 
         BaseWriter(MediaType contentType) {
             this.requestedContentType = contentType;
         }
 
-        boolean accept(Object o) {
+        boolean accept(Object o, ResponseHeaders headers) {
             // Test content type compatibility
             return requestedContentType == null
-                    || OptionalHelper.from(headers().contentType())
+                    || headers == null // XXX: fix this
+                    || OptionalHelper.from(headers.contentType())
                     .or(() -> { // if no contentType is yet registered, try to write requested
                         try {
                             headers.contentType(requestedContentType);
                             return Optional.of(requestedContentType);
-                        } catch (Exception e) {
+                        } catch (AlreadyCompletedException e) {
                             return Optional.empty();
                         }
                     }).asOptional()
@@ -409,12 +411,12 @@ public abstract class Response implements ServerResponse {
         }
     }
 
-    public class Writer<T> extends BaseWriter {
+    public static class Writer<T> extends BaseWriter {
         private final Predicate<Object> acceptPredicate;
         private final Function<T, Flow.Publisher<DataChunk>> function;
 
         @SuppressWarnings("unchecked")
-        Writer(Predicate<?> acceptPredicate,
+        public Writer(Predicate<?> acceptPredicate,
                MediaType contentType, Function<T, Flow.Publisher<DataChunk>> function) {
             super(contentType);
             Objects.requireNonNull(function, "Parameter function is null!");
@@ -422,7 +424,7 @@ public abstract class Response implements ServerResponse {
             this.function = function;
         }
 
-        Writer(Class<?> acceptType, MediaType contentType, Function<T, Flow.Publisher<DataChunk>> function) {
+        public Writer(Class<?> acceptType, MediaType contentType, Function<T, Flow.Publisher<DataChunk>> function) {
             this(acceptType == null ? null : (Predicate) o -> acceptType.isAssignableFrom(o.getClass()),
                  contentType,
                  function);
@@ -432,11 +434,12 @@ public abstract class Response implements ServerResponse {
             return function;
         }
 
-        public boolean accept(Object o) {
+        @Override
+        public boolean accept(Object o, ResponseHeaders headers) {
             if (o == null || !acceptPredicate.test(o)) {
                 return false;
             }
-            return super.accept(o);
+            return super.accept(o, headers);
         }
     }
 
@@ -455,11 +458,11 @@ public abstract class Response implements ServerResponse {
         }
 
         @Override
-        boolean accept(Object o) {
+        boolean accept(Object o, ResponseHeaders headers) {
             if (o == null || !acceptPredicate.test(o)) {
                 return false;
             }
-            return super.accept(o);
+            return super.accept(o, headers);
         }
     }
 

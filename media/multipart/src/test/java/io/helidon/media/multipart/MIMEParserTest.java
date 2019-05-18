@@ -38,6 +38,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class MIMEParserTest {
 
+    // TODO test new parser / close
+    // TODO test new parser / offer / offer
+    // TODO test parsing parts and checking that last event received was end_message
+
     @Test
     public void testBoundaryWhiteSpace() {
         String boundary = "boundary";

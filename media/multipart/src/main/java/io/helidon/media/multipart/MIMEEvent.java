@@ -3,7 +3,7 @@ package io.helidon.media.multipart;
 import java.nio.ByteBuffer;
 
 /**
- * @author Jitendra Kotamraju
+ * An event represents a parser state with parsed data.
  */
 abstract class MIMEEvent {
 
@@ -22,8 +22,8 @@ abstract class MIMEEvent {
          */
         START_PART,
         /**
-         * This event is issued for each header line of a part.
-         * It may be generated more than once for each part.
+         * This event is issued for each header line of a part. It may be
+         * generated more than once for each part.
          */
         HEADER,
         /**
@@ -33,7 +33,7 @@ abstract class MIMEEvent {
          */
         END_HEADERS,
         /**
-         * This event is issued for each part chunk parsed.
+         * This event is issued for each part chunk parsed. The event
          * It may be generated more than once for each part.
          */
         CONTENT,
@@ -71,14 +71,47 @@ abstract class MIMEEvent {
      */
     abstract EVENT_TYPE getEventType();
 
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#START_MESSAGE}.
+     */
     static final StartMessage START_MESSAGE = new StartMessage();
+
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#START_PART}.
+     */
     static final StartPart START_PART = new StartPart();
+
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#END_HEADERS}.
+     */
     static final EndHeaders END_HEADERS = new EndHeaders();
+
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#END_PART}.
+     */
     static final EndPart END_PART = new EndPart();
+
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#END_MESSAGE}.
+     */
     static final EndMessage END_MESSAGE = new EndMessage();
+
+    /**
+     * Constant for the event of type {@link EVENT_TYPE#DATA_REQUIRED}.
+     */
     static final DataRequired DATA_REQUIRED = new DataRequired();
 
+    /**
+     * The event class for {@link EVENT_TYPE#START_MESSAGE}.
+     * Use {@link #START_MESSAGE} to access the singleton instance.
+     */
     static final class StartMessage extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private StartMessage() {
+        }
 
         @Override
         EVENT_TYPE getEventType() {
@@ -86,7 +119,17 @@ abstract class MIMEEvent {
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#START_PART}.
+     * Use {@link #START_PART} to access the singleton instance.
+     */
     static final class StartPart extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private StartPart() {
+        }
 
         @Override
         EVENT_TYPE getEventType() {
@@ -94,7 +137,17 @@ abstract class MIMEEvent {
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#END_PART}.
+     * Use {@link #END_PART} to access the singleton instance.
+     */
     static final class EndPart extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private EndPart() {
+        }
 
         @Override
         EVENT_TYPE getEventType() {
@@ -102,11 +155,20 @@ abstract class MIMEEvent {
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#HEADER}. This event contains parsed
+     * header name and value, see {@link #getName()} and {@link #getValue()}
+     */
     static final class Header extends MIMEEvent {
 
         private final String name;
         private final String value;
 
+        /**
+         * Create a new instance.
+         * @param name header name
+         * @param value header value
+         */
         Header(String name, String value) {
             this.name = name;
             this.value = value;
@@ -117,26 +179,53 @@ abstract class MIMEEvent {
             return EVENT_TYPE.HEADER;
         }
 
+        /**
+         * Get the parsed header name.
+         * @return header name
+         */
         String getName() {
             return name;
         }
 
+        /**
+         * Get the parsed header value.
+         * @return header value
+         */
         String getValue() {
             return value;
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#END_HEADERS}.
+     * Use {@link #END_HEADERS} to access the singleton instance.
+     */
     static final class EndHeaders extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private EndHeaders() {
+        }
+
         @Override
         EVENT_TYPE getEventType() {
             return EVENT_TYPE.END_HEADERS;
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#CONTENT}.
+     * This event contains parsed data of a part body, see {@link #getData()}.
+     */
     static final class Content extends MIMEEvent {
 
         private final ByteBuffer data;
 
+        /**
+         * Create a new instance.
+         * @param data parsed data
+         */
         Content(ByteBuffer data) {
             this.data = data;
         }
@@ -146,12 +235,26 @@ abstract class MIMEEvent {
             return EVENT_TYPE.CONTENT;
         }
 
+        /**
+         * Get the parsed part body data.
+         * @return ByteBuffer
+         */
         ByteBuffer getData() {
             return data;
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#END_MESSAGE}.
+     * Use {@link #END_MESSAGE} to access the singleton instance.
+     */
     static final class EndMessage extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private EndMessage() {
+        }
 
         @Override
         EVENT_TYPE getEventType() {
@@ -159,7 +262,17 @@ abstract class MIMEEvent {
         }
     }
 
+    /**
+     * The event class for {@link EVENT_TYPE#DATA_REQUIRED}.
+     * Use {@link #DATA_REQUIRED} to access the singleton instance.
+     */
     static final class DataRequired extends MIMEEvent {
+
+        /**
+         * Cannot be instanciated.
+         */
+        private DataRequired() {
+        }
 
         @Override
         EVENT_TYPE getEventType() {

@@ -20,6 +20,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.multipart.BodyPart.BodyPartContent;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -80,7 +81,7 @@ public final class MultiPartSupport implements Service, Handler {
 
     /**
      * A reactive publisher of {@link BodyPart} that publishes all the items
-     * of a given {@link Iterable}.
+     * of a given {@code Collection<BodyPart>}.
      */
     private static final class BodyPartPublisher
             implements Flow.Publisher<BodyPart> {
@@ -156,9 +157,9 @@ public final class MultiPartSupport implements Service, Handler {
 
     /**
      * A reactive subscriber of {@link BodyPart} that accumulates all the items
-     * in an {@code Iterable}.
+     * in a {@code Collection<BodyPart>}.
      */
-    private static final class BodyPartSubscriber
+    static final class BodyPartSubscriber
             implements Flow.Subscriber<BodyPart> {
 
         private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
@@ -182,6 +183,10 @@ public final class MultiPartSupport implements Service, Handler {
                         .headers(bodyPart.headers())
                         .publisher(partChunks)
                         .build();
+                bufferedBodyPart.registerReaders(
+                        ((BodyPartContent)bodyPart.content()).getReaders());
+                bufferedBodyPart.registerWriters(
+                        ((BodyPartContent)bodyPart.content()).getWriters());
                 bodyParts.add(bufferedBodyPart);
             });
         }
@@ -196,7 +201,7 @@ public final class MultiPartSupport implements Service, Handler {
             future.complete(bodyParts);
         }
 
-        CompletionStage<Collection<BodyPart>> getFuture() {
+        CompletableFuture<Collection<BodyPart>> getFuture() {
             return future;
         }
     }

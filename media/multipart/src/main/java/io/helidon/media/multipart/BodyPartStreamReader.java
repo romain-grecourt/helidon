@@ -20,6 +20,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.multipart.MIMEEvent.EVENT_TYPE;
 import io.helidon.webserver.BaseStreamReader;
+import io.helidon.webserver.Request;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import java.util.Iterator;
@@ -54,12 +55,14 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
 
         private boolean complete;
         private boolean canceled;
+        private boolean partsCompleted;
         private long bodyPartsRequested;
         private Flow.Subscriber<? super BodyPart> itemsSubscriber;
         Flow.Subscription chunksSubscription;
         private BodyPart.Builder bodyPartBuilder;
         private BodyPartHeaders.Builder bodyPartHeaderBuilder;
         private BodyPartContentPublisher bodyPartContent;
+        private final Queue<BodyPart> bodyParts = new LinkedList<>();
         private final ServerRequest request;
         private final MIMEParser parser;
         private final Iterator<MIMEEvent> eventIterator;
@@ -76,8 +79,6 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 throw new IllegalStateException("Not a multipart request");
             }
             this.request = request;
-            this.complete = false;
-            this.canceled = false;
             chunksPublisher.subscribe(this);
         }
 
@@ -91,11 +92,14 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             subscriber.onSubscribe(new Flow.Subscription() {
                 @Override
                 public void request(long n) {
-                    if (n <= 0 || canceled){
+                    if (n <= 0 || partsCompleted || complete || canceled){
                         return;
                     }
-                    bodyPartsRequested = n;
-                    requestNextPart();
+                    bodyPartsRequested += n;
+                    deliverParts();
+                    if (bodyPartsRequested > 0) {
+                        chunksSubscription.request(1);
+                    }
                 }
 
                 @Override
@@ -121,9 +125,18 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             chunksSubscription = subscription;
         }
 
-        private void requestNextPart(){
-            if (--bodyPartsRequested > 0){
-                chunksSubscription.request(1);
+        private void deliverParts() {
+            while (!bodyParts.isEmpty() && bodyPartsRequested > 0) {
+                BodyPart bodyPart = bodyParts.poll();
+                if (bodyPart != null) {
+                    bodyPart.registerReaders(
+                            ((Request.Content)request.content()).getReaders());
+                    bodyPartsRequested--;
+                    itemsSubscriber.onNext(bodyPart);
+                }
+            }
+            if (partsCompleted) {
+                itemsSubscriber.onComplete();
             }
         }
 
@@ -135,12 +148,14 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 return;
             }
 
-            MIMEEvent.EVENT_TYPE previousEventType = null;
+            MIMEEvent.EVENT_TYPE lastEventType = null;
             while (eventIterator.hasNext()) {
                 MIMEEvent event = eventIterator.next();
                 MIMEEvent.EVENT_TYPE eventType = event.getEventType();
                 LOGGER.log(Level.FINE, "MIMEEvent={0}", eventType);
                 switch (eventType) {
+                    case START_MESSAGE:
+                        break;
                     case START_PART:
                         bodyPartContent = new BodyPartContentPublisher(this);
                         bodyPartHeaderBuilder = BodyPartHeaders.builder();
@@ -153,11 +168,9 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                                 .header(header.getName(), header.getValue());
                         break;
                     case END_HEADERS:
-                        BodyPart bodyPart = bodyPartBuilder
+                        bodyParts.add(bodyPartBuilder
                                 .headers(bodyPartHeaderBuilder.build())
-                                .build();
-                        bodyPart.registerRequestReaders(request);
-                        itemsSubscriber.onNext(bodyPart);
+                                .build());
                         break;
                     case CONTENT:
                         DataChunk partChunk = DataChunk.create(
@@ -165,21 +178,27 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                         bodyPartContent.submit(partChunk);
                         break;
                     case END_PART:
-                        bodyPartContent.subscriber.onComplete();
+                        bodyPartContent.complete();
                         bodyPartContent = null;
-                        requestNextPart();
+                        bodyPartHeaderBuilder = null;
+                        bodyPartBuilder = null;
                         break;
                     case DATA_REQUIRED:
                         // request more data to parse until content
-                        if (previousEventType != EVENT_TYPE.CONTENT) {
+                        if (lastEventType != EVENT_TYPE.CONTENT) {
                             chunksSubscription.request(1);
                         }
+                        break;
+                    case END_MESSAGE:
+                        partsCompleted = true;
+                        break;
                     default:
                         throw new MIMEParsingException("Unknown Parser state = "
                                 + event.getEventType());
                 }
-                previousEventType = eventType;
+                lastEventType = eventType;
             }
+            deliverParts();
         }
 
         @Override
@@ -189,10 +208,9 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
 
         @Override
         public void onComplete() {
+            complete = true;
             try {
                 parser.close();
-                itemsSubscriber.onComplete();
-                complete = true;
             } catch(MIMEParsingException ex){
                 itemsSubscriber.onError(ex);
             }
@@ -206,12 +224,14 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
         private final Processor processor;
         private long requested;
         private boolean canceled;
+        private boolean partComplete;
         private final Queue<DataChunk> queue = new LinkedList<>();
 
         BodyPartContentPublisher(Processor processor) {
             this.processor = processor;
             this.requested = 0;
             this.canceled = false;
+            this.partComplete = false;
         }
 
         void submit(DataChunk partChunk) {
@@ -224,6 +244,13 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 requested--;
             } else {
                 queue.add(partChunk);
+            }
+        }
+
+        void complete(){
+            partComplete = true;
+            if (subscriber != null && queue.isEmpty()) {
+                subscriber.onComplete();
             }
         }
 
@@ -249,12 +276,19 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                     DataChunk partChunk;
                     do {
                         partChunk = queue.poll();
-                        subscriber.onNext(partChunk);
-                        requested--;
+                        if (partChunk != null) {
+                            requested--;
+                            subscriber.onNext(partChunk);
+                        }
                     } while (partChunk != null && requested > 0);
 
-                    // request more items if needed/possible
-                    if (requested > 0 && !processor.complete){
+                    if (partComplete) {
+                        subscriber.onComplete();
+                    } else if (requested > 0 && !processor.complete) {
+                        // request more items
+                        // XXX: cannot really let the user throttle fully
+                        // here. need to keep track of requested amounts
+                        // to not request Long.MAX and then request 1...
                         processor.chunksSubscription.request(requested);
                     }
                 }

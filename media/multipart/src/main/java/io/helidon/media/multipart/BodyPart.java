@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -66,13 +67,12 @@ public final class BodyPart {
         this.headers = headers;
     }
 
-    void registerRequestReaders(ServerRequest request){
-        content.registerReaders(
-                ((Request.Content)request.content()).getReaders());
+    void registerReaders(Deque<InternalReader<?>> readers){
+        content.registerReaders(readers);
     }
 
-    void registerResponseWriters(ServerResponse response){
-        content.registerWriters(((Response)response).getWriters());
+    void registerWriters(ArrayList<Writer> writers){
+        content.registerWriters(writers);
     }
 
     public Content content() {
@@ -146,7 +146,7 @@ public final class BodyPart {
 
     static abstract class BodyPartContent implements Content {
 
-        private final ArrayList<InternalReader> readers = new ArrayList<>();
+        private final Deque<InternalReader<?>> readers = new LinkedList<>();
         private final ReadWriteLock readersLock = new ReentrantReadWriteLock();
         protected final ArrayList<Writer> writers = new ArrayList<>();
         protected final ReadWriteLock writersLock = new ReentrantReadWriteLock();
@@ -177,6 +177,14 @@ public final class BodyPart {
             }
         }
 
+        Deque<InternalReader<?>> getReaders() {
+            return readers;
+        }
+
+        ArrayList<Writer> getWriters() {
+            return writers;
+        }
+
         /**
          * Get or create the content publisher
          * @return publisher
@@ -185,7 +193,7 @@ public final class BodyPart {
 
         @Override
         public void subscribe(Flow.Subscriber<? super DataChunk> subscriber) {
-            getOrCreatePublisher().equals(subscriber);
+            getOrCreatePublisher().subscribe(subscriber);
         }
 
         @Override
@@ -209,6 +217,7 @@ public final class BodyPart {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public <T> CompletionStage<T> as(Class<T> type) {
             CompletionStage<T> result;
             try {
@@ -266,6 +275,7 @@ public final class BodyPart {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         protected Publisher<DataChunk> getOrCreatePublisher() {
             if (publisher != null) {
                 return publisher;
@@ -275,7 +285,7 @@ public final class BodyPart {
                 Publisher<DataChunk> pub = null;
                 for (int i = writers.size() - 1; i >= 0; i--) {
                     Writer<Object> writer = writers.get(i);
-                    if (writer.accept(entity)) {
+                    if (writer.accept(entity, null)) {
                         pub = writer.getFunction().apply(entity);
                     }
                 }

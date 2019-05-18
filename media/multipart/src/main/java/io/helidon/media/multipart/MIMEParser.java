@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * MIME messages push parser.
+ * Push parser for multipart MIME message.
  */
 class MIMEParser implements Iterable<MIMEEvent> {
 
@@ -113,6 +113,12 @@ class MIMEParser implements Iterable<MIMEEvent> {
      * Indicates if this parser is closed.
      */
     private boolean closed;
+
+    /**
+     * Indicate if the last event for {@link MIMEEvent#END_MESSAGE} has been
+     * generated.
+     */
+    private boolean lastEventSent;
 
     /**
      * Parses the MIME content.
@@ -212,18 +218,21 @@ class MIMEParser implements Iterable<MIMEEvent> {
         return new MIMEEventIterator();
     }
 
+    /**
+     * The event iterator implements the main code for this parser.
+     * Invoking {@link #next()} advances parsing.
+     */
     private class MIMEEventIterator implements Iterator<MIMEEvent> {
 
         @Override
         public boolean hasNext() {
-            return !closed && !(state == STATE.END_MESSAGE
-                    ||  state == STATE.DATA_REQUIRED);
+            return !closed && !lastEventSent && state != STATE.DATA_REQUIRED;
         }
 
         @Override
         public MIMEEvent next() {
 
-            if (state == STATE.END_MESSAGE || closed) {
+            if (closed) {
                 throw new NoSuchElementException();
             }
 
@@ -328,6 +337,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
                         LOGGER.log(Level.FINER, "MIMEParser state={0}",
                                 STATE.END_MESSAGE);
                     }
+                    lastEventSent = true;
                     return MIMEEvent.END_MESSAGE;
 
                 case DATA_REQUIRED:

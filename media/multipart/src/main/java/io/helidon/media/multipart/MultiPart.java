@@ -33,14 +33,6 @@ public final class MultiPart {
         return bodyParts;
     }
 
-    public static <T> MultiPart create(T ... entities){
-        Builder builder = builder();
-        for(T entity : entities){
-            builder.bodyPart(BodyPart.create(entity));
-        }
-        return builder.build();
-    }
-
     public static <T> MultiPart create(Collection<T> entities){
         Builder builder = builder();
         for(T entity : entities){
