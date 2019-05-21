@@ -121,6 +121,12 @@ class MIMEParser implements Iterable<MIMEEvent> {
     private boolean lastEventSent;
 
     /**
+     * Indicate if the event for {@link MIMEEvent#DATA_REQUIRED} has been
+     * generated.
+     */
+    private boolean dataRequiredEventSent;
+
+    /**
      * Parses the MIME content.
      */
     MIMEParser(String boundary) {
@@ -149,6 +155,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
                 break;
             case DATA_REQUIRED:
                 // resume the previous state
+                dataRequiredEventSent = false;
                 state = resumeState;
                 resumeState = null;
                 // concat remaining data with newly pushed data
@@ -226,7 +233,9 @@ class MIMEParser implements Iterable<MIMEEvent> {
 
         @Override
         public boolean hasNext() {
-            return !closed && !lastEventSent && state != STATE.DATA_REQUIRED;
+            return !closed
+                    && !lastEventSent
+                    && !dataRequiredEventSent;
         }
 
         @Override
@@ -341,7 +350,12 @@ class MIMEParser implements Iterable<MIMEEvent> {
                     return MIMEEvent.END_MESSAGE;
 
                 case DATA_REQUIRED:
-                    throw new MIMEParsingException("More data required");
+                    if (!dataRequiredEventSent) {
+                        dataRequiredEventSent = true;
+                        return MIMEEvent.DATA_REQUIRED;
+                    } else {
+                        throw new MIMEParsingException("More data required");
+                    }
 
                 default:
                     throw new MIMEParsingException("Unknown state = " + state);

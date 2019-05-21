@@ -66,6 +66,7 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
         private final ServerRequest request;
         private final MIMEParser parser;
         private final Iterator<MIMEEvent> eventIterator;
+        private MIMEEvent.EVENT_TYPE lastEventType;
 
         public Processor(Flow.Publisher<DataChunk> chunksPublisher,
                 ServerRequest request) {
@@ -92,12 +93,16 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             subscriber.onSubscribe(new Flow.Subscription() {
                 @Override
                 public void request(long n) {
-                    if (n <= 0 || partsCompleted || complete || canceled){
+                    if (n <= 0 || canceled
+                            || (partsCompleted && bodyParts.isEmpty())){
                         return;
                     }
                     bodyPartsRequested += n;
                     deliverParts();
-                    if (bodyPartsRequested > 0) {
+                    if (!complete
+                            && bodyPartsRequested > 0
+                            && (lastEventType == null
+                            || lastEventType == EVENT_TYPE.DATA_REQUIRED)) {
                         chunksSubscription.request(1);
                     }
                 }
@@ -148,7 +153,7 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 return;
             }
 
-            MIMEEvent.EVENT_TYPE lastEventType = null;
+            boolean contentDataRequired = false;
             while (eventIterator.hasNext()) {
                 MIMEEvent event = eventIterator.next();
                 MIMEEvent.EVENT_TYPE eventType = event.getEventType();
@@ -157,7 +162,7 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                     case START_MESSAGE:
                         break;
                     case START_PART:
-                        bodyPartContent = new BodyPartContentPublisher(this);
+                        bodyPartContent = new BodyPartContentPublisher();
                         bodyPartHeaderBuilder = BodyPartHeaders.builder();
                         bodyPartBuilder = BodyPart.builder()
                                 .publisher(bodyPartContent);
@@ -184,9 +189,11 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                         bodyPartBuilder = null;
                         break;
                     case DATA_REQUIRED:
-                        // request more data to parse until content
-                        if (lastEventType != EVENT_TYPE.CONTENT) {
-                            chunksSubscription.request(1);
+                        if (complete) {
+                            return;
+                        }
+                        if (lastEventType == EVENT_TYPE.CONTENT){
+                            contentDataRequired = true;
                         }
                         break;
                     case END_MESSAGE:
@@ -199,6 +206,12 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                 lastEventType = eventType;
             }
             deliverParts();
+            if (lastEventType == EVENT_TYPE.DATA_REQUIRED
+                    && (!contentDataRequired || bodyPartContent.needsMore())) {
+                // request more data if not stuck at content
+                // or if the part content subscriber needs more
+                chunksSubscription.request(1);
+            }
         }
 
         @Override
@@ -221,22 +234,20 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             implements Flow.Publisher<DataChunk> {
 
         Flow.Subscriber<? super DataChunk> subscriber;
-        private final Processor processor;
         private long requested;
         private boolean canceled;
-        private boolean partComplete;
+        private boolean partCompleted;
+        private boolean delivering;
         private final Queue<DataChunk> queue = new LinkedList<>();
 
-        BodyPartContentPublisher(Processor processor) {
-            this.processor = processor;
+        BodyPartContentPublisher() {
             this.requested = 0;
             this.canceled = false;
-            this.partComplete = false;
+            this.partCompleted = false;
         }
 
         void submit(DataChunk partChunk) {
             if (canceled) {
-                // subscription is canceled, do not deliver the chunk
                 return;
             }
             if (requested > 0) {
@@ -247,8 +258,15 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             }
         }
 
+        boolean needsMore(){
+            return requested - queue.size() > 0;
+        }
+
         void complete(){
-            partComplete = true;
+            if (canceled) {
+                return;
+            }
+            partCompleted = true;
             if (subscriber != null && queue.isEmpty()) {
                 subscriber.onComplete();
             }
@@ -272,7 +290,11 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                     // save requested amount
                     requested += n;
 
-                    // deliver items on the queue first
+                    if (delivering){
+                        return;
+                    }
+
+                    delivering = true;
                     DataChunk partChunk;
                     do {
                         partChunk = queue.poll();
@@ -281,15 +303,10 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                             subscriber.onNext(partChunk);
                         }
                     } while (partChunk != null && requested > 0);
+                    delivering = false;
 
-                    if (partComplete) {
+                    if (partCompleted) {
                         subscriber.onComplete();
-                    } else if (requested > 0 && !processor.complete) {
-                        // request more items
-                        // XXX: cannot really let the user throttle fully
-                        // here. need to keep track of requested amounts
-                        // to not request Long.MAX and then request 1...
-                        processor.chunksSubscription.request(requested);
                     }
                 }
 

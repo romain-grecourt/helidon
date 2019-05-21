@@ -41,6 +41,7 @@ public class MIMEParserTest {
     // TODO test new parser / close
     // TODO test new parser / offer / offer
     // TODO test parsing parts and checking that last event received was end_message
+    // TODO test parsing parts across boundaries and check that data required event was generated
 
     @Test
     public void testBoundaryWhiteSpace() {
