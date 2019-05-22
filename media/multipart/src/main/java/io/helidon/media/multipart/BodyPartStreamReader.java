@@ -18,14 +18,15 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
+import io.helidon.common.reactive.OriginThreadPublisher;
 import io.helidon.media.multipart.MIMEEvent.EVENT_TYPE;
 import io.helidon.webserver.BaseStreamReader;
 import io.helidon.webserver.Request;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.Queue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,13 +38,20 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
     private static final Logger LOGGER =
             Logger.getLogger(BodyPartStreamReader.class.getName());
 
+    /**
+     * Create a new instance.
+     * @param req server request
+     * @param res server response
+     */
     BodyPartStreamReader(ServerRequest req, ServerResponse res) {
         super(req, res, BodyPart.class);
     }
 
     @Override
     public Flow.Publisher<BodyPart> apply(Flow.Publisher<DataChunk> chunks) {
-        return new Processor(chunks, getRequest());
+        Processor processor = new Processor(getRequest());
+        chunks.subscribe(processor);
+        return processor;
     }
 
     /**
@@ -51,74 +59,81 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
      * subscriber. It is not resumable.
      */
     static final class Processor
+            extends OriginThreadPublisher<BodyPart, BodyPart>
             implements Flow.Processor<DataChunk, BodyPart> {
 
+        /**
+         * Indicate that the chunks subscription is complete.
+         */
         private boolean complete;
-        private boolean canceled;
-        private boolean partsCompleted;
-        private long bodyPartsRequested;
-        private Flow.Subscriber<? super BodyPart> itemsSubscriber;
-        Flow.Subscription chunksSubscription;
+
+        /**
+         * The upstream subscription.
+         */
+        private Flow.Subscription chunksSubscription;
+
+        /**
+         * The builder for the current {@link BodyPart}.
+         */
         private BodyPart.Builder bodyPartBuilder;
+
+        /**
+         * The builder for the current {@link BodyPartHeaders}.
+         */
         private BodyPartHeaders.Builder bodyPartHeaderBuilder;
+
+        /**
+         * The publisher for the current part.
+         */
         private BodyPartContentPublisher bodyPartContent;
-        private final Queue<BodyPart> bodyParts = new LinkedList<>();
+
+        /**
+         * The server request, used to derive the boundary string as well
+         * as the reader to register for the published parts.
+         */
         private final ServerRequest request;
+
+        /**
+         * The parser reference, used raise errors by calling
+         * {@link MIMEParser#close()} on completion.
+         */
         private final MIMEParser parser;
+
+        /**
+         * The iterator of event from the parser.
+         */
         private final Iterator<MIMEEvent> eventIterator;
+
+        /**
+         * The last event received from the parser.
+         */
         private MIMEEvent.EVENT_TYPE lastEventType;
 
-        public Processor(Flow.Publisher<DataChunk> chunksPublisher,
-                ServerRequest request) {
-
+        /**
+         * Create a new instance.
+         * @param request 
+         */
+        public Processor(ServerRequest request) {
             if (request.headers().contentType().isPresent()) {
                 MediaType contentType = request.headers().contentType().get();
-                this.parser = new MIMEParser(contentType.parameters()
-                        .get("boundary"));
+                String boundary = contentType.parameters().get("boundary");
+                LOGGER.fine(() -> "request: #" + request.requestId()
+                        + ", boundary string is " + boundary);
+                this.parser = new MIMEParser(boundary);
                 this.eventIterator = parser.iterator();
             } else {
                 throw new IllegalStateException("Not a multipart request");
             }
             this.request = request;
-            chunksPublisher.subscribe(this);
         }
 
         @Override
-        public void subscribe(Flow.Subscriber<? super BodyPart> subscriber) {
-            if (itemsSubscriber != null) {
-                throw new IllegalStateException(
-                        "Ouput subscriber already set");
-            }
-            itemsSubscriber = subscriber;
-            subscriber.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {
-                    if (n <= 0 || canceled
-                            || (partsCompleted && bodyParts.isEmpty())){
-                        return;
-                    }
-                    bodyPartsRequested += n;
-                    deliverParts();
-                    if (!complete
-                            && bodyPartsRequested > 0
-                            && (lastEventType == null
+        protected void hookOnRequested(long n, long result) {
+            if (tryAcquire() > 0
+                    && (lastEventType == null
                             || lastEventType == EVENT_TYPE.DATA_REQUIRED)) {
-                        chunksSubscription.request(1);
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                    if (!canceled){
-                        LOGGER.fine("BodyPart subscription canceled");
-                        canceled = true;
-                        if (chunksSubscription != null) {
-                            LOGGER.fine("Canceling data chunk subscription");
-                            chunksSubscription.cancel();
-                        }
-                    }
-                }
-            });
+                chunksSubscription.request(1);
+            }
         }
 
         @Override
@@ -130,29 +145,24 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             chunksSubscription = subscription;
         }
 
-        private void deliverParts() {
-            while (!bodyParts.isEmpty() && bodyPartsRequested > 0) {
-                BodyPart bodyPart = bodyParts.poll();
-                if (bodyPart != null) {
-                    bodyPart.registerReaders(
-                            ((Request.Content)request.content()).getReaders());
-                    bodyPartsRequested--;
-                    itemsSubscriber.onNext(bodyPart);
-                }
-            }
-            if (partsCompleted) {
-                itemsSubscriber.onComplete();
-            }
-        }
-
         @Override
         public void onNext(DataChunk chunk) {
-            parser.offer(chunk.data());
 
-            if (!eventIterator.hasNext()){
+            // feed the parser
+            try {
+                parser.offer(chunk.data());
+            } catch (MIMEParsingException ex) {
+                error(ex);
                 return;
             }
 
+            if (!eventIterator.hasNext()){
+                LOGGER.fine(() -> "request: #" + request.requestId()
+                        + ", no parser events");
+                return;
+            }
+
+            LinkedList<BodyPart> bodyParts = new LinkedList<>();
             boolean contentDataRequired = false;
             while (eventIterator.hasNext()) {
                 MIMEEvent event = eventIterator.next();
@@ -178,9 +188,8 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                                 .build());
                         break;
                     case CONTENT:
-                        DataChunk partChunk = DataChunk.create(
+                        bodyPartContent.submit(
                                 ((MIMEEvent.Content) event).getData());
-                        bodyPartContent.submit(partChunk);
                         break;
                     case END_PART:
                         bodyPartContent.complete();
@@ -197,124 +206,71 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
                         }
                         break;
                     case END_MESSAGE:
-                        partsCompleted = true;
                         break;
                     default:
-                        throw new MIMEParsingException("Unknown Parser state = "
-                                + event.getEventType());
+                        error(new MIMEParsingException("Unknown Parser event = "
+                                + event.getEventType()));
                 }
                 lastEventType = eventType;
             }
-            deliverParts();
-            if (lastEventType == EVENT_TYPE.DATA_REQUIRED
-                    && (!contentDataRequired || bodyPartContent.needsMore())) {
-                // request more data if not stuck at content
-                // or if the part content subscriber needs more
+
+            // submit parsed parts
+            for (BodyPart bodyPart : bodyParts){
+                bodyPart.registerReaders(((Request.Content)request.content())
+                        .getReaders());
+                submit(bodyPart);
+            }
+
+            // complete the subscriber
+            if (lastEventType == EVENT_TYPE.END_MESSAGE) {
+                complete();
+            }
+
+            // request more data if not stuck at content
+            // or if the part content subscriber needs more
+            if (!complete &&
+                    lastEventType == EVENT_TYPE.DATA_REQUIRED
+                    && (!contentDataRequired
+                    || bodyPartContent.requiresMoreItems())) {
+
+                LOGGER.fine(() -> "request: #" + request.requestId()
+                        + ", requesting one more chunk from upstream");
                 chunksSubscription.request(1);
             }
         }
 
         @Override
         public void onError(Throwable error) {
-            itemsSubscriber.onError(error);
+            error(error);
         }
 
         @Override
         public void onComplete() {
+            LOGGER.fine(() -> "request: #" + request.requestId()
+                        + ", upstream subscription completed");
             complete = true;
             try {
                 parser.close();
             } catch(MIMEParsingException ex){
-                itemsSubscriber.onError(ex);
-            }
-        }
-    }
-
-    private static final class BodyPartContentPublisher
-            implements Flow.Publisher<DataChunk> {
-
-        Flow.Subscriber<? super DataChunk> subscriber;
-        private long requested;
-        private boolean canceled;
-        private boolean partCompleted;
-        private boolean delivering;
-        private final Queue<DataChunk> queue = new LinkedList<>();
-
-        BodyPartContentPublisher() {
-            this.requested = 0;
-            this.canceled = false;
-            this.partCompleted = false;
-        }
-
-        void submit(DataChunk partChunk) {
-            if (canceled) {
-                return;
-            }
-            if (requested > 0) {
-                subscriber.onNext(partChunk);
-                requested--;
-            } else {
-                queue.add(partChunk);
-            }
-        }
-
-        boolean needsMore(){
-            return requested - queue.size() > 0;
-        }
-
-        void complete(){
-            if (canceled) {
-                return;
-            }
-            partCompleted = true;
-            if (subscriber != null && queue.isEmpty()) {
-                subscriber.onComplete();
+                error(ex);
             }
         }
 
         @Override
-        public void subscribe(Flow.Subscriber<? super DataChunk> subscriber) {
-            if (this.subscriber != null) {
-                throw new IllegalStateException(
-                        "Content already subscribed to");
-            }
-            this.subscriber = subscriber;
-            subscriber.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {
-                    // invalid request
-                    if (n <= 0 || canceled){
-                        return;
-                    }
+        protected BodyPart wrap(BodyPart data) {
+            return data;
+        }
+    }
 
-                    // save requested amount
-                    requested += n;
+    /**
+     * Body part content publisher.
+     */
+    static final class BodyPartContentPublisher
+            extends OriginThreadPublisher<DataChunk, ByteBuffer> {
 
-                    if (delivering){
-                        return;
-                    }
-
-                    delivering = true;
-                    DataChunk partChunk;
-                    do {
-                        partChunk = queue.poll();
-                        if (partChunk != null) {
-                            requested--;
-                            subscriber.onNext(partChunk);
-                        }
-                    } while (partChunk != null && requested > 0);
-                    delivering = false;
-
-                    if (partCompleted) {
-                        subscriber.onComplete();
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                    canceled = true;
-                }
-            });
+        @Override
+        protected DataChunk wrap(ByteBuffer item) {
+            return DataChunk.create(item);
         }
     }
 }

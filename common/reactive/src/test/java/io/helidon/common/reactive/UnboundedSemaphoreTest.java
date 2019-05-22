@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package io.helidon.webserver;
+package io.helidon.common.reactive;
 
-import io.helidon.webserver.UnboundedSemaphore;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;

@@ -169,6 +169,7 @@
         <version.lib.slf4j>1.7.25</version.lib.slf4j>
         <version.lib.snakeyaml>1.24</version.lib.snakeyaml>
         <version.lib.spotbugs-annotations>3.1.3</version.lib.spotbugs-annotations>
+        <version.lib.surefire.testng>3.0.0-M3</version.lib.surefire.testng>
         <version.lib.testng>6.13.1</version.lib.testng>
         <version.lib.transaction-api>1.2</version.lib.transaction-api>
         <version.lib.typesafe-config>1.3.3</version.lib.typesafe-config>

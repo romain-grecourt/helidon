@@ -17,6 +17,7 @@ package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow;
+import io.helidon.common.reactive.OriginThreadPublisher;
 import io.helidon.webserver.BaseStreamWriter;
 import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerRequest;
@@ -33,7 +34,9 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
     @Override
     public Flow.Publisher<DataChunk> apply(Flow.Publisher<BodyPart> parts) {
-        return new Processor(parts, getResponse());
+        Processor processor = new Processor(getResponse());
+        parts.subscribe(processor);
+        return processor;
     }
 
     /**
@@ -41,50 +44,23 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
      * subscriber. It is not resumable.
      */
     static final class Processor
+            extends OriginThreadPublisher<DataChunk, DataChunk>
             implements Flow.Processor<BodyPart, DataChunk> {
 
-        private long chunksRequested;
-        Flow.Subscriber<? super DataChunk> chunksSubscriber;
+        private Flow.Subscriber<? super DataChunk> chunksSubscriber;
         private Flow.Subscription partsSubscription;
         private BodyPartContentSubscriber bodyPartContent;
         boolean completed = false;
         private final ServerResponse response;
 
-        public Processor(Flow.Publisher<BodyPart> partsPublisher,
-                ServerResponse response) {
-
+        public Processor(ServerResponse response) {
             this.response = response;
-            partsPublisher.subscribe(this);
+            // submit start boundary
         }
 
         @Override
-        public void subscribe(Flow.Subscriber<? super DataChunk> subscriber) {
-            if (chunksSubscriber != null) {
-                throw new IllegalStateException(
-                        "Ouput subscriber already set");
-            }
-            chunksSubscriber = subscriber;
-            subscriber.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {
-                    if (chunksRequested > 0) {
-                        chunksRequested = n;
-                        requestNextPart();
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                    if (partsSubscription != null) {
-                        partsSubscription.cancel();
-                    }
-                    if (bodyPartContent != null
-                            && bodyPartContent.subscription != null){
-                        bodyPartContent.subscription.cancel();
-                    }
-                    chunksRequested = 0;
-                }
-            });
+        protected void hookOnRequested(long n, long result) {
+            requestNextPart();
         }
 
         @Override
@@ -96,18 +72,9 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
             partsSubscription = subscription;
         }
 
-        void requestNextPart(){
-            if (!completed && chunksRequested > 0){
-                if (bodyPartContent == null) {
-                    partsSubscription.request(1);
-                } else {
-                    bodyPartContent.subscription.request(chunksRequested);
-                }
-            }
-        }
-
         @Override
         public void onNext(BodyPart bodyPart) {
+            // TODO submit headers
             bodyPartContent = new BodyPartContentSubscriber(this);
             bodyPart.registerWriters(((Response)response).getWriters());
             bodyPart.content().subscribe(bodyPartContent);
@@ -116,12 +83,23 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onError(Throwable error) {
-            chunksSubscriber.onError(error);
+            error(error);
         }
 
         @Override
         public void onComplete() {
             completed = true;
+        }
+
+        @Override
+        protected DataChunk wrap(DataChunk data) {
+            return data;
+        }
+
+        private void requestNextPart() {
+            if (tryAcquire() > 0){
+                partsSubscription.request(1);
+            }
         }
     }
 
@@ -145,8 +123,8 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onNext(DataChunk item) {
-            // TODO: encode
-            processor.chunksSubscriber.onNext(item);
+            // TODO: encode with a charset ?
+            processor.submit(item);
         }
 
         @Override

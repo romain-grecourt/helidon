@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.webserver;
+package io.helidon.common.reactive;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -24,71 +24,69 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow;
-
-import io.netty.buffer.ByteBuf;
-
 /**
- * The OriginThreadPublisher's nature is to always run {@link io.helidon.common.reactive.Flow.Subscriber#onNext(Object)}
- * on the very same thread as {@link #submit(ByteBuf)}. In other words, whenever the source of chunks sends data,
- * the same thread is used to deliver the data to the subscriber. Standard publisher implementations (such as
- * {@link io.helidon.common.reactive.SubmissionPublisher} or Reactor Flux would use the same thread as
- * {@link io.helidon.common.reactive.Subscription#request(long)} was called on to deliver the chunk when the data are
- * already available; this implementation however strictly uses the originating thread.
- * <p>
- * In order to be able to achieve such behavior, this publisher provides hooks on subscription methods:
- * {@link #hookOnCancel()} and {@link #hookOnRequested(long, long)}.
+ * The OriginThreadPublisher's nature is to always run
+ * {@link Flow.Subscriber#onNext(T)} on the very same thread as
+ * {@link #submit(U)}. In other words, whenever the source of chunks sends
+ * data, the same thread is used to deliver the data to the subscriber.Standard
+ * publisher implementations (such as {@link SubmissionPublisher} or Reactor
+ * Flux would use the same thread as {@link Subscription#request(long)} was
+ * called on to deliver the chunk when the data are already available; this
+ * implementation however strictly uses the originating thread.<p>
+ * In order to be able to achieve such behavior, this publisher provides hooks
+ * on subscription methods: {@link #hookOnCancel()} and
+ * {@link #hookOnRequested(long, long)}.
  * <p>
  * This publisher allows only a single subscriber.
+ *
+ * @param <T> type of published items
+ * @param <U> type of submitted items
  */
-class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
+public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
 
-    private static final Logger LOGGER = Logger.getLogger(OriginThreadPublisher.class.getName());
+    private static final Logger LOGGER =
+            Logger.getLogger(OriginThreadPublisher.class.getName());
 
     private final UnboundedSemaphore semaphore;
     private final AtomicBoolean hasSingleSubscriber = new AtomicBoolean(false);
-    /** Required to achieve rule https://github.com/reactive-streams/reactive-streams-jvm#1.3 . */
+
+    /**
+     * Required to achieve rule
+     * https://github.com/reactive-streams/reactive-streams-jvm#1.3 .
+     */
     private final Lock reentrantLock = new ReentrantLock();
 
-    private volatile Flow.Subscriber<? super DataChunk> singleSubscriber;
+    private volatile Flow.Subscriber<? super T> singleSubscriber;
     private volatile boolean completed;
     private volatile Throwable t;
-
-    private final BlockingQueue<ByteBufRequestChunk> queue = new ArrayBlockingQueue<>(256);
-    private final ReferenceHoldingQueue<ByteBufRequestChunk> referenceQueue;
-
-    private AtomicLong nextCount = new AtomicLong();
+    private final BlockingQueue<T> queue = new ArrayBlockingQueue<>(256);
+    private final AtomicLong nextCount = new AtomicLong();
     private volatile long reqCount = 0;
 
     /**
      * Create same thread publisher.
      *
-     * @param semaphore      the semaphore to indicate the amount of requested data. The owner of this publisher
-     *                       is responsible to send the data as determined by the semaphore (i.e., to properly
-     *                       acquire a permission to send the data; to not send when the number of permits is zero).
-     * @param referenceQueue the reference queue to associate the
-     *                       {@link io.helidon.webserver.ReferenceHoldingQueue.ReleasableReference} instances with
+     * @param semaphore the semaphore to indicate the amount of requested data.
+     * The owner of this publisher is responsible to send the data as determined
+     * by the semaphore (i.e., to properly acquire a permission to send the
+     * data; to not send when the number of permits is zero).
      */
-    OriginThreadPublisher(UnboundedSemaphore semaphore, ReferenceHoldingQueue<ByteBufRequestChunk> referenceQueue) {
+    public OriginThreadPublisher(UnboundedSemaphore semaphore) {
         this.semaphore = semaphore;
-        this.referenceQueue = referenceQueue;
     }
 
     /**
      * Create same thread publisher.
-     *
-     * @param referenceQueue the reference queue to associate the
-     *                       {@link io.helidon.webserver.ReferenceHoldingQueue.ReleasableReference} instances with
      */
-    OriginThreadPublisher(ReferenceHoldingQueue<ByteBufRequestChunk> referenceQueue) {
-        this(new UnboundedSemaphore(), referenceQueue);
+    public OriginThreadPublisher() {
+        this(new UnboundedSemaphore());
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super DataChunk> originalSubscriber) {
+    public void subscribe(Flow.Subscriber<? super T> originalSubscriber) {
         if (!hasSingleSubscriber.compareAndSet(false, true)) {
-            originalSubscriber.onError(new IllegalStateException("Only single subscriber is allowed!"));
+            originalSubscriber.onError(new IllegalStateException(
+                    "Only single subscriber is allowed!"));
             return;
         }
 
@@ -103,28 +101,31 @@ class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
                 @Override
                 public void request(long n) {
                     if (n <= 0) {
-                        error(new IllegalArgumentException("[3.9] Illegal value requested: " + n));
+                        error(new IllegalArgumentException(
+                                "Illegal value requested: " + n));
+                        return;
                     }
 
                     try {
                         reentrantLock.lock();
 
                         reqCount += n;
-
                         long release = n;
 
                         if (nexting) {
                             return;
                         }
 
-                        while (singleSubscriber != null && !queue.isEmpty() && reqCount > nextCount.get()) {
+                        while (singleSubscriber != null
+                                && !queue.isEmpty()
+                                && reqCount > nextCount.get()) {
+
                             nextCount.incrementAndGet();
                             try {
                                 nexting = true;
                                 release--;
-
-                                ByteBufRequestChunk item = queue.remove();
-                                LOGGER.finest(() -> "Publishing request chunk: " + item.id());
+                                T item = queue.remove();
+                                LOGGER.finest(() -> "Publishing item: " + item);
                                 singleSubscriber.onNext(item);
                             } finally {
                                 nexting = false;
@@ -134,18 +135,18 @@ class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
                         if (singleSubscriber == null) {
                             // subscriber has been canceled
                             return;
-                        } else if (t != null) {
+                        }
+                        if (t != null) {
                             LOGGER.finest("Completing with an error from request.");
                             singleSubscriber.onError(t);
                         } else if (completed && queue.isEmpty()) {
                             LOGGER.finest("Completing from request.");
                             singleSubscriber.onComplete();
                         } else if (queue.isEmpty()) {
-                            long released = n == Long.MAX_VALUE ? Long.MAX_VALUE : release;
+                            long released = n == Long.MAX_VALUE ? Long.MAX_VALUE
+                                    : release;
                             long result = semaphore.release(released);
-
                             LOGGER.finest(() -> "Semaphore released: " + result);
-
                             hookOnRequested(released, result);
                         }
                     } finally {
@@ -165,76 +166,63 @@ class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
     }
 
     /**
-     * Hooks to the finished {@link io.helidon.common.reactive.Flow.Subscription#request(long)}.
-     * The intention of this method is to be able to trigger {@link #submit(ByteBuf)} in order
-     * call {@link io.helidon.common.reactive.Flow.Subscriber#onNext(Object)} as requested by the
-     * request method.
-     *
-     * @param n      the requested count
-     * @param result the current total cumulative requested count; ranges between [0, {@link Long#MAX_VALUE}]
-     *               where the max indicates that this publisher is unbounded
+     * Wrap the submitted data into an item that can be published.
+     * @param data submitted data
+     * @return item to publish
      */
-    void hookOnRequested(long n, long result) {
-    }
-
-    /**
-     * Hooks to the finished {@link io.helidon.common.reactive.Flow.Subscription#request(long)}.
-     * The intention of this method is to be able to additionally free associated resources.
-     */
-    void hookOnCancel() {
-    }
+    protected abstract T wrap(U data);
 
     /**
      * Submit the data to the subscriber. The same thread is used to call
-     * {@link io.helidon.common.reactive.Flow.Subscriber#onNext(Object)}. That is, the data are synchronously
-     * passed to the subscriber.
+     * {@link Flow.Subscriber#onNext(Object)}. That is, the data are
+     * synchronously passed to the subscriber.
      * <p>
-     * Note that in order to maintain a consistency of this publisher, this method must be
-     * called only once per a single permit that must be acquired by {@link #tryAcquire()}.
+     * Note that in order to maintain a consistency of this publisher, this
+     * method must be called only once per a single permit that must be acquired
+     * by {@link #tryAcquire()}.
      *
      * @param data the chunk of data to send to the subscriber
      */
-    void submit(ByteBuf data) {
+    public void submit(U data) {
         try {
             reentrantLock.lock();
-
-            ByteBufRequestChunk chunk = new ByteBufRequestChunk(data, referenceQueue);
-
-            if (!queue.offer(chunk)) {
+            if (!queue.offer(wrap(data))) {
                 LOGGER.severe("Unable to add an element to the publisher cache.");
-                error(new IllegalStateException("Unable to add an element to the publisher cache."));
+                error(new IllegalStateException(
+                        "Unable to add an element to the publisher cache."));
                 return;
             }
 
             if (nextCount.get() < reqCount) {
                 nextCount.incrementAndGet();
                 // the poll is never expected to return null
-                ByteBufRequestChunk item = queue.poll();
+                T item = queue.poll();
 
-                LOGGER.finest(() -> "Publishing request chunk: " + (null == item ? "null" : item.id()));
+                LOGGER.finest(() -> "Publishing item: "
+                        + (null == item ? "null" : item));
                 singleSubscriber.onNext(item);
             } else {
-                LOGGER.finest(() -> "Not publishing due to low request count: " + nextCount + " <= " + reqCount);
+                LOGGER.finest(() -> "Not publishing due to low request count: "
+                        + nextCount + " <= " + reqCount);
             }
-
         } catch (RuntimeException e) {
             if (singleSubscriber == null) {
                 t = e;
             } else {
-                error(new IllegalStateException("An error occurred when submitting data.", e));
+                error(new IllegalStateException(
+                        "An error occurred when submitting data.", e));
             }
         } finally {
             reentrantLock.unlock();
-            referenceQueue.release();
         }
     }
 
     /**
-     * Synchronously trigger {@link io.helidon.common.reactive.Flow.Subscriber#onError(Throwable)}.
+     * Synchronously trigger {@link Flow.Subscriber#onError(Throwable)}.
      *
      * @param throwable the exception to send
      */
-    void error(Throwable throwable) {
+    public void error(Throwable throwable) {
         try {
             reentrantLock.lock();
 
@@ -249,14 +237,13 @@ class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
             throw new IllegalStateException("On error threw an exception!", e);
         } finally {
             reentrantLock.unlock();
-            referenceQueue.release();
         }
     }
 
     /**
      * Synchronously trigger {@link Flow.Subscriber#onComplete()}.
      */
-    void complete() {
+    public void complete() {
         try {
             reentrantLock.lock();
 
@@ -270,28 +257,57 @@ class OriginThreadPublisher implements Flow.Publisher<DataChunk> {
             }
         } finally {
             reentrantLock.unlock();
-            referenceQueue.release();
         }
     }
 
     /**
-     * In a non-blocking manner, try to acquire an allowance to publish next item.
+     * In a non-blocking manner, try to acquire an allowance to publish next
+     * item.
      *
-     * @return original number of requests on the very one associated subscriber's subscription;
-     * if {@code 0} is returned, the requester didn't obtain a permit to publish
-     * next item. In case a {@link Long#MAX_VALUE} is returned,
-     * the requester is informed that unlimited number of items can be published.
+     * @return original number of requests on the very one associated
+     * subscriber's subscription; if {@code 0} is returned, the requester didn't
+     * obtain a permit to publish next item. In case a {@link Long#MAX_VALUE} is
+     * returned, the requester is informed that unlimited number of items can be
+     * published.
      */
-    long tryAcquire() {
+    public long tryAcquire() {
         return semaphore.tryAcquire();
     }
 
     /**
-     * Indicates that the only one possible associated subscriber has been completed.
+     * Indicates that the only one possible associated subscriber has been
+     * completed.
      *
      * @return whether this publisher has successfully finished
      */
-    boolean isCompleted() {
+    public boolean isCompleted() {
         return completed;
+    }
+
+    /**
+     * Indicate that more items should be published in order to meet the
+     * current demand of the subscriber.
+     * 
+     * @return whether this publisher currently satisfies the subscriber
+     */
+    public boolean requiresMoreItems() {
+        return reqCount - (nextCount.get() + queue.size()) > 0;
+    }
+
+    /**
+     * Hook invoked after calls to {@link Flow.Subscription#request(long)}.
+     *
+     * @param n the requested count
+     * @param result the current total cumulative requested count; ranges
+     * between [0, {@link Long#MAX_VALUE}] where the max indicates that this
+     * publisher is unbounded
+     */
+    protected void hookOnRequested(long n, long result) {
+    }
+
+    /**
+     * Hook invoked after calls to {@link Flow.Subscription#cancel()}.
+     */
+    protected void hookOnCancel() {
     }
 }

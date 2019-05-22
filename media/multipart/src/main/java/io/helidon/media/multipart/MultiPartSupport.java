@@ -74,8 +74,10 @@ public final class MultiPartSupport implements Service, Handler {
 
         @Override
         public Flow.Publisher<DataChunk> apply(MultiPart multiPart) {
-            return new BodyPartStreamWriter.Processor(
-                    new BodyPartPublisher(multiPart.bodyParts()), response);
+            BodyPartStreamWriter.Processor processor =
+                    new BodyPartStreamWriter.Processor(response);
+            new BodyPartPublisher(multiPart.bodyParts()).subscribe(processor);
+            return processor;
         }
     }
 
@@ -139,7 +141,8 @@ public final class MultiPartSupport implements Service, Handler {
                 Class<? super MultiPart> clazz) {
 
             BodyPartStreamReader.Processor processor =
-                    new BodyPartStreamReader.Processor(chunks, request);
+                    new BodyPartStreamReader.Processor(request);
+            chunks.subscribe(processor);
             BodyPartSubscriber bodyPartSubscriber = new BodyPartSubscriber();
             processor.subscribe(bodyPartSubscriber);
             CompletableFuture<MultiPart> future = new CompletableFuture<>();

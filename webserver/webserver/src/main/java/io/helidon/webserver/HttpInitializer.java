@@ -17,6 +17,7 @@
 package io.helidon.webserver;
 
 
+import io.helidon.common.http.DataChunk;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
@@ -50,7 +51,7 @@ class HttpInitializer extends ChannelInitializer<SocketChannel> {
     private final SslContext sslContext;
     private final NettyWebServer webServer;
     private final Routing routing;
-    private final Queue<ReferenceHoldingQueue<ByteBufRequestChunk>> queues = new ConcurrentLinkedQueue<>();
+    private final Queue<ReferenceHoldingQueue<DataChunk>> queues = new ConcurrentLinkedQueue<>();
 
     HttpInitializer(SslContext sslContext, Routing routing, NettyWebServer webServer) {
         this.routing = routing;

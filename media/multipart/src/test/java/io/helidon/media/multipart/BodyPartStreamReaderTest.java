@@ -50,8 +50,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class BodyPartStreamReaderTest {
 
-    // TODO test with subscriber on a different thread
-
     @Test
     public void testOnePartInOneChunk() {
         String boundary = "boundary";
@@ -237,7 +235,7 @@ public class BodyPartStreamReaderTest {
         assertThat(testSubscriber.complete, is(equalTo(true)));
     }
 
-//    @Test
+    @Test
     public void testSubscriberCancelAfterOnePart() {
         String boundary = "boundary";
         final byte[] chunk1 = ("--" + boundary + "\n"
@@ -253,7 +251,7 @@ public class BodyPartStreamReaderTest {
         final CountDownLatch latch = new CountDownLatch(2);
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            if (latch.getCount()== 3) {
+            if (latch.getCount()== 1) {
                 assertThat(part.headers().values("Content-Id"),
                         hasItems("part1"));
                 PartContentSubscriber subscriber1 =
@@ -272,7 +270,7 @@ public class BodyPartStreamReaderTest {
                 .subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
-        assertThat(testSubscriber.complete, is(equalTo(true)));
+        assertThat(testSubscriber.complete, is(equalTo(false)));
     }
 
     @Test
@@ -379,37 +377,37 @@ public class BodyPartStreamReaderTest {
         final CountDownLatch latch = new CountDownLatch(3);
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            if (latch.getCount() == 3) {
+            if (latch.getCount() == 2) {
                 assertThat(part.headers().values("Content-Id"),
                         hasItems("part1"));
-                part.content().subscribe(new Subscriber<DataChunk>() {
-
-                    @Override
-                    public void onSubscribe(Subscription subscription) {
-                        subscription.request(1);
-                    }
-
-                    @Override
-                    public void onNext(DataChunk item) {
-                        latch.countDown();
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                    }
-
-                    @Override
-                    public void onComplete() {
-                    }
-                });
             }
+            part.content().subscribe(new Subscriber<DataChunk>() {
+
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    subscription.request(1);
+                }
+
+                @Override
+                public void onNext(DataChunk item) {
+                    latch.countDown();
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                }
+
+                @Override
+                public void onComplete() {
+                }
+            });
         };
         TestSubscriber testSubscriber = new TestSubscriber(
                 SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
         partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4)
                 .subscribe(testSubscriber);
         waitOnLatchNegative(latch, "the 2nd part should not be processed");
-        assertThat(latch.getCount(), is(equalTo(2L)));
+        assertThat(latch.getCount(), is(equalTo(1L)));
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(false)));
     }
@@ -424,7 +422,7 @@ public class BodyPartStreamReaderTest {
     }
 
     /**
-     * A simple helper to help with asynchronous testing.
+     * A part test subscriber.
      */
     static class TestSubscriber implements Subscriber<BodyPart>{
 
