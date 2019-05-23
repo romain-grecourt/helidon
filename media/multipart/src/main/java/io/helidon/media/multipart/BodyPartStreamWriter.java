@@ -23,6 +23,8 @@ import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Body part stream writer.
@@ -59,11 +61,11 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
         private Flow.Subscription partsSubscription;
         private BodyPartContentSubscriber bodyPartContent;
         private final ServerResponse response;
-        private final MIMEGenerator generator;
+        private final String boundary;
 
         public Processor(ServerResponse res, String boundary) {
             response = res;
-            generator = new MIMEGenerator(boundary);
+            this.boundary = boundary;
         }
 
         @Override
@@ -82,10 +84,32 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onNext(BodyPart bodyPart) {
-            String data = generator.newPart(bodyPart.headers().toMap());
-            submit(DataChunk.create(ByteBuffer.wrap(data.getBytes())));
+            Map<String, List<String>> headers = bodyPart.headers().toMap();
+            StringBuilder sb = new StringBuilder();
+
+            // start boundary
+            sb.append(boundary).append("\r\n");
+
+            // headers lines
+            for (Map.Entry<String, List<String>> headerEntry
+                    : headers.entrySet()) {
+
+                String headerName = headerEntry.getKey();
+                for (String headerValue : headerEntry.getValue()) {
+                    sb.append(headerName)
+                            .append(":")
+                            .append(headerValue)
+                            .append("\r\n");
+                }
+            }
+
+            // end of headers empty line
+            if (!headers.isEmpty()) {
+                sb.append("\r\n");
+            }
+            submit(DataChunk.create(ByteBuffer.wrap(sb.toString().getBytes())));
             bodyPartContent = new BodyPartContentSubscriber(this);
-            bodyPart.registerWriters(((Response)response).getWriters());
+            bodyPart.registerWriters(((Response) response).getWriters());
             bodyPart.content().subscribe(bodyPartContent);
         }
 
@@ -96,8 +120,8 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onComplete() {
-            String data = generator.endMessage();
-            submit(DataChunk.create(ByteBuffer.wrap(data.getBytes())));
+            submit(DataChunk.create(ByteBuffer.wrap((boundary + "--")
+                    .getBytes())));
             complete();
         }
 

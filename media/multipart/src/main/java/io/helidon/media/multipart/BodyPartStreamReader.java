@@ -19,15 +19,13 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.media.multipart.MIMEEvent.EVENT_TYPE;
 import io.helidon.webserver.BaseStreamReader;
 import io.helidon.webserver.Request;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.logging.Level;
+import java.util.Queue;
 import java.util.logging.Logger;
 
 /**
@@ -94,44 +92,47 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
         private final ServerRequest request;
 
         /**
-         * The parser reference, used raise errors by calling
-         * {@link MIMEParser#close()} on completion.
+         * The MIME parser.
          */
         private final MIMEParser parser;
 
         /**
-         * The iterator of event from the parser.
+         * The parser event listener.
          */
-        private final Iterator<MIMEEvent> eventIterator;
+        private final ParserEventProcessor parserEventProcessor;
 
         /**
-         * The last event received from the parser.
+         * The bodyParts processed during each {@code onNext}.
          */
-        private MIMEEvent.EVENT_TYPE lastEventType;
+        private final Queue<BodyPart> bodyParts;
 
         /**
          * Create a new instance.
-         * @param request 
+         * @param req 
          */
-        public Processor(ServerRequest request) {
-            if (request.headers().contentType().isPresent()) {
-                MediaType contentType = request.headers().contentType().get();
-                String boundary = contentType.parameters().get("boundary");
-                LOGGER.fine(() -> "request: #" + request.requestId()
+        public Processor(ServerRequest req) {
+            String boundary;
+            if (req.headers().contentType().isPresent()) {
+                MediaType contentType = req.headers().contentType().get();
+                boundary = contentType.parameters().get("boundary");
+                LOGGER.fine(() -> "request: #" + req.requestId()
                         + ", boundary string is " + boundary);
-                this.parser = new MIMEParser(boundary);
-                this.eventIterator = parser.iterator();
             } else {
                 throw new IllegalStateException("Not a multipart request");
             }
-            this.request = request;
+            request = req;
+            parserEventProcessor = new ParserEventProcessor();
+            parser = new MIMEParser(boundary, parserEventProcessor);
+            bodyParts = new LinkedList<>();
         }
 
         @Override
         protected void hookOnRequested(long n, long result) {
+            // require more raw chunks to decode if not start or
+            // if more data is required
             if (tryAcquire() > 0
-                    && (lastEventType == null
-                            || lastEventType == EVENT_TYPE.DATA_REQUIRED)) {
+                    && (!parserEventProcessor.isStarted()
+                    || parserEventProcessor.isDataRequired())) {
                 chunksSubscription.request(1);
             }
         }
@@ -147,90 +148,30 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
 
         @Override
         public void onNext(DataChunk chunk) {
-
-            // feed the parser
             try {
+                // feed the parser
                 parser.offer(chunk.data());
-            } catch (MIMEParsingException ex) {
+            } catch (MIMEParser.ParsingException ex) {
                 error(ex);
-                return;
-            }
-
-            if (!eventIterator.hasNext()){
-                LOGGER.fine(() -> "request: #" + request.requestId()
-                        + ", no parser events");
-                return;
-            }
-
-            LinkedList<BodyPart> bodyParts = new LinkedList<>();
-            boolean contentDataRequired = false;
-            while (eventIterator.hasNext()) {
-                MIMEEvent event = eventIterator.next();
-                MIMEEvent.EVENT_TYPE eventType = event.getEventType();
-                LOGGER.log(Level.FINE, "MIMEEvent={0}", eventType);
-                switch (eventType) {
-                    case START_MESSAGE:
-                        break;
-                    case START_PART:
-                        bodyPartContent = new BodyPartContentPublisher();
-                        bodyPartHeaderBuilder = BodyPartHeaders.builder();
-                        bodyPartBuilder = BodyPart.builder()
-                                .publisher(bodyPartContent);
-                        break;
-                    case HEADER:
-                        MIMEEvent.Header header = (MIMEEvent.Header) event;
-                        bodyPartHeaderBuilder
-                                .header(header.getName(), header.getValue());
-                        break;
-                    case END_HEADERS:
-                        bodyParts.add(bodyPartBuilder
-                                .headers(bodyPartHeaderBuilder.build())
-                                .build());
-                        break;
-                    case CONTENT:
-                        bodyPartContent.submit(
-                                ((MIMEEvent.Content) event).getData());
-                        break;
-                    case END_PART:
-                        bodyPartContent.complete();
-                        bodyPartContent = null;
-                        bodyPartHeaderBuilder = null;
-                        bodyPartBuilder = null;
-                        break;
-                    case DATA_REQUIRED:
-                        if (complete) {
-                            return;
-                        }
-                        if (lastEventType == EVENT_TYPE.CONTENT){
-                            contentDataRequired = true;
-                        }
-                        break;
-                    case END_MESSAGE:
-                        break;
-                    default:
-                        error(new MIMEParsingException("Unknown Parser event = "
-                                + event.getEventType()));
-                }
-                lastEventType = eventType;
             }
 
             // submit parsed parts
-            for (BodyPart bodyPart : bodyParts){
-                bodyPart.registerReaders(((Request.Content)request.content())
+            while (!bodyParts.isEmpty()) {
+                BodyPart bodyPart = bodyParts.poll();
+                bodyPart.registerReaders(((Request.Content) request.content())
                         .getReaders());
                 submit(bodyPart);
             }
 
             // complete the subscriber
-            if (lastEventType == EVENT_TYPE.END_MESSAGE) {
+            if (parserEventProcessor.isCompleted()) {
                 complete();
             }
 
             // request more data if not stuck at content
             // or if the part content subscriber needs more
-            if (!complete &&
-                    lastEventType == EVENT_TYPE.DATA_REQUIRED
-                    && (!contentDataRequired
+            if (!complete && parserEventProcessor.isDataRequired()
+                    && (!parserEventProcessor.isContentDataRequired()
                     || bodyPartContent.requiresMoreItems())) {
 
                 LOGGER.fine(() -> "request: #" + request.requestId()
@@ -251,7 +192,7 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
             complete = true;
             try {
                 parser.close();
-            } catch(MIMEParsingException ex){
+            } catch (MIMEParser.ParsingException ex) {
                 error(ex);
             }
         }
@@ -259,6 +200,92 @@ final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
         @Override
         protected BodyPart wrap(BodyPart data) {
             return data;
+        }
+
+        /**
+         * MIMEParser event processor.
+         */
+        private final class ParserEventProcessor
+                implements MIMEParser.EventProcessor {
+
+            MIMEParser.ParserEvent lastEvent = null;
+
+            @Override
+            public void process(MIMEParser.ParserEvent event) {
+                MIMEParser.EVENT_TYPE eventType = event.type();
+                LOGGER.fine(() -> "Parser event: " + eventType);
+                switch (eventType) {
+                    case START_PART:
+                        bodyPartContent = new BodyPartContentPublisher();
+                        bodyPartHeaderBuilder = BodyPartHeaders.builder();
+                        bodyPartBuilder = BodyPart.builder()
+                                .publisher(bodyPartContent);
+                        break;
+                    case HEADER:
+                        MIMEParser.HeaderEvent headerEvent =
+                                event.asHeaderEvent();
+                        bodyPartHeaderBuilder.header(headerEvent.name(),
+                                headerEvent.value());
+                        break;
+                    case END_HEADERS:
+                        bodyParts.add(bodyPartBuilder
+                                .headers(bodyPartHeaderBuilder.build())
+                                .build());
+                        break;
+                    case CONTENT:
+                        bodyPartContent.submit(event.asContentEvent()
+                                .data());
+                        break;
+                    case END_PART:
+                        bodyPartContent.complete();
+                        bodyPartContent = null;
+                        bodyPartHeaderBuilder = null;
+                        bodyPartBuilder = null;
+                        break;
+                    default:
+                        // nothing to do
+                }
+                lastEvent = event;
+            }
+
+            /**
+             * Indicate if the parser has received any data.
+             *
+             * @return {@code true} if the parser has been offered data,
+             * {@code false} otherwise
+             */
+            boolean isStarted() {
+                return lastEvent != null;
+            }
+
+            /**
+             * Indicate if the parser has reached the end of the message.
+             *
+             * @return {@code true} if completed, {@code false} otherwise
+             */
+            boolean isCompleted() {
+                return lastEvent.type() == MIMEParser.EVENT_TYPE.END_MESSAGE;
+            }
+
+            /**
+             * Indicate if the parser requires more data to make progress.
+             * @return {@code true} if more data is required, {@code false}
+             * otherwise
+             */
+            boolean isDataRequired() {
+                return lastEvent.type() == MIMEParser.EVENT_TYPE.DATA_REQUIRED;
+            }
+
+            /**
+             * Indicate if more content data is required.
+             *
+             * @return {@code true} if more content data is required,
+             * {@code false} otherwise
+             */
+            boolean isContentDataRequired() {
+                return isDataRequired()
+                        && lastEvent.asDataRequiredEvent().isContent();
+            }
         }
     }
 

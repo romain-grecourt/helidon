@@ -40,6 +40,7 @@ import static io.helidon.media.multipart.BodyPartTest.READERS;
 import static io.helidon.media.multipart.BodyPartTest.WRITERS;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -287,8 +288,9 @@ public class BodyPartStreamReaderTest {
         partsPublisher(boundary, chunk1)
                 .subscribe(testSubscriber);
         assertThat(testSubscriber.complete, is(equalTo(false)));
+        assertThat(testSubscriber.error, is(notNullValue()));
         assertThat(testSubscriber.error.getClass(),
-                is(equalTo(MIMEParsingException.class)));
+                is(equalTo(MIMEParser.ParsingException.class)));
         assertThat(testSubscriber.error.getMessage(),
                 is(equalTo("No closing MIME boundary")));
     }

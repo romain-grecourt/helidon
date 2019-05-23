@@ -18,21 +18,298 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.Utils;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
  * Parser for multipart MIME message.
  */
-class MIMEParser implements Iterable<MIMEEvent> {
+final class MIMEParser {
+
+    /**
+     * The generated events type.
+     */
+    static enum EVENT_TYPE {
+
+        /**
+         * This event is the first event issued by the parser.
+         * It is generated only once.
+         */
+        START_MESSAGE,
+
+        /**
+         * This event is issued when a new part is detected.
+         * It is generated for each part.
+         */
+        START_PART,
+
+        /**
+         * This event is issued for each header line of a part. It may be
+         * generated more than once for each part.
+         */
+        HEADER,
+
+        /**
+         * This event is issued for each header line of a part. It may be
+         * generated more than once for each part.
+         */
+        END_HEADERS,
+
+        /**
+         * This event is issued for each part chunk parsed. The event
+         * It may be generated more than once for each part.
+         */
+        CONTENT,
+
+        /**
+         * This event is issued when the content for a part is complete.
+         * It is generated only once for each part.
+         */
+        END_PART,
+
+        /**
+         * This event is issued when all parts are complete. It is generated
+         * only once.
+         */
+        END_MESSAGE,
+
+        /**
+         * This event is issued when there is not enough data in the buffer to
+         * continue parsing. If issued after:
+         * <ul>
+         * <li>{@link #START_MESSAGE} - the parser did not detect the end of
+         * the preamble</li>
+         * <li>{@link #HEADER} - the parser
+         * did not detect the blank line that separates the part headers and the
+         * part body</li>
+         * <li>{@link #CONTENT} - the parser did not
+         * detect the next starting boundary or closing boundary</li>
+         * </ul>
+         */
+        DATA_REQUIRED
+    }
+
+    /**
+     * Base class for parser events.
+     */
+    static abstract class ParserEvent {
+
+        /**
+         * Get the event type.
+         * @return EVENT_TYPE
+         */
+        abstract EVENT_TYPE type();
+
+        /**
+         * Get this event as a {@link HeaderEvent}.
+         * @return HeaderEvent
+         */
+        HeaderEvent asHeaderEvent() {
+            return (HeaderEvent) this;
+        }
+
+        /**
+         * Get this event as a {@link ContentEvent}.
+         *
+         * @return ContentEvent
+         */
+        ContentEvent asContentEvent() {
+            return (ContentEvent) this;
+        }
+
+        /**
+         * Get this event as a {@link DataRequiredEvent}.
+         *
+         * @return DataRequiredEvent
+         */
+        DataRequiredEvent asDataRequiredEvent() {
+            return (DataRequiredEvent) this;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#START_MESSAGE}.
+     */
+    static final class StartMessageEvent extends ParserEvent {
+
+        private StartMessageEvent() {
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.START_MESSAGE;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#START_MESSAGE}.
+     */
+    static final class StartPartEvent extends ParserEvent {
+
+        private StartPartEvent() {
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.START_PART;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#HEADER}.
+     */
+    static final class HeaderEvent extends ParserEvent {
+
+        private final String name;
+        private final String value;
+
+        private HeaderEvent(String name, String value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        String name() {
+            return name;
+        }
+
+        String value() {
+            return value;
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.HEADER;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#END_HEADERS}.
+     */
+    static final class EndHeadersEvent extends ParserEvent {
+
+        private EndHeadersEvent() {
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.END_HEADERS;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#END_HEADERS}.
+     */
+    static final class ContentEvent extends ParserEvent {
+
+        private final ByteBuffer data;
+
+        ContentEvent(ByteBuffer data) {
+            this.data = data;
+        }
+
+        ByteBuffer data() {
+            return data;
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.CONTENT;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#END_PART}.
+     */
+    static final class EndPartEvent extends ParserEvent {
+
+        private EndPartEvent() {
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.END_PART;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#END_MESSAGE}.
+     */
+    static final class EndMessageEvent extends ParserEvent {
+
+        private EndMessageEvent() {
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.END_MESSAGE;
+        }
+    }
+
+    /**
+     * The event class for {@link EVENT_TYPE#DATA_REQUIRED}.
+     */
+    static final class DataRequiredEvent extends ParserEvent {
+
+        private final boolean content;
+
+        private DataRequiredEvent(boolean content) {
+            this.content = content;
+        }
+
+        /**
+         * Indicate if the required data is for the body content of a part.
+         * @return {@code true} if for body content, {@code false} otherwise
+         */
+        boolean isContent() {
+            return content;
+        }
+
+        @Override
+        EVENT_TYPE type() {
+            return EVENT_TYPE.DATA_REQUIRED;
+        }
+    }
+
+    /**
+     * Callback interface to the parser.
+     */
+    interface EventProcessor {
+
+        /**
+         * Process a parser event.
+         * @param event generated
+         */
+        void process(ParserEvent event);
+    }
+
+    /**
+     * MIME Parsing exception.
+     */
+    static final class ParsingException extends RuntimeException {
+
+        /**
+         * Create a new exception with the specified message.
+         * @param message exception message
+         */
+        private ParsingException(String message) {
+            super(message);
+        }
+
+        /**
+         * Create a new exception 
+         * @param message exception message
+         * @param cause exception cause
+         */
+        private ParsingException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
 
     /**
      * Logger.
      */
-    private static final Logger LOGGER =
-            Logger.getLogger(MIMEParser.class.getName());
+    private static final Logger LOGGER
+            = Logger.getLogger(MIMEParser.class.getName());
 
     /**
      * Encoding used to parse the header.
@@ -42,7 +319,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
     /**
      * All states.
      */
-    enum STATE {
+    private static enum STATE {
         START_MESSAGE,
         SKIP_PREAMBLE,
         START_PART,
@@ -52,6 +329,34 @@ class MIMEParser implements Iterable<MIMEEvent> {
         END_MESSAGE,
         DATA_REQUIRED
     }
+
+    /**
+     * Singleton for {@link StartMessageEvent}.
+     */
+    private static final StartMessageEvent START_MESSAGE_EVENT =
+            new StartMessageEvent();
+
+    /**
+     * Singleton for {@link StartPartEvent}.
+     */
+    private static final StartPartEvent START_PART_EVENT = new StartPartEvent();
+
+    /**
+     * Singleton for {@link EndHeadersEvent}.
+     */
+    private static final EndHeadersEvent END_HEADERS_EVENT =
+            new EndHeadersEvent();
+
+    /**
+     * Singleton for {@link EndPartEvent}.
+     */
+    private static final EndPartEvent END_PART_EVENT = new EndPartEvent();
+
+    /**
+     * Singleton for {@link EndMessageEvent}.
+     */
+    private static final EndMessageEvent END_MESSAGE_EVENT =
+            new EndMessageEvent();
 
     /**
      * The current parser state.
@@ -115,22 +420,16 @@ class MIMEParser implements Iterable<MIMEEvent> {
     private boolean closed;
 
     /**
-     * Indicate if the last event for {@link MIMEEvent#END_MESSAGE} has been
-     * generated.
+     * The event listener.
      */
-    private boolean lastEventSent;
-
-    /**
-     * Indicate if the event for {@link MIMEEvent#DATA_REQUIRED} has been
-     * generated.
-     */
-    private boolean dataRequiredEventSent;
+    private final EventProcessor listener;
 
     /**
      * Parses the MIME content.
      */
-    MIMEParser(String boundary) {
+    MIMEParser(String boundary, EventProcessor eventListener) {
         bndbytes = ("--" + boundary).getBytes();
+        listener = eventListener;
         bl = bndbytes.length;
         gss = new int[bl];
         compileBoundaryPattern();
@@ -141,12 +440,12 @@ class MIMEParser implements Iterable<MIMEEvent> {
      * processed data, it will be concatenated with the given new data.
      *
      * @param data new data add to the parsing buffer
-     * @throws MIMEParsingException if the parser state is not
-     * {@code START_MESSAGE} or {@code DATA_REQUIRED}
+     * @throws ParsingException if the parser state is not consistent or if
+     * an error occurs during parsing
      */
-    void offer(ByteBuffer data) {
+    void offer(ByteBuffer data) throws ParsingException {
         if (closed) {
-            throw new MIMEParsingException("Parser is closed");
+            throw new ParsingException("Parser is closed");
         }
         switch (state) {
             case START_MESSAGE:
@@ -155,7 +454,6 @@ class MIMEParser implements Iterable<MIMEEvent> {
                 break;
             case DATA_REQUIRED:
                 // resume the previous state
-                dataRequiredEventSent = false;
                 state = resumeState;
                 resumeState = null;
                 // concat remaining data with newly pushed data
@@ -167,34 +465,39 @@ class MIMEParser implements Iterable<MIMEEvent> {
                 position = 0;
                 break;
             default:
-                throw new MIMEParsingException("Parser not drained");
+                throw new ParsingException("Parser not drained");
         }
+        makeProgress();
     }
 
     /**
      * Mark this parser instance as closed. Invoking this method indicates
      * that no more data will be pushed to the parsing buffer.
      *
-     * @throws MIMEParsingException if the parser state is not
+     * @throws ParsingException if the parser state is not
      * {@code END_MESSAGE} or {@code START_MESSAGE}
      */
-    void close() {
-        if (state == STATE.START_MESSAGE || state == STATE.END_MESSAGE) {
-            closed = true;
-            return;
+    void close() throws ParsingException {
+        switch (state) {
+            case START_MESSAGE:
+            case END_MESSAGE:
+                closed = true;
+                break;
+            case DATA_REQUIRED:
+                switch (resumeState) {
+                    case SKIP_PREAMBLE:
+                        throw new ParsingException("Missing start boundary");
+                    case BODY:
+                        throw new ParsingException("No closing MIME boundary");
+                    case HEADERS:
+                        throw new ParsingException("No blank line found");
+                    default:
+                        // do nothing
+                }
+                break;
+            default:
+                throw new ParsingException("Invalid state: " + state);
         }
-        if (state == STATE.DATA_REQUIRED) {
-            if (resumeState == STATE.SKIP_PREAMBLE) {
-                throw new MIMEParsingException("Missing start boundary");
-            }
-            if (resumeState == STATE.BODY) {
-                throw new MIMEParsingException("No closing MIME boundary");
-            }
-            if (resumeState == STATE.HEADERS) {
-                throw new MIMEParsingException("No blank line found");
-            }
-        }
-        throw new MIMEParsingException("Invalid state: " + state);
     }
 
     /**
@@ -215,35 +518,15 @@ class MIMEParser implements Iterable<MIMEEvent> {
     }
 
     /**
-     * Returns iterator for the parsing events. Use the iterator to advance the
-     * parsing.
-     *
-     * @return iterator for parsing events
+     * Advances parsing.
      */
-    @Override
-    public Iterator<MIMEEvent> iterator() {
-        return new MIMEEventIterator();
-    }
+    private void makeProgress() throws ParsingException{
 
-    /**
-     * The event iterator implements the main code for this parser.
-     * Invoking {@link #next()} advances parsing.
-     */
-    private class MIMEEventIterator implements Iterator<MIMEEvent> {
-
-        @Override
-        public boolean hasNext() {
-            return !closed
-                    && !lastEventSent
-                    && !dataRequiredEventSent;
+        if (closed) {
+            throw new ParsingException("Parser is closed");
         }
 
-        @Override
-        public MIMEEvent next() {
-
-            if (closed) {
-                throw new NoSuchElementException();
-            }
+        while (true) {
 
             switch (state) {
                 case START_MESSAGE:
@@ -252,7 +535,8 @@ class MIMEParser implements Iterable<MIMEEvent> {
                                 STATE.START_MESSAGE);
                     }
                     state = STATE.SKIP_PREAMBLE;
-                    return MIMEEvent.START_MESSAGE;
+                    listener.process(START_MESSAGE_EVENT);
+                    break;
 
                 case SKIP_PREAMBLE:
                     if (LOGGER.isLoggable(Level.FINER)) {
@@ -267,7 +551,8 @@ class MIMEParser implements Iterable<MIMEEvent> {
                         }
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.SKIP_PREAMBLE;
-                        return MIMEEvent.DATA_REQUIRED;
+                        listener.process(new DataRequiredEvent(false));
+                        return;
                     }
                     if (LOGGER.isLoggable(Level.FINE)) {
                         LOGGER.log(Level.FINE,
@@ -282,7 +567,8 @@ class MIMEParser implements Iterable<MIMEEvent> {
                                 STATE.START_PART);
                     }
                     state = STATE.HEADERS;
-                    return MIMEEvent.START_PART;
+                    listener.process(START_PART_EVENT);
+                    break;
 
                 case HEADERS:
                     if (LOGGER.isLoggable(Level.FINER)) {
@@ -297,16 +583,19 @@ class MIMEParser implements Iterable<MIMEEvent> {
                         }
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.HEADERS;
-                        return MIMEEvent.DATA_REQUIRED;
+                        listener.process(new DataRequiredEvent(false));
+                        return;
                     }
-                    if (!headerLine.isEmpty()){
+                    if (!headerLine.isEmpty()) {
                         Hdr header = new Hdr(headerLine);
-                        return new MIMEEvent.Header(header.getName(),
-                                header.getValue());
+                        listener.process(new HeaderEvent(header.getName(),
+                                header.getValue()));
+                        break;
                     }
                     state = STATE.BODY;
                     bol = true;
-                    return MIMEEvent.END_HEADERS;
+                    listener.process(END_HEADERS_EVENT);
+                    break;
 
                 case BODY:
                     if (LOGGER.isLoggable(Level.FINER)) {
@@ -322,12 +611,14 @@ class MIMEParser implements Iterable<MIMEEvent> {
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.BODY;
                         if (content == null) {
-                            return MIMEEvent.DATA_REQUIRED;
+                            listener.process(new DataRequiredEvent(true));
+                            return;
                         }
                     } else {
                         bol = false;
                     }
-                    return new MIMEEvent.Content(content);
+                    listener.process(new ContentEvent(content));
+                    break;
 
                 case END_PART:
                     if (LOGGER.isLoggable(Level.FINER)) {
@@ -339,32 +630,25 @@ class MIMEParser implements Iterable<MIMEEvent> {
                     } else {
                         state = STATE.START_PART;
                     }
-                    return MIMEEvent.END_PART;
+                    listener.process(END_PART_EVENT);
+                    break;
 
                 case END_MESSAGE:
                     if (LOGGER.isLoggable(Level.FINER)) {
                         LOGGER.log(Level.FINER, "MIMEParser state={0}",
                                 STATE.END_MESSAGE);
                     }
-                    lastEventSent = true;
-                    return MIMEEvent.END_MESSAGE;
+                    listener.process(END_MESSAGE_EVENT);
+                    return;
 
                 case DATA_REQUIRED:
-                    if (!dataRequiredEventSent) {
-                        dataRequiredEventSent = true;
-                        return MIMEEvent.DATA_REQUIRED;
-                    } else {
-                        throw new MIMEParsingException("More data required");
-                    }
+                    listener.process(new DataRequiredEvent(
+                            resumeState == STATE.BODY));
+                    return;
 
                 default:
-                    throw new MIMEParsingException("Unknown state = " + state);
+                    // nothing to do
             }
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException();
         }
     }
 
@@ -509,7 +793,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
      * @return a header line or an empty string if the blank line separating the
      * header from the body has been reached, or {@code null} if the there is
      *  no more data in the buffer
-     * @throws MIMEParsingException if an error occurs while decoding
+     * @throws UnsupportedEncodingException if an error occurs while decoding
      * from the buffer
      */
     private String readHeaderLine() {
@@ -543,7 +827,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
         try {
             return new String(buf, offset, hdrLen, HEADER_ENCODING);
         } catch (UnsupportedEncodingException ex) {
-            throw new MIMEParsingException("Error reading header line", ex);
+            throw new ParsingException("Error while reading header line", ex);
         }
     }
 
