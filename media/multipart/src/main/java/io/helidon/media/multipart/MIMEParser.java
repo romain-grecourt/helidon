@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 /**
- * Push parser for multipart MIME message.
+ * Parser for multipart MIME message.
  */
 class MIMEParser implements Iterable<MIMEEvent> {
 
@@ -42,7 +42,7 @@ class MIMEParser implements Iterable<MIMEEvent> {
     /**
      * All states.
      */
-    private enum STATE {
+    enum STATE {
         START_MESSAGE,
         SKIP_PREAMBLE,
         START_PART,

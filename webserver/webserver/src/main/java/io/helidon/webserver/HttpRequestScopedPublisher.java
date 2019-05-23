@@ -98,7 +98,6 @@ class HttpRequestScopedPublisher
     public long tryAcquire() {
         try {
             lock.lock();
-
             long l = super.tryAcquire();
             if (l <= 0) {
                 suspended = true;

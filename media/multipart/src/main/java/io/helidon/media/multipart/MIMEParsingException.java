@@ -20,7 +20,6 @@ package io.helidon.media.multipart;
  * exception class for all MIME message parsing exceptions.
  *
  */
-
 public class MIMEParsingException extends java.lang.RuntimeException {
 
     /**

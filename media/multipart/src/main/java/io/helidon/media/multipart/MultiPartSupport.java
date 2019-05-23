@@ -38,6 +38,9 @@ import java.util.function.Function;
  */
 public final class MultiPartSupport implements Service, Handler {
 
+    private static final String DEFAULT_BOUNDARY = 
+            "[^._.^]==>boundary<==[^._.^]";
+
     private MultiPartSupport(){
     }
 
@@ -52,7 +55,7 @@ public final class MultiPartSupport implements Service, Handler {
                 new BodyPartStreamReader(req, res));
         req.content().registerReader(MultiPart.class, new MultiPartReader(req));
         res.registerStreamWriter(BodyPart.class, MediaType.MULTIPART_FORM_DATA,
-                new BodyPartStreamWriter(req, res));
+                new BodyPartStreamWriter(req, res, DEFAULT_BOUNDARY));
         res.registerWriter(MultiPart.class, new MultiPartWriter(res));
     }
 
@@ -75,7 +78,8 @@ public final class MultiPartSupport implements Service, Handler {
         @Override
         public Flow.Publisher<DataChunk> apply(MultiPart multiPart) {
             BodyPartStreamWriter.Processor processor =
-                    new BodyPartStreamWriter.Processor(response);
+                    new BodyPartStreamWriter.Processor(response,
+                            DEFAULT_BOUNDARY);
             new BodyPartPublisher(multiPart.bodyParts()).subscribe(processor);
             return processor;
         }

@@ -22,19 +22,28 @@ import io.helidon.webserver.BaseStreamWriter;
 import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
+import java.nio.ByteBuffer;
 
 /**
  * Body part stream writer.
  */
 final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
-    BodyPartStreamWriter(ServerRequest req, ServerResponse res) {
+    /**
+     * The boundary string.
+     */
+    private final String boundary;
+
+    BodyPartStreamWriter(ServerRequest req, ServerResponse res,
+            String bnd) {
+
         super(req, res, BodyPart.class);
+        this.boundary = bnd;
     }
 
     @Override
     public Flow.Publisher<DataChunk> apply(Flow.Publisher<BodyPart> parts) {
-        Processor processor = new Processor(getResponse());
+        Processor processor = new Processor(getResponse(), boundary);
         parts.subscribe(processor);
         return processor;
     }
@@ -47,15 +56,14 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
             extends OriginThreadPublisher<DataChunk, DataChunk>
             implements Flow.Processor<BodyPart, DataChunk> {
 
-        private Flow.Subscriber<? super DataChunk> chunksSubscriber;
         private Flow.Subscription partsSubscription;
         private BodyPartContentSubscriber bodyPartContent;
-        boolean completed = false;
         private final ServerResponse response;
+        private final MIMEGenerator generator;
 
-        public Processor(ServerResponse response) {
-            this.response = response;
-            // submit start boundary
+        public Processor(ServerResponse res, String boundary) {
+            response = res;
+            generator = new MIMEGenerator(boundary);
         }
 
         @Override
@@ -74,11 +82,11 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onNext(BodyPart bodyPart) {
-            // TODO submit headers
+            String data = generator.newPart(bodyPart.headers().toMap());
+            submit(DataChunk.create(ByteBuffer.wrap(data.getBytes())));
             bodyPartContent = new BodyPartContentSubscriber(this);
             bodyPart.registerWriters(((Response)response).getWriters());
             bodyPart.content().subscribe(bodyPartContent);
-            // TODO write boundaries
         }
 
         @Override
@@ -88,7 +96,9 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onComplete() {
-            completed = true;
+            String data = generator.endMessage();
+            submit(DataChunk.create(ByteBuffer.wrap(data.getBytes())));
+            complete();
         }
 
         @Override
@@ -134,9 +144,7 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onComplete() {
-            if (processor.completed) {
-                processor.chunksSubscriber.onComplete();
-            } else {
+            if (!processor.isCompleted()) {
                 processor.requestNextPart();
             }
         }
