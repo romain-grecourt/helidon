@@ -52,11 +52,12 @@ public final class MultiPartSupport implements Service, Handler {
     @Override
     public void accept(ServerRequest req, ServerResponse res) {
         req.content().registerStreamReader(BodyPart.class,
-                new BodyPartStreamReader(req, res));
+                new BodyPartStreamReader(req));
         req.content().registerReader(MultiPart.class, new MultiPartReader(req));
         res.registerStreamWriter(BodyPart.class, MediaType.MULTIPART_FORM_DATA,
                 new BodyPartStreamWriter(req, res, DEFAULT_BOUNDARY));
         res.registerWriter(MultiPart.class, new MultiPartWriter(res));
+        req.next();
     }
 
     public static MultiPartSupport create(){

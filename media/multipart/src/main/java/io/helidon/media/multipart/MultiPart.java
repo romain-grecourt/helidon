@@ -33,6 +33,9 @@ public final class MultiPart {
         return bodyParts;
     }
 
+    // API for getField and getFields
+    
+
     public static <T> MultiPart create(Collection<T> entities){
         Builder builder = builder();
         for(T entity : entities){

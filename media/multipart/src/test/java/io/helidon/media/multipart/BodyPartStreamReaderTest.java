@@ -482,7 +482,7 @@ public class BodyPartStreamReaderTest {
      * @param chunks request chunks
      * @return publisher of body parts
      */
-    static Publisher<BodyPart> partsPublisher(String boundary,
+    static Publisher<? extends BodyPart> partsPublisher(String boundary,
             byte[]... chunks) {
 
         // mock response
@@ -502,7 +502,7 @@ public class BodyPartStreamReaderTest {
                                 + boundary)));
         Mockito.doReturn(headers).when(requestMock).headers();
 
-        return new BodyPartStreamReader(requestMock, responseMock)
+        return new BodyPartStreamReader(requestMock)
                     .apply(new DataChunkPublisher(chunks));
     }
 

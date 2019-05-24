@@ -44,6 +44,7 @@ import io.helidon.common.reactive.Flow;
  * is then possible to use {@link #as(Class)} method to obtain such entity.
  */
 public interface Content extends Flow.Publisher<DataChunk> {
+
     /**
      * If possible, adds the given Subscriber to this publisher. This publisher is effectively
      * either the original publisher
@@ -131,6 +132,5 @@ public interface Content extends Flow.Publisher<DataChunk> {
 
     <T> Flow.Publisher<T> asPublisherOf(GenericType<T> type);
 
-    <T> void registerStreamReader(Class<T> type, Function<Flow.Publisher<DataChunk>, Flow.Publisher<T>> reader);
-
+    <T> void registerStreamReader(Class<T> type, StreamReader<T> reader);
 }

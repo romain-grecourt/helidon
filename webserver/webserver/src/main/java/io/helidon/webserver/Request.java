@@ -45,6 +45,8 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.Reader;
+import io.helidon.common.http.StreamReader;
+import io.helidon.common.http.StreamWriter;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.common.ContentReaders;
 
@@ -201,7 +203,28 @@ public abstract class Request implements ServerRequest {
         return result;
     }
 
-    public static class InternalReader<T> implements Reader<T> {
+    public static class InternalStreamReader<T> implements StreamReader<T>, Predicate<Class<?>> {
+
+        private final Predicate<Class<?>> predicate;
+        private final StreamReader<T> reader;
+
+        public InternalStreamReader(Predicate<Class<?>> predicate, StreamReader<T> reader) {
+            this.predicate = predicate;
+            this.reader = reader;
+        }
+
+        @Override
+        public Flow.Publisher<? extends T> apply(Flow.Publisher<DataChunk> publisher, Class<? super T> clazz) {
+            return reader.apply(publisher, clazz);
+        }
+
+        @Override
+        public boolean test(Class<?> o) {
+            return o != null && predicate != null && predicate.test(o);
+        }
+    }
+
+    public static class InternalReader<T> implements Reader<T>, Predicate<Class<?>> {
 
         private final Predicate<Class<?>> predicate;
         private final Reader<T> reader;
@@ -211,13 +234,14 @@ public abstract class Request implements ServerRequest {
             this.reader = reader;
         }
 
-        public boolean accept(Class<?> o) {
-            return o != null && predicate != null && predicate.test(o);
-        }
-
         @Override
         public CompletionStage<? extends T> apply(Flow.Publisher<DataChunk> publisher, Class<? super T> clazz) {
             return reader.apply(publisher, clazz);
+        }
+
+        @Override
+        public boolean test(Class<?> o) {
+            return o != null && predicate != null && predicate.test(o);
         }
     }
 
@@ -225,23 +249,29 @@ public abstract class Request implements ServerRequest {
 
         private final Flow.Publisher<DataChunk> originalPublisher;
         private final Deque<InternalReader<?>> readers;
+        private final Deque<InternalStreamReader<?>> streamReaders;
         private final List<Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>>> filters;
         private final ReadWriteLock readersLock;
+        private final ReadWriteLock streamReadersLock;
         private final ReadWriteLock filtersLock;
 
         private Content() {
             this.originalPublisher = bareRequest.bodyPublisher();
             this.readers = appendDefaultReaders(new LinkedList<>());
+            this.streamReaders = new LinkedList<>();
             this.filters = new ArrayList<>();
             this.readersLock = new ReentrantReadWriteLock();
+            this.streamReadersLock = new ReentrantReadWriteLock();
             this.filtersLock = new ReentrantReadWriteLock();
         }
 
         private Content(Content orig) {
             this.originalPublisher = orig.originalPublisher;
             this.readers = appendDefaultReaders(orig.readers);
+            this.streamReaders = orig.streamReaders;
             this.filters = orig.filters;
             this.readersLock = orig.readersLock;
+            this.streamReadersLock = orig.streamReadersLock;
             this.filtersLock = orig.filtersLock;
         }
 
@@ -262,7 +292,6 @@ public abstract class Request implements ServerRequest {
 
         @Override
         public void registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function) {
-
             Objects.requireNonNull(function, "Parameter 'function' is null!");
             try {
                 filtersLock.writeLock().lock();
@@ -272,9 +301,14 @@ public abstract class Request implements ServerRequest {
             }
         }
 
-        @Override
-        public <T> void registerStreamReader(Class<T> type, Function<Flow.Publisher<DataChunk>, Flow.Publisher<T>> reader) {
-            throw new UnsupportedOperationException("Not supported yet.");
+        public <T> void registerStreamReader(Class<T> clazz, StreamReader<T> reader) {
+            try {
+                streamReadersLock.writeLock().lock();
+                streamReaders.addFirst(new InternalStreamReader<>(
+                        aClass -> aClass.isAssignableFrom(clazz), reader));
+            } finally {
+                streamReadersLock.writeLock().unlock();
+            }
         }
 
         @Override
@@ -347,7 +381,7 @@ public abstract class Request implements ServerRequest {
         @SuppressWarnings("unchecked")
         private <T> Reader<T> readerFor(final Class<T> type) {
             return (Reader<T>) readers.stream()
-                                      .filter(reader -> reader.accept(type))
+                                      .filter(reader -> reader.test(type))
                                       .findFirst()
                                       .orElseThrow(() -> new IllegalArgumentException("No reader found for class: " + type));
         }

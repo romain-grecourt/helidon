@@ -17,12 +17,11 @@ package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.BaseStreamReader;
 import io.helidon.webserver.Request;
 import io.helidon.webserver.ServerRequest;
-import io.helidon.webserver.ServerResponse;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -31,23 +30,27 @@ import java.util.logging.Logger;
 /**
  * Body part stream reader.
  */
-final class BodyPartStreamReader extends BaseStreamReader<BodyPart> {
+final class BodyPartStreamReader implements StreamReader<BodyPart> {
 
     private static final Logger LOGGER =
             Logger.getLogger(BodyPartStreamReader.class.getName());
+
+    private final ServerRequest request;
 
     /**
      * Create a new instance.
      * @param req server request
      * @param res server response
      */
-    BodyPartStreamReader(ServerRequest req, ServerResponse res) {
-        super(req, res, BodyPart.class);
+    BodyPartStreamReader(ServerRequest req) {
+        request = req;
     }
 
     @Override
-    public Flow.Publisher<BodyPart> apply(Flow.Publisher<DataChunk> chunks) {
-        Processor processor = new Processor(getRequest());
+    public Flow.Publisher<? extends BodyPart> apply(
+            Flow.Publisher<DataChunk> chunks, Class<? super BodyPart> clazz) {
+
+        Processor processor = new Processor(request);
         chunks.subscribe(processor);
         return processor;
     }

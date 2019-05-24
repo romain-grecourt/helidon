@@ -37,10 +37,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class MIMEParserTest {
 
-    // TODO test new parser / close
-    // TODO test new parser / offer / offer
-    // TODO test parsing parts and checking that last event received was end_message
-    // TODO test parsing parts across boundaries and check that data required event was generated
+    @Test
+    public void testEndMessageEvent() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "1\n"
+                + "--" + boundary + "\n"
+                + "Content-Id: part2\n"
+                + "\n"
+                + "2\n"
+                + "--" + boundary + "--").getBytes();
+
+        MIMEParser.ParserEvent lastEvent = parse(boundary, chunk1).lastEvent;
+        assertThat(lastEvent, is(notNullValue()));
+        assertThat(lastEvent.type(),
+                is(equalTo(MIMEParser.EVENT_TYPE.END_MESSAGE)));
+    }
 
     @Test
     public void testBoundaryWhiteSpace() {
@@ -54,6 +68,7 @@ public class MIMEParserTest {
                 + "\n"
                 + "2\n"
                 + "--" + boundary + "--   ").getBytes();
+
         List<MIMEPart> parts = parse("boundary", chunk1).parts;
         assertThat(parts.size(), is(equalTo(2)));
 
@@ -296,6 +311,27 @@ public class MIMEParserTest {
     }
 
     @Test
+    public void testBoundaryAcrossChunksDataRequired() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "this-is-the-body-of-part1\n"
+                + "--" + boundary.substring(0, 3)).getBytes();
+
+        ParserEventProcessor processor = new ParserEventProcessor();
+        MIMEParser parser = new MIMEParser(boundary, processor);
+        parser.offer(ByteBuffer.wrap(chunk1));
+
+        assertThat(processor.partContent, is(notNullValue()));
+        assertThat(new String(processor.partContent),
+                is(equalTo("this-is-the-body-of-")));
+        assertThat(processor.lastEvent, is(notNullValue()));
+        assertThat(processor.lastEvent.type(),
+                is(equalTo(MIMEParser.EVENT_TYPE.DATA_REQUIRED)));
+    }
+
+    @Test
     public void testBoundaryAcrossChunks() {
         String boundary = "boundary";
         final byte[] chunk1 = ("--" + boundary + "\n"
@@ -507,7 +543,7 @@ public class MIMEParserTest {
      * @param arrays byte arrays to concatenate
      * @return resulting array of the concatenation
      */
-    private static byte[] concat(byte[] ... arrays){
+    private static byte[] concat(byte[]... arrays){
         int length = 0;
         for (byte[] array : arrays) {
             length += array.length;
@@ -530,13 +566,13 @@ public class MIMEParserTest {
     static ParserEventProcessor parse(String boundary,
             byte[] ... requestChunks) {
 
-        ParserEventProcessor parserEventProcessor = new ParserEventProcessor();
-        MIMEParser parser = new MIMEParser(boundary, parserEventProcessor);
+        ParserEventProcessor processor = new ParserEventProcessor();
+        MIMEParser parser = new MIMEParser(boundary, processor);
         for (byte[] chunk : requestChunks) {
             parser.offer(ByteBuffer.wrap(chunk));
         }
         parser.close();
-        return parserEventProcessor;
+        return processor;
     }
 
     /**
@@ -548,6 +584,7 @@ public class MIMEParserTest {
         List<MIMEPart> parts = new LinkedList<>();
         Map<String, List<String>> partHeaders = new HashMap<>();
         byte[] partContent = null;
+        MIMEParser.ParserEvent lastEvent = null;
 
         @Override
         public void process(MIMEParser.ParserEvent event) {
@@ -587,6 +624,7 @@ public class MIMEParserTest {
                     parts.add(new MIMEPart(partHeaders, partContent));
                     break;
             }
+            lastEvent = event;
         }
     }
 

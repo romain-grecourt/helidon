@@ -20,6 +20,7 @@ import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
+import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.ContentWriters;
@@ -232,7 +233,7 @@ public final class BodyPart {
         @SuppressWarnings("unchecked")
         private <T> Reader<T> readerFor(final Class<T> type) {
             return (Reader<T>) readers.stream()
-                                      .filter(reader -> reader.accept(type))
+                                      .filter(reader -> reader.test(type))
                                       .findFirst()
                                       .orElseThrow(() -> new IllegalArgumentException("No reader found for class: " + type));
         }
@@ -254,9 +255,7 @@ public final class BodyPart {
         }
 
         @Override
-        public <T> void registerStreamReader(Class<T> type,
-                Function<Publisher<DataChunk>, Publisher<T>> reader) {
-
+        public <T> void registerStreamReader(Class<T> type, StreamReader<T> reader) {
             throw new UnsupportedOperationException();
         }
     }

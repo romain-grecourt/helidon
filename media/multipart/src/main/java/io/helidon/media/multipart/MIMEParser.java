@@ -27,7 +27,7 @@ import java.util.logging.Level;
 final class MIMEParser {
 
     /**
-     * The generated events type.
+     * The emitted parser event types.
      */
     static enum EVENT_TYPE {
 
@@ -90,7 +90,7 @@ final class MIMEParser {
     }
 
     /**
-     * Base class for parser events.
+     * Base class for the parser events.
      */
     static abstract class ParserEvent {
 
@@ -364,7 +364,8 @@ final class MIMEParser {
     private STATE state = STATE.START_MESSAGE;
 
     /**
-     * The parser state to resume.
+     * The parser state to resume to, non {@code null} when {@link #state} is
+     * equal to {@link STATE#DATA_REQUIRED}.
      */
     private STATE resumeState = null;
 
@@ -465,7 +466,7 @@ final class MIMEParser {
                 position = 0;
                 break;
             default:
-                throw new ParsingException("Parser not drained");
+                throw new ParsingException("Invalid state: " + state);
         }
         makeProgress();
     }

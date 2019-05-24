@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Helidon Examples Media Multipart</title>
+  </head>
+  <body>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      Select a file to upload:
+      <input id="files" type="file" name="file[]" multiple />
+      <input type="submit" value="Upload!" name="submit">
+    </form>
+  </body>
+</html>
