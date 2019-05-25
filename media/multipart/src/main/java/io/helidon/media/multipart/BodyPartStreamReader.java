@@ -100,7 +100,7 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
         private final MIMEParser parser;
 
         /**
-         * The parser event listener.
+         * The parser event processor.
          */
         private final ParserEventProcessor parserEventProcessor;
 
@@ -131,8 +131,8 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
 
         @Override
         protected void hookOnRequested(long n, long result) {
-            // require more raw chunks to decode if not start or
-            // if more data is required
+            // require more raw chunks to decode if not the decoding has not
+            // yet started or if more data is required to make progress
             if (tryAcquire() > 0
                     && (!parserEventProcessor.isStarted()
                     || parserEventProcessor.isDataRequired())) {

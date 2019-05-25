@@ -16,6 +16,7 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.Headers;
+import io.helidon.common.http.MediaType;
 import io.helidon.common.http.ReadOnlyParameters;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,12 +29,29 @@ import java.util.TreeMap;
 public final class BodyPartHeaders extends ReadOnlyParameters
         implements Headers {
 
+    /**
+     * Create a new instance.
+     * @param data headers map
+     */
     BodyPartHeaders(Map<String, List<String>> data) {
         super(data);
-        
     }
 
-    // API for form-data content-disposition
+    /**
+     * Get the {@code Content-Type} header.
+     * @return MediaType
+     */
+    public MediaType contentType() {
+        return null;
+    }
+
+    /**
+     * Get the {@code Content-Disposition} header.
+     * @return ContentDisposition
+     */
+    ContentDisposition contentDisposition() {
+        return null;
+    }
 
     public static Builder builder() {
         return new Builder();
@@ -45,6 +63,9 @@ public final class BodyPartHeaders extends ReadOnlyParameters
         private final Map<String, List<String>> headers =
                 new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
+        private Builder() {
+        }
+
         public Builder header(String name, String value) {
             List<String> values = headers.get(name);
             if (values == null) {
@@ -52,6 +73,10 @@ public final class BodyPartHeaders extends ReadOnlyParameters
                 headers.put(name, values);
             }
             values.add(value);
+            return this;
+        }
+
+        public Builder contentDisposition(ContentDisposition cd) {
             return this;
         }
 

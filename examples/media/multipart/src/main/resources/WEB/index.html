@@ -4,7 +4,15 @@
     <title>Helidon Examples Media Multipart</title>
   </head>
   <body>
+    <h1>Test MultiPart top-level entity:</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
+      Select a file to upload:
+      <input id="files" type="file" name="file[]" multiple />
+      <input type="submit" value="Upload!" name="submit">
+    </form>
+
+    <h1>Dump</h1>
+    <form action="/upload/plain" method="post" enctype="multipart/form-data">
       Select a file to upload:
       <input id="files" type="file" name="file[]" multiple />
       <input type="submit" value="Upload!" name="submit">

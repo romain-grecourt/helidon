@@ -41,6 +41,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -53,15 +54,24 @@ public final class BodyPart {
 
     private final BodyPartContent content;
     private final BodyPartHeaders headers;
+    private final boolean buffered;
 
-    private BodyPart(Object entity, BodyPartHeaders headers) {
+    BodyPart(Object entity, BodyPartHeaders headers) {
         this.content = new EntityContent(entity);
         this.headers = headers;
+        this.buffered = true;
     }
 
-    private BodyPart(Publisher<DataChunk> publisher, BodyPartHeaders headers) {
+    BodyPart(Publisher<DataChunk> publisher, BodyPartHeaders headers,
+            boolean buffered) {
+
         this.content = new RawContent(publisher);
         this.headers = headers;
+        this.buffered = buffered;
+    }
+
+    BodyPart(Publisher<DataChunk> publisher, BodyPartHeaders headers) {
+        this(publisher, headers, false);
     }
 
     void registerReaders(Deque<InternalReader<?>> readers){
@@ -72,12 +82,49 @@ public final class BodyPart {
         content.registerWriters(writers);
     }
 
+    public boolean isBuffered() {
+        return buffered;
+    }
+
+    /**
+     * Converts the part content into an instance of the requested type.
+     * <strong>This method can only be used if the part content is
+     * buffered!</strong>
+     *
+     * @param <T> the requested type
+     * @param clazz the requested type class
+     * @return T the converted content
+     * @throws IllegalStateException if the part is not buffered or if an
+     * error occurs while converting the content
+     */
+    public <T> T as(Class<T> clazz) {
+        if (!buffered) {
+            throw new IllegalStateException(
+                    "The content of this part is not buffered");
+        }
+        try {
+            return content.as(clazz).toCompletableFuture().get();
+        } catch (InterruptedException | ExecutionException ex) {
+            throw new IllegalStateException(ex.getMessage(), ex);
+        }
+    }
+
     public Content content() {
         return content;
     }
 
     public BodyPartHeaders headers(){
         return headers;
+    }
+
+    /**
+     * Get the control name.
+     *
+     * @return the name parameter of the {@code Content-Disposition} header,
+     * or {@code null} if not present.
+     */
+    public String name() {
+        return null;
     }
 
     public static <T> BodyPart create(T entity){
@@ -105,6 +152,9 @@ public final class BodyPart {
         private Object entity;
         private BodyPartHeaders headers;
         private Publisher<DataChunk> publisher;
+
+        Builder() {
+        }
 
         public Builder entity(Object entity) {
             if (publisher != null) {

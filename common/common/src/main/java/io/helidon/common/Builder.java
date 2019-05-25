@@ -41,4 +41,3 @@ public interface Builder<T> extends Supplier<T> {
         return build();
     }
 }
-

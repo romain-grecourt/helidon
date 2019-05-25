@@ -17,24 +17,40 @@ package io.helidon.media.multipart;
 
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Multi part entity.
  */
 public final class MultiPart {
 
-    private final Collection<BodyPart> bodyParts;
+    private final List<BodyPart> bodyParts;
 
-    private MultiPart(Collection<BodyPart> bodyParts) {
-        this.bodyParts = bodyParts;
+    MultiPart(List<BodyPart> parts) {
+        bodyParts = parts;
     }
 
-    public Collection<BodyPart> bodyParts(){
+    public List<BodyPart> bodyParts(){
         return bodyParts;
     }
 
-    // API for getField and getFields
-    
+    // throw exception if not form-data
+    Optional<BodyPart> field(String name) {
+        return null;
+    }
+
+    // throw exception if not form-data
+    List<BodyPart> fields(String name) {
+        return null;
+    }
+
+    // throw exception if not form-data
+    Map<String, List<BodyPart>> fields() {
+        return null;
+    }
+
 
     public static <T> MultiPart create(Collection<T> entities){
         Builder builder = builder();
@@ -52,6 +68,9 @@ public final class MultiPart {
             implements io.helidon.common.Builder<MultiPart> {
 
         private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
+
+        Builder() {
+        }
 
         public Builder bodyPart(BodyPart bodyPart){
             bodyParts.add(bodyPart);

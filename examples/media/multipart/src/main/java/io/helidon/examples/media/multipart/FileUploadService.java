@@ -29,16 +29,23 @@ import java.util.Map.Entry;
 /**
  * Exposes an endpoint that handles multipart requests.
  */
-public final class FileUploadService implements Service, Handler {
+public final class FileUploadService implements Service {
 
     @Override
     public void update(Routing.Rules rules) {
         rules.register(MultiPartSupport.create())
-             .post(this);
+             .post("/plain", this::plain)
+             .post("/", this::test1);
     }
 
-    @Override
-    public void accept(ServerRequest req, ServerResponse res) {
+    private void plain(ServerRequest req, ServerResponse res) {
+        req.content().as(String.class).thenAccept(str -> {
+            System.out.println(str);
+            res.send();
+        });
+    }
+
+    private void test1(ServerRequest req, ServerResponse res) {
         req.content().as(MultiPart.class).thenAccept(multiPart -> {
             for(BodyPart part : multiPart.bodyParts()){
                 System.out.println("\n****** PART ******");
@@ -55,6 +62,7 @@ public final class FileUploadService implements Service, Handler {
                     System.out.println(partContent);
                 });
             }
+            res.send();
         });
     }
 }

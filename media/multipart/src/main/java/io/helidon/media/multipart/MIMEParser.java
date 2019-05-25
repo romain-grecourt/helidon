@@ -197,7 +197,7 @@ final class MIMEParser {
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#END_HEADERS}.
+     * The event class for {@link EVENT_TYPE#CONTENT}.
      */
     static final class ContentEvent extends ParserEvent {
 
@@ -277,7 +277,7 @@ final class MIMEParser {
 
         /**
          * Process a parser event.
-         * @param event generated
+         * @param event generated event
          */
         void process(ParserEvent event);
     }
@@ -793,7 +793,7 @@ final class MIMEParser {
      *
      * @return a header line or an empty string if the blank line separating the
      * header from the body has been reached, or {@code null} if the there is
-     *  no more data in the buffer
+     * no more data in the buffer
      * @throws UnsupportedEncodingException if an error occurs while decoding
      * from the buffer
      */
