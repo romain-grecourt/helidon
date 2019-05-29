@@ -15,72 +15,232 @@
  */
 package io.helidon.media.multipart;
 
-import static io.helidon.common.CollectionsHelper.listOf;
-import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.common.http.CharMatcher;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.Tokenizer;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
 
 /**
- * A representation of the {@code Content-Disposition} header as described in
+ * A generic representation of the {@code Content-Disposition} header as
+ * described in
  * <a href="https://tools.ietf.org/html/rfc2183">RFC 2183</a>.
+ *
  */
-public final class ContentDisposition extends ReadOnlyParameters {
+public final class ContentDisposition {
 
-    private final CharSequence type;
+    /**
+     * Matcher for type and parameters.
+     */
+    private static final CharMatcher TOKEN_MATCHER =
+            CharMatcher.ascii()
+                    .and(CharMatcher.javaIsoControl().negate())
+                    .and(CharMatcher.isNot(' '))
+                    .and(CharMatcher.noneOf("()<>@,;:\\\"/[]?="));
 
-    private ContentDisposition(CharSequence type, Map<String, List<String>> params) {
-        super(params);
+    /**
+     * Matcher for linear white space.
+     */
+    private static final CharMatcher LINEAR_WHITE_SPACE =
+            CharMatcher.anyOf(" \t\r\n");
+
+    /**
+     * Matcher for quoted text.
+     */
+    private static final CharMatcher QUOTED_TEXT_MATCHER =
+            CharMatcher.ascii()
+                    .and(CharMatcher.noneOf("\"\\\r"));
+
+    /**
+     * Constant for the name parameter.
+     */
+    private static final String NAME_PARAMETER = "name";
+
+    /**
+     * Constant for the filename parameter.
+     */
+    private static final String FILENAME_PARAMETER = "filename";
+
+    /**
+     * Constant for the creation date parameter.
+     */
+    private static final String CREATION_DATE_PARAMETER = "creation-date";
+
+    /**
+     * Constant for the modification date parameter.
+     */
+    private static final String MODIFICATION_DATE_PARAMETER = "modification-date";
+
+    /**
+     * Constant for the read date parameter.
+     */
+    private static final String READ_DATE_PARAMETER = "read-date";
+
+    /**
+     * Constant for the size parameter.
+     */
+    private static final String SIZE_PARAMETER = "size";
+
+    /**
+     * The content disposition type.
+     */
+    private final String type;
+
+    /**
+     * The content disposition parameters.
+     */
+    private final Map<String, String> parameters;
+
+    /**
+     * Create a new instance.
+     * @param type content disposition type
+     * @param params content disposition parameters
+     */
+    private ContentDisposition(String type, Map<String, String> params) {
         this.type = type;
+        this.parameters = params;
     }
 
-    public static final class Builder
-            implements io.helidon.common.Builder<ContentDisposition> {
+    /**
+     * The content disposition type.
+     * @return type, never {@code null}
+     */
+    public String type() {
+        return type;
+    }
 
-        private String type;
-        private Map<String, List<String>> params = new HashMap<>();
+    /**
+     * Get the value of the {@code name} parameter. In the case of a
+     * {@code form-data} disposition type the value is the original field name
+     * from the form.
+     *
+     * @return {@code Optional<String>}, never {@code null}
+     */
+    public Optional<String> name() {
+        return Optional.ofNullable(parameters.get(NAME_PARAMETER));
+    }
 
-        /**
-         * Set the type to {@code form-data}.
-         * @return the builder instance
-         */
-        public Builder formDataType() {
-            return type("form-data");
+    /**
+     * Get the value of the {@code filename} parameter that can be used to
+     * suggest a filename to be used if the entity is detached and stored in a
+     * separate file.
+     *
+     * @return {@code Optional<String>}, never {@code null}
+     */
+    public Optional<String> filename() {
+        String filename;
+        try {
+            filename = URLDecoder.decode(parameters.get(FILENAME_PARAMETER),
+                    "UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            filename = null;
         }
+        return Optional.ofNullable(filename);
+    }
 
-        /**
-         * Set the type.
-         * @param type 
-         * @return the builder instance
-         */
-        public Builder type(String type) {
-            this.type = type;
-            return this;
+    /**
+     * Get the value of the {@code creation-date} parameter that can be used
+     * to indicate the date at which the file was created.
+     * @return {@code Optional<ZonedDateTime>}, never {@code null}
+     */
+    public Optional<ZonedDateTime> creationDate() {
+        return Optional.ofNullable(parameters.get(CREATION_DATE_PARAMETER))
+                .map(Http.DateTime::parse);
+    }
+
+    /**
+     * Get the value of the {@code modification-date} parameter that can be
+     * used to indicate the date at which the file was last modified.
+     *
+     * @return {@code Optional<ZonedDateTime>}, never {@code null}
+     */
+    public Optional<ZonedDateTime> modificationDate() {
+        return Optional.ofNullable(parameters.get(MODIFICATION_DATE_PARAMETER))
+                .map(Http.DateTime::parse);
+    }
+
+    /**
+     * Get the value of the {@code modification-date} parameter that can be
+     * used to indicate the date at which the file was last read.
+     *
+     * @return {@code Optional<ZonedDateTime>}, never {@code null}
+     */
+    public Optional<ZonedDateTime> readDate() {
+        return Optional.ofNullable(parameters.get(READ_DATE_PARAMETER))
+                .map(Http.DateTime::parse);
+    }
+
+    /**
+     * Get the value of the {@code size} parameter that can be
+     * used to indicate an approximate size of the file in octets.
+     *
+     * @return {@code OptionalLong}, never {@code null}
+     */
+    public OptionalLong size() {
+        String size = parameters.get(SIZE_PARAMETER);
+        if (size != null) {
+            return OptionalLong.of(Long.parseLong(size));
         }
+        return OptionalLong.empty();
+    }
 
-        /**
-         * Set the {@code filename} parameter.
-         * @param filename filename value
-         * @return the builder instance
-         */
-        public Builder filename(String filename) {
-            return param("filename", filename);
-        }
+    /**
+     * Get the parameters map.
+     * @return map, never {@code null}
+     */
+    public Map<String, String> parameters() {
+        return parameters;
+    }
 
-        /**
-         * Add a parameter to the header.
-         * @param name parameter name
-         * @param value parameter value
-         * @return the builder instance
-         */
-        public Builder param(String name, String value){
-            params.put(name, listOf(value));
-            return this;
-        }
-
-        @Override
-        public ContentDisposition build() {
-            return new ContentDisposition(type, params);
+    /**
+     * Parse the header value of a {@code Content-Disposition} header.
+     * @param input header value to parse
+     * @return ContentDisposition instance
+     * @throws IllegalArgumentException if a parsing error occurs
+     */
+    static ContentDisposition parse(String input) {
+        Objects.requireNonNull(input, "Parameter 'input' is null!");
+        Tokenizer tokenizer = new Tokenizer(input);
+        try {
+            String type = tokenizer.consumeToken(TOKEN_MATCHER);
+            Map<String, String> parameters = new HashMap<>();
+            while (tokenizer.hasMore()) {
+                tokenizer.consumeTokenIfPresent(LINEAR_WHITE_SPACE);
+                tokenizer.consumeCharacter(';');
+                tokenizer.consumeTokenIfPresent(LINEAR_WHITE_SPACE);
+                String attribute = tokenizer.consumeToken(TOKEN_MATCHER);
+                tokenizer.consumeCharacter('=');
+                final String value;
+                if ('"' == tokenizer.previewChar()) {
+                    tokenizer.consumeCharacter('"');
+                    StringBuilder valueBuilder = new StringBuilder();
+                    while ('"' != tokenizer.previewChar()) {
+                        if ('\\' == tokenizer.previewChar()) {
+                            tokenizer.consumeCharacter('\\');
+                            valueBuilder.append(tokenizer
+                                    .consumeCharacter(CharMatcher.ascii()));
+                        } else {
+                            valueBuilder.append(tokenizer
+                                    .consumeToken(QUOTED_TEXT_MATCHER));
+                        }
+                    }
+                    value = valueBuilder.toString();
+                    tokenizer.consumeCharacter('"');
+                } else {
+                    value = tokenizer.consumeToken(TOKEN_MATCHER);
+                }
+                parameters.put(attribute, value);
+            }
+            return new ContentDisposition(type, parameters);
+        } catch (IllegalStateException e) {
+            throw new IllegalArgumentException("Could not parse '" + input
+                    + "'", e);
         }
     }
 }

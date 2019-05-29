@@ -241,27 +241,11 @@ public class HashRequestHeaders extends ReadOnlyParameters implements RequestHea
                             continue; // Skip RFC2965 attributes
                         }
                         String value = token.substring(eqInd + 1).trim();
-                        result.add(name, unwrap(value));
+                        result.add(name, Utils.unwrap(value));
                     }
                 }
             }
             return result;
-        }
-
-        /**
-         * Unwrap from double-quotes - if exists.
-         *
-         * @param str string to unwrap.
-         * @return unwrapped string.
-         */
-        private static String unwrap(String str) {
-            if (str == null) {
-                return null;
-            }
-            if (str.length() >= 2 && '"' == str.charAt(0) && '"' == str.charAt(str.length() - 1)) {
-                return str.substring(1, str.length() - 1);
-            }
-            return str;
         }
     }
 }

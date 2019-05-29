@@ -82,6 +82,10 @@ public final class BodyPart {
         content.registerWriters(writers);
     }
 
+    /**
+     * Indicate if this {@link BodyPart} instance is buffered in memory.
+     * @return {@code true} if buffered, {@code false} otherwise
+     */
     public boolean isBuffered() {
         return buffered;
     }

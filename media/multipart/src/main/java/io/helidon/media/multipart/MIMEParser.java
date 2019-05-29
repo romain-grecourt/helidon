@@ -708,7 +708,7 @@ final class MIMEParser {
             return createBuffer(bodyBegin, bodyEnd);
         }
 
-        // Consider all the whitespace in boundary+whitespace+"\r\n"
+        // Consider all the linear whitespace in boundary+whitespace+"\r\n"
         int lwsp = 0;
         for (int i = bndStart + bl
                 ; i < buf.length && (buf[i] == ' ' || buf[i] == '\t')

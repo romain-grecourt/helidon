@@ -15,8 +15,10 @@
  */
 package io.helidon.media.multipart;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,32 +28,95 @@ import java.util.Optional;
  */
 public final class MultiPart {
 
+    /**
+     * The nested parts.
+     */
     private final List<BodyPart> bodyParts;
 
-    MultiPart(List<BodyPart> parts) {
+    /**
+     * Create a new instance.
+     * @param parts list of parts
+     */
+    private MultiPart(List<BodyPart> parts) {
         bodyParts = parts;
     }
 
+    /**
+     * Get all the nested body parts.
+     * @return list of {@link BodyPart}
+     */
     public List<BodyPart> bodyParts(){
         return bodyParts;
     }
 
-    // throw exception if not form-data
-    Optional<BodyPart> field(String name) {
-        return null;
+    /**
+     * Get the first body part identified by the given control name. The control
+     * name is the {@code name} parameter of the {@code Content-Disposition}
+     * header for a body part with disposition type {@code form-data}.
+     *
+     * @param name control name
+     * @return {@code Optional<BodyPart>}, never {@code null}
+     */
+    public Optional<BodyPart> field(String name) {
+        if (name == null) {
+            return Optional.empty();
+        }
+        for (BodyPart part : bodyParts) {
+            if (name.equals(controlName(part))) {
+                return Optional.of(part);
+            }
+        }
+        return Optional.empty();
     }
 
-    // throw exception if not form-data
-    List<BodyPart> fields(String name) {
-        return null;
+    /**
+     * Get the body parts identified by the given control name. The control
+     * name is the {@code name} parameter of the {@code Content-Disposition}
+     * header for a body part with disposition type {@code form-data}.
+     *
+     * @param name control name
+     * @return {@code List<BodyPart>}, never {@code null}
+     */
+    public List<BodyPart> fields(String name) {
+        if (name == null) {
+            return Collections.emptyList();
+        }
+        List<BodyPart> result = new ArrayList<>();
+        for (BodyPart part : bodyParts) {
+            if (name.equals(controlName(part))) {
+                result.add(part);
+            }
+        }
+        return result;
     }
 
-    // throw exception if not form-data
-    Map<String, List<BodyPart>> fields() {
-        return null;
+    /**
+     * Get all the body parts that are identified with form data control names.
+     * @return map of control names to body parts,never {@code null}
+     */
+    public Map<String, List<BodyPart>> fields() {
+        Map<String, List<BodyPart>> results = new HashMap<>();
+        for (BodyPart part : bodyParts) {
+            String name = controlName(part);
+            if (name == null) {
+                continue;
+            }
+            List<BodyPart> result = results.get(name);
+            if (result == null) {
+                result = new ArrayList<>();
+            }
+            result.add(part);
+        }
+        return results;
     }
 
-
+    /**
+     * Short-hand for creating a {@link MultiPart} instances with the specified
+     * entities as body parts.
+     * @param <T> the type of the entities
+     * @param entities the body part entities
+     * @return created MultiPart
+     */
     public static <T> MultiPart create(Collection<T> entities){
         Builder builder = builder();
         for(T entity : entities){
@@ -60,23 +125,61 @@ public final class MultiPart {
         return builder.build();
     }
 
+    /**
+     * Create a new builder instance.
+     * @return Builder
+     */
     public static Builder builder(){
         return new Builder();
     }
 
+    /**
+     * Get the control name of a part.
+     * @param part part to retrieve the control name of
+     * @return control name or {@code null}
+     */
+    private static String controlName(BodyPart part) {
+        Optional<ContentDisposition> contentDisposition =
+                    part.headers().contentDisposition();
+        if (!contentDisposition.isPresent()) {
+            return null;
+        }
+        Optional<String> name = contentDisposition.get().name();
+        if (!name.isPresent()) {
+            return null;
+        }
+        return name.get();
+    }
+
+    /**
+     * Builder for creating {@link MultiPart} instances.
+     */
     public static final class Builder
             implements io.helidon.common.Builder<MultiPart> {
 
-        private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
+        private final ArrayList<BodyPart> bodyParts = new ArrayList<>();
 
-        Builder() {
+        /**
+         * Force the use of {@link MultiPart#builder() }.
+         */
+        private Builder() {
         }
 
+        /**
+         * Add a new body part.
+         * @param bodyPart body part to add
+         * @return this builder
+         */
         public Builder bodyPart(BodyPart bodyPart){
             bodyParts.add(bodyPart);
             return this;
         }
 
+        /**
+         * Add new body parts.
+         * @param bodyParts body parts to add
+         * @return this builder instance
+         */
         public Builder bodyParts(Collection<BodyPart> bodyParts){
             this.bodyParts.addAll(bodyParts);
             return this;

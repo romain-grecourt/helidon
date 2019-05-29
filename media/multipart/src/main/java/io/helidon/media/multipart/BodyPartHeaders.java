@@ -15,12 +15,15 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.OptionalHelper;
 import io.helidon.common.http.Headers;
+import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.ReadOnlyParameters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -29,43 +32,89 @@ import java.util.TreeMap;
 public final class BodyPartHeaders extends ReadOnlyParameters
         implements Headers {
 
+    private final Object internalLock = new Object();
+    private Optional<ContentDisposition> contentDisposition;
+
     /**
      * Create a new instance.
-     * @param data headers map
+     * @param params headers map
      */
-    BodyPartHeaders(Map<String, List<String>> data) {
-        super(data);
+    BodyPartHeaders(Map<String, List<String>> params) {
+        super(params);
     }
 
     /**
      * Get the {@code Content-Type} header.
      * @return MediaType
      */
-    public MediaType contentType() {
-        return null;
+    public Optional<MediaType> contentType() {
+        return OptionalHelper.from(first(Http.Header.CONTENT_TYPE)
+                .map(MediaType::parse))
+                .or(this::defaultContentType)
+                .asOptional();
+    }
+
+    /**
+     * Apply the default content-type described in
+     * https://tools.ietf.org/html/rfc7578#section-4.4
+     *
+     * @return {@code Optional<MediaType>}
+     */
+    private Optional<MediaType> defaultContentType() {
+        contentDisposition();
+        if (contentDisposition.isPresent()
+                && contentDisposition.get().filename().isPresent()) {
+            return Optional.of(MediaType.APPLICATION_OCTET_STREAM);
+        }
+        return Optional.of(MediaType.TEXT_PLAIN);
     }
 
     /**
      * Get the {@code Content-Disposition} header.
      * @return ContentDisposition
      */
-    ContentDisposition contentDisposition() {
-        return null;
+    public Optional<ContentDisposition> contentDisposition() {
+        if (contentDisposition == null) {
+            synchronized (internalLock) {
+                contentDisposition = first(Http.Header.CONTENT_DISPOSITION)
+                        .map(ContentDisposition::parse);
+            }
+        }
+        return contentDisposition;
     }
 
+    /**
+     * Create a new builder instance.
+     * @return Builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder class to create {@link BodyPartHeaders} instances.
+     */
     public static final class Builder
             implements io.helidon.common.Builder<BodyPartHeaders> {
 
+        /**
+         * The headers map.
+         */
         private final Map<String, List<String>> headers =
                 new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
+        /**
+         * Force the use of {@link BodyPartHeaders#builder() }.
+         */
         private Builder() {
         }
 
+        /**
+         * Add a new header.
+         * @param name header name
+         * @param value header value
+         * @return this builder
+         */
         public Builder header(String name, String value) {
             List<String> values = headers.get(name);
             if (values == null) {
@@ -73,10 +122,6 @@ public final class BodyPartHeaders extends ReadOnlyParameters
                 headers.put(name, values);
             }
             values.add(value);
-            return this;
-        }
-
-        public Builder contentDisposition(ContentDisposition cd) {
             return this;
         }
 

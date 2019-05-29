@@ -81,6 +81,22 @@ public final class Utils {
     }
 
     /**
+     * Unwrap from double-quotes - if exists.
+     *
+     * @param str string to unwrap.
+     * @return unwrapped string.
+     */
+    public static String unwrap(String str) {
+        if (str == null) {
+            return null;
+        }
+        if (str.length() >= 2 && '"' == str.charAt(0) && '"' == str.charAt(str.length() - 1)) {
+            return str.substring(1, str.length() - 1);
+        }
+        return str;
+    }
+
+    /**
      * Appends the content of the given byte buffer into the given output stream.
      *
      * @param out        the stream where to append the byte buffer

@@ -42,7 +42,7 @@ import java.util.Objects;
  * @author Kevin Bourrillion
  */
 @SuppressWarnings({"checkstyle:VisibilityModifier", "checkstyle:RedundantModifier"})
-abstract class CharMatcher {
+public abstract class CharMatcher {
 
     /**
      * Constructor for use by subclasses. When subclassing, you may want to override

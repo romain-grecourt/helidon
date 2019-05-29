@@ -163,7 +163,7 @@ public final class MediaType implements AcceptPredicate<MediaType> {
      */
     public static MediaType parse(String input) {
         Objects.requireNonNull(input, "Parameter 'input' is null!");
-        MediaType.Tokenizer tokenizer = new MediaType.Tokenizer(input);
+        Tokenizer tokenizer = new Tokenizer(input);
         try {
             String type = tokenizer.consumeToken(TOKEN_MATCHER);
             tokenizer.consumeCharacter('/');
@@ -215,61 +215,33 @@ public final class MediaType implements AcceptPredicate<MediaType> {
         return mediaType;
     }
 
-    /**
-     * Ensures the truth of an expression involving the state of the calling instance, but not
-     * involving any parameters to the calling method.
-     *
-     * @param expression a boolean expression
-     * @param message    a message to pass to the {@link IllegalStateException} that is possibly thrown
-     * @throws IllegalStateException if {@code expression} is false
-     */
-    static void checkState(boolean expression, String message) {
-        checkState(expression, () -> message);
-    }
-
-    /**
-     * Ensures the truth of an expression involving the state of the calling instance, but not
-     * involving any parameters to the calling method.
-     *
-     * @param expression      a boolean expression
-     * @param messageSupplier a message to pass to the {@link IllegalStateException} that is possibly thrown
-     * @throws IllegalStateException if {@code expression} is false
-     */
-    static void checkState(boolean expression, Supplier<String> messageSupplier) {
-        if (!expression) {
-            throw new IllegalStateException(messageSupplier.get());
-        }
-    }
-
     private static MediaType createMediaType(String type, String subtype) {
         MediaType mediaType = MediaType.create(type, subtype);
         KNOWN_TYPES.put(mediaType, mediaType);
         return mediaType;
     }
 
-    private static String normalizeToken(String token) {
-        checkState(TOKEN_MATCHER.matchesAllOf(token), () ->
-                String.format("Parameter '%s' doesn't match token matcher: %s", token, TOKEN_MATCHER));
-        return Ascii.toLowerCase(token);
-    }
-
     private static String normalizeParameterValue(String attribute, String value) {
         return CHARSET_ATTRIBUTE.equals(attribute) ? Ascii.toLowerCase(value) : value;
     }
 
-    private static MediaType create(
-            String type, String subtype, Map<String, String> parameters) {
+    private static MediaType create(String type, String subtype,
+            Map<String, String> parameters) {
+
         Objects.requireNonNull(type, "Parameter 'type' is null!");
         Objects.requireNonNull(subtype, "Parameter 'subtype' is null!");
         Objects.requireNonNull(parameters, "Parameter 'parameters' is null!");
-        String normalizedType = normalizeToken(type);
-        String normalizedSubtype = normalizeToken(subtype);
-        checkState(
-                !WILDCARD.type.equals(normalizedType) || WILDCARD.type.equals(normalizedSubtype),
-                "A wildcard type cannot be used with a non-wildcard subtype");
+
+        String normalizedType = Tokenizer.normalize(TOKEN_MATCHER, type);
+        String normalizedSubtype = Tokenizer.normalize(TOKEN_MATCHER, subtype);
+        if (WILDCARD.type.equals(normalizedType)
+                && !WILDCARD.type.equals(normalizedSubtype)) {
+            throw new IllegalStateException(
+                    "A wildcard type cannot be used with a non-wildcard subtype");
+        }
         Map<String, String> builder = new HashMap<>();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
-            String attribute = normalizeToken(entry.getKey());
+            String attribute = Tokenizer.normalize(TOKEN_MATCHER, entry.getKey());
             builder.put(attribute, normalizeParameterValue(attribute, entry.getValue()));
         }
 
@@ -372,6 +344,7 @@ public final class MediaType implements AcceptPredicate<MediaType> {
      * @return true if the types are compatible, false otherwise.
      */
     // fixme: Bidirectional wildcard compatibility
+    @Override
     public boolean test(MediaType other) {
         return other != null && // return false if other is null, else
                 (
@@ -467,55 +440,6 @@ public final class MediaType implements AcceptPredicate<MediaType> {
             return subtype.endsWith(suffix);
         } else {
             return subtype.indexOf('+') >= 0;
-        }
-    }
-
-    @SuppressWarnings("checkstyle:VisibilityModifier")
-    private static final class Tokenizer {
-        final String input;
-        int position = 0;
-
-        Tokenizer(String input) {
-            this.input = input;
-        }
-
-        String consumeTokenIfPresent(CharMatcher matcher) {
-            checkState(hasMore(), "No more elements!");
-            int startPosition = position;
-            position = matcher.negate().indexIn(input, startPosition);
-            return hasMore() ? input.substring(startPosition, position) : input.substring(startPosition);
-        }
-
-        String consumeToken(CharMatcher matcher) {
-            int startPosition = position;
-            String token = consumeTokenIfPresent(matcher);
-            checkState(position != startPosition, () ->
-                    String.format("Position '%d' should not be '%d'!", position, startPosition));
-            return token;
-        }
-
-        char consumeCharacter(CharMatcher matcher) {
-            checkState(hasMore(), "No more elements!");
-            char c = previewChar();
-            checkState(matcher.matches(c), "Unexpected character matched: " + c);
-            position++;
-            return c;
-        }
-
-        char consumeCharacter(char c) {
-            checkState(hasMore(), "No more elements!");
-            checkState(previewChar() == c, () -> "Unexpected character: " + c);
-            position++;
-            return c;
-        }
-
-        char previewChar() {
-            checkState(hasMore(), "No more elements!");
-            return input.charAt(position);
-        }
-
-        boolean hasMore() {
-            return (position >= 0) && (position < input.length());
         }
     }
 
