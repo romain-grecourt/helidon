@@ -37,6 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class MIMEParserTest {
 
+    // TODO test mixed with nested boundaries
+
     @Test
     public void testEndMessageEvent() {
         String boundary = "boundary";

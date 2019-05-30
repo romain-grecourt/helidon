@@ -15,7 +15,10 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.http.MediaType;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Test;
 
@@ -29,13 +32,53 @@ public class BodyPartHeadersTest {
         BodyPartHeaders headers = BodyPartHeaders.builder()
                 .header("content-type", "text/plain")
                 .header("Content-ID", "test")
-                .header("set-cookie", "sessionid=38afes7a8; HttpOnly; Path=/")
-                .header("Set-Cookie", "foo=bar")
+                .header("my-header", "abc=def; blah; key=value")
+                .header("My-header", "foo=bar")
                 .build();
         assertThat(headers.values("Content-Type"), hasItems("text/plain"));
         assertThat(headers.values("Content-Id"), hasItems("test"));
-        assertThat(headers.values("Set-Cookie"),
-                hasItems("sessionid=38afes7a8; HttpOnly; Path=/",
-                        "foo=bar"));
+        assertThat(headers.values("my-header"),
+                hasItems("abc=def; blah; key=value", "foo=bar"));
+    }
+
+    @Test
+    public void testContentType(){
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                .header("content-type", "application/json")
+                .build();
+        assertThat(headers.contentType().isPresent(), is(equalTo(true)));
+        assertThat(headers.contentType().get(),
+                is(equalTo(MediaType.APPLICATION_JSON)));
+    }
+
+    @Test
+    public void testDefaultContentType() {
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                .build();
+        assertThat(headers.contentType().isPresent(), is(equalTo(true)));
+        assertThat(headers.contentType().get(),
+                is(equalTo(MediaType.TEXT_PLAIN)));
+    }
+
+    @Test
+    public void testDefaultContentTypeForFile() {
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                .header("Content-Disposition", "form-data; filename=foo")
+                .build();
+        assertThat(headers.contentType().isPresent(), is(equalTo(true)));
+        assertThat(headers.contentType().get(),
+                is(equalTo(MediaType.APPLICATION_OCTET_STREAM)));
+    }
+
+    @Test
+    public void testContentDisposition() {
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                .header("Content-Disposition", "form-data; name=foo")
+                .build();
+        assertThat(headers.contentDisposition().isPresent(), is(equalTo(true)));
+        ContentDisposition cd = headers.contentDisposition().get();
+        assertThat(cd.type(), is(equalTo("form-data")));
+        assertThat(cd.name().isPresent(), is(equalTo(true)));
+        assertThat(cd.name().get(), is(equalTo("foo")));
     }
 }

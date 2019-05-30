@@ -35,7 +35,7 @@ public final class Tokenizer {
 
     /**
      * Create a new instance.
-     * @param input string to tokenize
+     * @param input string to parse
      */
     public Tokenizer(String input) {
         this.input = input;

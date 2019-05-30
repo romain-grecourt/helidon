@@ -28,10 +28,21 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 /**
- * A generic representation of the {@code Content-Disposition} header as
- * described in
- * <a href="https://tools.ietf.org/html/rfc2183">RFC 2183</a>.
- *
+ * A generic representation of the {@code Content-Disposition} header.
+ * <p>
+ * Parameter encoding is not supported, other than
+ * <a href="https://tools.ietf.org/html/rfc3986#section-2.1">URI percent
+ * encoding</a> in the filename parameter. See {@link java.net.URLDecoder}.
+ * </p>
+ * See also:
+ * <ul>
+ * <li><a href="https://tools.ietf.org/html/rfc2183">Communicating Presentation
+ * Information in Internet Messages: The Content-Disposition Header Field</a>
+ * </li>
+ * <li><a href="https://tools.ietf.org/html/rfc7578#section-4.2">Content-Disposition
+ * Header Field for each part</a>
+ * </li>
+ * </ul>
  */
 public final class ContentDisposition {
 
@@ -136,8 +147,12 @@ public final class ContentDisposition {
     public Optional<String> filename() {
         String filename;
         try {
-            filename = URLDecoder.decode(parameters.get(FILENAME_PARAMETER),
-                    "UTF-8");
+            String value = parameters.get(FILENAME_PARAMETER);
+            if (value != null) {
+                filename =URLDecoder.decode(value, "UTF-8");
+            } else {
+                filename = null;
+            }
         } catch (UnsupportedEncodingException ex) {
             filename = null;
         }
@@ -206,9 +221,9 @@ public final class ContentDisposition {
      */
     static ContentDisposition parse(String input) {
         Objects.requireNonNull(input, "Parameter 'input' is null!");
-        Tokenizer tokenizer = new Tokenizer(input);
+        Tokenizer tokenizer = new Tokenizer(input.trim());
         try {
-            String type = tokenizer.consumeToken(TOKEN_MATCHER);
+            String type = tokenizer.consumeToken(TOKEN_MATCHER).toLowerCase();
             Map<String, String> parameters = new HashMap<>();
             while (tokenizer.hasMore()) {
                 tokenizer.consumeTokenIfPresent(LINEAR_WHITE_SPACE);
@@ -221,14 +236,22 @@ public final class ContentDisposition {
                     tokenizer.consumeCharacter('"');
                     StringBuilder valueBuilder = new StringBuilder();
                     while ('"' != tokenizer.previewChar()) {
+                        // quoted pair
+                        // '\' escapes '"' or '\'
                         if ('\\' == tokenizer.previewChar()) {
                             tokenizer.consumeCharacter('\\');
-                            valueBuilder.append(tokenizer
-                                    .consumeCharacter(CharMatcher.ascii()));
-                        } else {
-                            valueBuilder.append(tokenizer
-                                    .consumeToken(QUOTED_TEXT_MATCHER));
+                            char c = tokenizer.previewChar();
+                            if ('"' == c || '\\' == c) {
+                                // process
+                                valueBuilder.append(tokenizer
+                                        .consumeCharacter(CharMatcher.ascii()));
+                                continue;
+                            } else {
+                                valueBuilder.append('\\');
+                            }
                         }
+                        valueBuilder.append(tokenizer
+                                .consumeToken(QUOTED_TEXT_MATCHER));
                     }
                     value = valueBuilder.toString();
                     tokenizer.consumeCharacter('"');
