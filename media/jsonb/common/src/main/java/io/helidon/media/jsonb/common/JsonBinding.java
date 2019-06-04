@@ -20,13 +20,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Objects;
-import java.util.function.Function;
 
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbException;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Reader;
+import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentReaders;
@@ -78,7 +78,7 @@ public final class JsonBinding {
      * @return created function
      * @exception NullPointerException if {@code jsonb} is {@code null}
      */
-    public static Function<Object, Flow.Publisher<DataChunk>> writer(final Jsonb jsonb, final Charset charset) {
+    public static Writer<Object> writer(final Jsonb jsonb, final Charset charset) {
         Objects.requireNonNull(jsonb);
         return payload -> {
             CharBuffer buffer = new CharBuffer();

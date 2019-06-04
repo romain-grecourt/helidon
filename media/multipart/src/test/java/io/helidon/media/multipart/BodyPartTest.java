@@ -15,24 +15,28 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
-import io.helidon.common.reactive.Flow;
+import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.webserver.Request.InternalReader;
-import io.helidon.webserver.Response.Writer;
+import io.helidon.webserver.internal.InBoundContext;
+import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.helidon.webserver.internal.OutBoundContent;
+import io.helidon.webserver.internal.OutBoundContext;
+import io.helidon.webserver.internal.OutBoundMediaSupport;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -42,28 +46,28 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class BodyPartTest {
 
-    static final BodyPartHeaders EMPTY_HEADERS =
-            BodyPartHeaders.builder().build();
-
-    static final Reader<String> STRING_READER =
+    private static final Reader<String> STRING_READER =
             ContentReaders.stringReader(Charset.defaultCharset());
 
-    static final Reader<byte[]> BYTES_READER =
+    private static final Reader<byte[]> BYTES_READER =
             ContentReaders.byteArrayReader();
 
-    static final Function<CharSequence,Publisher<DataChunk>> STRING_WRITER =
+    private static final Writer<CharSequence> STRING_WRITER =
             ContentWriters.charSequenceWriter(Charset.defaultCharset());
 
-    static final ArrayList<Writer> WRITERS = getWriters();
+    static final OutBoundMediaSupport OUTBOUND_MEDIA_SUPPORT =
+            getOutBoundMediaSupport();
 
-    static final Deque<InternalReader<?>> READERS = getReaders();
+    static final InBoundMediaSupport INBOUND_MEDIA_SUPPORT =
+            getInBoundMediaSupport();
 
     @Test
     public void testContentFromPublisher() {
-        Flow.Publisher<DataChunk> publisher = STRING_WRITER
+        Publisher<DataChunk> publisher = STRING_WRITER
                 .apply("body part data");
-        BodyPart bodyPart = BodyPart.create(EMPTY_HEADERS, publisher);
-        bodyPart.registerReaders(READERS);
+        BodyPart bodyPart = BodyPart.builder()
+                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
             acceptCalled.set(true);
@@ -78,7 +82,10 @@ public class BodyPartTest {
     @Test
     public void testContentFromEntity() {
         BodyPart bodyPart = BodyPart.create("body part data");
-        bodyPart.registerWriters(WRITERS);
+        Content content = bodyPart.content();
+        assertThat(content, is(instanceOf(OutBoundContent.class)));
+        ((OutBoundContent) content)
+                .mediaSupport(OUTBOUND_MEDIA_SUPPORT);
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         STRING_READER.apply(bodyPart.content()).thenAccept(str -> {
             acceptCalled.set(true);
@@ -91,21 +98,46 @@ public class BodyPartTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static ArrayList<Writer> getWriters(){
-        Writer writer = new Writer(o -> CharSequence.class.equals(o.getClass()),
-                MediaType.TEXT_PLAIN, STRING_WRITER);
-        ArrayList<Writer> writers = new ArrayList<>();
-        writers.add(writer);
-        return writers;
+    private static OutBoundMediaSupport getOutBoundMediaSupport(){
+        OutBoundMediaSupport mediaSupport = new OutBoundMediaSupport(
+                new OutBoundContext() {
+            @Override
+            public void setContentType(MediaType mediaType) {
+            }
+
+            @Override
+            public void setContentLength(long size) {
+            }
+        });
+        mediaSupport.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN,
+                STRING_WRITER);
+        return mediaSupport;
     }
 
     @SuppressWarnings("unchecked")
-    private static Deque<InternalReader<?>> getReaders() {
-        LinkedList<InternalReader<?>> readers = new LinkedList<>();
-        readers.add(new InternalReader(
-                aClass -> aClass.equals(String.class), STRING_READER));
-        readers.add(new InternalReader(
-                aClass -> aClass.equals(byte[].class), BYTES_READER));
-        return readers;
+    private static InBoundMediaSupport getInBoundMediaSupport() {
+        InBoundMediaSupport mediaSupport = new InBoundMediaSupport(
+                mockInBoundContext());
+        mediaSupport.registerReader(String.class, STRING_READER);
+        mediaSupport.registerReader(byte[].class, BYTES_READER);
+        return mediaSupport;
+    }
+
+    private static InBoundContext mockInBoundContext() {
+        return new InBoundContext() {
+            @Override
+            public Tracer.SpanBuilder createSpanBuilder(String operationName) {
+                Tracer.SpanBuilder spanBuilderMock
+                        = Mockito.mock(Tracer.SpanBuilder.class);
+                Span spanMock = Mockito.mock(Span.class);
+                Mockito.doReturn(spanMock).when(spanBuilderMock).start();
+                return spanBuilderMock;
+            }
+
+            @Override
+            public Charset charset() {
+                return Charset.defaultCharset();
+            }
+        };
     }
 }

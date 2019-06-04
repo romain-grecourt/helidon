@@ -67,15 +67,14 @@ public final class ContentReaders {
     }
 
     /**
-     * For basic charsets, returns a cached {@link StringContentReader} instance
-     * or create a new instance otherwise.
+     * Get or create the {@link StringContentReader} for the given charset.
      *
      * @param charset the charset to use with the returned string content reader
      * @return a string content reader
      */
     public static Reader<String> stringReader(Charset charset) {
         StringContentReader reader = CACHED_READERS.computeIfAbsent(charset.name(),
-                                                                    key -> new StringContentReader(charset));
+                key -> new StringContentReader(charset));
 
         return (reader != null) ? reader : new StringContentReader(charset);
     }

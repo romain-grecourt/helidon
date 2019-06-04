@@ -23,8 +23,11 @@ import java.util.function.Predicate;
 
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Filter;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.http.StreamWriter;
+import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
 
 /**
@@ -140,15 +143,9 @@ public interface ServerResponse {
 
     <T> CompletionStage<ServerResponse> send(Flow.Publisher<T> content, Class<T> clazz);
 
-    <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate,
-                                            MediaType contentType,
-                                            Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function);
+    <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate, MediaType contentType, StreamWriter<T> writer);
 
-    <T> ServerResponse registerStreamWriter(Class<T> acceptType,
-                                            MediaType contentType,
-                                            Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function);
-
-    <T> Flow.Publisher<DataChunk> createPublisherUsingWriter(T content);
+    <T> ServerResponse registerStreamWriter(Class<T> acceptType, MediaType contentType, StreamWriter<T> writer);
 
     /**
      * Registers a content writer for a given type.
@@ -157,12 +154,12 @@ public interface ServerResponse {
      * of {@link DataChunk response chunks}.
      *
      * @param type a type of the content. If {@code null} then accepts any type.
-     * @param function a writer function
+     * @param writer a writer function
      * @param <T> a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Class<T> type, Function<T, Flow.Publisher<DataChunk>> function);
+    <T> ServerResponse registerWriter(Class<T> type, Writer<T> writer);
 
     /**
      * Registers a content writer for a given type and media type.
@@ -174,14 +171,12 @@ public interface ServerResponse {
      *
      * @param type        a type of the content. If {@code null} then accepts any type.
      * @param contentType a {@code Content-Type} of the entity
-     * @param function    a writer function
+     * @param writer    a writer function
      * @param <T>         a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Class<T> type,
-                                      MediaType contentType,
-                                      Function<? extends T, Flow.Publisher<DataChunk>> function);
+    <T> ServerResponse registerWriter(Class<T> type, MediaType contentType, Writer<T> writer);
 
     /**
      * Registers a content writer for all accepted contents.
@@ -190,12 +185,12 @@ public interface ServerResponse {
      * of {@link DataChunk response chunks}.
      *
      * @param accept   a predicate to test if content is marshallable by the writer. If {@code null} then accepts any type.
-     * @param function a writer function
+     * @param writer a writer function
      * @param <T>      a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Predicate<?> accept, Function<T, Flow.Publisher<DataChunk>> function);
+    <T> ServerResponse registerWriter(Predicate<?> accept, Writer<T> writer);
 
     /**
      * Registers a content writer for all accepted contents.
@@ -207,14 +202,12 @@ public interface ServerResponse {
      *
      * @param accept      a predicate to test if content is marshallable by the writer. If {@code null} then accepts any type.
      * @param contentType a {@code Content-Type} of the entity
-     * @param function    a writer function
+     * @param writer    a writer function
      * @param <T>         a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Predicate<?> accept,
-                                      MediaType contentType,
-                                      Function<T, Flow.Publisher<DataChunk>> function);
+    <T> ServerResponse registerWriter(Predicate<?> accept, MediaType contentType, Writer<T> writer);
 
     /**
      * Registers a provider of the new response content publisher - typically a filter.
@@ -229,12 +222,12 @@ public interface ServerResponse {
      * All registered filters are used as a chain from original content {@code Publisher}, first registered to the last
      * registered.
      *
-     * @param function a function to map previously registered or original {@code Publisher} to the new one. If returns
+     * @param filter a function to map previously registered or original {@code Publisher} to the new one. If returns
      *                 {@code null} then the result will be ignored.
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if parameter {@code function} is {@code null}
      */
-    ServerResponse registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function);
+    ServerResponse registerFilter(Filter filter);
 
     /**
      * Completion stage is completed when response is completed.

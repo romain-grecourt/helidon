@@ -16,30 +16,20 @@
 
 package io.helidon.webserver;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
-import io.helidon.common.OptionalHelper;
-import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Filter;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Flow;
+import io.helidon.common.http.StreamWriter;
+import io.helidon.common.http.Writer;
+import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
-import io.helidon.media.common.ContentWriters;
+import io.helidon.webserver.internal.OutBoundContext;
+import io.helidon.webserver.internal.OutBoundMediaSupport;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -57,12 +47,10 @@ public abstract class Response implements ServerResponse {
     private final HashResponseHeaders headers;
 
     private final CompletionStage<ServerResponse> completionStage;
+    private final OutBoundMediaSupport mediaSupport;
 
     // Content related
     private final SendLockSupport sendLockSupport;
-    private final ArrayList<Writer> writers;
-    private final ArrayList<Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>>> filters;
-    private ArrayList<StreamWriter<?>> streamWriters;
 
     /**
      * Creates new instance.
@@ -76,8 +64,18 @@ public abstract class Response implements ServerResponse {
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
-        this.writers = new ArrayList<>();
-        this.filters = new ArrayList<>();
+        this.mediaSupport = new OutBoundMediaSupport(new OutBoundContext() {
+
+            @Override
+            public void setContentType(MediaType mediaType) {
+                headers.contentType(mediaType);
+            }
+
+            @Override
+            public void setContentLength(long size) {
+                headers.contentLength(size);
+            }
+        });
     }
 
     /**
@@ -91,18 +89,15 @@ public abstract class Response implements ServerResponse {
         this.headers = response.headers;
         this.completionStage = response.completionStage;
         this.sendLockSupport = response.sendLockSupport;
-        this.writers = response.writers;
-        this.filters = response.filters;
-    }
-
-    public ArrayList<Writer> getWriters() {
-        return writers;
+        this.mediaSupport = response.mediaSupport;
     }
 
     /**
      * Returns a span context related to the current request.
      * <p>
-     * {@code SpanContext} is a tracing component from <a href="http://opentracing.io">opentracing.io</a> standard.
+     * {@code SpanContext} is a tracing component from
+     * <a href="http://opentracing.io">opentracing.io</a> standard.
+     * </p>
      *
      * @return the related span context
      */
@@ -121,9 +116,7 @@ public abstract class Response implements ServerResponse {
     @Override
     public Response status(Http.ResponseStatus status) {
         Objects.requireNonNull(status, "Parameter 'status' was null!");
-
         headers.httpStatus(status);
-
         return this;
     }
 
@@ -159,14 +152,18 @@ public abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Flow.Publisher<DataChunk> publisher = createPublisherUsingWriter(content);
+                Publisher<DataChunk> publisher = mediaSupport.marshall(content,
+                        headers.contentType().orElse(null));
                 if (publisher == null) {
-                    throw new IllegalArgumentException("Cannot write! No registered writer for '"
-                                                               + content.getClass().toString() + "'.");
+                    throw new IllegalArgumentException(
+                            "Cannot write! No registered writer for '"
+                            + content.getClass().toString() + "'.");
                 }
-                Flow.Publisher<DataChunk> p = applyFilters(publisher, writeSpan);
+                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
+                        headers, writeSpan,
+                        mediaSupport.applyFilters(publisher));
                 sendLockSupport.contentSend = true;
-                p.subscribe(bareResponse);
+                pub.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -176,16 +173,18 @@ public abstract class Response implements ServerResponse {
     }
 
     @Override
-    public CompletionStage<ServerResponse> send(Flow.Publisher<DataChunk> content) {
+    public CompletionStage<ServerResponse> send(Publisher<DataChunk> content) {
         Span writeSpan = createWriteSpan(content);
         try {
-            Flow.Publisher<DataChunk> publisher = (content == null)
+            Publisher<DataChunk> publisher = (content == null)
                     ? ReactiveStreamsAdapter.publisherToFlow(Mono.empty())
                     : content;
             sendLockSupport.execute(() -> {
-                Flow.Publisher<DataChunk> p = applyFilters(publisher, writeSpan);
+                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
+                        headers, writeSpan,
+                        mediaSupport.applyFilters(publisher));
                 sendLockSupport.contentSend = true;
-                p.subscribe(bareResponse);
+                pub.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -200,19 +199,25 @@ public abstract class Response implements ServerResponse {
     }
 
     @Override
-    public <T> CompletionStage<ServerResponse> send(Flow.Publisher<T> content, Class<T> itemClass) {
+    public <T> CompletionStage<ServerResponse> send(Publisher<T> content,
+            Class<T> itemClass) {
+
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Flow.Publisher<DataChunk> publisher = createPublisherUsingStreamWriter(content, itemClass);
+                Publisher<DataChunk> publisher = mediaSupport
+                        .marshallStream(content, itemClass, headers
+                                .contentType().orElse(null));
                 if (publisher == null) {
-                    throw new IllegalArgumentException("Cannot write! No registered stream writer for '"
+                    throw new IllegalArgumentException(
+                            "Cannot write! No registered stream writer for '"
                             + content.getClass().toString() + "'.");
                 }
-                Flow.Publisher<DataChunk> p = applyFilters(publisher, writeSpan);
+                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
+                        headers, writeSpan,
+                        mediaSupport.applyFilters(publisher));
                 sendLockSupport.contentSend = true;
-                p.subscribe(bareResponse);
-
+                pub.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -221,164 +226,57 @@ public abstract class Response implements ServerResponse {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    <T> Flow.Publisher<DataChunk> createPublisherUsingStreamWriter(Flow.Publisher<T> content, Class<T> itemClass) {
-        if (content == null) {
-            return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
-        }
-
-        // Try to get a publisher from registered writers
-        synchronized (sendLockSupport) {
-            for (int i = streamWriters.size() - 1; i >= 0; i--) {
-                StreamWriter<T> streamWriter = (StreamWriter<T>) streamWriters.get(i);
-                if (streamWriter.accept(itemClass, headers)) {
-                    return streamWriter.function.apply(content);
-                }
-            }
-        }
-
-        return null;
-    }
-
     @Override
     public <T> ServerResponse registerStreamWriter(Class<T> acceptType,
-                                                   MediaType contentType,
-                                                   Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function) {
-        return registerStreamWriter(
-                type -> type.isAssignableFrom(acceptType),
-                contentType,
-                function);
-    }
+            MediaType contentType, StreamWriter<T> writer) {
 
-    @Override
-    public <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate,
-                                                   MediaType contentType,
-                                                   Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function) {
-        sendLockSupport.execute(
-                () -> getStreamWriters().add(new StreamWriter<>(predicate, contentType, function)),
-                false);
-        return this;
-    }
-
-    private <T> ArrayList<StreamWriter<?>> getStreamWriters() {
-        if (streamWriters == null) {
-            streamWriters = new ArrayList<>();
-        }
-        return streamWriters;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T> Flow.Publisher<DataChunk> createPublisherUsingWriter(T content) {
-        if (content == null) {
-            return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
-        }
-
-        // Try to get a publisher from registered writers
-        synchronized (sendLockSupport) {
-            for (int i = writers.size() - 1; i >= 0; i--) {
-                Writer<T> writer = writers.get(i);
-                if (writer.accept(content, headers)) {
-                    return writer.function.apply(content);
-                }
-            }
-        }
-
-        return createDefaultPublisher(content);
-    }
-
-    private <T> Flow.Publisher<DataChunk> createDefaultPublisher(T content) {
-        final Class<?> type = content.getClass();
-        if (File.class.isAssignableFrom(type)) {
-            return toPublisher(((File) content).toPath());
-        } else if (Path.class.isAssignableFrom(type)) {
-            return toPublisher((Path) content);
-        } else if (ReadableByteChannel.class.isAssignableFrom(type)) {
-            return ContentWriters.byteChannelWriter().apply((ReadableByteChannel) content);
-        } else if (CharSequence.class.isAssignableFrom(type)) {
-            return toPublisher((CharSequence) content);
-        } else if (byte[].class.isAssignableFrom(type)) {
-            return ContentWriters.byteArrayWriter(true).apply((byte[]) content);
-        }
-        return null;
-    }
-
-    private Flow.Publisher<DataChunk> toPublisher(CharSequence s) {
-        MediaType mediaType = headers.contentType().orElse(MediaType.TEXT_PLAIN);
-        String charset = mediaType.charset().orElse(StandardCharsets.UTF_8.name());
-        headers.contentType(mediaType.withCharset(charset));
-        return ContentWriters.charSequenceWriter(Charset.forName(charset)).apply(s);
-    }
-
-    private Flow.Publisher<DataChunk> toPublisher(Path path) {
-        // Set response length - if possible
-        try {
-            // Is it existing and readable file
-            if (!Files.exists(path)) {
-                throw new IllegalArgumentException("File path argument doesn't exist!");
-            }
-            if (!Files.isRegularFile(path)) {
-                throw new IllegalArgumentException("File path argument isn't a file!");
-            }
-            if (!Files.isReadable(path)) {
-                throw new IllegalArgumentException("File path argument isn't readable!");
-            }
-            // Try to write length
-            try {
-                headers.contentLength(Files.size(path));
-            } catch (Exception e) {
-                // Cannot get length or write length, not a big deal
-            }
-            // And write
-            FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
-            return ContentWriters.byteChannelWriter().apply(fc);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Cannot read a file!", e);
-        }
-    }
-
-    @Override
-    public <T> Response registerWriter(Class<T> type, Function<T, Flow.Publisher<DataChunk>> function) {
-        return registerWriter(type, null, function);
-    }
-
-    @Override
-    public <T> Response registerWriter(Class<T> type,
-                                       MediaType contentType,
-                                       Function<? extends T, Flow.Publisher<DataChunk>> function) {
-        sendLockSupport.execute(() -> writers.add(new Writer<>(type, contentType, function)), false);
+        mediaSupport.registerStreamWriter(acceptType, contentType, writer);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Predicate<?> accept, Function<T, Flow.Publisher<DataChunk>> function) {
-        return registerWriter(accept, null, function);
+    public <T> ServerResponse registerStreamWriter(Predicate<Class<T>> accept,
+            MediaType contentType, StreamWriter<T> writer) {
+
+        mediaSupport.registerStreamWriter(accept, contentType, writer);
+        return this;
+    }
+
+    @Override
+    public <T> Response registerWriter(Class<T> type, Writer<T> writer) {
+        mediaSupport.registerWriter(type, /* contentType */ null, writer);
+        return this;
+    }
+
+    @Override
+    public <T> Response registerWriter(Class<T> type, MediaType contentType,
+            Writer<T> writer) {
+
+        mediaSupport.registerWriter(type, contentType, writer);
+        return this;
     }
 
     @Override
     public <T> Response registerWriter(Predicate<?> accept,
-                                       MediaType contentType,
-                                       Function<T, Flow.Publisher<DataChunk>> function) {
-        sendLockSupport.execute(() -> writers.add(new Writer<>(accept, contentType, function)), false);
+            Writer<T> writer) {
+
+        mediaSupport.registerWriter(accept, /* contentType */ null, writer);
         return this;
     }
 
     @Override
-    public Response registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function) {
-        Objects.requireNonNull(function, "Parameter 'function' is null!");
-        sendLockSupport.execute(() -> filters.add(function), false);
+    public <T> Response registerWriter(Predicate<?> accept,
+            MediaType contentType, Writer<T> writer) {
+
+        mediaSupport.registerWriter(accept, contentType,
+                writer);
         return this;
     }
 
-    Flow.Publisher<DataChunk> applyFilters(Flow.Publisher<DataChunk> publisher, Span span) {
-        Objects.requireNonNull(publisher, "Parameter 'publisher' is null!");
-        for (Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> filter : filters) {
-            Flow.Publisher<DataChunk> p = filter.apply(publisher);
-            if (p != null) {
-                publisher = p;
-            }
-        }
-        return new SendHeadersFirstPublisher<>(headers, span, publisher);
+    @Override
+    public Response registerFilter(Filter filter) {
+        mediaSupport.registerFilter(filter);
+        return this;
     }
 
     @Override
@@ -386,84 +284,8 @@ public abstract class Response implements ServerResponse {
         return completionStage;
     }
 
-    public static class BaseWriter {
-        private final MediaType requestedContentType;
-
-        BaseWriter(MediaType contentType) {
-            this.requestedContentType = contentType;
-        }
-
-        boolean accept(Object o, ResponseHeaders headers) {
-            // Test content type compatibility
-            return requestedContentType == null
-                    || headers == null // XXX: fix this
-                    || OptionalHelper.from(headers.contentType())
-                    .or(() -> { // if no contentType is yet registered, try to write requested
-                        try {
-                            headers.contentType(requestedContentType);
-                            return Optional.of(requestedContentType);
-                        } catch (AlreadyCompletedException e) {
-                            return Optional.empty();
-                        }
-                    }).asOptional()
-                    .filter(requestedContentType) // MediaType is a predicate of compatible media type
-                    .isPresent();
-        }
-    }
-
-    public static class Writer<T> extends BaseWriter {
-        private final Predicate<Object> acceptPredicate;
-        private final Function<T, Flow.Publisher<DataChunk>> function;
-
-        @SuppressWarnings("unchecked")
-        public Writer(Predicate<?> acceptPredicate,
-               MediaType contentType, Function<T, Flow.Publisher<DataChunk>> function) {
-            super(contentType);
-            Objects.requireNonNull(function, "Parameter function is null!");
-            this.acceptPredicate = acceptPredicate == null ? o -> true : (Predicate<Object>) acceptPredicate;
-            this.function = function;
-        }
-
-        public Writer(Class<?> acceptType, MediaType contentType, Function<T, Flow.Publisher<DataChunk>> function) {
-            this(acceptType == null ? null : (Predicate) o -> acceptType.isAssignableFrom(o.getClass()),
-                 contentType,
-                 function);
-        }
-
-        public Function<T, Flow.Publisher<DataChunk>> getFunction() {
-            return function;
-        }
-
-        @Override
-        public boolean accept(Object o, ResponseHeaders headers) {
-            if (o == null || !acceptPredicate.test(o)) {
-                return false;
-            }
-            return super.accept(o, headers);
-        }
-    }
-
-    class StreamWriter<T> extends BaseWriter {
-        private final Predicate<Object> acceptPredicate;
-        private final Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function;
-
-        @SuppressWarnings("unchecked")
-        StreamWriter(Predicate<?> acceptPredicate,
-                     MediaType contentType,
-                     Function<Flow.Publisher<T>, Flow.Publisher<DataChunk>> function) {
-            super(contentType);
-            Objects.requireNonNull(function, "Parameter function is null!");
-            this.acceptPredicate = acceptPredicate == null ? o -> true : (Predicate<Object>) acceptPredicate;
-            this.function = function;
-        }
-
-        @Override
-        boolean accept(Object o, ResponseHeaders headers) {
-            if (o == null || !acceptPredicate.test(o)) {
-                return false;
-            }
-            return super.accept(o, headers);
-        }
+    public OutBoundMediaSupport mediaSupport() {
+        return mediaSupport;
     }
 
     @Override
@@ -475,13 +297,16 @@ public abstract class Response implements ServerResponse {
 
         private boolean contentSend = false;
 
-        private synchronized void execute(Runnable runnable, boolean silentSendStatus) {
+        private synchronized void execute(Runnable runnable,
+                boolean silentSendStatus) {
+
             // test effective close
             if (contentSend) {
                 if (silentSendStatus) {
                     return;
                 } else {
-                    throw new IllegalStateException("Response is already sent!");
+                    throw new IllegalStateException(
+                            "Response is already sent!");
                 }
             }
             runnable.run();

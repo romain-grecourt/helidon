@@ -20,8 +20,9 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.Request;
 import io.helidon.webserver.ServerRequest;
+import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.webserver.internal.InBoundMediaSupport;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -32,10 +33,21 @@ import java.util.logging.Logger;
  */
 final class BodyPartStreamReader implements StreamReader<BodyPart> {
 
+    /**
+     * Logger.
+     */
     private static final Logger LOGGER =
             Logger.getLogger(BodyPartStreamReader.class.getName());
 
-    private final ServerRequest request;
+    /**
+     * The boundary header value.
+     */
+    private final String boundary;
+
+    /**
+     * The in-bound media support used to read body part contents.
+     */
+    private final InBoundMediaSupport mediaSupport;
 
     /**
      * Create a new instance.
@@ -43,14 +55,22 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
      * @param res server response
      */
     BodyPartStreamReader(ServerRequest req) {
-        request = req;
+        if (req.headers().contentType().isPresent()) {
+            MediaType contentType = req.headers().contentType().get();
+            boundary = contentType.parameters().get("boundary");
+            LOGGER.fine(() -> "request: #" + req.requestId()
+                    + ", boundary string is " + boundary);
+        } else {
+            throw new IllegalStateException("Not a multipart request");
+        }
+        mediaSupport = ((InBoundContent) req.content()).mediaSupport();
     }
 
     @Override
-    public Flow.Publisher<? extends BodyPart> apply(
+    public Flow.Publisher<BodyPart> apply(
             Flow.Publisher<DataChunk> chunks, Class<? super BodyPart> clazz) {
 
-        Processor processor = new Processor(request);
+        Processor processor = new Processor(boundary, mediaSupport);
         chunks.subscribe(processor);
         return processor;
     }
@@ -89,12 +109,6 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
         private BodyPartContentPublisher bodyPartContent;
 
         /**
-         * The server request, used to derive the boundary string as well
-         * as the reader to register for the published parts.
-         */
-        private final ServerRequest request;
-
-        /**
          * The MIME parser.
          */
         private final MIMEParser parser;
@@ -110,20 +124,16 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
         private final Queue<BodyPart> bodyParts;
 
         /**
+         * The media support used to read the body part contents.
+         */
+        private final InBoundMediaSupport mediaSupport;
+
+        /**
          * Create a new instance.
          * @param req 
          */
-        public Processor(ServerRequest req) {
-            String boundary;
-            if (req.headers().contentType().isPresent()) {
-                MediaType contentType = req.headers().contentType().get();
-                boundary = contentType.parameters().get("boundary");
-                LOGGER.fine(() -> "request: #" + req.requestId()
-                        + ", boundary string is " + boundary);
-            } else {
-                throw new IllegalStateException("Not a multipart request");
-            }
-            request = req;
+        public Processor(String boundary, InBoundMediaSupport mediaSupport) {
+            this.mediaSupport = mediaSupport;
             parserEventProcessor = new ParserEventProcessor();
             parser = new MIMEParser(boundary, parserEventProcessor);
             bodyParts = new LinkedList<>();
@@ -132,7 +142,7 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
         @Override
         protected void hookOnRequested(long n, long result) {
             // require more raw chunks to decode if not the decoding has not
-            // yet started or if more data is required to make progress
+            // yet started or if more data is required to make 
             if (tryAcquire() > 0
                     && (!parserEventProcessor.isStarted()
                     || parserEventProcessor.isDataRequired())) {
@@ -161,8 +171,6 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
             // submit parsed parts
             while (!bodyParts.isEmpty()) {
                 BodyPart bodyPart = bodyParts.poll();
-                bodyPart.registerReaders(((Request.Content) request.content())
-                        .getReaders());
                 submit(bodyPart);
             }
 
@@ -177,8 +185,7 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
                     && (!parserEventProcessor.isContentDataRequired()
                     || bodyPartContent.requiresMoreItems())) {
 
-                LOGGER.fine(() -> "request: #" + request.requestId()
-                        + ", requesting one more chunk from upstream");
+                LOGGER.fine("Requesting one more chunk from upstream");
                 chunksSubscription.request(1);
             }
         }
@@ -190,8 +197,7 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
 
         @Override
         public void onComplete() {
-            LOGGER.fine(() -> "request: #" + request.requestId()
-                        + ", upstream subscription completed");
+            LOGGER.fine("Upstream subscription completed");
             complete = true;
             try {
                 parser.close();
@@ -222,7 +228,8 @@ final class BodyPartStreamReader implements StreamReader<BodyPart> {
                         bodyPartContent = new BodyPartContentPublisher();
                         bodyPartHeaderBuilder = BodyPartHeaders.builder();
                         bodyPartBuilder = BodyPart.builder()
-                                .publisher(bodyPartContent);
+                                .inBoundPublisher(bodyPartContent,
+                                        mediaSupport);
                         break;
                     case HEADER:
                         MIMEParser.HeaderEvent headerEvent =

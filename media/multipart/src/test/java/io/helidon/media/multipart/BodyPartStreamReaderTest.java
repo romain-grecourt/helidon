@@ -20,10 +20,10 @@ import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.HashRequestHeaders;
 import io.helidon.webserver.RequestHeaders;
-import io.helidon.webserver.Request;
-import io.helidon.webserver.Response;
+import io.helidon.webserver.internal.InBoundContent;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
@@ -36,8 +36,7 @@ import org.mockito.Mockito;
 
 import static io.helidon.common.CollectionsHelper.listOf;
 import static io.helidon.common.CollectionsHelper.mapOf;
-import static io.helidon.media.multipart.BodyPartTest.READERS;
-import static io.helidon.media.multipart.BodyPartTest.WRITERS;
+import static io.helidon.media.multipart.BodyPartTest.INBOUND_MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -485,15 +484,11 @@ public class BodyPartStreamReaderTest {
     static Publisher<? extends BodyPart> partsPublisher(String boundary,
             byte[]... chunks) {
 
-        // mock response
-        Response responseMock = Mockito.mock(Response.class);
-        Mockito.doReturn(WRITERS).when(responseMock).getWriters();
-
         // mock request
-        Request requestMock = Mockito.mock(Request.class);
-        Request.Content contentMock = Mockito.mock(Request.Content.class);
-        Mockito.doReturn(READERS).when(contentMock).getReaders();
-        Mockito.doReturn(contentMock).when(requestMock).content();
+        InBoundContent content = new InBoundContent(
+                new DataChunkPublisher(chunks), INBOUND_MEDIA_SUPPORT);
+        ServerRequest requestMock = Mockito.mock(ServerRequest.class);
+        Mockito.doReturn(content).when(requestMock).content();
 
         // multipart headers
         RequestHeaders headers = new HashRequestHeaders(

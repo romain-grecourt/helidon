@@ -15,13 +15,15 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.StreamWriter;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.BaseStreamWriter;
 import io.helidon.webserver.Response;
-import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
+import io.helidon.webserver.internal.OutBoundContent;
+import io.helidon.webserver.internal.OutBoundMediaSupport;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -29,23 +31,26 @@ import java.util.Map;
 /**
  * Body part stream writer.
  */
-final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
+final class BodyPartStreamWriter implements StreamWriter<BodyPart> {
 
     /**
      * The boundary string.
      */
     private final String boundary;
 
-    BodyPartStreamWriter(ServerRequest req, ServerResponse res,
-            String bnd) {
+    /**
+     * The out-bound media support used to marshall the body part contents.
+     */
+    private final OutBoundMediaSupport mediaSupport;
 
-        super(req, res, BodyPart.class);
+    BodyPartStreamWriter(ServerResponse res, String bnd) {
         this.boundary = bnd;
+        this.mediaSupport = ((Response)res).mediaSupport();
     }
 
     @Override
     public Flow.Publisher<DataChunk> apply(Flow.Publisher<BodyPart> parts) {
-        Processor processor = new Processor(getResponse(), boundary);
+        Processor processor = new Processor(boundary, mediaSupport);
         parts.subscribe(processor);
         return processor;
     }
@@ -60,11 +65,19 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         private Flow.Subscription partsSubscription;
         private BodyPartContentSubscriber bodyPartContent;
-        private final ServerResponse response;
+
+        /**
+         * The out-bound media support used to marshall the body part contents.
+         */
+        private final OutBoundMediaSupport mediaSupport;
+
+        /**
+         * The boundary used for the generated multi-part message.
+         */
         private final String boundary;
 
-        public Processor(ServerResponse res, String boundary) {
-            response = res;
+        public Processor(String boundary, OutBoundMediaSupport mediaSupport) {
+            this.mediaSupport = mediaSupport;
             this.boundary = boundary;
         }
 
@@ -84,6 +97,10 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
 
         @Override
         public void onNext(BodyPart bodyPart) {
+            Content content = bodyPart.content();
+            if (!(content instanceof OutBoundContent)) {
+                return;
+            }
             Map<String, List<String>> headers = bodyPart.headers().toMap();
             StringBuilder sb = new StringBuilder();
 
@@ -109,7 +126,7 @@ final class BodyPartStreamWriter extends BaseStreamWriter<BodyPart> {
             }
             submit(DataChunk.create(ByteBuffer.wrap(sb.toString().getBytes())));
             bodyPartContent = new BodyPartContentSubscriber(this);
-            bodyPart.registerWriters(((Response) response).getWriters());
+            ((OutBoundContent) content).mediaSupport(mediaSupport);
             bodyPart.content().subscribe(bodyPartContent);
         }
 

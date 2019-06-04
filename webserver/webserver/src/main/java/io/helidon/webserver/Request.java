@@ -16,52 +16,33 @@
 
 package io.helidon.webserver;
 
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.StringTokenizer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-import io.helidon.common.CollectionsHelper;
-import io.helidon.common.GenericType;
 import io.helidon.common.http.ContextualRegistry;
-import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.http.Reader;
-import io.helidon.common.http.StreamReader;
-import io.helidon.common.http.StreamWriter;
-import io.helidon.common.reactive.Flow;
-import io.helidon.media.common.ContentReaders;
+import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.webserver.internal.InBoundContext;
+import io.helidon.webserver.internal.InBoundMediaSupport;
 
-import io.opentracing.Span;
 import io.opentracing.Tracer;
-import io.opentracing.tag.Tags;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * The basic abstract implementation of {@link ServerRequest}.
  */
-// HACK - made public to expose InternalReader
-public abstract class Request implements ServerRequest {
+abstract class Request implements ServerRequest {
 
     /**
-     * The default charset to use in case that no charset or no mime-type is defined in the content type header.
+     * The default charset to use in case that no charset or no mime-type is
+     * defined in the content type header.
      */
     static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
@@ -70,7 +51,7 @@ public abstract class Request implements ServerRequest {
     private final ContextualRegistry context;
     private final Parameters queryParams;
     private final RequestHeaders headers;
-    private final Content content;
+    private final InBoundContent content;
 
     /**
      * Creates new instance.
@@ -82,9 +63,11 @@ public abstract class Request implements ServerRequest {
         this.bareRequest = req;
         this.webServer = webServer;
         this.context = ContextualRegistry.create(webServer.context());
-        this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(), true);
+        this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
+                /* decode */ true);
         this.headers = new HashRequestHeaders(bareRequest.headers());
-        this.content = new Content();
+        this.content = new InBoundContent(req.bodyPublisher(),
+                new InBoundMediaSupport(new ContentContext()));
     }
 
     /**
@@ -98,7 +81,7 @@ public abstract class Request implements ServerRequest {
         this.context = request.context;
         this.queryParams = request.queryParams;
         this.headers = request.headers;
-        this.content = new Content(request.content);
+        this.content = new InBoundContent(request.content);
     }
 
     /**
@@ -188,7 +171,7 @@ public abstract class Request implements ServerRequest {
     }
 
     @Override
-    public Content content() {
+    public InBoundContent content() {
         return this.content;
     }
 
@@ -197,265 +180,20 @@ public abstract class Request implements ServerRequest {
         return bareRequest.requestId();
     }
 
-    private static CompletableFuture failedFuture(Throwable t) {
-        CompletableFuture result = new CompletableFuture<>();
-        result.completeExceptionally(t);
-        return result;
-    }
-
-    public static class InternalStreamReader<T> implements StreamReader<T>, Predicate<Class<?>> {
-
-        private final Predicate<Class<?>> predicate;
-        private final StreamReader<T> reader;
-
-        public InternalStreamReader(Predicate<Class<?>> predicate, StreamReader<T> reader) {
-            this.predicate = predicate;
-            this.reader = reader;
-        }
+    private final class ContentContext implements InBoundContext {
 
         @Override
-        public Flow.Publisher<? extends T> apply(Flow.Publisher<DataChunk> publisher, Class<? super T> clazz) {
-            return reader.apply(publisher, clazz);
-        }
-
-        @Override
-        public boolean test(Class<?> o) {
-            return o != null && predicate != null && predicate.test(o);
-        }
-    }
-
-    public static class InternalReader<T> implements Reader<T>, Predicate<Class<?>> {
-
-        private final Predicate<Class<?>> predicate;
-        private final Reader<T> reader;
-
-        public InternalReader(Predicate<Class<?>> predicate, Reader<T> reader) {
-            this.predicate = predicate;
-            this.reader = reader;
-        }
-
-        @Override
-        public CompletionStage<? extends T> apply(Flow.Publisher<DataChunk> publisher, Class<? super T> clazz) {
-            return reader.apply(publisher, clazz);
-        }
-
-        @Override
-        public boolean test(Class<?> o) {
-            return o != null && predicate != null && predicate.test(o);
-        }
-    }
-
-    public class Content implements io.helidon.common.http.Content {
-
-        private final Flow.Publisher<DataChunk> originalPublisher;
-        private final Deque<InternalReader<?>> readers;
-        private final Deque<InternalStreamReader<?>> streamReaders;
-        private final List<Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>>> filters;
-        private final ReadWriteLock readersLock;
-        private final ReadWriteLock streamReadersLock;
-        private final ReadWriteLock filtersLock;
-
-        private Content() {
-            this.originalPublisher = bareRequest.bodyPublisher();
-            this.readers = appendDefaultReaders(new LinkedList<>());
-            this.streamReaders = new LinkedList<>();
-            this.filters = new ArrayList<>();
-            this.readersLock = new ReentrantReadWriteLock();
-            this.streamReadersLock = new ReentrantReadWriteLock();
-            this.filtersLock = new ReentrantReadWriteLock();
-        }
-
-        private Content(Content orig) {
-            this.originalPublisher = orig.originalPublisher;
-            this.readers = appendDefaultReaders(orig.readers);
-            this.streamReaders = orig.streamReaders;
-            this.filters = orig.filters;
-            this.readersLock = orig.readersLock;
-            this.streamReadersLock = orig.streamReadersLock;
-            this.filtersLock = orig.filtersLock;
-        }
-
-        private Deque<InternalReader<?>> appendDefaultReaders(final Deque<InternalReader<?>> readers) {
-            readers.addLast(reader(String.class, stringContentReader()));
-            readers.addLast(reader(byte[].class, ContentReaders.byteArrayReader()));
-            readers.addLast(reader(InputStream.class, ContentReaders.inputStreamReader()));
-            return readers;
-        }
-
-        public Deque<InternalReader<?>> getReaders() {
-            return readers;
-        }
-
-        public List<Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>>> getFilters() {
-            return filters;
-        }
-
-        @Override
-        public void registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function) {
-            Objects.requireNonNull(function, "Parameter 'function' is null!");
-            try {
-                filtersLock.writeLock().lock();
-                filters.add(function);
-            } finally {
-                filtersLock.writeLock().unlock();
-            }
-        }
-
-        public <T> void registerStreamReader(Class<T> clazz, StreamReader<T> reader) {
-            try {
-                streamReadersLock.writeLock().lock();
-                streamReaders.addFirst(new InternalStreamReader<>(
-                        aClass -> aClass.isAssignableFrom(clazz), reader));
-            } finally {
-                streamReadersLock.writeLock().unlock();
-            }
-        }
-
-        @Override
-        public <T> void registerReader(Class<T> type, Reader<T> reader) {
-            register(reader(type, reader));
-        }
-
-        @Override
-        public <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader) {
-            register(new InternalReader<>(predicate, reader));
-        }
-
-        public <T> void register(InternalReader<T> reader) {
-            try {
-                readersLock.writeLock().lock();
-                readers.addFirst(reader);
-            } finally {
-                readersLock.writeLock().unlock();
-            }
-        }
-
-        private <T> InternalReader<T> reader(Class<T> clazz, Reader<T> reader) {
-            return new InternalReader<>(aClass -> aClass.isAssignableFrom(clazz), reader);
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> CompletionStage<T> as(final Class<T> type) {
-            Span readSpan = createReadSpan(type);
-            CompletionStage<T> result;
-            try {
-                readersLock.readLock().lock();
-                result = (CompletionStage<T>) readerFor(type).apply(chainPublishers(), type);
-            } catch (IllegalArgumentException e) {
-                result = failedFuture(e);
-            } catch (Exception e) {
-                result = failedFuture(new IllegalArgumentException("Transformation failed!", e));
-            } finally {
-                readersLock.readLock().unlock();
-            }
-            // Close span
-            result.thenRun(readSpan::finish)
-                  .exceptionally(t -> {
-                      finishSpanWithError(readSpan, t);
-                      return null;
-                  });
-            return result;
-        }
-
-        private void finishSpanWithError(Span readSpan, Throwable t) {
-            Tags.ERROR.set(readSpan, Boolean.TRUE);
-            readSpan.log(CollectionsHelper.mapOf("event", "error",
-                                                 "error.kind", "Exception",
-                                                 "error.object", t,
-                                                 "message", t.toString()));
-            readSpan.finish();
-        }
-
-        private <T> Span createReadSpan(Class<T> type) {
-            Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-read");
+        public Tracer.SpanBuilder createSpanBuilder(String operationName) {
+            Tracer.SpanBuilder spanBuilder = tracer().buildSpan(operationName);
             if (span() != null) {
                 spanBuilder.asChildOf(span());
             }
-            if (type != null) {
-                spanBuilder.withTag("requested.type", type.getName());
-            }
-            return spanBuilder.start();
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> Reader<T> readerFor(final Class<T> type) {
-            return (Reader<T>) readers.stream()
-                                      .filter(reader -> reader.test(type))
-                                      .findFirst()
-                                      .orElseThrow(() -> new IllegalArgumentException("No reader found for class: " + type));
-        }
-
-        private Reader<String> stringContentReader() {
-            try {
-                Charset charset = requestContentCharset(Request.this);
-                return ContentReaders.stringReader(charset);
-            } catch (final UnsupportedCharsetException e) {
-                return (publisher, clazz) -> {
-                    throw e;
-                };
-            }
+            return spanBuilder;
         }
 
         @Override
-        public void subscribe(Flow.Subscriber<? super DataChunk> subscriber) {
-            try {
-                Span readSpan = createReadSpan(Flow.Publisher.class);
-                chainPublishers().subscribe(new Flow.Subscriber<DataChunk>() {
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                        subscriber.onSubscribe(subscription);
-                    }
-
-                    @Override
-                    public void onNext(DataChunk item) {
-                        subscriber.onNext(item);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        try {
-                            subscriber.onError(throwable);
-                        } finally {
-                            finishSpanWithError(readSpan, throwable);
-                        }
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        try {
-                            subscriber.onComplete();
-                        } finally {
-                            readSpan.finish();
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                subscriber.onError(new IllegalArgumentException("Unexpected exception occurred during publishers chaining", e));
-            }
-        }
-
-        private Flow.Publisher<DataChunk> chainPublishers() {
-            Flow.Publisher<DataChunk> lastPublisher = originalPublisher;
-            try {
-                filtersLock.readLock().lock();
-                for (Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> filter : filters) {
-                    lastPublisher = filter.apply(lastPublisher);
-                }
-            } finally {
-                filtersLock.readLock().unlock();
-            }
-            return lastPublisher;
-        }
-
-        @Override
-        public <T> Flow.Publisher<T> asPublisherOf(Class<T> type) {
-            return null;
-        }
-
-        @Override
-        public <T> Flow.Publisher<T> asPublisherOf(GenericType<T> type) {
-            return null;
+        public Charset charset() {
+            return requestContentCharset(Request.this);
         }
     }
 
@@ -478,7 +216,9 @@ public abstract class Request implements ServerRequest {
          * @param params resolved path parameters.
          * @param absolutePath absolute path.
          */
-        Path(String path, String rawPath, Map<String, String> params, Path absolutePath) {
+        Path(String path, String rawPath, Map<String, String> params,
+                Path absolutePath) {
+
             this.path = path;
             this.rawPath = rawPath;
             this.params = params == null ? Collections.emptyMap() : params;
@@ -493,7 +233,8 @@ public abstract class Request implements ServerRequest {
         @Override
         public List<String> segments() {
             List<String> result = segments;
-            if (result == null) { // No synchronisation needed, worth case is multiple splitting.
+            // No synchronisation needed, worth case is multiple splitting.
+            if (result == null) {
                 StringTokenizer stok = new StringTokenizer(path, "/");
                 result = new ArrayList<>();
                 while (stok.hasMoreTokens()) {
@@ -519,11 +260,15 @@ public abstract class Request implements ServerRequest {
             return absolutePath == null ? this : absolutePath;
         }
 
-        static Path create(Path contextual, String path, Map<String, String> params) {
+        static Path create(Path contextual, String path,
+                Map<String, String> params) {
+
             return create(contextual, path, path, params);
         }
 
-        static Path create(Path contextual, String path, String rawPath, Map<String, String> params) {
+        static Path create(Path contextual, String path, String rawPath,
+                Map<String, String> params) {
+
             if (contextual == null) {
                 return new Path(path, rawPath, params, null);
             } else {
@@ -531,21 +276,29 @@ public abstract class Request implements ServerRequest {
             }
         }
 
-        Path createSubpath(String path, String rawPath, Map<String, String> params) {
+        Path createSubpath(String path, String rawPath,
+                Map<String, String> params) {
+
             if (params == null) {
                 params = Collections.emptyMap();
             }
             if (absolutePath == null) {
-                HashMap<String, String> map = new HashMap<>(this.params.size() + params.size());
+                HashMap<String, String> map =
+                        new HashMap<>(this.params.size() + params.size());
                 map.putAll(this.params);
                 map.putAll(params);
-                return new Path(path, rawPath, params, new Path(this.path, this.rawPath, map, null));
+                return new Path(path, rawPath, params,
+                        new Path(this.path, this.rawPath, map, null));
             } else {
-                HashMap<String, String> map = new HashMap<>(this.params.size() + params.size() + absolutePath.params.size());
+                int size = this.params.size() + params.size()
+                        + absolutePath.params.size();
+                HashMap<String, String> map = new HashMap<>(size);
                 map.putAll(absolutePath.params);
                 map.putAll(this.params);
                 map.putAll(params);
-                return new Path(path, rawPath, params, new Path(absolutePath.path, absolutePath.rawPath, map, null));
+                return new Path(path, rawPath, params,
+                        new Path(absolutePath.path, absolutePath.rawPath, map,
+                                /* absolute path */ null));
             }
         }
     }

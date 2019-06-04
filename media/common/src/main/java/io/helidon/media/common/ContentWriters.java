@@ -25,9 +25,9 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
 import io.helidon.common.reactive.RetrySchema;
@@ -86,7 +86,7 @@ public final class ContentWriters {
      * @param copy a signal if byte array should be copied - set it {@code true} if {@code byte[]} will be immediately reused.
      * @return a {@code byte[]} writer
      */
-    public static Function<byte[], Flow.Publisher<DataChunk>> byteArrayWriter(boolean copy) {
+    public static Writer<byte[]> byteArrayWriter(boolean copy) {
         return copy ? COPY_BYTE_ARRAY_WRITER : BYTE_ARRAY_WRITER;
     }
 
@@ -99,7 +99,7 @@ public final class ContentWriters {
      * @return a {@link String} writer
      * @throws NullPointerException if parameter {@code charset} is {@code null}
      */
-    public static Function<CharSequence, Flow.Publisher<DataChunk>> charSequenceWriter(Charset charset) {
+    public static Writer<CharSequence> charSequenceWriter(Charset charset) {
         return CHAR_SEQUENCE_WRITERS.computeIfAbsent(charset, key -> new CharSequenceWriter(charset));
     }
 
@@ -112,7 +112,7 @@ public final class ContentWriters {
      * @return a {@link String} writer
      * @throws NullPointerException if parameter {@code charset} is {@code null}
      */
-    public static Function<CharBuffer, Flow.Publisher<DataChunk>> charBufferWriter(Charset charset) {
+    public static Writer<CharBuffer> charBufferWriter(Charset charset) {
         return CHAR_BUFFER_WRITERS.computeIfAbsent(charset, key -> new CharBufferWriter(charset));
     }
 
@@ -123,7 +123,7 @@ public final class ContentWriters {
      * @param retrySchema a retry schema to use in case when {@code read} operation reads {@code 0 bytes}
      * @return a {@link ReadableByteChannel} writer
      */
-    public static Function<ReadableByteChannel, Flow.Publisher<DataChunk>> byteChannelWriter(RetrySchema retrySchema) {
+    public static Writer<ReadableByteChannel> byteChannelWriter(RetrySchema retrySchema) {
         final RetrySchema schema = retrySchema == null ? RetrySchema.linear(0, 10, 250) : retrySchema;
         return channel -> new ReadableByteChannelPublisher(channel, schema);
     }
@@ -133,11 +133,11 @@ public final class ContentWriters {
      *
      * @return a {@link ReadableByteChannel} writer
      */
-    public static Function<ReadableByteChannel, Flow.Publisher<DataChunk>> byteChannelWriter() {
+    public static Writer<ReadableByteChannel> byteChannelWriter() {
         return byteChannelWriter(null);
     }
 
-    private static class ByteArrayWriter implements Function<byte[], Flow.Publisher<DataChunk>> {
+    private static class ByteArrayWriter implements Writer<byte[]> {
 
         private final boolean copy;
 
@@ -163,7 +163,7 @@ public final class ContentWriters {
         }
     }
 
-    private static class CharSequenceWriter implements Function<CharSequence, Flow.Publisher<DataChunk>> {
+    private static class CharSequenceWriter implements Writer<CharSequence> {
 
         private final Charset charset;
 
@@ -200,7 +200,7 @@ public final class ContentWriters {
         }
     }
 
-    private static class CharBufferWriter implements Function<CharBuffer, Flow.Publisher<DataChunk>> {
+    private static class CharBufferWriter implements Writer<CharBuffer> {
 
         private final Charset charset;
 

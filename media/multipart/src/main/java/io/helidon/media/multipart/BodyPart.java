@@ -15,75 +15,36 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.GenericType;
 import io.helidon.common.http.Content;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MediaType;
-import io.helidon.common.http.Reader;
-import io.helidon.common.http.StreamReader;
-import io.helidon.common.reactive.Flow;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.ContentWriters;
-import io.helidon.webserver.Request.InternalReader;
-import io.helidon.webserver.Response.Writer;
-import java.io.File;
-import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.helidon.webserver.internal.OutBoundContent;
+import java.util.Optional;
 
 /**
  * Body part entity.
  */
 public final class BodyPart {
 
-    private final BodyPartContent content;
+    private final Content content;
     private final BodyPartHeaders headers;
     private final boolean buffered;
 
-    BodyPart(Object entity, BodyPartHeaders headers) {
-        this.content = new EntityContent(entity);
-        this.headers = headers;
-        this.buffered = true;
-    }
-
-    BodyPart(Publisher<DataChunk> publisher, BodyPartHeaders headers,
-            boolean buffered) {
-
-        this.content = new RawContent(publisher);
+    BodyPart(Content content, BodyPartHeaders headers, boolean buffered) {
+        this.content = content;
         this.headers = headers;
         this.buffered = buffered;
     }
 
-    BodyPart(Publisher<DataChunk> publisher, BodyPartHeaders headers) {
-        this(publisher, headers, false);
-    }
-
-    void registerReaders(Deque<InternalReader<?>> readers){
-        content.registerReaders(readers);
-    }
-
-    void registerWriters(ArrayList<Writer> writers){
-        content.registerWriters(writers);
-    }
-
     /**
-     * Indicate if this {@link BodyPart} instance is buffered in memory.
+     * Indicate if the content of this {@link BodyPart} instance is buffered in
+     * memory. When buffered, {@link #as(java.lang.Class)} can be called safely
+     * to get the unmarshall the content without the use of a
+     * {@code CompletionStage}.
+     *
      * @return {@code true} if buffered, {@code false} otherwise
      */
     public boolean isBuffered() {
@@ -113,10 +74,18 @@ public final class BodyPart {
         }
     }
 
+    /**
+     * Returns {@link Content reactive representation} of the part content.
+     * @return Content, never {@code null}
+     */
     public Content content() {
         return content;
     }
 
+    /**
+     * Returns http part headers.
+     * @return BodyPartHeaders, never {@code null}
+     */
     public BodyPartHeaders headers(){
         return headers;
     }
@@ -128,292 +97,122 @@ public final class BodyPart {
      * or {@code null} if not present.
      */
     public String name() {
-        return null;
+        Optional<ContentDisposition> contentDisposition = headers()
+                .contentDisposition();
+        if (!contentDisposition.isPresent()) {
+            return null;
+        }
+        Optional<String> name = contentDisposition.get().name();
+        if (!name.isPresent()) {
+            return null;
+        }
+        return name.get();
     }
 
+    /**
+     * Create a new out-bound part backed by the specified entity.
+     * @param <T> Type of the entity
+     * @param entity entity for the created part content
+     * @return BodyPart
+     */
     public static <T> BodyPart create(T entity){
-        return builder()
-                .entity(entity)
-                .build();
+        return builder().entity(entity).build();
     }
 
-    static BodyPart create(BodyPartHeaders headers,
-            Publisher<DataChunk> content) {
-
-        return builder()
-                .headers(headers)
-                .publisher(content)
-                .build();
-    }
-
+    /**
+     * Create a new builder instance.
+     * @return Builder
+     */
     public static Builder builder(){
         return new Builder();
     }
 
+    /**
+     * Builder class for creating {@link BodyPart} instances.
+     */
     public static final class Builder
             implements io.helidon.common.Builder<BodyPart> {
 
+        private Content content;
         private Object entity;
         private BodyPartHeaders headers;
-        private Publisher<DataChunk> publisher;
+        private boolean buffered;
 
-        Builder() {
+        /**
+         * Private constructor to force the use of {@link BodyPart#builder() }.
+         */
+        private Builder() {
         }
 
+        /**
+         * Create a new out-bound body part backed by the specified entity.
+         * @param entity entity for the body part content
+         * @return this builder instance
+         */
         public Builder entity(Object entity) {
-            if (publisher != null) {
-                throw new IllegalStateException(
-                        "The body part content source is already set");
-            }
             this.entity = entity;
             return this;
         }
 
-        public Builder headers(BodyPartHeaders header) {
-            this.headers = header;
+        /**
+         * Create a new out-bound body part backed by the specified publisher.
+         * @param publisher publisher for the part content
+         * @return this builder instance
+         */
+        @SuppressWarnings("unchecked")
+        public Builder publisher(Publisher<DataChunk> publisher) {
+            this.content = new OutBoundContent(publisher);
             return this;
         }
 
-        Builder publisher(Publisher<DataChunk> publisher) {
-            if (entity != null) {
-                throw new IllegalStateException(
-                        "The body part content source is already set");
-            }
-            this.publisher = publisher;
+        /**
+         * Create a new in-bound body part backed by the specified publisher.
+         *
+         * @param publisher publisher for the part content
+         * @param mediaSupport in-bound media support used to unmarshall the
+         * content
+         * @return this builder instance
+         */
+        Builder inBoundPublisher(Publisher<DataChunk> publisher,
+                InBoundMediaSupport mediaSupport) {
+
+            this.content = new InBoundContent(publisher, mediaSupport);
+            return this;
+        }
+
+        /**
+         * Sets the in-bound body part content as buffered.
+         * @return this builder instance
+         */
+        Builder buffered() {
+            this.buffered = true;
+            return this;
+        }
+
+        /**
+         * Set the headers for this part.
+         * @param headers headers
+         * @return this builder instance
+         */
+        public Builder headers(BodyPartHeaders headers) {
+            this.headers = headers;
             return this;
         }
 
         @Override
         public BodyPart build() {
+            BodyPartHeaders zHeaders = headers;
+            if (zHeaders == null) {
+                zHeaders = BodyPartHeaders.builder().build();
+            }
             if (entity != null) {
-                return new BodyPart(entity, headers);
-            } else if (publisher != null) {
-                return new BodyPart(publisher, headers);
+                content = new OutBoundContent<>(entity,
+                        zHeaders.contentType().orElse(null));
             }
-            throw new IllegalStateException(
-                    "No body content source is set");
-        }
-    }
-
-    static abstract class BodyPartContent implements Content {
-
-        private final Deque<InternalReader<?>> readers = new LinkedList<>();
-        private final ReadWriteLock readersLock = new ReentrantReadWriteLock();
-        protected final ArrayList<Writer> writers = new ArrayList<>();
-        protected final ReadWriteLock writersLock = new ReentrantReadWriteLock();
-
-        /**
-         * Register writers needed to serialize the content.
-         * @param writers writers to register
-         */
-        void registerWriters(List<Writer> writers){
-            try {
-                writersLock.writeLock().lock();
-                this.writers.addAll(writers);
-            } finally {
-                writersLock.writeLock().unlock();
+            if (content == null) {
+                throw new IllegalStateException("content is null");
             }
-        }
-
-        /**
-         * Register readers needed to de-serialize the content.
-         * @param readers readers to register
-         */
-        void registerReaders(Deque<InternalReader<?>> readers){
-            try {
-                readersLock.writeLock().lock();
-                this.readers.addAll(readers);
-            } finally {
-                readersLock.writeLock().unlock();
-            }
-        }
-
-        Deque<InternalReader<?>> getReaders() {
-            return readers;
-        }
-
-        ArrayList<Writer> getWriters() {
-            return writers;
-        }
-
-        /**
-         * Get or create the content publisher
-         * @return publisher
-         */
-        protected abstract Publisher<DataChunk> getOrCreatePublisher();
-
-        @Override
-        public void subscribe(Flow.Subscriber<? super DataChunk> subscriber) {
-            getOrCreatePublisher().subscribe(subscriber);
-        }
-
-        @Override
-        public void registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <T> void registerReader(Class<T> type, Reader<T> reader) {
-            registerReader(aClass -> aClass.isAssignableFrom(type), reader);
-        }
-
-        @Override
-        public <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader) {
-            try {
-                readersLock.writeLock().lock();
-                readers.add(new InternalReader<>(predicate, reader));
-            } finally {
-                readersLock.writeLock().unlock();
-            }
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> CompletionStage<T> as(Class<T> type) {
-            CompletionStage<T> result;
-            try {
-                readersLock.readLock().lock();
-                result = (CompletionStage<T>) readerFor(type).apply(getOrCreatePublisher(), type);
-            } catch (IllegalArgumentException e) {
-                result = failedFuture(e);
-            } catch (Exception e) {
-                result = failedFuture(new IllegalArgumentException("Transformation failed!", e));
-            } finally {
-                readersLock.readLock().unlock();
-            }
-            return result;
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> Reader<T> readerFor(final Class<T> type) {
-            return (Reader<T>) readers.stream()
-                                      .filter(reader -> reader.test(type))
-                                      .findFirst()
-                                      .orElseThrow(() -> new IllegalArgumentException("No reader found for class: " + type));
-        }
-
-        private static CompletableFuture failedFuture(Throwable t) {
-            CompletableFuture result = new CompletableFuture<>();
-            result.completeExceptionally(t);
-            return result;
-        }
-
-        @Override
-        public <T> Publisher<T> asPublisherOf(Class<T> type) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <T> Publisher<T> asPublisherOf(GenericType<T> type) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <T> void registerStreamReader(Class<T> type, StreamReader<T> reader) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    private static final class EntityContent extends BodyPartContent {
-
-        private final Object entity;
-        private Publisher<DataChunk> publisher;
-
-        EntityContent(Object entity) {
-            this.entity = entity;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        protected Publisher<DataChunk> getOrCreatePublisher() {
-            if (publisher != null) {
-                return publisher;
-            }
-            try {
-                writersLock.readLock().lock();
-                Publisher<DataChunk> pub = null;
-                for (int i = writers.size() - 1; i >= 0; i--) {
-                    Writer<Object> writer = writers.get(i);
-                    if (writer.accept(entity, null)) {
-                        pub = writer.getFunction().apply(entity);
-                    }
-                }
-                if (pub == null) {
-                    pub = createDefaultPublisher(entity);
-                }
-                if (pub == null) {
-                    throw new IllegalStateException(
-                            "Cannot write! No registered stream writer for '"
-                            + entity.getClass().toString() + "'.");
-                }
-                publisher = pub;
-                return publisher;
-            } finally {
-                writersLock.readLock().unlock();
-            }
-        }
-
-        private Flow.Publisher<DataChunk> createDefaultPublisher(Object content) {
-            final Class<?> type = content.getClass();
-            if (File.class.isAssignableFrom(type)) {
-                return toPublisher(((File) content).toPath());
-            } else if (Path.class.isAssignableFrom(type)) {
-                return toPublisher((Path) content);
-            } else if (ReadableByteChannel.class.isAssignableFrom(type)) {
-                return ContentWriters.byteChannelWriter().apply((ReadableByteChannel) content);
-            } else if (CharSequence.class.isAssignableFrom(type)) {
-                return toPublisher((CharSequence) content);
-            } else if (byte[].class.isAssignableFrom(type)) {
-                return ContentWriters.byteArrayWriter(true).apply((byte[]) content);
-            }
-            return null;
-        }
-
-        private Flow.Publisher<DataChunk> toPublisher(CharSequence s) {
-            MediaType mediaType = MediaType.TEXT_PLAIN;
-            String charset = mediaType.charset().orElse(StandardCharsets.UTF_8.name());
-            return ContentWriters.charSequenceWriter(Charset.forName(charset)).apply(s);
-        }
-
-        private Flow.Publisher<DataChunk> toPublisher(Path path) {
-            // Set response length - if possible
-            try {
-                // Is it existing and readable file
-                if (!Files.exists(path)) {
-                    throw new IllegalArgumentException("File path argument doesn't exist!");
-                }
-                if (!Files.isRegularFile(path)) {
-                    throw new IllegalArgumentException("File path argument isn't a file!");
-                }
-                if (!Files.isReadable(path)) {
-                    throw new IllegalArgumentException("File path argument isn't readable!");
-                }
-                // Try to write length
-//            try {
-//                bodyPart.headers.contentLength(Files.size(path));
-//            } catch (Exception e) {
-//                // Cannot get length or write length, not a big deal
-//            }
-                // And write
-                FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
-                return ContentWriters.byteChannelWriter().apply(fc);
-            } catch (IOException e) {
-                throw new IllegalArgumentException("Cannot read a file!", e);
-            }
-        }
-    }
-
-    private static final class RawContent extends BodyPartContent {
-
-        private final Publisher<DataChunk> publisher;
-
-        RawContent(Publisher<DataChunk> publisher) {
-            this.publisher = publisher;
-        }
-
-        @Override
-        protected Publisher<DataChunk> getOrCreatePublisher() {
-            return publisher;
+            return new BodyPart(content, zHeaders, buffered);
         }
     }
 }

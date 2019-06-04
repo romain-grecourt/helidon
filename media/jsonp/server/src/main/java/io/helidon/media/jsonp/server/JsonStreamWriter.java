@@ -17,22 +17,24 @@
 package io.helidon.media.jsonp.server;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.StreamWriter;
 import io.helidon.common.reactive.Flow;
-import io.helidon.webserver.BaseStreamWriter;
-import io.helidon.webserver.ServerRequest;
+import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerResponse;
+import io.helidon.webserver.internal.OutBoundMediaSupport;
 
 /**
  * Class JsonArrayStreamWriter.
  */
-public class JsonStreamWriter<T> extends BaseStreamWriter<T> {
+public class JsonStreamWriter<T> implements StreamWriter<T> {
 
     private DataChunk beginChunk;
     private DataChunk separatorChunk;
     private DataChunk endChunk;
+    private final OutBoundMediaSupport mediaSupport;
 
-    public JsonStreamWriter(ServerRequest request, ServerResponse response, Class<T> type) {
-        super(request, response, type);
+    public JsonStreamWriter(ServerResponse response, Class<T> type) {
+        mediaSupport = ((Response) response).mediaSupport();
     }
 
     public DataChunk beginChunk() {
@@ -118,7 +120,7 @@ public class JsonStreamWriter<T> extends BaseStreamWriter<T> {
                 first = false;
             }
 
-            Flow.Publisher<DataChunk> itemChunkPublisher = getResponse().createPublisherUsingWriter(item);
+            Flow.Publisher<DataChunk> itemChunkPublisher = mediaSupport.marshall(item);
             if (itemChunkPublisher == null) {
                 throw new RuntimeException("Unable to find publisher for item " + item);
             }

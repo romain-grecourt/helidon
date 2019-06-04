@@ -15,23 +15,24 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
+import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.media.multipart.BodyPart.BodyPartContent;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
+import io.helidon.webserver.internal.InBoundContent;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 
 /**
  * Multi part support service.
@@ -55,7 +56,7 @@ public final class MultiPartSupport implements Service, Handler {
                 new BodyPartStreamReader(req));
         req.content().registerReader(MultiPart.class, new MultiPartReader(req));
         res.registerStreamWriter(BodyPart.class, MediaType.MULTIPART_FORM_DATA,
-                new BodyPartStreamWriter(req, res, DEFAULT_BOUNDARY));
+                new BodyPartStreamWriter(res, DEFAULT_BOUNDARY));
         res.registerWriter(MultiPart.class, new MultiPartWriter(res));
         req.next();
     }
@@ -67,8 +68,7 @@ public final class MultiPartSupport implements Service, Handler {
     /**
      * {@link MultiPart} entity writer.
      */
-    private static final class MultiPartWriter
-            implements Function<MultiPart, Flow.Publisher<DataChunk>> {
+    private static final class MultiPartWriter implements Writer<MultiPart> {
 
         private final ServerResponse response;
 
@@ -78,11 +78,8 @@ public final class MultiPartSupport implements Service, Handler {
 
         @Override
         public Flow.Publisher<DataChunk> apply(MultiPart multiPart) {
-            BodyPartStreamWriter.Processor processor =
-                    new BodyPartStreamWriter.Processor(response,
-                            DEFAULT_BOUNDARY);
-            new BodyPartPublisher(multiPart.bodyParts()).subscribe(processor);
-            return processor;
+            return new BodyPartStreamWriter(response, DEFAULT_BOUNDARY)
+                    .apply(new BodyPartPublisher(multiPart.bodyParts()));
         }
     }
 
@@ -141,15 +138,15 @@ public final class MultiPartSupport implements Service, Handler {
         }
 
         @Override
-        public CompletionStage<? extends MultiPart> apply(
+        public CompletionStage<MultiPart> apply(
                 Flow.Publisher<DataChunk> chunks,
                 Class<? super MultiPart> clazz) {
 
-            BodyPartStreamReader.Processor processor =
-                    new BodyPartStreamReader.Processor(request);
-            chunks.subscribe(processor);
-            BodyPartSubscriber bodyPartSubscriber = new BodyPartSubscriber();
-            processor.subscribe(bodyPartSubscriber);
+            BufferingBodyPartSubscriber bodyPartSubscriber =
+                    new BufferingBodyPartSubscriber();
+            new BodyPartStreamReader(request)
+                    .apply(chunks)
+                    .subscribe(bodyPartSubscriber);
             CompletableFuture<MultiPart> future = new CompletableFuture<>();
             MultiPart.Builder multiPartBuilder = MultiPart.builder();
             bodyPartSubscriber.getFuture().thenAccept(bodyParts -> {
@@ -164,15 +161,29 @@ public final class MultiPartSupport implements Service, Handler {
     }
 
     /**
-     * A reactive subscriber of {@link BodyPart} that accumulates all the items
-     * in a {@code Collection<BodyPart>}.
+     * A reactive subscriber of {@link BodyPart} that buffers the body part
+     * content and accumulates copies in a {@code Collection<BodyPart>}.
      */
-    static final class BodyPartSubscriber
+    static final class BufferingBodyPartSubscriber
             implements Flow.Subscriber<BodyPart> {
 
+        /**
+         * The resulting collection.
+         */
         private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
+
+        /**
+         * The future completed when {@link #onComplete()} is called.
+         */
         private final CompletableFuture<Collection<BodyPart>> future =
                 new CompletableFuture<>();
+
+        /**
+         * Create a new instance.
+         * @param mediaSupport in-bound media support
+         */
+        BufferingBodyPartSubscriber() {
+        }
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
@@ -181,20 +192,24 @@ public final class MultiPartSupport implements Service, Handler {
 
         @Override
         public void onNext(BodyPart bodyPart) {
-            // consume the body part as byte[]
+            Content content = bodyPart.content();
+            if (!(content instanceof InBoundContent)) {
+                return;
+            }
+            // buffer the body part as byte[]
             bodyPart.content().as(byte[].class).thenAccept((byte[] bytes) -> {
+
                 // create a publisher from the consumed byte
                 Flow.Publisher<DataChunk> partChunks = ContentWriters
-                        .byteArrayWriter(/* copy */ true).apply(bytes);
+                        .byteArrayWriter(/* copy */true).apply(bytes);
+
                 // create a new body part with the buffered content
                 BodyPart bufferedBodyPart = BodyPart.builder()
                         .headers(bodyPart.headers())
-                        .publisher(partChunks)
+                        .inBoundPublisher(partChunks,
+                                ((InBoundContent) content).mediaSupport())
+                        .buffered()
                         .build();
-                bufferedBodyPart.registerReaders(
-                        ((BodyPartContent)bodyPart.content()).getReaders());
-                bufferedBodyPart.registerWriters(
-                        ((BodyPartContent)bodyPart.content()).getWriters());
                 bodyParts.add(bufferedBodyPart);
             });
         }

@@ -18,7 +18,6 @@ package io.helidon.media.jackson.common;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Objects;
-import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Reader;
@@ -28,6 +27,7 @@ import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.helidon.common.http.Writer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -73,7 +73,7 @@ public final class JacksonProcessing {
      * @return created function
      * @exception NullPointerException if {@code objectMapper} is {@code null}
      */
-    public static Function<Object, Flow.Publisher<DataChunk>> writer(final ObjectMapper objectMapper, final Charset charset) {
+    public static Writer<Object> writer(final ObjectMapper objectMapper, final Charset charset) {
         Objects.requireNonNull(objectMapper);
         return payload -> {
             CharBuffer buffer = new CharBuffer();

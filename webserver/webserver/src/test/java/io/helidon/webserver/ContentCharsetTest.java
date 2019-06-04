@@ -24,7 +24,6 @@ import java.util.Map;
 
 import io.helidon.common.CollectionsHelper;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;

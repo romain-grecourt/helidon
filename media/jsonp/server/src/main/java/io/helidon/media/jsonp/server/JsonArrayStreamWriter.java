@@ -30,7 +30,7 @@ import static io.helidon.media.common.ContentTypeCharset.determineCharset;
 public class JsonArrayStreamWriter<T> extends JsonStreamWriter<T> {
 
     public JsonArrayStreamWriter(ServerRequest request, ServerResponse response, Class<T> type) {
-        super(request, response, type);
+        super(response, type);
         Charset charset = determineCharset(request.headers());
         beginChunk(DataChunk.create("[".getBytes(charset)));
         separatorChunk(DataChunk.create(",".getBytes(charset)));

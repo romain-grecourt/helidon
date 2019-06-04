@@ -27,7 +27,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
-import io.helidon.common.reactive.ReactiveStreamsAdapter;
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherToFlow;
 
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
@@ -113,38 +113,38 @@ public class ResponseTest {
     public void classRelatedWriters() throws Exception {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(null, new NoOpBareResponse(null));
-        assertThat(response.createPublisherUsingWriter("foo"), notNullValue()); // Default
-        assertThat(response.createPublisherUsingWriter("foo".getBytes()), notNullValue()); // Default
-        assertThat(response.createPublisherUsingWriter(Duration.of(1, ChronoUnit.MINUTES)), nullValue());
+        assertThat(response.mediaSupport().marshall("foo"), notNullValue()); // Default
+        assertThat(response.mediaSupport().marshall("foo".getBytes()), notNullValue()); // Default
+        assertThat(response.mediaSupport().marshall(Duration.of(1, ChronoUnit.MINUTES)), nullValue());
         response.registerWriter(CharSequence.class, o -> {
             sb.append("1");
-            return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+            return publisherToFlow(Mono.empty());
         });
-        assertThat(response.createPublisherUsingWriter("foo"), notNullValue());
+        assertThat(response.mediaSupport().marshall("foo"), notNullValue());
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        assertThat(response.createPublisherUsingWriter(null), notNullValue());
+        assertThat(response.mediaSupport().marshall(null), notNullValue());
         assertThat(sb.toString(), is(""));
 
         sb.setLength(0);
         response.registerWriter(String.class, o -> {
             sb.append("2");
-            return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+            return publisherToFlow(Mono.empty());
         });
-        assertThat(response.createPublisherUsingWriter("foo"), notNullValue());
+        assertThat(response.mediaSupport().marshall("foo"), notNullValue());
         assertThat(sb.toString(), is("2"));
 
         sb.setLength(0);
-        assertThat(response.createPublisherUsingWriter(new StringBuilder()), notNullValue());
+        assertThat(response.mediaSupport().marshall(new StringBuilder()), notNullValue());
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
         response.registerWriter((Class<Object>) null, o -> {
             sb.append("3");
-            return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+            return publisherToFlow(Mono.empty());
         });
-        assertThat(response.createPublisherUsingWriter(1), notNullValue());
+        assertThat(response.mediaSupport().marshall(1), notNullValue());
         assertThat(sb.toString(), is("3"));
     }
 
@@ -155,22 +155,22 @@ public class ResponseTest {
         response.registerWriter(o -> "1".equals(String.valueOf(o)),
                                 o -> {
                                     sb.append("1");
-                                    return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+                                    return publisherToFlow(Mono.empty());
                                 });
         response.registerWriter(o -> "2".equals(String.valueOf(o)),
                                 o -> {
                                     sb.append("2");
-                                    return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+                                    return publisherToFlow(Mono.empty());
                                 });
-        assertThat(response.createPublisherUsingWriter(1), notNullValue());
+        assertThat(response.mediaSupport().marshall(1), notNullValue());
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        assertThat(response.createPublisherUsingWriter(2), notNullValue());
+        assertThat(response.mediaSupport().marshall(2), notNullValue());
         assertThat(sb.toString(), is("2"));
 
         sb.setLength(0);
-        assertThat(response.createPublisherUsingWriter(3), nullValue());
+        assertThat(response.mediaSupport().marshall(3), nullValue());
         assertThat(sb.toString(), is(""));
     }
 
@@ -182,35 +182,31 @@ public class ResponseTest {
                                 MediaType.TEXT_PLAIN,
                                 o -> {
                                     sb.append("A");
-                                    return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+                                    return publisherToFlow(Mono.empty());
                                 });
-        response.registerWriter(o -> o instanceof Number,
+        response.registerWriter(Number.class,
                                 MediaType.APPLICATION_JSON,
                                 o -> {
                                     sb.append("B");
-                                    return ReactiveStreamsAdapter.publisherToFlow(Mono.empty());
+                                    return publisherToFlow(Mono.empty());
                                 });
-        assertThat(response.createPublisherUsingWriter("foo"), notNullValue());
+        assertThat(response.mediaSupport().marshall("foo"), notNullValue());
         assertThat(sb.toString(), is("A"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.TEXT_PLAIN));
 
         sb.setLength(0);
         response.headers().remove(Http.Header.CONTENT_TYPE);
-        assertThat(response.createPublisherUsingWriter(1), notNullValue());
+        assertThat(response.mediaSupport().marshall(1), notNullValue());
         assertThat(sb.toString(), is("B"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
 
         sb.setLength(0);
-        response.headers().put(Http.Header.CONTENT_TYPE, MediaType.APPLICATION_JSON.toString());
-        assertThat(response.createPublisherUsingWriter(1), notNullValue());
+        assertThat(response.mediaSupport().marshall(1, MediaType.APPLICATION_JSON), notNullValue());
         assertThat(sb.toString(), is("B"));
-        assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
 
         sb.setLength(0);
-        response.headers().put(Http.Header.CONTENT_TYPE, MediaType.TEXT_HTML.toString());
-        assertThat(response.createPublisherUsingWriter(1), nullValue());
+        assertThat(response.mediaSupport().marshall(1, MediaType.TEXT_HTML), nullValue());
         assertThat(sb.toString(), is(""));
-        assertThat(response.headers().contentType().orElse(null), is(MediaType.TEXT_HTML));
     }
 
     @Test
@@ -229,7 +225,7 @@ public class ResponseTest {
             sb.append("C");
             return p;
         });
-        assertThat(response.applyFilters(ReactiveStreamsAdapter.publisherToFlow(Mono.empty()), null), notNullValue());
+        assertThat(response.mediaSupport().applyFilters(publisherToFlow(Mono.empty())), notNullValue());
         assertThat(sb.toString(), is("ABC"));
     }
 

@@ -19,32 +19,41 @@ package io.helidon.media.jsonp.server;
 import java.nio.charset.Charset;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow;
-import io.helidon.webserver.BaseStreamReader;
 import io.helidon.webserver.ServerRequest;
-import io.helidon.webserver.ServerResponse;
 
 import static io.helidon.media.common.ContentTypeCharset.determineCharset;
+import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.webserver.internal.InBoundMediaSupport;
 
 /**
  * Class JsonArrayStreamReader.
  */
-public class JsonArrayStreamReader<T> extends BaseStreamReader<T> {
+public class JsonArrayStreamReader<T> implements StreamReader<T> {
 
     private final DataChunk beginChunk;
     private final DataChunk separatorChunk;
     private final DataChunk endChunk;
+    private final InBoundMediaSupport mediaSupport;
 
-    public JsonArrayStreamReader(ServerRequest request, ServerResponse response, Class<T> type) {
-        super(request, response, type);
+    public JsonArrayStreamReader(ServerRequest request, Class<T> type) {
         Charset charset = determineCharset(request.headers());
         beginChunk = DataChunk.create("[".getBytes(charset));
         separatorChunk = DataChunk.create(",".getBytes(charset));
         endChunk = DataChunk.create("]".getBytes(charset));
+        mediaSupport = ((InBoundContent)request.content()).mediaSupport();
     }
 
     @Override
     public Flow.Publisher<T> apply(Flow.Publisher<DataChunk> publisher) {
+        return new JsonArrayStreamProcessor(publisher);
+    }
+
+    @Override
+    public Flow.Publisher<? extends T> apply(Flow.Publisher<DataChunk> publisher,
+            Class<? super T> clazz) {
+
         return new JsonArrayStreamProcessor(publisher);
     }
 
@@ -59,8 +68,6 @@ public class JsonArrayStreamReader<T> extends BaseStreamReader<T> {
         JsonArrayStreamProcessor(Flow.Publisher<DataChunk> chunkPublisher) {
             this.chunkPublisher = chunkPublisher;
         }
-
-        // -- Publisher<T> --------------------------------------------
 
         @Override
         public void subscribe(Flow.Subscriber<? super T> itemSubscriber) {

@@ -174,7 +174,7 @@ public class RequestContentTest {
 
         request.content()
                .registerReader(List.class, (publisher1, clazz) -> {
-                   CompletableFuture<List<String>> future = new CompletableFuture<>();
+                   CompletableFuture<List> future = new CompletableFuture<>();
                    List<String> list = new CopyOnWriteArrayList<>();
 
                    publisher1.subscribe(new Flow.Subscriber<DataChunk>() {

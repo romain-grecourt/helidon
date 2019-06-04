@@ -68,13 +68,13 @@ public interface Content extends Flow.Publisher<DataChunk> {
      * The first evaluation of the function transforms the original publisher to a new publisher.
      * Any subsequent evaluation receives the publisher transformed by the last previously
      * registered filter.
-     * It is up to the implementor of the given function to respect the contract of both the original
+     * It is up to the implementation of the given function to respect the contract of both the original
      * publisher and the previously registered ones.
      *
-     * @param function a function that transforms a given publisher (that is either the original
+     * @param filter a function that transforms a given publisher (that is either the original
      *                 publisher or the publisher transformed by the last previously registered filter).
      */
-    void registerFilter(Function<Flow.Publisher<DataChunk>, Flow.Publisher<DataChunk>> function);
+    void registerFilter(Filter filter);
 
     /**
      * Registers a reader for a later use with an appropriate {@link #as(Class)} method call.
@@ -113,7 +113,7 @@ public interface Content extends Flow.Publisher<DataChunk> {
      *                  {@link #as(Class)} method call ends exceptionally.
      * @param <T>       the requested type
      */
-    <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader);
+    <T> void registerReader(Predicate<Class<T>> predicate, Reader<T> reader);
 
     /**
      * Consumes and converts the request content into a completion stage of the requested type.

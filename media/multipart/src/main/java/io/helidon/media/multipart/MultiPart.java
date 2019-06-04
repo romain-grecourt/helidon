@@ -62,7 +62,11 @@ public final class MultiPart {
             return Optional.empty();
         }
         for (BodyPart part : bodyParts) {
-            if (name.equals(controlName(part))) {
+            String partName = part.name();
+            if (partName == null) {
+                continue;
+            }
+            if (name.equals(partName)) {
                 return Optional.of(part);
             }
         }
@@ -83,7 +87,11 @@ public final class MultiPart {
         }
         List<BodyPart> result = new ArrayList<>();
         for (BodyPart part : bodyParts) {
-            if (name.equals(controlName(part))) {
+            String partName = part.name();
+            if (partName == null) {
+                continue;
+            }
+            if (partName.equals(partName)) {
                 result.add(part);
             }
         }
@@ -97,7 +105,7 @@ public final class MultiPart {
     public Map<String, List<BodyPart>> fields() {
         Map<String, List<BodyPart>> results = new HashMap<>();
         for (BodyPart part : bodyParts) {
-            String name = controlName(part);
+            String name = part.name();
             if (name == null) {
                 continue;
             }
@@ -131,24 +139,6 @@ public final class MultiPart {
      */
     public static Builder builder(){
         return new Builder();
-    }
-
-    /**
-     * Get the control name of a part.
-     * @param part part to retrieve the control name of
-     * @return control name or {@code null}
-     */
-    private static String controlName(BodyPart part) {
-        Optional<ContentDisposition> contentDisposition =
-                    part.headers().contentDisposition();
-        if (!contentDisposition.isPresent()) {
-            return null;
-        }
-        Optional<String> name = contentDisposition.get().name();
-        if (!name.isPresent()) {
-            return null;
-        }
-        return name.get();
     }
 
     /**
