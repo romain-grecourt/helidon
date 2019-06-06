@@ -68,7 +68,7 @@ public final class BodyPartHeaders extends ReadOnlyParameters
     /**
      * Get the {@code Content-Disposition} header.
      *
-     * @return ContentDisposition
+     * @return ContentDisposition, never {@code null}
      */
     public ContentDisposition contentDisposition() {
         if (contentDisposition == null) {
@@ -123,6 +123,25 @@ public final class BodyPartHeaders extends ReadOnlyParameters
             }
             values.add(value);
             return this;
+        }
+
+        /**
+         * Add a {@code Content-Type} header.
+         * @param contentType value for the {@code Content-Type} header
+         * @return this builder
+         */
+        public Builder contentType(MediaType contentType) {
+           return header(Http.Header.CONTENT_TYPE, contentType.toString());
+        }
+
+        /**
+         * Add a {@code Content-Disposition} header.
+         * @param contentDisp content disposition
+         * @return this builder
+         */
+        public Builder contentDisposition(ContentDisposition contentDisp) {
+            return header(Http.Header.CONTENT_DISPOSITION,
+                    contentDisp.toString());
         }
 
         @Override
