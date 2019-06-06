@@ -15,7 +15,6 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.OptionalHelper;
 import io.helidon.common.http.Headers;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
@@ -23,7 +22,6 @@ import io.helidon.common.http.ReadOnlyParameters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -33,10 +31,11 @@ public final class BodyPartHeaders extends ReadOnlyParameters
         implements Headers {
 
     private final Object internalLock = new Object();
-    private Optional<ContentDisposition> contentDisposition;
+    private ContentDisposition contentDisposition;
 
     /**
      * Create a new instance.
+     *
      * @param params headers map
      */
     BodyPartHeaders(Map<String, List<String>> params) {
@@ -45,39 +44,38 @@ public final class BodyPartHeaders extends ReadOnlyParameters
 
     /**
      * Get the {@code Content-Type} header.
-     * @return MediaType
+     *
+     * @return MediaType, never {@code null}
      */
-    public Optional<MediaType> contentType() {
-        return OptionalHelper.from(first(Http.Header.CONTENT_TYPE)
-                .map(MediaType::parse))
-                .or(this::defaultContentType)
-                .asOptional();
+    public MediaType contentType() {
+        return first(Http.Header.CONTENT_TYPE)
+                .map(MediaType::parse)
+                .orElseGet(this::defaultContentType);
     }
 
     /**
      * Apply the default content-type described in
      * https://tools.ietf.org/html/rfc7578#section-4.4
      *
-     * @return {@code Optional<MediaType>}
+     * @return MediaType, never {@code null}
      */
-    private Optional<MediaType> defaultContentType() {
-        contentDisposition();
-        if (contentDisposition.isPresent()
-                && contentDisposition.get().filename().isPresent()) {
-            return Optional.of(MediaType.APPLICATION_OCTET_STREAM);
-        }
-        return Optional.of(MediaType.TEXT_PLAIN);
+    private MediaType defaultContentType() {
+        return contentDisposition().filename()
+                .map(fname -> MediaType.APPLICATION_OCTET_STREAM)
+                .orElse(MediaType.TEXT_PLAIN);
     }
 
     /**
      * Get the {@code Content-Disposition} header.
+     *
      * @return ContentDisposition
      */
-    public Optional<ContentDisposition> contentDisposition() {
+    public ContentDisposition contentDisposition() {
         if (contentDisposition == null) {
             synchronized (internalLock) {
                 contentDisposition = first(Http.Header.CONTENT_DISPOSITION)
-                        .map(ContentDisposition::parse);
+                        .map(ContentDisposition::parse)
+                        .orElse(ContentDisposition.EMPTY);
             }
         }
         return contentDisposition;
@@ -85,6 +83,7 @@ public final class BodyPartHeaders extends ReadOnlyParameters
 
     /**
      * Create a new builder instance.
+     *
      * @return Builder
      */
     public static Builder builder() {
@@ -100,8 +99,8 @@ public final class BodyPartHeaders extends ReadOnlyParameters
         /**
          * The headers map.
          */
-        private final Map<String, List<String>> headers =
-                new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        private final Map<String, List<String>> headers
+                = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         /**
          * Force the use of {@link BodyPartHeaders#builder() }.
@@ -111,6 +110,7 @@ public final class BodyPartHeaders extends ReadOnlyParameters
 
         /**
          * Add a new header.
+         *
          * @param name header name
          * @param value header value
          * @return this builder

@@ -12,6 +12,7 @@ import io.helidon.common.reactive.Flow.Subscription;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
+import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
@@ -31,6 +32,8 @@ public final class InBoundContent implements io.helidon.common.http.Content {
     public InBoundContent(Publisher<DataChunk> originalPublisher,
             InBoundMediaSupport mediaSupport) {
 
+        Objects.requireNonNull(originalPublisher, "publisher is null!");
+        Objects.requireNonNull(mediaSupport, "mediaSupport is null!");
         this.originalPublisher = originalPublisher;
         this.mediaSupport = mediaSupport;
     }
@@ -40,6 +43,7 @@ public final class InBoundContent implements io.helidon.common.http.Content {
      * @param orig original instance to copy
      */
     public InBoundContent(InBoundContent orig) {
+        Objects.requireNonNull(orig, "orig is null!");
         this.originalPublisher = orig.originalPublisher;
         this.mediaSupport = orig.mediaSupport;
     }

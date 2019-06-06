@@ -21,6 +21,7 @@ import io.helidon.common.http.Tokenizer;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -97,6 +98,12 @@ public final class ContentDisposition {
      * Constant for the size parameter.
      */
     private static final String SIZE_PARAMETER = "size";
+
+    /**
+     * Empty content disposition.
+     */
+    static ContentDisposition EMPTY = new ContentDisposition("",
+            Collections.emptyMap());
 
     /**
      * The content disposition type.

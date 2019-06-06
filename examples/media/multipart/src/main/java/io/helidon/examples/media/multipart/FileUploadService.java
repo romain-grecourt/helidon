@@ -15,6 +15,7 @@
  */
 package io.helidon.examples.media.multipart;
 
+import io.helidon.common.OptionalHelper;
 import io.helidon.media.multipart.BodyPart;
 import io.helidon.media.multipart.MultiPart;
 import io.helidon.media.multipart.MultiPartSupport;

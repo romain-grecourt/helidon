@@ -55,6 +55,7 @@ public final class BodyPart {
      * Converts the part content into an instance of the requested type.
      * <strong>This method can only be used if the part content is
      * buffered!</strong>
+     * If the content is not buffered, use {@link #content()}.
      *
      * @param <T> the requested type
      * @param clazz the requested type class
@@ -97,16 +98,7 @@ public final class BodyPart {
      * or {@code null} if not present.
      */
     public String name() {
-        Optional<ContentDisposition> contentDisposition = headers()
-                .contentDisposition();
-        if (!contentDisposition.isPresent()) {
-            return null;
-        }
-        Optional<String> name = contentDisposition.get().name();
-        if (!name.isPresent()) {
-            return null;
-        }
-        return name.get();
+        return headers().contentDisposition().name().orElse(null);
     }
 
     /**
@@ -206,8 +198,7 @@ public final class BodyPart {
                 zHeaders = BodyPartHeaders.builder().build();
             }
             if (entity != null) {
-                content = new OutBoundContent<>(entity,
-                        zHeaders.contentType().orElse(null));
+                content = new OutBoundContent<>(entity, zHeaders.contentType());
             }
             if (content == null) {
                 throw new IllegalStateException("content is null");
