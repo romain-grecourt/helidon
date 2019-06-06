@@ -20,10 +20,6 @@ import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.webserver.ServerRequest;
-import io.helidon.webserver.HashRequestHeaders;
-import io.helidon.webserver.RequestHeaders;
-import io.helidon.webserver.internal.InBoundContent;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
@@ -32,10 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
-import static io.helidon.common.CollectionsHelper.listOf;
-import static io.helidon.common.CollectionsHelper.mapOf;
 import static io.helidon.media.multipart.BodyPartTest.INBOUND_MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
@@ -46,9 +39,9 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Tests {@link BodyPartStreamReader}.
+ * Tests {@link MultiPartDecoder}.
  */
-public class BodyPartStreamReaderTest {
+public class MultiPartDecoderTest {
 
     @Test
     public void testOnePartInOneChunk() {
@@ -484,21 +477,10 @@ public class BodyPartStreamReaderTest {
     static Publisher<? extends BodyPart> partsPublisher(String boundary,
             byte[]... chunks) {
 
-        // mock request
-        InBoundContent content = new InBoundContent(
-                new DataChunkPublisher(chunks), INBOUND_MEDIA_SUPPORT);
-        ServerRequest requestMock = Mockito.mock(ServerRequest.class);
-        Mockito.doReturn(content).when(requestMock).content();
-
-        // multipart headers
-        RequestHeaders headers = new HashRequestHeaders(
-                mapOf("Content-Type",
-                        listOf("multipart/form-data ; boundary="
-                                + boundary)));
-        Mockito.doReturn(headers).when(requestMock).headers();
-
-        return new BodyPartStreamReader(requestMock)
-                    .apply(new DataChunkPublisher(chunks));
+        MultiPartDecoder decoder = new MultiPartDecoder(boundary,
+                INBOUND_MEDIA_SUPPORT);
+        new DataChunkPublisher(chunks).subscribe(decoder);
+        return decoder;
     }
 
     /**

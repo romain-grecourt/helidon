@@ -19,15 +19,22 @@ import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
+import io.helidon.common.http.StreamReader;
+import io.helidon.common.http.StreamWriter;
 import io.helidon.common.http.Writer;
-import io.helidon.common.reactive.Flow;
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.webserver.Handler;
+import io.helidon.webserver.Response;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.helidon.webserver.internal.OutBoundMediaSupport;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -52,17 +59,58 @@ public final class MultiPartSupport implements Service, Handler {
 
     @Override
     public void accept(ServerRequest req, ServerResponse res) {
-        req.content().registerStreamReader(BodyPart.class,
-                new BodyPartStreamReader(req));
-        req.content().registerReader(MultiPart.class, new MultiPartReader(req));
+        MediaType contentType = req.headers().contentType().orElse(null);
+        if (contentType != null && "multipart".equals(contentType.type())) {
+            String boundary = contentType.parameters().get("boundary");
+            Content content = req.content();
+            InBoundMediaSupport inBoundMediaSupport =
+                    ((InBoundContent) content).mediaSupport();
+            content.registerStreamReader(BodyPart.class,
+                    new BodyPartStreamReader(boundary, inBoundMediaSupport));
+            content.registerReader(MultiPart.class,
+                    new MultiPartReader(boundary, inBoundMediaSupport));
+        }
+        OutBoundMediaSupport outBoundMediaSupport =
+                ((Response)res).mediaSupport();
         res.registerStreamWriter(BodyPart.class, MediaType.MULTIPART_FORM_DATA,
-                new BodyPartStreamWriter(res, DEFAULT_BOUNDARY));
-        res.registerWriter(MultiPart.class, new MultiPartWriter(res));
+                new BodyPartStreamWriter(DEFAULT_BOUNDARY,
+                        outBoundMediaSupport));
+        res.registerWriter(MultiPart.class,
+                new MultiPartWriter(DEFAULT_BOUNDARY, outBoundMediaSupport));
         req.next();
     }
 
+    /**
+     * Create a new instance of {@link MultiPartSupport}.
+     * @return MultiPartSupport
+     */
     public static MultiPartSupport create(){
         return new MultiPartSupport();
+    }
+
+    /**
+     * {@link BodyPart} stream writer.
+     */
+    private static final class BodyPartStreamWriter
+            implements StreamWriter<BodyPart> {
+
+        private final String boundary;
+        private final OutBoundMediaSupport mediaSupport;
+
+        BodyPartStreamWriter(String boundary,
+                OutBoundMediaSupport mediaSupport) {
+
+            this.boundary = boundary;
+            this.mediaSupport = mediaSupport;
+        }
+
+        @Override
+        public Publisher<DataChunk> apply(Publisher<BodyPart> parts) {
+            MultiPartEncoder encoder = new MultiPartEncoder(boundary,
+                    mediaSupport);
+            parts.subscribe(encoder);
+            return encoder;
+        }
     }
 
     /**
@@ -70,16 +118,20 @@ public final class MultiPartSupport implements Service, Handler {
      */
     private static final class MultiPartWriter implements Writer<MultiPart> {
 
-        private final ServerResponse response;
+        private final String boundary;
+        private final OutBoundMediaSupport mediaSupport;
 
-        MultiPartWriter(ServerResponse response) {
-            this.response = response;
+        MultiPartWriter(String boundary, OutBoundMediaSupport mediaSupport) {
+            this.boundary = boundary;
+            this.mediaSupport = mediaSupport;
         }
 
         @Override
-        public Flow.Publisher<DataChunk> apply(MultiPart multiPart) {
-            return new BodyPartStreamWriter(response, DEFAULT_BOUNDARY)
-                    .apply(new BodyPartPublisher(multiPart.bodyParts()));
+        public Publisher<DataChunk> apply(MultiPart multiPart) {
+            MultiPartEncoder encoder = new MultiPartEncoder(boundary,
+                    mediaSupport);
+            new BodyPartPublisher(multiPart.bodyParts()).subscribe(encoder);
+            return encoder;
         }
     }
 
@@ -88,7 +140,7 @@ public final class MultiPartSupport implements Service, Handler {
      * of a given {@code Collection<BodyPart>}.
      */
     private static final class BodyPartPublisher
-            implements Flow.Publisher<BodyPart> {
+            implements Publisher<BodyPart> {
 
         private final Collection<BodyPart> bodyParts;
 
@@ -97,9 +149,9 @@ public final class MultiPartSupport implements Service, Handler {
         }
 
         @Override
-        public void subscribe(Flow.Subscriber<? super BodyPart> subscriber) {
+        public void subscribe(Subscriber<? super BodyPart> subscriber) {
             final Iterator<BodyPart> bodyPartsIt = bodyParts.iterator();
-            subscriber.onSubscribe(new Flow.Subscription() {
+            subscriber.onSubscribe(new Subscription() {
 
                 volatile boolean canceled = false;
 
@@ -127,26 +179,53 @@ public final class MultiPartSupport implements Service, Handler {
     }
 
     /**
+     * {@link BodyPart} stream reader.
+     */
+    private static final class BodyPartStreamReader
+            implements StreamReader<BodyPart> {
+
+        private final String boundary;
+        private final InBoundMediaSupport mediaSupport;
+
+        BodyPartStreamReader(String boundary, InBoundMediaSupport mediaSupport) {
+            this.boundary = boundary;
+            this.mediaSupport = mediaSupport;
+        }
+
+        @Override
+        public Publisher<? extends BodyPart> apply(Publisher<DataChunk> chunks,
+                Class<? super BodyPart> clazz) {
+
+            MultiPartDecoder decoder = new MultiPartDecoder(boundary,
+                    mediaSupport);
+            chunks.subscribe(decoder);
+            return decoder;
+        }
+    }
+
+    /**
      * {@link MultiPart} entity reader.
      */
     private static final class MultiPartReader implements Reader<MultiPart> {
 
-        private final ServerRequest request;
+        private final String boundary;
+        private final InBoundMediaSupport mediaSupport;
 
-        MultiPartReader(ServerRequest request) {
-            this.request = request;
+        MultiPartReader(String boundary, InBoundMediaSupport mediaSupport) {
+            this.boundary = boundary;
+            this.mediaSupport = mediaSupport;
         }
 
         @Override
-        public CompletionStage<MultiPart> apply(
-                Flow.Publisher<DataChunk> chunks,
+        public CompletionStage<MultiPart> apply(Publisher<DataChunk> chunks,
                 Class<? super MultiPart> clazz) {
 
+            MultiPartDecoder decoder = new MultiPartDecoder(boundary,
+                    mediaSupport);
+            chunks.subscribe(decoder);
             BufferingBodyPartSubscriber bodyPartSubscriber =
                     new BufferingBodyPartSubscriber();
-            new BodyPartStreamReader(request)
-                    .apply(chunks)
-                    .subscribe(bodyPartSubscriber);
+            decoder.subscribe(bodyPartSubscriber);
             CompletableFuture<MultiPart> future = new CompletableFuture<>();
             MultiPart.Builder multiPartBuilder = MultiPart.builder();
             bodyPartSubscriber.getFuture().thenAccept(bodyParts -> {
@@ -165,7 +244,7 @@ public final class MultiPartSupport implements Service, Handler {
      * content and accumulates copies in a {@code Collection<BodyPart>}.
      */
     static final class BufferingBodyPartSubscriber
-            implements Flow.Subscriber<BodyPart> {
+            implements Subscriber<BodyPart> {
 
         /**
          * The resulting collection.
@@ -186,7 +265,7 @@ public final class MultiPartSupport implements Service, Handler {
         }
 
         @Override
-        public void onSubscribe(Flow.Subscription subscription) {
+        public void onSubscribe(Subscription subscription) {
             subscription.request(Long.MAX_VALUE);
         }
 
@@ -200,7 +279,7 @@ public final class MultiPartSupport implements Service, Handler {
             bodyPart.content().as(byte[].class).thenAccept((byte[] bytes) -> {
 
                 // create a publisher from the consumed byte
-                Flow.Publisher<DataChunk> partChunks = ContentWriters
+                Publisher<DataChunk> partChunks = ContentWriters
                         .byteArrayWriter(/* copy */true).apply(bytes);
 
                 // create a new body part with the buffered content
@@ -224,6 +303,10 @@ public final class MultiPartSupport implements Service, Handler {
             future.complete(bodyParts);
         }
 
+        /**
+         * Get the future of body parts.
+         * @return future of collection of {@link BodyPart}.
+         */
         CompletableFuture<Collection<BodyPart>> getFuture() {
             return future;
         }
