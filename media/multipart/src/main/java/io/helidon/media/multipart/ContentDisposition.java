@@ -20,6 +20,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.Tokenizer;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -156,7 +157,7 @@ public final class ContentDisposition {
         try {
             String value = parameters.get(FILENAME_PARAMETER);
             if (value != null) {
-                filename =URLDecoder.decode(value, "UTF-8");
+                filename = URLDecoder.decode(value, "UTF-8");
             } else {
                 filename = null;
             }
@@ -221,6 +222,15 @@ public final class ContentDisposition {
     }
 
     /**
+     * Create a new builder instance.
+     *
+     * @return Builder
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
      * Parse the header value of a {@code Content-Disposition} header.
      * @param input header value to parse
      * @return ContentDisposition instance
@@ -271,6 +281,112 @@ public final class ContentDisposition {
         } catch (IllegalStateException e) {
             throw new IllegalArgumentException("Could not parse '" + input
                     + "'", e);
+        }
+    }
+
+    /**
+     * Builder class to create {@link ContentDisposition} instances.
+     */
+    public static final class Builder
+            implements io.helidon.common.Builder<ContentDisposition> {
+
+        private String type;
+        private final Map<String, String> params = new HashMap<>();
+
+        /**
+         * Set the content disposition type.
+         * @param type content disposition type
+         * @return this builder
+         */
+        public Builder type(String type) {
+            this.type = type;
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code name} parameter.
+         * @param name control name
+         * @return this builder
+         */
+        public Builder name(String name) {
+            params.put("name", name);
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code filename} parameter.
+         * @param filename filename parameter
+         * @return this builder
+         * @throws IllegalStateException if an
+         * {@link UnsupportedEncodingException} exception is thrown for
+         * {@code UTF-8}
+         */
+        public Builder filename(String filename) {
+            try {
+                params.put("filename", URLEncoder.encode(filename, "UTF-8"));
+            } catch (UnsupportedEncodingException ex) {
+                throw new IllegalStateException(ex);
+            }
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code creation-date} parameter.
+         * @param date
+         * @return this builder
+         */
+        public Builder creationDate(ZonedDateTime date) {
+            params.put("creation-date",
+                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code modification-date} parameter.
+         * @param date
+         * @return this builder
+         */
+        public Builder modificationDate(ZonedDateTime date) {
+            params.put("modification-date",
+                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code read-date} parameter.
+         * @param date
+         * @return this builder
+         */
+        public Builder readDate(ZonedDateTime date) {
+            params.put("read-date",
+                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            return this;
+        }
+
+        /**
+         * Set the content disposition {@code size} parameter.
+         * @param size
+         * @return this builder
+         */
+        public Builder size(long size) {
+            params.put("size", Long.toString(size));
+            return this;
+        }
+
+        /**
+         * Add a new content disposition header parameter.
+         * @param name parameter name
+         * @param value parameter value
+         * @return this builder
+         */
+        public Builder parameter(String name, String value) {
+            params.put(name, value);
+            return this;
+        }
+
+        @Override
+        public ContentDisposition build() {
+            return new ContentDisposition(type, params);
         }
     }
 }
