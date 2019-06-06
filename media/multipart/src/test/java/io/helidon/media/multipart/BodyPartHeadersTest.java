@@ -16,7 +16,6 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.MediaType;
-import org.hamcrest.CoreMatchers;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;

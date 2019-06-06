@@ -22,7 +22,6 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.webserver.internal.InBoundContent;
 import io.helidon.webserver.internal.InBoundMediaSupport;
 import io.helidon.webserver.internal.OutBoundContent;
-import java.util.Optional;
 
 /**
  * Body part entity.
@@ -94,11 +93,21 @@ public final class BodyPart {
     /**
      * Get the control name.
      *
-     * @return the name parameter of the {@code Content-Disposition} header,
-     * or {@code null} if not present.
+     * @return the {@code name} parameter of the {@code Content-Disposition}
+     * header, or {@code null} if not present.
      */
     public String name() {
         return headers().contentDisposition().name().orElse(null);
+    }
+
+    /**
+     * Get the file name.
+     *
+     * @return the {@code filename} parameter of the {@code Content-Disposition}
+     * header, or {@code null} if not present.
+     */
+    public String filename() {
+        return headers().contentDisposition().filename().orElse(null);
     }
 
     /**
