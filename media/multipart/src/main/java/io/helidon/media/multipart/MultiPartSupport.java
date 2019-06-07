@@ -25,7 +25,6 @@ import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.media.common.ContentWriters;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Response;
 import io.helidon.webserver.Routing;
@@ -37,7 +36,6 @@ import io.helidon.webserver.internal.InBoundMediaSupport;
 import io.helidon.webserver.internal.OutBoundMediaSupport;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -46,9 +44,15 @@ import java.util.concurrent.CompletionStage;
  */
 public final class MultiPartSupport implements Service, Handler {
 
+    /**
+     * The default boundary used for encoding multipart messages.
+     */
     private static final String DEFAULT_BOUNDARY = 
             "[^._.^]==>boundary<==[^._.^]";
 
+    /**
+     * Force the use of {@link #create()}.
+     */
     private MultiPartSupport(){
     }
 
@@ -235,79 +239,6 @@ public final class MultiPartSupport implements Service, Handler {
                 future.completeExceptionally(error);
                 return null;
             });
-            return future;
-        }
-    }
-
-    /**
-     * A reactive subscriber of {@link BodyPart} that buffers the body part
-     * content and accumulates copies in a {@code Collection<BodyPart>}.
-     */
-    static final class BufferingBodyPartSubscriber
-            implements Subscriber<BodyPart> {
-
-        /**
-         * The resulting collection.
-         */
-        private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
-
-        /**
-         * The future completed when {@link #onComplete()} is called.
-         */
-        private final CompletableFuture<Collection<BodyPart>> future =
-                new CompletableFuture<>();
-
-        /**
-         * Create a new instance.
-         * @param mediaSupport in-bound media support
-         */
-        BufferingBodyPartSubscriber() {
-        }
-
-        @Override
-        public void onSubscribe(Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(BodyPart bodyPart) {
-            Content content = bodyPart.content();
-            if (!(content instanceof InBoundContent)) {
-                return;
-            }
-            // buffer the body part as byte[]
-            bodyPart.content().as(byte[].class).thenAccept((byte[] bytes) -> {
-
-                // create a publisher from the consumed byte
-                Publisher<DataChunk> partChunks = ContentWriters
-                        .byteArrayWriter(/* copy */true).apply(bytes);
-
-                // create a new body part with the buffered content
-                BodyPart bufferedBodyPart = BodyPart.builder()
-                        .headers(bodyPart.headers())
-                        .inBoundPublisher(partChunks,
-                                ((InBoundContent) content).mediaSupport())
-                        .buffered()
-                        .build();
-                bodyParts.add(bufferedBodyPart);
-            });
-        }
-
-        @Override
-        public void onError(Throwable error) {
-            future.completeExceptionally(error);
-        }
-
-        @Override
-        public void onComplete() {
-            future.complete(bodyParts);
-        }
-
-        /**
-         * Get the future of body parts.
-         * @return future of collection of {@link BodyPart}.
-         */
-        CompletableFuture<Collection<BodyPart>> getFuture() {
             return future;
         }
     }

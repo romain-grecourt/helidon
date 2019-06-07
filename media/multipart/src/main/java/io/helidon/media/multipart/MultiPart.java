@@ -150,7 +150,7 @@ public final class MultiPart {
         private final ArrayList<BodyPart> bodyParts = new ArrayList<>();
 
         /**
-         * Force the use of {@link MultiPart#builder() }.
+         * Force the use of {@link MultiPart#builder()}.
          */
         private Builder() {
         }

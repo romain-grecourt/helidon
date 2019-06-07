@@ -28,8 +28,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This processor is a single use publisher that supports a single subscriber.
- * It is not resumable.
+ * Reactive processor that encodes a stream of {@link BodyPart} into an HTTP
+ * payload. This processor is a single use publisher that supports a single
+ * subscriber, it is not resumable.
  */
 public final class MultiPartEncoder
         extends OriginThreadPublisher<DataChunk, DataChunk>

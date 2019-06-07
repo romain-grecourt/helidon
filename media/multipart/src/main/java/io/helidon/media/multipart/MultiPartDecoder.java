@@ -26,8 +26,9 @@ import java.util.Queue;
 import java.util.logging.Logger;
 
 /**
- * This processor is a single use publisher that supports a single subscriber.
- * It is not resumable.
+ * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
+ * This processor is a single use publisher that supports a single subscriber,
+ * it is not resumable.
  */
 public final class MultiPartDecoder
         extends OriginThreadPublisher<BodyPart, BodyPart>
