@@ -22,6 +22,7 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.webserver.internal.InBoundContent;
 import io.helidon.webserver.internal.InBoundMediaSupport;
 import io.helidon.webserver.internal.OutBoundContent;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Body part entity.
@@ -67,16 +68,21 @@ public final class BodyPart {
             throw new IllegalStateException(
                     "The content of this part is not buffered");
         }
+        CompletableFuture<T> future = content.as(clazz).toCompletableFuture();
+        if (!future.isDone()) {
+            throw new IllegalStateException(
+                    "Unable to convert part content synchronously");
+        }
         try {
-            return content.as(clazz).toCompletableFuture().get();
+            return future.get();
         } catch (InterruptedException | ExecutionException ex) {
             throw new IllegalStateException(ex.getMessage(), ex);
         }
     }
 
     /**
-     * Returns {@link Content reactive representation} of the part content.
-     * @return Content, never {@code null}
+     * Get the reactive representation of the part content.
+     * @return {@link Content}, never {@code null}
      */
     public Content content() {
         return content;
