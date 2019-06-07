@@ -34,12 +34,7 @@ import io.helidon.webserver.internal.OutBoundMediaSupport;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import java.nio.charset.Charset;
-import java.util.LinkedList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -148,6 +143,24 @@ public class BodyPartTest {
             assertThat(ex.getMessage(),
                     is(equalTo("Unable to convert part content synchronously")));
         }
+    }
+
+    @Test
+    public void testBuildingPartWithNoContent() {
+        assertThrows(IllegalStateException.class, ()-> {
+            BodyPart.builder().build();
+        });
+    }
+
+    @Test
+    public void testOutBoundPublisher() {
+        Publisher<DataChunk> publisher = new DataChunkPublisher(
+                "abc".getBytes());
+        BodyPart bodyPart = BodyPart.builder()
+                .publisher(publisher)
+                .build();
+        assertThat(bodyPart.isBuffered(), is(equalTo(false)));
+        assertThat(bodyPart.content(), is(instanceOf(OutBoundContent.class)));
     }
 
     @Test

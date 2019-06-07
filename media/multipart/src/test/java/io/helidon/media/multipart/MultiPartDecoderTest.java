@@ -21,12 +21,16 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import java.util.LinkedList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.media.multipart.BodyPartTest.INBOUND_MEDIA_SUPPORT;
@@ -37,11 +41,23 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.fail;
-
 /**
  * Tests {@link MultiPartDecoder}.
  */
 public class MultiPartDecoderTest {
+
+    private static final Logger LOGGER =
+            Logger.getLogger(MultiPartDecoder.class.getName());
+
+    @BeforeAll
+    public static void before() {
+        LOGGER.setLevel(Level.ALL);
+    }
+
+    @AfterAll
+    public static void after() {
+        LOGGER.setLevel(Level.INFO);
+    }
 
     @Test
     public void testOnePartInOneChunk() {
@@ -404,6 +420,38 @@ public class MultiPartDecoderTest {
         assertThat(latch.getCount(), is(equalTo(1L)));
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(false)));
+    }
+
+    @Test
+    public void testUpstreamError() {
+        MultiPartDecoder decoder = new MultiPartDecoder("boundary",
+                INBOUND_MEDIA_SUPPORT);
+        new Publisher<DataChunk>(){
+            @Override
+            public void subscribe(Subscriber<? super DataChunk> subscriber) {
+                subscriber.onError(new IllegalStateException("oops"));
+            }
+        }.subscribe(decoder);
+        TestSubscriber testSubscriber = new TestSubscriber(
+                SUBSCRIBER_TYPE.INFINITE, null);
+        decoder.subscribe(testSubscriber);
+        assertThat(testSubscriber.complete, is(equalTo(false)));
+        assertThat(testSubscriber.error, is(notNullValue()));
+        assertThat(testSubscriber.error.getMessage(), is(equalTo("oops")));
+    }
+
+    @Test
+    public void testSubcribingMoreThanOnce() {
+        MultiPartDecoder decoder = new MultiPartDecoder("boundary",
+                INBOUND_MEDIA_SUPPORT);
+        new DataChunkPublisher("foo".getBytes()).subscribe(decoder);
+        try {
+            new DataChunkPublisher("bar".getBytes()).subscribe(decoder);
+            fail("exception should be thrown");
+        } catch(IllegalStateException ex) {
+            assertThat(ex.getMessage(),
+                    is(equalTo("Input subscription already set")));
+        }
     }
 
     /**

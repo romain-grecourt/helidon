@@ -523,10 +523,6 @@ final class MIMEParser {
      */
     private void makeProgress() throws ParsingException{
 
-        if (closed) {
-            throw new ParsingException("Parser is closed");
-        }
-
         while (true) {
 
             switch (state) {
@@ -921,7 +917,7 @@ final class MIMEParser {
         String name;
 
         /**
-         * The entire RFC822 header "line".
+         * The entire header "line".
          */
         String line;
 
@@ -959,7 +955,7 @@ final class MIMEParser {
             // skip whitespace after ':'
             for (j = i + 1; j < line.length(); j++) {
                 char c = line.charAt(j);
-                if (!(c == ' ' || c == '\t' || c == '\r' || c == '\n')) {
+                if (!(c == ' ' || c == '\t')) {
                     break;
                 }
             }

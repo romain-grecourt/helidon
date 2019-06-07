@@ -43,9 +43,19 @@ public class BodyPartHeadersTest {
     }
 
     @Test
-    public void testContentType(){
+    public void testContentType() {
         BodyPartHeaders headers = BodyPartHeaders.builder()
                 .header("content-type", "application/json")
+                .build();
+        assertThat(headers.contentType(), is(notNullValue()));
+        assertThat(headers.contentType(),
+                is(equalTo(MediaType.APPLICATION_JSON)));
+    }
+
+    @Test
+    public void testBuilderWithContentType() {
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                .contentType(MediaType.APPLICATION_JSON)
                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(),

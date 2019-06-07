@@ -182,4 +182,54 @@ public class ContentDispositionTest {
         assertThat(cd.parameters(), is(notNullValue()));
         assertThat(cd.parameters().size(), is(equalTo(1)));
     }
+
+    @Test
+    public void testBuilderWithFilenameEncoded() {
+        ContentDisposition cd = ContentDisposition.builder()
+                .type("inline")
+                .filename("filename with spaces.txt")
+                .build();
+        assertThat(cd.type(), is(equalTo("inline")));
+        assertThat(cd.filename().isPresent(), is(equalTo(true)));
+        assertThat(cd.filename().get(), is(equalTo("filename with spaces.txt")));
+        assertThat(cd.size().isPresent(), is(equalTo(false)));
+    }
+
+    @Test
+    public void testBuilderWithDates() {
+        ContentDisposition cd = ContentDisposition.builder()
+                .type("inline")
+                .modificationDate(ZDT)
+                .creationDate(ZDT)
+                .readDate(ZDT)
+                .build();
+        assertThat(cd.type(), is(equalTo("inline")));
+        assertThat(cd.modificationDate().isPresent(), is(equalTo(true)));
+        assertThat(cd.modificationDate().get(), is(equalTo(ZDT)));
+        assertThat(cd.creationDate().isPresent(), is(equalTo(true)));
+        assertThat(cd.creationDate().get(), is(equalTo(ZDT)));
+        assertThat(cd.readDate().isPresent(), is(equalTo(true)));
+        assertThat(cd.readDate().get(), is(equalTo(ZDT)));
+    }
+
+    @Test
+    public void testBuilderWithSize() {
+        ContentDisposition cd = ContentDisposition.builder()
+                .type("inline")
+                .size(128)
+                .build();
+        assertThat(cd.type(), is(equalTo("inline")));
+        assertThat(cd.size().isPresent(), is(equalTo(true)));
+        assertThat(cd.size().getAsLong(), is(equalTo(128L)));
+    }
+
+    @Test
+    public void testBuilderWithCustomParam() {
+        ContentDisposition cd = ContentDisposition.builder()
+                .type("inline")
+                .parameter("foo", "bar")
+                .build();
+        assertThat(cd.type(), is(equalTo("inline")));
+        assertThat(cd.parameters().get("foo"), is(equalTo("bar")));
+    }
 }
