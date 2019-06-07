@@ -43,7 +43,11 @@ public final class BodyPartHeaders extends ReadOnlyParameters
     }
 
     /**
-     * Get the {@code Content-Type} header.
+     * Get the {@code Content-Type} header. If the {@code Content-Type} header
+     * is not present, the default value is
+     * {@link MediaType#APPLICATION_OCTET_STREAM} if he
+     * {@code Content-Disposition} header is present with a non empty value,
+     * otherwise {@link MediaType#TEXT_PLAIN}.
      *
      * @return MediaType, never {@code null}
      */

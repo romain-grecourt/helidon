@@ -346,7 +346,7 @@ public final class ContentDisposition {
 
         /**
          * Set the content disposition {@code creation-date} parameter.
-         * @param date
+         * @param date date value
          * @return this builder
          */
         public Builder creationDate(ZonedDateTime date) {
@@ -357,7 +357,7 @@ public final class ContentDisposition {
 
         /**
          * Set the content disposition {@code modification-date} parameter.
-         * @param date
+         * @param date date value
          * @return this builder
          */
         public Builder modificationDate(ZonedDateTime date) {
@@ -368,7 +368,7 @@ public final class ContentDisposition {
 
         /**
          * Set the content disposition {@code read-date} parameter.
-         * @param date
+         * @param date date value
          * @return this builder
          */
         public Builder readDate(ZonedDateTime date) {
@@ -379,7 +379,7 @@ public final class ContentDisposition {
 
         /**
          * Set the content disposition {@code size} parameter.
-         * @param size
+         * @param size size value
          * @return this builder
          */
         public Builder size(long size) {

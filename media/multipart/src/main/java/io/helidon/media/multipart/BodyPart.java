@@ -23,6 +23,7 @@ import io.helidon.webserver.internal.InBoundContent;
 import io.helidon.webserver.internal.InBoundMediaSupport;
 import io.helidon.webserver.internal.OutBoundContent;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Body part entity.
@@ -41,9 +42,10 @@ public final class BodyPart {
 
     /**
      * Indicate if the content of this {@link BodyPart} instance is buffered in
-     * memory. When buffered, {@link #as(java.lang.Class)} can be called safely
-     * to get the unmarshall the content without the use of a
-     * {@code CompletionStage}.
+     * memory. When buffered, {@link #as(java.lang.Class)} can be called to
+     * unmarshall the content synchronously. Otherwise, use {@link #content()}
+     * and {@link Content#as(java.lang.Class)} to do it asynchronously with a
+     * {@link CompletionStage}.
      *
      * @return {@code true} if buffered, {@code false} otherwise
      */
@@ -54,14 +56,13 @@ public final class BodyPart {
     /**
      * Converts the part content into an instance of the requested type.
      * <strong>This method can only be used if the part content is
-     * buffered!</strong>
-     * If the content is not buffered, use {@link #content()}.
+     * buffered!</strong>, see {@link #isBuffered()}.
      *
      * @param <T> the requested type
      * @param clazz the requested type class
      * @return T the converted content
-     * @throws IllegalStateException if the part is not buffered or if an
-     * error occurs while converting the content
+     * @throws IllegalStateException if the part is not buffered or if an error
+     * occurs while converting the content
      */
     public <T> T as(Class<T> clazz) {
         if (!buffered) {
