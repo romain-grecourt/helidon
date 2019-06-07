@@ -25,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -219,6 +220,19 @@ public final class ContentDisposition {
      */
     public Map<String, String> parameters() {
         return parameters;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(type);
+        for (Entry<String, String> param : parameters.entrySet()) {
+            sb.append(";");
+            sb.append(param.getKey());
+            sb.append("=");
+            sb.append(param.getValue());
+        }
+        return sb.toString();
     }
 
     /**
