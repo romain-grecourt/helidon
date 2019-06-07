@@ -555,7 +555,7 @@ public class MultiPartDecoderTest {
      * A publisher that publishes data chunks from a predefined set of byte
      * arrays.
      */
-    static final class DataChunkPublisher implements Publisher<DataChunk> {
+    static class DataChunkPublisher implements Publisher<DataChunk> {
 
         private final Queue<DataChunk> queue = new LinkedList<>();
         private long requested;

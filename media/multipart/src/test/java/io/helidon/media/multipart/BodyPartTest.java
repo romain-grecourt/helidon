@@ -20,9 +20,12 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
 import io.helidon.common.http.Writer;
+import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.multipart.MultiPartDecoderTest.DataChunkPublisher;
 import io.helidon.webserver.internal.InBoundContext;
 import io.helidon.webserver.internal.InBoundMediaSupport;
 import io.helidon.webserver.internal.OutBoundContent;
@@ -31,14 +34,21 @@ import io.helidon.webserver.internal.OutBoundMediaSupport;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import java.nio.charset.Charset;
+import java.util.LinkedList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -97,6 +107,77 @@ public class BodyPartTest {
         assertThat(acceptCalled.get(), is(equalTo(true)));
     }
 
+    @Test
+    public void testBufferedPart() {
+        Publisher<DataChunk> publisher = new DataChunkPublisher(
+                "abc".getBytes());
+        BodyPart bodyPart = BodyPart.builder()
+                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .buffered()
+                .build();
+        assertThat(bodyPart.isBuffered(), is(equalTo(true)));
+        assertThat(bodyPart.as(String.class), is(equalTo("abc")));
+    }
+
+    @Test
+    public void testNonBufferedPart() {
+        Publisher<DataChunk> publisher = new DataChunkPublisher(
+                "abc".getBytes());
+        BodyPart bodyPart = BodyPart.builder()
+                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .build();
+        assertThat(bodyPart.isBuffered(), is(equalTo(false)));
+        assertThrows(IllegalStateException.class, () -> {
+            bodyPart.as(String.class);
+        });
+    }
+
+    @Test
+    public void testBadBufferedPart() {
+        UncompletablePublisher publisher = new UncompletablePublisher(
+                "abc".getBytes(), "def".getBytes());
+        BodyPart bodyPart = BodyPart.builder()
+                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .buffered()
+                .build();
+        assertThat(bodyPart.isBuffered(), is(equalTo(true)));
+        try {
+            bodyPart.as(String.class);
+            fail("exception should be thrown");
+        } catch (IllegalStateException ex) {
+            assertThat(ex.getMessage(),
+                    is(equalTo("Unable to convert part content synchronously")));
+        }
+    }
+
+    @Test
+    public void testName() {
+        BodyPart bodyPart = BodyPart.builder()
+                .headers(BodyPartHeaders.builder()
+                        .contentDisposition(ContentDisposition.builder()
+                                .name("foo")
+                                .build())
+                        .build())
+                .entity("abc")
+                .build();
+        assertThat(bodyPart.name(), is(equalTo("foo")));
+        assertThat(bodyPart.filename(), is(nullValue()));
+    }
+
+    @Test
+    public void testFilename() {
+        BodyPart bodyPart = BodyPart.builder()
+                .headers(BodyPartHeaders.builder()
+                        .contentDisposition(ContentDisposition.builder()
+                                .filename("foo.txt")
+                                .build())
+                        .build())
+                .entity("abc")
+                .build();
+        assertThat(bodyPart.filename(), is(equalTo("foo.txt")));
+        assertThat(bodyPart.name(), is(nullValue()));
+    }
+
     @SuppressWarnings("unchecked")
     private static OutBoundMediaSupport getOutBoundMediaSupport(){
         OutBoundMediaSupport mediaSupport = new OutBoundMediaSupport(
@@ -139,5 +220,39 @@ public class BodyPartTest {
                 return Charset.defaultCharset();
             }
         };
+    }
+
+    /**
+     * A publisher that never invokes {@link Subscriber#onComplete()}.
+     */
+    static class UncompletablePublisher extends DataChunkPublisher {
+
+        UncompletablePublisher(byte[]... chunksData) {
+            super(chunksData);
+        }
+
+        @Override
+        public void subscribe(Subscriber<? super DataChunk> subscriber) {
+            super.subscribe(new Subscriber<DataChunk> () {
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    subscriber.onSubscribe(subscription);
+                }
+
+                @Override
+                public void onNext(DataChunk item) {
+                    subscriber.onNext(item);
+                }
+
+                @Override
+                public void onError(Throwable error) {
+                    subscriber.onError(error);
+                }
+
+                @Override
+                public void onComplete() {
+                }
+            });
+        }
     }
 }
