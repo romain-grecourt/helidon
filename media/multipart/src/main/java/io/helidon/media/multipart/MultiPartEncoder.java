@@ -37,7 +37,7 @@ public final class MultiPartEncoder
         implements Processor<BodyPart, DataChunk> {
 
     private Subscription partsSubscription;
-    private BodyPartContentSubscriber bodyPartContent;
+    private BodyPartContentSubscriber bodyPartContentSubscriber;
 
     /**
      * The out-bound media support used to marshall the body part contents.
@@ -62,6 +62,7 @@ public final class MultiPartEncoder
     @Override
     protected void hookOnRequested(long n, long result) {
         requestNextPart();
+        // request more on current bodyPartContentSubscriber
     }
 
     @Override
@@ -83,7 +84,7 @@ public final class MultiPartEncoder
         StringBuilder sb = new StringBuilder();
 
         // start boundary
-        sb.append(boundary).append("\r\n");
+        sb.append("--").append(boundary).append("\r\n");
 
         // headers lines
         for (Map.Entry<String, List<String>> headerEntry
@@ -99,13 +100,19 @@ public final class MultiPartEncoder
         }
 
         // end of headers empty line
-        if (!headers.isEmpty()) {
-            sb.append("\r\n");
-        }
-        submit(DataChunk.create(ByteBuffer.wrap(sb.toString().getBytes())));
-        bodyPartContent = new BodyPartContentSubscriber(this);
+        sb.append("\r\n");
+        submit(sb.toString());
+        bodyPartContentSubscriber = new BodyPartContentSubscriber(this);
         ((OutBoundContent) content).mediaSupport(mediaSupport);
-        bodyPart.content().subscribe(bodyPartContent);
+        bodyPart.content().subscribe(bodyPartContentSubscriber);
+    }
+
+    /**
+     * Submit the data represented by the specified string.
+     * @param data data to submit
+     */
+    void submit(String data) {
+        submit(DataChunk.create(data.getBytes()));
     }
 
     @Override
@@ -115,7 +122,7 @@ public final class MultiPartEncoder
 
     @Override
     public void onComplete() {
-        submit(DataChunk.create(ByteBuffer.wrap((boundary + "--")
+        submit(DataChunk.create(ByteBuffer.wrap(("--" + boundary + "--")
                 .getBytes())));
         complete();
     }
@@ -165,6 +172,7 @@ public final class MultiPartEncoder
 
         @Override
         public void onComplete() {
+            encoder.submit("\n");
             if (!encoder.isCompleted()) {
                 encoder.requestNextPart();
             }

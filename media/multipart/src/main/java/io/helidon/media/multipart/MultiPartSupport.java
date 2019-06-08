@@ -143,7 +143,7 @@ public final class MultiPartSupport implements Service, Handler {
      * A reactive publisher of {@link BodyPart} that publishes all the items
      * of a given {@code Collection<BodyPart>}.
      */
-    private static final class BodyPartPublisher
+    static final class BodyPartPublisher
             implements Publisher<BodyPart> {
 
         private final Collection<BodyPart> bodyParts;
