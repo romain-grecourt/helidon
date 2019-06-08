@@ -18,6 +18,7 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.Utils;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
@@ -294,15 +295,6 @@ final class MIMEParser {
         private ParsingException(String message) {
             super(message);
         }
-
-        /**
-         * Create a new exception 
-         * @param message exception message
-         * @param cause exception cause
-         */
-        private ParsingException(String message, Throwable cause) {
-            super(message, cause);
-        }
     }
 
     /**
@@ -314,7 +306,7 @@ final class MIMEParser {
     /**
      * Encoding used to parse the header.
      */
-    private static final String HEADER_ENCODING = "ISO8859-1";
+    private static final Charset HEADER_ENCODING = Charset.forName("ISO8859-1");
 
     /**
      * All states.
@@ -821,11 +813,7 @@ final class MIMEParser {
         if (hdrLen == 0){
             return "";
         }
-        try {
-            return new String(buf, offset, hdrLen, HEADER_ENCODING);
-        } catch (UnsupportedEncodingException ex) {
-            throw new ParsingException("Error while reading header line", ex);
-        }
+        return new String(buf, offset, hdrLen, HEADER_ENCODING);
     }
 
     /**
