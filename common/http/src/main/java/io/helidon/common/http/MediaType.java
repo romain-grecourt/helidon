@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018,2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,6 +92,36 @@ public final class MediaType implements AcceptPredicate<MediaType> {
      * A {@link MediaType} constant representing {@code text/html} media type.
      */
     public static final MediaType TEXT_HTML = createMediaType("text", "html");
+    /**
+     * A {@link MediaType} constant representing OpenAPI yaml.
+     * <p>
+     * See https://github.com/opengeospatial/WFS_FES/issues/117#issuecomment-402188280
+     */
+    public static final MediaType APPLICATION_OPENAPI_YAML = createMediaType("application", "vnd.oai.openapi");
+    /**
+     * A {@link MediaType} constant representing OpenAPI json.
+     */
+    public static final MediaType APPLICATION_OPENAPI_JSON = createMediaType("application", "vnd.oai.openapi+json");
+
+    /**
+     * A {@link MediaType} constant representing "x" YAML as application.
+     */
+    public static final MediaType APPLICATION_X_YAML = createMediaType("application", "x-yaml");
+
+    /**
+     * A {@link MediaType} constant representing pseudo-registered YAML. (It is not actually registered.)
+     */
+    public static final MediaType APPLICATION_YAML = createMediaType("application", "yaml");
+
+    /**
+     * A {@link MediaType} constant representing "x" YAML as text.
+     */
+    public static final MediaType TEXT_X_YAML = createMediaType("text", "x-yaml");
+
+    /**
+     * A {@link MediaType} constant representing pseudo-registered YAML as text.
+     */
+    public static final MediaType TEXT_YAML = createMediaType("text", "yaml");
 
     private static final MediaType APPLICATION_JAVASCRIPT = createMediaType("application", "javascript");
 

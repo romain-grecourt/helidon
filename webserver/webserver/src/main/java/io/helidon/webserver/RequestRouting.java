@@ -28,6 +28,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import io.helidon.common.CollectionsHelper;
+import io.helidon.common.context.Contexts;
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.Http;
 
@@ -97,7 +98,9 @@ class RequestRouting implements Routing {
 
             Crawler crawler = new Crawler(routes, path, rawPath, bareRequest.method());
             RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, span);
-            nextRequests.next();
+            // only register the span context once on the top level request, as others are cloned from it
+            nextRequests.context().register(span.context());
+            Contexts.runInContext(nextRequests.context(), (Runnable) nextRequests::next);
         } catch (Error | RuntimeException e) {
             LOGGER.log(Level.SEVERE, "Unexpected error occurred during routing!", e);
             throw e;
@@ -141,7 +144,9 @@ class RequestRouting implements Routing {
         if (spanContext != null) {
             spanBuilder.asChildOf(spanContext);
         }
-        return spanBuilder.startActive(true).span();
+
+        // cannot use startActive, as it conflicts with the thread model we use
+        return spanBuilder.start();
     }
 
     /**
@@ -349,7 +354,9 @@ class RequestRouting implements Routing {
                     RoutedRequest nextRequest = new RoutedRequest(this, nextResponse, nextItem.path, errorHandlers);
                     LOGGER.finest(() -> "(reqID: " + requestId() + ") Routing next: " + nextItem.path);
                     requestSpan.log(nextItem.handlerRoute.diagnosticEvent());
-                    nextItem.handlerRoute.handler().accept(nextRequest, nextResponse);
+                    nextItem.handlerRoute
+                            .handler()
+                            .accept(nextRequest, nextResponse);
                 } catch (RuntimeException re) {
                     nextNoCheck(re);
                 }

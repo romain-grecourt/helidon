@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.helidon</groupId>
         <artifactId>helidon-project</artifactId>
-        <version>1.0.4-SNAPSHOT</version>
+        <version>1.1.2-SNAPSHOT</version>
     </parent>
     <artifactId>helidon-bom</artifactId>
     <packaging>pom</packaging>
@@ -269,6 +269,11 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.helidon.microprofile.bundles</groupId>
+                <artifactId>helidon-microprofile-2.2</artifactId>
+                <version>${project.version{</version>
+            </dependency>
+            <dependency>
                 <groupId>io.helidon.microprofile</groupId>
                 <artifactId>helidon-microprofile-security</artifactId>
                 <version>${project.version}</version>
@@ -281,6 +286,11 @@
             <dependency>
                 <groupId>io.helidon.microprofile.metrics</groupId>
                 <artifactId>helidon-microprofile-metrics</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.microprofile.config</groupId>
+                <artifactId>helidon-microprofile-config</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- metrics -->
@@ -337,6 +347,11 @@
             <dependency>
                 <groupId>io.helidon.common</groupId>
                 <artifactId>helidon-common-service-loader</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.common</groupId>
+                <artifactId>helidon-common-context</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -457,6 +472,17 @@
             <dependency>
                 <groupId>io.helidon.integrations.graal</groupId>
                 <artifactId>helidon-graal-native-image-extension</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- OpenAPI support -->
+            <dependency>
+                <groupId>io.helidon.openapi</groupId>
+                <artifactId>helidon-openapi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.microprofile.openapi</groupId>
+                <artifactId>helidon-microprofile-openapi</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

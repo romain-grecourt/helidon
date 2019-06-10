@@ -198,7 +198,7 @@ public final class OutBoundMediaSupport extends MediaSupport {
         @Override
         public boolean test(Object o) {
             return clazz == null
-                    || (o != null && clazz.isAssignableFrom(o.getClass()));
+                    || (o != null && o.getClass().isAssignableFrom(clazz));
         }
     }
 

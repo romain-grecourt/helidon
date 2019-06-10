@@ -13,6 +13,78 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixes
 
+## [1.1.1] - 2019-05-23
+
+### Notes
+
+This release adds support for MicroProfile OpenAPI 1.1.2. It also includes bug and performance fixes including substantial performance improvement with MP when under heavy load, and better heap utilization with Keep-Alive connections.
+
+### Improvements
+
+- MicroProfile OpenAPI 1.1.2 support [712](https://github.com/oracle/helidon/pull/712)
+- MP: Support logging.properties from classpath or from a file. [693](https://github.com/oracle/helidon/pull/693)
+
+### Fixes
+
+- WebServer: Make default sizing of Jersey thread pool dynamic, based on # of cores [691](https://github.com/oracle/helidon/pull/691)
+- WebServer: Remove the channel closed listener in BareResponseImpl when request completes. [695](https://github.com/oracle/helidon/pull/695)
+- WebServer: Complete writing a response before checking unconsumed request payload [699](https://github.com/oracle/helidon/pull/699)
+- WebServer: Ensure channel closed listener is removed on exception [702](https://github.com/oracle/helidon/pull/702)
+- Metrics: Handle special case of NaN's to avoid NumberFormatException [723](https://github.com/oracle/helidon/pull/723)
+- MicroProfile: Further `ConfigCdiExtension` fixes and improvements [724](https://github.com/oracle/helidon/pull/724)
+- MicroProfile: Make a few FT params configurable via properties [725](https://github.com/oracle/helidon/pull/725)
+- Upgrade Weld to 3.1.1.Final [659](https://github.com/oracle/helidon/pull/659)
+- Upgrade Jandex to 2.1.1.Final [694](https://github.com/oracle/helidon/pull/694)
+- Upgrade Oracle OCI SDK to 1.5.2 [715](https://github.com/oracle/helidon/pull/715)
+- Fix incorrect `isAssignableFrom` [728](https://github.com/oracle/helidon/pull/728) [731](https://github.com/oracle/helidon/pull/731) [732](https://github.com/oracle/helidon/pull/732) [734](https://github.com/oracle/helidon/pull/734) [735](https://github.com/oracle/helidon/pull/735)
+- Enable ThreadPool injection into Application. [713](https://github.com/oracle/helidon/pull/713)
+- Use jandex index in MP quickstart [714](https://github.com/oracle/helidon/pull/714)
+- Documentation fixes [697](https://github.com/oracle/helidon/pull/697) [704](https://github.com/oracle/helidon/pull/704) [719](https://github.com/oracle/helidon/pull/719)
+
+## [1.1.0] - 2019-05-14
+
+### Notes
+
+This release contains bug fixes and a number of early implementations of 
+significant new features.
+
+### Improvements
+
+These features represent work in progress and should be considered experimental.
+These APIs are subject to change. 
+
+- Initial implementation of gRPC server/framework [543](https://github.com/oracle/helidon/pull/543)
+- Initial JTA/JPA support for MP [501](https://github.com/oracle/helidon/pull/501)
+- Initial implementation of OpenApi support for SE [558](https://github.com/oracle/helidon/pull/558)
+- Initial implementation of the common context [600](https://github.com/oracle/helidon/pull/600) [599](https://github.com/oracle/helidon/pull/599)
+
+### Fixes
+
+- Graal native image update to work with 19 GA [677](https://github.com/oracle/helidon/pull/677)
+- Tracing: Activate and start instead of just starting the main span [598](https://github.com/oracle/helidon/pull/598)
+- Config: refactor change support [579](https://github.com/oracle/helidon/pull/579)
+- Config: Config object mapping was missing from bom pom. [529](https://github.com/oracle/helidon/pull/529)
+- Config: MpcSourceEnvironmentVariablesTest::testPrecedence fails on Windows  [636](https://github.com/oracle/helidon/issues/636)
+- Security: OIDC Provider : Incorrect error if scopes do not match security requirement [661](https://github.com/oracle/helidon/issues/661)
+- Security: Scope annotation not working alone [646](https://github.com/oracle/helidon/issues/646)
+- Security: Sub resource locator authorization does not work [552](https://github.com/oracle/helidon/issues/552)
+- Security: OIDC fails with Okta identity provider [642](https://github.com/oracle/helidon/issues/642)
+- Security: Multitenancy support for IDCS Role Mapping [571](https://github.com/oracle/helidon/pull/571)
+- Security: JWT must be signed unless explicitly allowing unsigned JWTs. [523](https://github.com/oracle/helidon/pull/523)
+- Security: Primitive types long and boolean now supported by MP-JWT-Auth [586](https://github.com/oracle/helidon/pull/586)
+- WebServer: Request.Context copy ctor should not append default readers [653](https://github.com/oracle/helidon/issues/653)
+- WebServer: JSON-Binding breaks prometheus metrics format [645](https://github.com/oracle/helidon/issues/645)
+- WebServer: Removed unnecessary synchronization in content readers [576](https://github.com/oracle/helidon/pull/576)
+- WebServer: Minimize writer creation in Response [603](https://github.com/oracle/helidon/pull/603)
+- WebServer: Add enabled enabledSSLProtocols methods on ServerConfiguration.Builder [590](https://github.com/oracle/helidon/issues/590)
+- WebServer: NettyWebServer uses a deprecated constructor for JdkSslContext  [519](https://github.com/oracle/helidon/issues/519)
+- Documentation updates:  [671](https://github.com/oracle/helidon/pull/671) [634](https://github.com/oracle/helidon/pull/634) [620](https://github.com/oracle/helidon/pull/620) [584](https://github.com/oracle/helidon/pull/584) [608](https://github.com/oracle/helidon/pull/608) [589](https://github.com/oracle/helidon/pull/589)
+- Add Implementation headers to jar MANIFEST [618](https://github.com/oracle/helidon/pull/618)
+- Common Service Loader [621](https://github.com/oracle/helidon/issues/621)
+- Update SnakeYAML to 1.24 [626](https://github.com/oracle/helidon/pull/626)
+- Fix the TODO application example [604](https://github.com/oracle/helidon/pull/604)
+- JSON handling improvements [609](https://github.com/oracle/helidon/pull/609)
+
 ## [1.0.3] - 2019-04-16
 
 ### Notes
@@ -260,7 +332,9 @@ for details.
 ### Notes
 - Initial source drop on Github
 
-[Unreleased]: https://github.com/oracle/helidon/compare/1.0.3...HEAD
+[Unreleased]: https://github.com/oracle/helidon/compare/1.1.1...HEAD
+[1.1.1]: https://github.com/oracle/helidon/compare/1.1.0...1.1.1
+[1.1.0]: https://github.com/oracle/helidon/compare/1.0.3...1.1.0
 [1.0.3]: https://github.com/oracle/helidon/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/oracle/helidon/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/oracle/helidon/compare/1.0.0...1.0.1

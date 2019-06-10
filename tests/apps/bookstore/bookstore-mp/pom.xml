@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.helidon.tests.apps.bookstore</groupId>
         <artifactId>helidon-tests-apps-bookstore-project</artifactId>
-        <version>1.0.4-SNAPSHOT</version>
+        <version>1.1.2-SNAPSHOT</version>
     </parent>
 
     <groupId>io.helidon.tests.apps.bookstore.bookstore-mp</groupId>
@@ -142,6 +142,19 @@
                                 </resource>
                             </resources>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jboss.jandex</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                        <phase>process-classes</phase>
                     </execution>
                 </executions>
             </plugin>

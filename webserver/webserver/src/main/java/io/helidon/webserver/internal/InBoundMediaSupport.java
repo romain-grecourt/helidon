@@ -192,7 +192,7 @@ public final class InBoundMediaSupport extends MediaSupport {
 
         @Override
         public boolean test(Class<?> aClass) {
-            return aClass.isAssignableFrom(clazz);
+            return clazz.isAssignableFrom(aClass);
         }
     }
 

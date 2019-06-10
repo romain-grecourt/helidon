@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,11 @@
 
 package io.helidon.microprofile.faulttolerance;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
 import io.helidon.common.configurable.ScheduledThreadPoolSupplier;
+import io.helidon.common.context.ContextAwareExecutorService;
 import io.helidon.microprofile.server.Server;
 
 import org.junit.jupiter.api.Test;
@@ -30,10 +34,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 class SchedulerConfigTest {
 
-    /**
-     * Loads config from application.yaml where the pool size is set to
-     * 8 instead of 16 (default).
-     */
     @Test
     void testNonDefaultConfig() {
         Server server = null;
@@ -41,10 +41,14 @@ class SchedulerConfigTest {
             server = Server.builder().port(-1).build();
             server.start();
 
-            CommandScheduler commandScheduler = CommandScheduler.instance();
+            CommandScheduler commandScheduler = CommandScheduler.create(8);
             assertThat(commandScheduler, notNullValue());
             ScheduledThreadPoolSupplier poolSupplier = commandScheduler.poolSupplier();
-            assertThat(poolSupplier.get().getCorePoolSize(), is(8));
+
+            ScheduledExecutorService service = poolSupplier.get();
+            ContextAwareExecutorService executorService = ((ContextAwareExecutorService) service);
+            ScheduledThreadPoolExecutor stpe = (ScheduledThreadPoolExecutor) executorService.unwrap();
+            assertThat(stpe.getCorePoolSize(), is(8));
         } finally {
             if (server != null) {
                 server.stop();

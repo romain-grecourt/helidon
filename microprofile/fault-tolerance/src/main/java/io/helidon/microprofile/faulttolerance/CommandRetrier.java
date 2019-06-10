@@ -19,6 +19,8 @@ package io.helidon.microprofile.faulttolerance;
 import java.lang.reflect.Method;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -40,6 +42,8 @@ import net.jodah.failsafe.SyncFailsafe;
 import net.jodah.failsafe.function.CheckedFunction;
 import net.jodah.failsafe.util.concurrent.Scheduler;
 import org.apache.commons.configuration.AbstractConfiguration;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import org.eclipse.microprofile.faulttolerance.exceptions.BulkheadException;
 import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
@@ -67,7 +71,14 @@ import static io.helidon.microprofile.faulttolerance.FaultToleranceMetrics.getHi
 public class CommandRetrier {
     private static final Logger LOGGER = Logger.getLogger(CommandRetrier.class.getName());
 
-    private static final int DELAY_CORRECTION = 250;
+    private static final long   DEFAULT_DELAY_CORRECTION = 250L;
+    private static final String FT_DELAY_CORRECTION = "fault-tolerance.delayCorrection";
+    private static final int    DEFAULT_COMMAND_THREAD_POOL_SIZE = 8;
+    private static final String FT_COMMAND_THREAD_POOL_SIZE = "fault-tolerance.commandThreadPoolSize";
+    private static final long   DEFAULT_THREAD_WAITING_PERIOD = 2000L;
+    private static final String FT_THREAD_WAITING_PERIOD = "fault-tolerance.threadWaitingPeriod";
+    private static final long   DEFAULT_BULKHEAD_TASK_QUEUEING_PERIOD = 2000L;
+    private static final String FT_BULKHEAD_TASK_QUEUEING_PERIOD = "fault-tolerance.bulkheadTaskQueueingPeriod";
 
     private final InvocationContext context;
 
@@ -85,6 +96,34 @@ public class CommandRetrier {
 
     private ClassLoader contextClassLoader;
 
+    private final long delayCorrection;
+
+    private final int commandThreadPoolSize;
+
+    private final long threadWaitingPeriod;
+
+    private final long bulkheadTaskQueueingPeriod;
+
+    private CompletableFuture<?> taskQueued = new CompletableFuture<>();
+
+    class CommandCallable<T> implements Callable<T> {
+
+        private final Callable<T> delegate;
+
+        CommandCallable(Callable<T> delegate) {
+            this.delegate = delegate;
+        }
+
+        public FaultToleranceCommand getCommand() {
+            return command;
+        }
+
+        @Override
+        public T call() throws Exception {
+            return delegate.call();
+        }
+    }
+
     /**
      * Constructor.
      *
@@ -96,6 +135,17 @@ public class CommandRetrier {
         this.introspector = introspector;
         this.isAsynchronous = introspector.isAsynchronous();
         this.method = context.getMethod();
+
+        // Init Helidon config params
+        Config config = ConfigProvider.getConfig();
+        this.delayCorrection = config.getOptionalValue(FT_DELAY_CORRECTION, Long.class)
+                .orElse(DEFAULT_DELAY_CORRECTION);
+        this.commandThreadPoolSize = config.getOptionalValue(FT_COMMAND_THREAD_POOL_SIZE, Integer.class)
+                .orElse(DEFAULT_COMMAND_THREAD_POOL_SIZE);
+        this.threadWaitingPeriod = config.getOptionalValue(FT_THREAD_WAITING_PERIOD, Long.class)
+                .orElse(DEFAULT_THREAD_WAITING_PERIOD);
+        this.bulkheadTaskQueueingPeriod = config.getOptionalValue(FT_BULKHEAD_TASK_QUEUEING_PERIOD, Long.class)
+                .orElse(DEFAULT_BULKHEAD_TASK_QUEUEING_PERIOD);
 
         final Retry retry = introspector.getRetry();
         if (retry != null) {
@@ -122,7 +172,7 @@ public class CommandRetrier {
              * on heavily loaded systems.
              */
             Function<Long, Long> correction =
-                    d -> Math.abs(d - TimeUtil.convertToNanos(DELAY_CORRECTION, ChronoUnit.MILLIS));
+                    d -> Math.abs(d - TimeUtil.convertToNanos(delayCorrection, ChronoUnit.MILLIS));
 
             // Processing for jitter and delay
             if (retry.jitter() > 0) {
@@ -148,6 +198,24 @@ public class CommandRetrier {
     }
 
     /**
+     * Get command thread pool size.
+     *
+     * @return Thread pool size.
+     */
+    int commandThreadPoolSize() {
+        return commandThreadPoolSize;
+    }
+
+    /**
+     * Get thread waiting period.
+     *
+     * @return Thread waiting period.
+     */
+    long threadWaitingPeriod() {
+        return threadWaitingPeriod;
+    }
+
+    /**
      * Retries running a command according to retry policy.
      *
      * @return Object returned by command.
@@ -164,7 +232,7 @@ public class CommandRetrier {
 
         try {
             if (isAsynchronous) {
-                Scheduler scheduler = CommandScheduler.instance();
+                Scheduler scheduler = CommandScheduler.create(commandThreadPoolSize);
                 AsyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy).with(scheduler);
 
                 // Store context class loader to access config
@@ -174,16 +242,19 @@ public class CommandRetrier {
                 if (introspector.isReturnType(CompletionStage.class)) {
                     CompletionStage<?> completionStage = (introspector.hasFallback()
                             ? failsafe.withFallback(fallbackFunction)
-                            .future(() -> (CompletionStage<?>) retryExecute())
+                                      .future(() -> (CompletionStage<?>) retryExecute())
                             : failsafe.future(() -> (CompletionStage<?>) retryExecute()));
+                    awaitBulkheadAsyncTaskQueued();
                     return completionStage;
                 }
 
                 // If not, it must be a subtype of Future
                 if (introspector.isReturnType(Future.class)) {
                     FailsafeFuture<?> chainedFuture = (introspector.hasFallback()
-                            ? failsafe.withFallback(fallbackFunction).get(this::retryExecute)
-                            : failsafe.get(this::retryExecute));
+                            ? failsafe.withFallback(fallbackFunction)
+                                      .get(new CommandCallable<>(this::retryExecute))
+                            : failsafe.get(new CommandCallable<>(this::retryExecute)));
+                    awaitBulkheadAsyncTaskQueued();
                     return new FailsafeChainedFuture<>(chainedFuture);
                 }
 
@@ -192,13 +263,15 @@ public class CommandRetrier {
             } else {
                 SyncFailsafe<Object> failsafe = Failsafe.with(retryPolicy);
                 return introspector.hasFallback()
-                        ? failsafe.withFallback(fallbackFunction).get(this::retryExecute)
-                        : failsafe.get(this::retryExecute);
+                        ? failsafe.withFallback(fallbackFunction)
+                                  .get(new CommandCallable<>(this::retryExecute))
+                        : failsafe.get(new CommandCallable<>(this::retryExecute));
             }
         } catch (FailsafeException e) {
             throw toException(e.getCause());
         }
     }
+
 
     /**
      * Creates a new command for each retry since Hystrix commands can only be
@@ -215,7 +288,8 @@ public class CommandRetrier {
         }
 
         final String commandKey = createCommandKey();
-        command = new FaultToleranceCommand(commandKey, introspector, context, contextClassLoader);
+        command = new FaultToleranceCommand(this, commandKey, introspector, context,
+                contextClassLoader, taskQueued);
 
         // Configure command before execution
         introspector.getHystrixProperties()
@@ -228,6 +302,7 @@ public class CommandRetrier {
                     + command.getCommandKey()
                     + " on thread " + Thread.currentThread().getName());
 
+            // Execute task
             invocationCount++;
             updateMetricsBefore();
             result = command.execute();
@@ -252,6 +327,22 @@ public class CommandRetrier {
             throw toException(cause);
         }
         return result;
+    }
+
+    /**
+     * A task can be queued on a bulkhead. When async and bulkheads are combined,
+     * we need to ensure that they get queued in the correct order before
+     * returning control back to the application. An exception thrown during
+     * queueing is processed in {@link FaultToleranceCommand#execute()}.
+     */
+    private void awaitBulkheadAsyncTaskQueued() {
+        if (introspector.hasBulkhead()) {
+            try {
+                taskQueued.get(bulkheadTaskQueueingPeriod, TimeUnit.MILLISECONDS);
+            } catch (Exception e) {
+                LOGGER.info(() -> "Bulkhead async task queueing exception " + e);
+            }
+        }
     }
 
     /**

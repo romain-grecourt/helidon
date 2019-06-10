@@ -22,7 +22,7 @@
     <parent>
         <groupId>io.helidon</groupId>
         <artifactId>helidon-project</artifactId>
-        <version>1.0.4-SNAPSHOT</version>
+        <version>1.1.2-SNAPSHOT</version>
     </parent>
     <artifactId>helidon-javadocs</artifactId>
     <name>Helidon Javadocs</name>
@@ -374,6 +374,16 @@
                 <dependency>
                     <groupId>javax.transaction</groupId>
                     <artifactId>javax.transaction-api</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>io.helidon.integrations.cdi</groupId>
+                    <artifactId>helidon-integrations-cdi-jpa</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>io.helidon.integrations.cdi</groupId>
+                    <artifactId>helidon-integrations-cdi-jpa-weld</artifactId>
+                    <version>${project.version}</version>
                 </dependency>
                 <dependency>
                     <groupId>io.helidon.integrations.cdi</groupId>

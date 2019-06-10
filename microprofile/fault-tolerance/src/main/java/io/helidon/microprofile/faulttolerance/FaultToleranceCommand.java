@@ -18,11 +18,15 @@ package io.helidon.microprofile.faulttolerance;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 import javax.interceptor.InvocationContext;
+
+import io.helidon.common.context.Context;
+import io.helidon.common.context.Contexts;
 
 import com.netflix.hystrix.HystrixCommand;
 import com.netflix.hystrix.HystrixCommandGroupKey;
@@ -58,7 +62,6 @@ import static io.helidon.microprofile.faulttolerance.FaultToleranceMetrics.regis
 public class FaultToleranceCommand extends HystrixCommand<Object> {
     private static final Logger LOGGER = Logger.getLogger(FaultToleranceCommand.class.getName());
 
-    static final int MAX_THREAD_WAITING_PERIOD = 2000;      // milliseconds
     static final String HELIDON_MICROPROFILE_FAULTTOLERANCE = "io.helidon.microprofile.faulttolerance";
 
     private final String commandKey;
@@ -79,28 +82,31 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
 
     private ClassLoader contextClassLoader;
 
-    /**
-     * Default thread pool size for a command or a command group.
-     */
-    private static final int MAX_THREAD_POOL_SIZE = 32;
+    private final long threadWaitingPeriod;
 
     /**
-     * Default max thread pool queue size.
+     * Helidon context in which to run business method.
      */
-    private static final int MAX_THREAD_POOL_QUEUE_SIZE = -1;
+    private Context helidonContext;
+
+    private CompletableFuture<?> taskQueued;
 
     /**
      * Constructor. Specify a thread pool key if a {@code @Bulkhead} is specified
      * on the method. A unique thread pool key will enable setting limits for this
      * command only based on the {@code Bulkhead} properties.
      *
+     * @param commandRetrier The command retrier associated with this command.
      * @param commandKey The command key.
      * @param introspector The method introspector.
      * @param context CDI invocation context.
      * @param contextClassLoader Context class loader or {@code null} if not available.
+     * @param taskQueued Future completed when task has been queued.
      */
-    public FaultToleranceCommand(String commandKey, MethodIntrospector introspector,
-                                 InvocationContext context, ClassLoader contextClassLoader) {
+    public FaultToleranceCommand(CommandRetrier commandRetrier, String commandKey,
+                                 MethodIntrospector introspector,
+                                 InvocationContext context, ClassLoader contextClassLoader,
+                                 CompletableFuture<?> taskQueued) {
         super(Setter.withGroupKey(HystrixCommandGroupKey.Factory.asKey(HELIDON_MICROPROFILE_FAULTTOLERANCE))
                 .andCommandKey(
                         HystrixCommandKey.Factory.asKey(commandKey))
@@ -121,23 +127,25 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
                                 .withCoreSize(
                                         introspector.hasBulkhead()
                                                 ? introspector.getBulkhead().value()
-                                                : MAX_THREAD_POOL_SIZE)
+                                                : commandRetrier.commandThreadPoolSize())
                                 .withMaximumSize(
                                         introspector.hasBulkhead()
                                                 ? introspector.getBulkhead().value()
-                                                : MAX_THREAD_POOL_SIZE)
+                                                : commandRetrier.commandThreadPoolSize())
                                 .withMaxQueueSize(
                                         introspector.hasBulkhead() && introspector.isAsynchronous()
                                                 ? introspector.getBulkhead().waitingTaskQueue()
-                                                : MAX_THREAD_POOL_QUEUE_SIZE)
+                                                : -1)
                                 .withQueueSizeRejectionThreshold(
                                         introspector.hasBulkhead() && introspector.isAsynchronous()
                                                 ? introspector.getBulkhead().waitingTaskQueue()
-                                                : MAX_THREAD_POOL_QUEUE_SIZE)));
+                                                : -1)));
         this.commandKey = commandKey;
         this.introspector = introspector;
         this.context = context;
         this.contextClassLoader = contextClassLoader;
+        this.threadWaitingPeriod = commandRetrier.threadWaitingPeriod();
+        this.taskQueued = taskQueued;
 
         // Special initialization for methods with breakers
         if (introspector.hasCircuitBreaker()) {
@@ -195,6 +203,10 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
         return executionTime;
     }
 
+    BulkheadHelper getBulkheadHelper() {
+        return bulkheadHelper;
+    }
+
     /**
      * Code to run as part of this command. Called from superclass.
      *
@@ -233,7 +245,7 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
         // Finally, invoke the user method
         try {
             runThread = Thread.currentThread();
-            return context.proceed();
+            return Contexts.runInContextWithThrow(helidonContext, context::proceed);
         } finally {
             if (introspector.hasBulkhead()) {
                 bulkheadHelper.markAsNotRunning(this);
@@ -249,6 +261,7 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
      */
     @Override
     public Object execute() {
+        this.helidonContext = Contexts.context().orElseGet(Context::create);
         boolean lockRemoved = false;
 
         // Get lock and check breaker delay
@@ -284,9 +297,18 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
         Throwable throwable = null;
         long startNanos = System.nanoTime();
         try {
+            // Queue the task
             future = super.queue();
+
+            // Notify successful queueing of task
+            taskQueued.complete(null);
+
+            // Execute and get result from task
             result = future.get();
         } catch (Exception e) {
+            // Notify exception during task queueing
+            taskQueued.completeExceptionally(e);
+
             if (e instanceof ExecutionException) {
                 waitForThreadToComplete();
             }
@@ -417,7 +439,7 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
     private void logCircuitBreakerState(String preamble) {
         if (introspector.hasCircuitBreaker()) {
             String hystrixState = isCircuitBreakerOpen() ? "OPEN" : "CLOSED";
-            LOGGER.info(preamble + ": breaker for " + getCommandKey() + " in state "
+            LOGGER.info(() -> preamble + ": breaker for " + getCommandKey() + " in state "
                     + breakerHelper.getState() + " (Hystrix: " + hystrixState
                     + " Thread:" + Thread.currentThread().getName() + ")");
         }
@@ -438,7 +460,7 @@ public class FaultToleranceCommand extends HystrixCommand<Object> {
         if (!introspector.isAsynchronous() && runThread != null) {
             try {
                 int waitTime = 250;
-                while (runThread.getState() == Thread.State.RUNNABLE && waitTime <= MAX_THREAD_WAITING_PERIOD) {
+                while (runThread.getState() == Thread.State.RUNNABLE && waitTime <= threadWaitingPeriod) {
                     LOGGER.info(() -> "Waiting for completion of thread " + runThread);
                     Thread.sleep(waitTime);
                     waitTime += 250;
