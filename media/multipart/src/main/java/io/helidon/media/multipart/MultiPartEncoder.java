@@ -49,6 +49,8 @@ public final class MultiPartEncoder
      */
     private final String boundary;
 
+    private volatile boolean complete;
+
     /**
      * Create a new multipart encoder.
      * @param boundary boundary string
@@ -57,12 +59,17 @@ public final class MultiPartEncoder
     public MultiPartEncoder(String boundary, OutBoundMediaSupport mediaSupport) {
         this.mediaSupport = mediaSupport;
         this.boundary = boundary;
+        this.complete = false;
     }
 
     @Override
     protected void hookOnRequested(long n, long result) {
-        requestNextPart();
-        // request more on current bodyPartContentSubscriber
+        if (tryAcquire() > 0) {
+            partsSubscription.request(1);
+            if (bodyPartContentSubscriber != null) {
+                bodyPartContentSubscriber.request(n);
+            }
+        }
     }
 
     @Override
@@ -78,6 +85,7 @@ public final class MultiPartEncoder
     public void onNext(BodyPart bodyPart) {
         Content content = bodyPart.content();
         if (!(content instanceof OutBoundContent)) {
+            error(new IllegalStateException("Not an out-bound body part"));
             return;
         }
         Map<String, List<String>> headers = bodyPart.headers().toMap();
@@ -122,20 +130,31 @@ public final class MultiPartEncoder
 
     @Override
     public void onComplete() {
-        submit(DataChunk.create(ByteBuffer.wrap(("--" + boundary + "--")
-                .getBytes())));
-        complete();
+        complete = true;
+    }
+
+    /**
+     * Complete this publisher or request the next part.
+     */
+    void onPartComplete() {
+        if (complete) {
+            submit(DataChunk.create(ByteBuffer.wrap(("--" + boundary + "--")
+                    .getBytes())));
+            complete();
+        } else {
+            long n = tryAcquire();
+            if (n > 0){
+                partsSubscription.request(1);
+                if (bodyPartContentSubscriber != null) {
+                    bodyPartContentSubscriber.request(n);
+                }
+            }
+        }
     }
 
     @Override
     protected DataChunk wrap(DataChunk data) {
         return data;
-    }
-
-    private void requestNextPart() {
-        if (tryAcquire() > 0) {
-            partsSubscription.request(1);
-        }
     }
 
     /**
@@ -144,7 +163,7 @@ public final class MultiPartEncoder
     private static final class BodyPartContentSubscriber
             implements Subscriber<DataChunk> {
 
-        Subscription subscription;
+        private Subscription subscription;
         private final MultiPartEncoder encoder;
 
         BodyPartContentSubscriber(MultiPartEncoder encoder) {
@@ -153,9 +172,6 @@ public final class MultiPartEncoder
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            if (this.subscription != null) {
-                throw new IllegalStateException("Subscriber already set");
-            }
             this.subscription = subscription;
         }
 
@@ -173,8 +189,12 @@ public final class MultiPartEncoder
         @Override
         public void onComplete() {
             encoder.submit("\n");
-            if (!encoder.isCompleted()) {
-                encoder.requestNextPart();
+            encoder.onPartComplete();
+        }
+
+        void request(long n) {
+            if (subscription != null) {
+                subscription.request(n);
             }
         }
     }
