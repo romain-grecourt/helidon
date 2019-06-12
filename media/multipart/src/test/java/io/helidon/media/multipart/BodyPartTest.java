@@ -15,7 +15,6 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Reader;
@@ -70,8 +69,8 @@ public class BodyPartTest {
     public void testContentFromPublisher() {
         Publisher<DataChunk> publisher = STRING_WRITER
                 .apply("body part data");
-        BodyPart bodyPart = BodyPart.builder()
-                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+        InBoundBodyPart bodyPart = InBoundBodyPart.builder()
+                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
                 .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
@@ -86,11 +85,11 @@ public class BodyPartTest {
 
     @Test
     public void testContentFromEntity() {
-        BodyPart bodyPart = BodyPart.create("body part data");
-        Content content = bodyPart.content();
-        assertThat(content, is(instanceOf(OutBoundContent.class)));
-        ((OutBoundContent) content)
-                .mediaSupport(OUTBOUND_MEDIA_SUPPORT);
+        OutBoundBodyPart bodyPart = OutBoundBodyPart.create("body part data");
+//        Content content = bodyPart.content();
+//        assertThat(content, is(instanceOf(OutBoundContent.class)));
+//        ((OutBoundContent) content)
+//                .mediaSupport(OUTBOUND_MEDIA_SUPPORT);
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         STRING_READER.apply(bodyPart.content()).thenAccept(str -> {
             acceptCalled.set(true);
@@ -106,8 +105,8 @@ public class BodyPartTest {
     public void testBufferedPart() {
         Publisher<DataChunk> publisher = new DataChunkPublisher(
                 "abc".getBytes());
-        BodyPart bodyPart = BodyPart.builder()
-                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+        InBoundBodyPart bodyPart = InBoundBodyPart.builder()
+                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -118,8 +117,8 @@ public class BodyPartTest {
     public void testNonBufferedPart() {
         Publisher<DataChunk> publisher = new DataChunkPublisher(
                 "abc".getBytes());
-        BodyPart bodyPart = BodyPart.builder()
-                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+        InBoundBodyPart bodyPart = InBoundBodyPart.builder()
+                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(false)));
         assertThrows(IllegalStateException.class, () -> {
@@ -131,8 +130,8 @@ public class BodyPartTest {
     public void testBadBufferedPart() {
         UncompletablePublisher publisher = new UncompletablePublisher(
                 "abc".getBytes(), "def".getBytes());
-        BodyPart bodyPart = BodyPart.builder()
-                .inBoundPublisher(publisher, INBOUND_MEDIA_SUPPORT)
+        InBoundBodyPart bodyPart = InBoundBodyPart.builder()
+                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -148,7 +147,7 @@ public class BodyPartTest {
     @Test
     public void testBuildingPartWithNoContent() {
         assertThrows(IllegalStateException.class, ()-> {
-            BodyPart.builder().build();
+            InBoundBodyPart.builder().build();
         });
     }
 
@@ -156,16 +155,15 @@ public class BodyPartTest {
     public void testOutBoundPublisher() {
         Publisher<DataChunk> publisher = new DataChunkPublisher(
                 "abc".getBytes());
-        BodyPart bodyPart = BodyPart.builder()
+        OutBoundBodyPart bodyPart = OutBoundBodyPart.builder()
                 .publisher(publisher)
                 .build();
-        assertThat(bodyPart.isBuffered(), is(equalTo(false)));
         assertThat(bodyPart.content(), is(instanceOf(OutBoundContent.class)));
     }
 
     @Test
     public void testName() {
-        BodyPart bodyPart = BodyPart.builder()
+        OutBoundBodyPart bodyPart = OutBoundBodyPart.builder()
                 .headers(BodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .name("foo")
@@ -179,7 +177,7 @@ public class BodyPartTest {
 
     @Test
     public void testFilename() {
-        BodyPart bodyPart = BodyPart.builder()
+        BodyPart bodyPart = OutBoundBodyPart.builder()
                 .headers(BodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .filename("foo.txt")

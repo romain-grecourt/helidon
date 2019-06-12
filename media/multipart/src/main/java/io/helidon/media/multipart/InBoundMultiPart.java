@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package io.helidon.media.multipart;
 
-package io.helidon.common.http;
+import java.util.Collection;
 
 /**
- * Represents an in-bound {@link HttpContent} that can be converted to an
- * entity.
- * @deprecated use {@link InBoundContent} instead
+ * In-bound multipart message.
  */
-@Deprecated
-public interface Content extends InBoundContent { }
+public final class InBoundMultiPart extends MultiPart<InBoundBodyPart> {
+
+    /**
+     * Create a new in-bound multipart message.
+     * @param parts body parts
+     */
+    InBoundMultiPart(Collection<InBoundBodyPart> parts) {
+        super(parts);
+    }
+}

@@ -182,7 +182,7 @@ public abstract class Response implements ServerResponse {
             sendLockSupport.execute(() -> {
                 Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
                         headers, writeSpan,
-                        mediaSupport.applyFilters(publisher));
+                        mediaSupport.applyFilters(publisher, null));
                 sendLockSupport.contentSend = true;
                 pub.subscribe(bareResponse);
             }, content == null);

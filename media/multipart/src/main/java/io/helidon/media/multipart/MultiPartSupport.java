@@ -231,10 +231,8 @@ public final class MultiPartSupport implements Service, Handler {
                     new BufferingBodyPartSubscriber();
             decoder.subscribe(bodyPartSubscriber);
             CompletableFuture<MultiPart> future = new CompletableFuture<>();
-            MultiPart.Builder multiPartBuilder = MultiPart.builder();
             bodyPartSubscriber.getFuture().thenAccept(bodyParts -> {
-                multiPartBuilder.bodyParts(bodyParts);
-                future.complete(multiPartBuilder.build());
+                future.complete(new InBoundMultiPart(bodyParts));
             }).exceptionally((Throwable error) -> {
                 future.completeExceptionally(error);
                 return null;

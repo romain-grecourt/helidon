@@ -3,6 +3,7 @@ package io.helidon.webserver.internal;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Filter;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -36,10 +37,26 @@ public abstract class MediaSupport {
 
     /**
      * Apply the filters by creating a publisher chain of each filter.
+     *
      * @param publisher the initial publisher
      * @return the last publisher of the resulting chain
      */
-    public final Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher) {
+    public final Publisher<DataChunk> applyFilters(
+            Publisher<DataChunk> publisher) {
+
+        return applyFilters(publisher, /* interceptorFactory */ null);
+    }
+
+    /**
+     * Apply the filters by creating a publisher chain of each filter.
+     * @param publisher the initial publisher
+     * @param interceptorFactory subscriber interceptor factory
+     * @return the last publisher of the resulting chain
+     */
+    public final Publisher<DataChunk> applyFilters(
+            Publisher<DataChunk> publisher,
+            SubscriberInterceptor.Factory interceptorFactory) {
+
         Publisher<DataChunk> lastPublisher = publisher;
         try {
             filters.lock.readLock().lock();
@@ -52,7 +69,34 @@ public abstract class MediaSupport {
         } finally {
             filters.lock.readLock().unlock();
         }
-        return lastPublisher;
+        return new FilteredPublisher(lastPublisher, interceptorFactory);
+    }
+
+    /**
+     * The publisher created as a result of {@link #applyFilters}.
+     */
+    private static final class FilteredPublisher implements Publisher<DataChunk> {
+
+        private final Publisher<DataChunk> originalPublisher;
+        private final SubscriberInterceptor.Factory interceptorFactory;
+
+        FilteredPublisher(Publisher<DataChunk> originalPublisher,
+                SubscriberInterceptor.Factory interceptorFactory) {
+
+            this.originalPublisher = originalPublisher;
+            this.interceptorFactory = interceptorFactory;
+        }
+
+        @Override
+        public void subscribe(Subscriber<? super DataChunk> delegate) {
+            Subscriber<? super DataChunk> subscriber;
+            if (interceptorFactory != null) {
+                subscriber = interceptorFactory.create(delegate);
+            } else {
+                subscriber = delegate;
+            }
+            originalPublisher.subscribe(interceptorFactory.create(subscriber));
+        }
     }
 
     /**

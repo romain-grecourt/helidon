@@ -15,11 +15,9 @@
  */
 package io.helidon.examples.media.multipart;
 
-import io.helidon.common.OptionalHelper;
-import io.helidon.media.multipart.BodyPart;
-import io.helidon.media.multipart.MultiPart;
+import io.helidon.media.multipart.InBoundBodyPart;
+import io.helidon.media.multipart.InBoundMultiPart;
 import io.helidon.media.multipart.MultiPartSupport;
-import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -47,8 +45,8 @@ public final class FileUploadService implements Service {
     }
 
     private void test1(ServerRequest req, ServerResponse res) {
-        req.content().as(MultiPart.class).thenAccept(multiPart -> {
-            for(BodyPart part : multiPart.bodyParts()){
+        req.content().as(InBoundMultiPart.class).thenAccept(multiPart -> {
+            for(InBoundBodyPart part : multiPart.bodyParts()){
                 System.out.println("\n****** PART ******");
                 System.out.println("Headers:");
                 for (Entry<String, List<String>> header

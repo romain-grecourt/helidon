@@ -31,8 +31,8 @@ import java.util.logging.Logger;
  * it is not resumable.
  */
 public final class MultiPartDecoder
-        extends OriginThreadPublisher<BodyPart, BodyPart>
-        implements Processor<DataChunk, BodyPart> {
+        extends OriginThreadPublisher<InBoundBodyPart, InBoundBodyPart>
+        implements Processor<DataChunk, InBoundBodyPart> {
 
     /**
      * Logger.
@@ -53,7 +53,7 @@ public final class MultiPartDecoder
     /**
      * The builder for the current {@link BodyPart}.
      */
-    private BodyPart.Builder bodyPartBuilder;
+    private InBoundBodyPart.Builder bodyPartBuilder;
 
     /**
      * The builder for the current {@link BodyPartHeaders}.
@@ -78,7 +78,7 @@ public final class MultiPartDecoder
     /**
      * The bodyParts processed during each {@code onNext}.
      */
-    private final Queue<BodyPart> bodyParts;
+    private final Queue<InBoundBodyPart> bodyParts;
 
     /**
      * The media support used to read the body part contents.
@@ -129,7 +129,7 @@ public final class MultiPartDecoder
 
         // submit parsed parts
         while (!bodyParts.isEmpty()) {
-            BodyPart bodyPart = bodyParts.poll();
+            InBoundBodyPart bodyPart = bodyParts.poll();
             submit(bodyPart);
         }
 
@@ -166,7 +166,7 @@ public final class MultiPartDecoder
     }
 
     @Override
-    protected BodyPart wrap(BodyPart data) {
+    protected InBoundBodyPart wrap(InBoundBodyPart data) {
         return data;
     }
 
@@ -186,9 +186,8 @@ public final class MultiPartDecoder
                 case START_PART:
                     bodyPartContent = new BodyPartContentPublisher();
                     bodyPartHeaderBuilder = BodyPartHeaders.builder();
-                    bodyPartBuilder = BodyPart.builder()
-                            .inBoundPublisher(bodyPartContent,
-                                    mediaSupport);
+                    bodyPartBuilder = InBoundBodyPart.builder()
+                            .publisher(bodyPartContent, mediaSupport);
                     break;
                 case HEADER:
                     MIMEParser.HeaderEvent headerEvent

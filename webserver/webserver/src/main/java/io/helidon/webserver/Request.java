@@ -16,6 +16,7 @@
 
 package io.helidon.webserver;
 
+import static io.helidon.common.CollectionsHelper.mapOf;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,14 +25,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import io.helidon.common.http.ContextualRegistry;
+import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
+import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.webserver.internal.InBoundContent;
 import io.helidon.webserver.internal.InBoundContext;
+import io.helidon.webserver.internal.SubscriberInterceptor;
 import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.opentracing.Span;
 
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
@@ -67,7 +73,8 @@ abstract class Request implements ServerRequest {
                 /* decode */ true);
         this.headers = new HashRequestHeaders(bareRequest.headers());
         this.content = new InBoundContent(req.bodyPublisher(),
-                new InBoundMediaSupport(new ContentContext()));
+                new InBoundMediaSupport(new ContentContext()),
+                new ContentReadInterceptorFactory());
     }
 
     /**
@@ -180,20 +187,79 @@ abstract class Request implements ServerRequest {
         return bareRequest.requestId();
     }
 
+    /**
+     * Server request {@link InBoundContext} implementation.
+     */
     private final class ContentContext implements InBoundContext {
-
-        @Override
-        public Tracer.SpanBuilder createSpanBuilder(String operationName) {
-            Tracer.SpanBuilder spanBuilder = tracer().buildSpan(operationName);
-            if (span() != null) {
-                spanBuilder.asChildOf(span());
-            }
-            return spanBuilder;
-        }
 
         @Override
         public Charset charset() {
             return requestContentCharset(Request.this);
+        }
+    }
+
+    /**
+     * Subscriber interceptor factory.
+     */
+    private final class ContentReadInterceptorFactory
+            implements SubscriberInterceptor.Factory {
+
+        @Override
+        public SubscriberInterceptor create(
+                Subscriber<? super DataChunk> subscriber,
+                String requestedType) {
+
+            return new ContentReadInterceptor(subscriber, requestedType);
+        }
+    }
+
+    /**
+     * Subscriber interceptor used to trace content read events.
+     */
+    private final class ContentReadInterceptor extends SubscriberInterceptor {
+
+        private Span readSpan;
+
+        /**
+         * Create a new content read interceptor.
+         * @param subscriber delegate subscriber
+         * @param requestedType type requested for conversion
+         */
+        ContentReadInterceptor(Subscriber<? super DataChunk> subscriber,
+                String requestedType) {
+
+            super(subscriber, requestedType);
+        }
+
+        @Override
+        public void beforeOnSubscribe() {
+            Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-read");
+            if (span() != null) {
+                spanBuilder.asChildOf(span());
+            }
+            if (requestedType != null) {
+                spanBuilder.withTag("requested.type", requestedType);
+            }
+            readSpan = spanBuilder.start();
+        }
+
+        @Override
+        public void afterOnError(Throwable ex) {
+            if (readSpan != null) {
+                Tags.ERROR.set(readSpan, Boolean.TRUE);
+                readSpan.log(mapOf("event", "error",
+                        "error.kind", "Exception",
+                        "error.object", ex,
+                        "message", ex.toString()));
+                readSpan.finish();
+            }
+        }
+
+        @Override
+        public void afterOnComplete() {
+            if (readSpan != null) {
+                readSpan.finish();
+            }
         }
     }
 

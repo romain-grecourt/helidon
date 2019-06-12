@@ -31,17 +31,17 @@ import java.util.concurrent.CompletableFuture;
  * and accumulates copies in a {@code Collection<BodyPart>}. The accumulated
  * copies are made available into a future, see {@link #getFuture() }.
  */
-public final class BufferingBodyPartSubscriber implements Subscriber<BodyPart> {
+public final class BufferingBodyPartSubscriber implements Subscriber<InBoundBodyPart> {
 
     /**
      * The resulting collection.
      */
-    private final LinkedList<BodyPart> bodyParts = new LinkedList<>();
+    private final LinkedList<InBoundBodyPart> bodyParts = new LinkedList<>();
 
     /**
      * The future completed when {@link #onComplete()} is called.
      */
-    private final CompletableFuture<Collection<BodyPart>> future
+    private final CompletableFuture<Collection<InBoundBodyPart>> future
             = new CompletableFuture<>();
 
     /**
@@ -58,11 +58,7 @@ public final class BufferingBodyPartSubscriber implements Subscriber<BodyPart> {
     }
 
     @Override
-    public void onNext(BodyPart bodyPart) {
-        Content content = bodyPart.content();
-        if (!(content instanceof InBoundContent)) {
-            return;
-        }
+    public void onNext(InBoundBodyPart bodyPart) {
         // buffer the body part as byte[]
         bodyPart.content().as(byte[].class).thenAccept((byte[] bytes) -> {
 
@@ -71,10 +67,9 @@ public final class BufferingBodyPartSubscriber implements Subscriber<BodyPart> {
                     .byteArrayWriter(/* copy */true).apply(bytes);
 
             // create a new body part with the buffered content
-            BodyPart bufferedBodyPart = BodyPart.builder()
+            InBoundBodyPart bufferedBodyPart = InBoundBodyPart.builder()
                     .headers(bodyPart.headers())
-                    .inBoundPublisher(partChunks,
-                            ((InBoundContent) content).mediaSupport())
+                    .publisher(partChunks, /* */ null)
                     .buffered()
                     .build();
             bodyParts.add(bufferedBodyPart);
@@ -96,7 +91,7 @@ public final class BufferingBodyPartSubscriber implements Subscriber<BodyPart> {
      *
      * @return future of collection of {@link BodyPart}.
      */
-    public CompletableFuture<Collection<BodyPart>> getFuture() {
+    public CompletableFuture<Collection<InBoundBodyPart>> getFuture() {
         return future;
     }
 }

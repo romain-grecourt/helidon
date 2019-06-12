@@ -4,6 +4,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Reader;
 import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
 import java.io.InputStream;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.LinkedList;
@@ -32,14 +33,6 @@ public final class InBoundMediaSupport extends MediaSupport {
         this.context = ctx;
         this.readers = new PredicateRegistry<>(defaultReaders());
         this.streamReaders = new PredicateRegistry<>();
-    }
-
-    /**
-     * Get the in-bound context.
-     * @return InBoundContext
-     */
-    public InBoundContext context() {
-        return context;
     }
 
     @SuppressWarnings("unchecked")
@@ -72,7 +65,8 @@ public final class InBoundMediaSupport extends MediaSupport {
 
     @SuppressWarnings("unchecked")
     public <T> CompletionStage<T> unmarshall(final Class<T> type,
-            Publisher<DataChunk> publisher) {
+            Publisher<DataChunk> publisher,
+            SubscriberInterceptor.Factory interceptorFactory) {
 
         CompletionStage<T> result;
         try {
@@ -82,7 +76,9 @@ public final class InBoundMediaSupport extends MediaSupport {
                         "No reader found for class: " + type);
             }
             result = (CompletionStage<T>) reader.apply(
-                    applyFilters(publisher), type);
+                    applyFilters(publisher,
+                            new TypedInterceptorFactory(interceptorFactory,
+                                    type.getName())), type);
         } catch (IllegalArgumentException e) {
             result = failedFuture(e);
         } catch (Exception e) {
@@ -94,7 +90,8 @@ public final class InBoundMediaSupport extends MediaSupport {
 
     @SuppressWarnings("unchecked")
     public <T> Publisher<T> unmarshallStream(final Class<T> type,
-            Publisher<DataChunk> publisher) {
+            Publisher<DataChunk> publisher, 
+            SubscriberInterceptor.Factory interceptorFactory) {
 
         Publisher<T> result;
             MediaStreamReader<T> reader = (MediaStreamReader<T>) streamReaders
@@ -102,9 +99,11 @@ public final class InBoundMediaSupport extends MediaSupport {
             if (reader == null) {
                 throw new IllegalArgumentException(
                         "No reader found for class: " + type);
-            }
-            result = (Publisher<T>) reader.apply(
-                    applyFilters(publisher), type);
+        }
+        result = (Publisher<T>) reader.apply(
+                applyFilters(publisher,
+                        new TypedInterceptorFactory(interceptorFactory,
+                                type.getName())), type);
         return result;
     }
 
@@ -150,6 +149,42 @@ public final class InBoundMediaSupport extends MediaSupport {
         CompletableFuture result = new CompletableFuture<>();
         result.completeExceptionally(ex);
         return result;
+    }
+
+    /**
+     * {@link InBoundInterceptor.Factory} wrapper aware of the requested type.
+     */
+    private static final class TypedInterceptorFactory
+            implements SubscriberInterceptor.Factory {
+
+        private final SubscriberInterceptor.Factory delegate;
+        private final String requestedType;
+
+        /**
+         * Create a new instance.
+         * @param delegate delegate factory.
+         * @param requestedType type requested for conversion
+         */
+        TypedInterceptorFactory(SubscriberInterceptor.Factory delegate,
+                String requestedType) {
+            this.delegate = delegate;
+            this.requestedType = requestedType;
+        }
+
+        @Override
+        public SubscriberInterceptor create(
+                Subscriber<? super DataChunk> subscriber) {
+
+            return delegate.create(subscriber, requestedType);
+        }
+
+        @Override
+        public SubscriberInterceptor create(
+                Subscriber<? super DataChunk> subscriber,
+                String requestedType) {
+
+            return delegate.create(subscriber, requestedType);
+        }
     }
 
     /**

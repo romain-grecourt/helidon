@@ -48,7 +48,7 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePart() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                BodyPart.builder()
+                OutBoundBodyPart.builder()
                         .entity("part1")
                         .build());
         assertThat(message, is(equalTo(
@@ -62,7 +62,7 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePartWithHeaders() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                BodyPart.builder()
+                OutBoundBodyPart.builder()
                         .headers(BodyPartHeaders.builder()
                                 .contentType(MediaType.TEXT_PLAIN)
                                 .build())
@@ -80,10 +80,10 @@ public class MultiPartEncoderTest {
     public void testEncodeTwoParts() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                BodyPart.builder()
+                OutBoundBodyPart.builder()
                         .entity("part1")
                         .build(),
-                BodyPart.builder()
+                OutBoundBodyPart.builder()
                         .entity("part2")
                         .build());
         assertThat(message, is(equalTo(
@@ -114,8 +114,8 @@ public class MultiPartEncoderTest {
     public void testInBoundBodyPart() {
         try {
             String boundary = "boundary";
-            encodeParts(boundary, BodyPart.builder()
-                    .inBoundPublisher(new DataChunkPublisher(
+            encodeParts(boundary, InBoundBodyPart.builder()
+                    .publisher(new DataChunkPublisher(
                             ("--" + boundary + "\r\n"
                                     + "Content-Type:text/plain\r\n"
                                     + "\r\n"
@@ -159,7 +159,7 @@ public class MultiPartEncoderTest {
     public void testPartContentPublisherError() {
         MultiPartEncoder decoder = new MultiPartEncoder("boundary",
                 OUTBOUND_MEDIA_SUPPORT);
-        new BodyPartPublisher(listOf(BodyPart.builder()
+        new BodyPartPublisher(listOf(OutBoundBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
                 })

@@ -15,13 +15,11 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.internal.OutBoundContent;
 import io.helidon.webserver.internal.OutBoundMediaSupport;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -83,11 +81,6 @@ public final class MultiPartEncoder
 
     @Override
     public void onNext(BodyPart bodyPart) {
-        Content content = bodyPart.content();
-        if (!(content instanceof OutBoundContent)) {
-            error(new IllegalStateException("Not an out-bound body part"));
-            return;
-        }
         Map<String, List<String>> headers = bodyPart.headers().toMap();
         StringBuilder sb = new StringBuilder();
 
@@ -111,7 +104,6 @@ public final class MultiPartEncoder
         sb.append("\r\n");
         submit(sb.toString());
         bodyPartContentSubscriber = new BodyPartContentSubscriber(this);
-        ((OutBoundContent) content).mediaSupport(mediaSupport);
         bodyPart.content().subscribe(bodyPartContentSubscriber);
     }
 

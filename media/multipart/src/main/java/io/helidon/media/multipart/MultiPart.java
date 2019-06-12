@@ -24,20 +24,23 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Multi part entity.
+ * Multipart entity.
+ *
+ * @param <T> type of the body part, either {@link InBoundBodyPart} or
+ * {@link OutBoundBodyPart}.
  */
-public final class MultiPart {
+public abstract class MultiPart<T extends BodyPart> {
 
     /**
      * The nested parts.
      */
-    private final List<BodyPart> bodyParts;
+    private final Collection<T> bodyParts;
 
     /**
      * Create a new instance.
      * @param parts list of parts
      */
-    private MultiPart(List<BodyPart> parts) {
+    protected MultiPart(Collection<T> parts) {
         bodyParts = parts;
     }
 
@@ -45,7 +48,7 @@ public final class MultiPart {
      * Get all the nested body parts.
      * @return list of {@link BodyPart}
      */
-    public List<BodyPart> bodyParts(){
+    public Collection<T> bodyParts(){
         return bodyParts;
     }
 
@@ -57,11 +60,11 @@ public final class MultiPart {
      * @param name control name
      * @return {@code Optional<BodyPart>}, never {@code null}
      */
-    public Optional<BodyPart> field(String name) {
+    public Optional<T> field(String name) {
         if (name == null) {
             return Optional.empty();
         }
-        for (BodyPart part : bodyParts) {
+        for (T part : bodyParts) {
             String partName = part.name();
             if (partName == null) {
                 continue;
@@ -81,12 +84,12 @@ public final class MultiPart {
      * @param name control name
      * @return {@code List<BodyPart>}, never {@code null}
      */
-    public List<BodyPart> fields(String name) {
+    public List<T> fields(String name) {
         if (name == null) {
             return Collections.emptyList();
         }
-        List<BodyPart> result = new ArrayList<>();
-        for (BodyPart part : bodyParts) {
+        List<T> result = new ArrayList<>();
+        for (T part : bodyParts) {
             String partName = part.name();
             if (partName == null) {
                 continue;
@@ -102,82 +105,19 @@ public final class MultiPart {
      * Get all the body parts that are identified with form data control names.
      * @return map of control names to body parts,never {@code null}
      */
-    public Map<String, List<BodyPart>> fields() {
-        Map<String, List<BodyPart>> results = new HashMap<>();
-        for (BodyPart part : bodyParts) {
+    public Map<String, List<T>> fields() {
+        Map<String, List<T>> results = new HashMap<>();
+        for (T part : bodyParts) {
             String name = part.name();
             if (name == null) {
                 continue;
             }
-            List<BodyPart> result = results.get(name);
+            List<T> result = results.get(name);
             if (result == null) {
                 result = new ArrayList<>();
             }
             result.add(part);
         }
         return results;
-    }
-
-    /**
-     * Short-hand for creating a {@link MultiPart} instances with the specified
-     * entities as body parts.
-     * @param <T> the type of the entities
-     * @param entities the body part entities
-     * @return created MultiPart
-     */
-    public static <T> MultiPart create(Collection<T> entities){
-        Builder builder = builder();
-        for(T entity : entities){
-            builder.bodyPart(BodyPart.create(entity));
-        }
-        return builder.build();
-    }
-
-    /**
-     * Create a new builder instance.
-     * @return Builder
-     */
-    public static Builder builder(){
-        return new Builder();
-    }
-
-    /**
-     * Builder for creating {@link MultiPart} instances.
-     */
-    public static final class Builder
-            implements io.helidon.common.Builder<MultiPart> {
-
-        private final ArrayList<BodyPart> bodyParts = new ArrayList<>();
-
-        /**
-         * Force the use of {@link MultiPart#builder()}.
-         */
-        private Builder() {
-        }
-
-        /**
-         * Add a new body part.
-         * @param bodyPart body part to add
-         * @return this builder
-         */
-        public Builder bodyPart(BodyPart bodyPart){
-            bodyParts.add(bodyPart);
-            return this;
-        }
-
-        /**
-         * Add new body parts.
-         * @param bodyParts body parts to add
-         * @return this builder instance
-         */
-        public Builder bodyParts(Collection<BodyPart> bodyParts){
-            this.bodyParts.addAll(bodyParts);
-            return this;
-        }
-
-        @Override
-        public MultiPart build(){
-            return new MultiPart(bodyParts);
-        }
     }
 }

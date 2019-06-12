@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.helidon.common.http;
 
 import io.helidon.common.reactive.Flow;
@@ -26,4 +25,6 @@ import java.util.function.Function;
  */
 @FunctionalInterface
 public interface Writer<T> extends Function<T, Flow.Publisher<DataChunk>> {
+    // charset
+    // context or content support
 }
