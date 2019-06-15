@@ -16,10 +16,15 @@
 
 package io.helidon.common.http;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * Represents an in-bound {@link HttpContent} that can be converted to an
  * entity.
  * @deprecated use {@link InBoundContent} instead
  */
 @Deprecated
-public interface Content extends InBoundContent { }
+public interface Content extends HttpContent, EntityReadersRegistry {
+
+    <T> CompletionStage<T> as(Class<T> type);
+}

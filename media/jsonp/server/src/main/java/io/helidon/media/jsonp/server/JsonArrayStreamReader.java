@@ -19,30 +19,30 @@ package io.helidon.media.jsonp.server;
 import java.nio.charset.Charset;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.StreamReader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.webserver.ServerRequest;
 
 import static io.helidon.media.common.ContentTypeCharset.determineCharset;
-import io.helidon.webserver.internal.InBoundContent;
-import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.EntityStreamReader;
 
 /**
  * Class JsonArrayStreamReader.
  */
-public class JsonArrayStreamReader<T> implements StreamReader<T> {
+public class JsonArrayStreamReader<T> implements EntityStreamReader<T> {
 
     private final DataChunk beginChunk;
     private final DataChunk separatorChunk;
     private final DataChunk endChunk;
-    private final InBoundMediaSupport mediaSupport;
+    private final EntityReaders mediaSupport;
 
     public JsonArrayStreamReader(ServerRequest request, Class<T> type) {
         Charset charset = determineCharset(request.headers());
         beginChunk = DataChunk.create("[".getBytes(charset));
         separatorChunk = DataChunk.create(",".getBytes(charset));
         endChunk = DataChunk.create("]".getBytes(charset));
-        mediaSupport = ((InBoundContent)request.content()).mediaSupport();
+        mediaSupport = ((InBoundContent)request.content()).contentSupport();
     }
 
     @Override

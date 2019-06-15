@@ -17,8 +17,6 @@ package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.Reader;
-import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
@@ -44,19 +42,21 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+import io.helidon.common.http.EntityReader;
+import io.helidon.common.http.EntityWriter;
 
 /**
  * Tests {@link BodyPart}.
  */
 public class BodyPartTest {
 
-    private static final Reader<String> STRING_READER =
+    private static final EntityReader<String> STRING_READER =
             ContentReaders.stringReader(Charset.defaultCharset());
 
-    private static final Reader<byte[]> BYTES_READER =
+    private static final EntityReader<byte[]> BYTES_READER =
             ContentReaders.byteArrayReader();
 
-    private static final Writer<CharSequence> STRING_WRITER =
+    private static final EntityWriter<CharSequence> STRING_WRITER =
             ContentWriters.charSequenceWriter(Charset.defaultCharset());
 
     static final OutBoundMediaSupport OUTBOUND_MEDIA_SUPPORT =

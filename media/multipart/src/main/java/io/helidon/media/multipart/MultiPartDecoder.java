@@ -16,10 +16,12 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.InBoundContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.internal.InBoundMediaSupport;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -63,7 +65,7 @@ public final class MultiPartDecoder
     /**
      * The publisher for the current part.
      */
-    private BodyPartContentPublisher bodyPartContent;
+    private BodyPartContentPublisher bodyPartContentPublisher;
 
     /**
      * The MIME parser.
@@ -81,18 +83,26 @@ public final class MultiPartDecoder
     private final Queue<InBoundBodyPart> bodyParts;
 
     /**
-     * The media support used to read the body part contents.
+     * The entity readers used to read the body part contents.
      */
-    private final InBoundMediaSupport mediaSupport;
+    private final EntityReaders readers;
+
+    /**
+     * The in-bound context.
+     */
+    private final InBoundContext context;
 
     /**
      * Create a new instance.
      *
-     * @param boundary boundary string
-     * @param mediaSupport in-bound media support
+     * @param readers entity readers
+     * @param context in-bound context
      */
-    public MultiPartDecoder(String boundary, InBoundMediaSupport mediaSupport) {
-        this.mediaSupport = mediaSupport;
+    public MultiPartDecoder(EntityReaders readers, InBoundContext context) {
+        String boundary = null;
+        // TODO context.getHeader("boundary");
+        this.readers = readers;
+        this.context = context;
         parserEventProcessor = new ParserEventProcessor();
         parser = new MIMEParser(boundary, parserEventProcessor);
         bodyParts = new LinkedList<>();
@@ -142,7 +152,7 @@ public final class MultiPartDecoder
         // or if the part content subscriber needs more
         if (!complete && parserEventProcessor.isDataRequired()
                 && (!parserEventProcessor.isContentDataRequired()
-                || bodyPartContent.requiresMoreItems())) {
+                || bodyPartContentPublisher.requiresMoreItems())) {
 
             LOGGER.fine("Requesting one more chunk from upstream");
             chunksSubscription.request(1);
@@ -184,10 +194,9 @@ public final class MultiPartDecoder
             LOGGER.fine(() -> "Parser event: " + eventType);
             switch (eventType) {
                 case START_PART:
-                    bodyPartContent = new BodyPartContentPublisher();
+                    bodyPartContentPublisher = new BodyPartContentPublisher();
                     bodyPartHeaderBuilder = BodyPartHeaders.builder();
-                    bodyPartBuilder = InBoundBodyPart.builder()
-                            .publisher(bodyPartContent, mediaSupport);
+                    bodyPartBuilder = InBoundBodyPart.builder();
                     break;
                 case HEADER:
                     MIMEParser.HeaderEvent headerEvent
@@ -196,17 +205,26 @@ public final class MultiPartDecoder
                             headerEvent.value());
                     break;
                 case END_HEADERS:
+                    BodyPartHeaders partHeaders = bodyPartHeaderBuilder.build();
+                    InBoundContext partInBoundContext
+                            = new InBoundBodyPartContentContext(context,
+                                    partHeaders.contentType());
+                    InBoundContent partContent = new InBoundContent(
+                            bodyPartContentPublisher,
+                            new EntityReaders(readers),
+                            partInBoundContext);
                     bodyParts.add(bodyPartBuilder
-                            .headers(bodyPartHeaderBuilder.build())
+                            .headers(partHeaders)
+                            .content(partContent)
                             .build());
                     break;
                 case CONTENT:
-                    bodyPartContent.submit(event.asContentEvent()
+                    bodyPartContentPublisher.submit(event.asContentEvent()
                             .data());
                     break;
                 case END_PART:
-                    bodyPartContent.complete();
-                    bodyPartContent = null;
+                    bodyPartContentPublisher.complete();
+                    bodyPartContentPublisher = null;
                     bodyPartHeaderBuilder = null;
                     bodyPartBuilder = null;
                     break;

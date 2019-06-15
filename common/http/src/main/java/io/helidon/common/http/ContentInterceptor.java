@@ -13,56 +13,75 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.webserver.internal;
+package io.helidon.common.http;
 
-import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 
 /**
- * In-bond content interceptor.
+ * Content interceptor.
  */
-public abstract class SubscriberInterceptor implements Subscriber<DataChunk> {
+public abstract class ContentInterceptor implements Subscriber<DataChunk> {
 
-    /**
-     * Subscriber interceptor factory.
-     */
     public static interface Factory {
 
-        /**
-         * Create a new subscriber interceptor instance.
-         * @param subscriber delegate subscriber
-         * @return new interceptor
-         */
-        default SubscriberInterceptor create(
-                Subscriber<? super DataChunk> subscriber) {
-            return create(subscriber, /* requestedType */ null);
+        default ContentInterceptor createInterceptor(
+                Flow.Subscriber<? super DataChunk> subscriber) {
+
+            return createInterceptor(subscriber, /* type */ null);
         }
 
+        ContentInterceptor createInterceptor(
+                Flow.Subscriber<? super DataChunk> subscriber, String type);
+    }
+
+    static final class WrappedFactory implements Factory {
+
+        private final Factory delegate;
+        private final String type;
+
         /**
-         * Create a new subscriber interceptor instance.
-         * @param subscriber delegate subscriber
-         * @param requestedType type requested for conversion
-         * @return new interceptor
+         * Create a new instance.
+         *
+         * @param delegate delegate factory.
+         * @param type type requested for conversion
          */
-        SubscriberInterceptor create(Subscriber<? super DataChunk> subscriber,
-                String requestedType);
+        WrappedFactory(Factory delegate, String type) {
+            this.delegate = delegate;
+            this.type = type;
+        }
+
+        @Override
+        public ContentInterceptor createInterceptor(
+                Subscriber<? super DataChunk> subscriber) {
+
+            return delegate.createInterceptor(subscriber, type);
+        }
+
+        @Override
+        public ContentInterceptor createInterceptor(
+                Subscriber<? super DataChunk> subscriber,
+                String requestedType) {
+
+            return delegate.createInterceptor(subscriber, requestedType);
+        }
     }
 
     private final Subscriber<? super DataChunk> delegate;
-    protected final String requestedType;
+    protected final String type;
 
     /**
-     * Create a new subscriber interceptor.
+     * Create a new interceptor.
      *
      * @param subscriber delegate subscriber
      * @param requestedType type requested for conversion
      */
-    protected SubscriberInterceptor(Subscriber<? super DataChunk> subscriber,
+    protected ContentInterceptor(Subscriber<? super DataChunk> subscriber,
             String requestedType) {
 
         this.delegate = subscriber;
-        this.requestedType = requestedType;
+        this.type = requestedType;
     }
 
     /**

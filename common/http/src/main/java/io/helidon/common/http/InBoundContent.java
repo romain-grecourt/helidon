@@ -1,97 +1,219 @@
-/*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.helidon.common.http;
 
-import java.util.concurrent.CompletionStage;
-import java.util.function.Predicate;
-
 import io.helidon.common.GenericType;
+import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
- * Represents an in-bound {@link HttpContent} that can be converted to an entity
- * or a stream of entities. It is possible to register function to convert
- * publisher to {@link CompletionStage} of a single entity using
- * {@link #registerReader(Class, Reader)} or
- * {@link #registerReader(Predicate, Reader)} methods. It is then possible to
- * use {@link #as(Class)} method to obtain such entity.
+ * In-bound reactive payload that can be converted to entities.
  */
-public interface InBoundContent extends HttpContent {
+@SuppressWarnings("deprecation")
+public final class InBoundContent
+        implements HttpContent, EntityReadersRegistry, Content {
+
+    private final Publisher<DataChunk> originalPublisher;
+    final EntityReaders readers;
+    final InBoundContext inBoundContext;
 
     /**
-     * Registers a reader for a later use with an appropriate {@link #as(Class)}
-     * method call.
-     * <p>
-     * The reader must transform the published byte buffers into a completion
-     * stage of the requested type.
-     * <p>
-     * Upon calling {@link #as(Class)} a matching reader is searched in the same
-     * order as the readers were registered. If no matching reader is found, or
-     * when the function throws an exception, the resulting completion stage
-     * ends exceptionally.
-     *
-     * @param type the requested type the completion stage is be associated
-     * with.
-     * @param reader the reader as a function that transforms a publisher into
-     * completion stage. If an exception is thrown, the resulting completion
-     * stage of {@link #as(Class)} method call ends exceptionally.
-     * @param <T> the requested type
+     * Create a new instance.
+     * @param originalPublisher the original publisher for this content
+     * @param readers entity readers
+     * @param inBoundContext in-bound context
      */
-    <T> void registerReader(Class<T> type, Reader<T> reader);
+    public InBoundContent(Publisher<DataChunk> originalPublisher,
+            EntityReaders readers, InBoundContext inBoundContext) {
+
+        Objects.requireNonNull(originalPublisher, "publisher is null!");
+        Objects.requireNonNull(readers, "readers is null!");
+        Objects.requireNonNull(inBoundContext, "inBoundContext is null!");
+        this.originalPublisher = originalPublisher;
+        this.readers = readers;
+        this.inBoundContext = inBoundContext;
+    }
 
     /**
-     * Registers a reader for a later use with an appropriate {@link #as(Class)}
-     * method call.
-     * <p>
-     * The reader must transform the published byte buffers into a completion
-     * stage of the requested type.
-     * <p>
-     * Upon calling {@link #as(Class)} a matching reader is searched in the same
-     * order as the readers were registered. If no matching reader is found or
-     * when the predicate throws an exception, or when the function throws an
-     * exception, the resulting completion stage ends exceptionally.
-     *
-     * @param predicate the predicate that determines whether the registered
-     * reader can handle the requested type. If an exception is thrown, the
-     * resulting completion stage of {@link #as(Class)} method call ends
-     * exceptionally.
-     * @param reader the reader as a function that transforms a publisher into
-     * completion stage. If an exception is thrown, the resulting completion
-     * stage of {@link #as(Class)} method call ends exceptionally.
-     * @param <T> the requested type
+     * Copy constructor.
+     * @param orig original instance to copy
      */
-    <T> void registerReader(Predicate<Class<T>> predicate, Reader<T> reader);
+    public InBoundContent(InBoundContent orig) {
+        Objects.requireNonNull(orig, "orig is null!");
+        this.originalPublisher = orig.originalPublisher;
+        this.readers = orig.readers;
+        this.inBoundContext = orig.inBoundContext;
+    }
 
-    /**
-     * Consumes and converts the request content into a completion stage of the
-     * requested type.
-     * <p>
-     * The conversion requires an appropriate reader to be already registered
-     * (see {@link #registerReader(Predicate, Reader)}). If no such reader is
-     * found, the resulting completion stage ends exceptionally.
-     *
-     * @param type the requested type class
-     * @param <T> the requested type
-     * @return a completion stage of the requested type
-     */
-    <T> CompletionStage<T> as(Class<T> type);
+    @Override
+    public void registerFilter(ContentFilter filter) {
+        readers.registerFilter(filter);
+    }
 
-    <T> Publisher<T> asPublisherOf(Class<T> type);
+    @Override
+    public void registerReader(EntityReader<?> reader) {
+        readers.registerReader(reader);
+    }
 
-    <T> Publisher<T> asPublisherOf(GenericType<T> type);
+    @Override
+    public void registerStreamReader(EntityStreamReader<?> streamReader) {
+        readers.registerStreamReader(streamReader);
+    }
 
-    <T> void registerStreamReader(Class<T> type, StreamReader<T> reader);
+    @Override
+    public void subscribe(Subscriber<? super DataChunk> subscriber) {
+        try {
+            readers.applyFilters(originalPublisher, inBoundContext)
+                    .subscribe(subscriber);
+        } catch (Exception e) {
+            subscriber.onError(new IllegalArgumentException(
+                    "Unexpected exception occurred during publishers chaining",
+                    e));
+        }
+    }
+
+    @Override
+    public <T> CompletionStage<T> as(final Class<T> type) {
+        return as(type, /* readersDelegate */ null);
+    }
+
+    public <T> CompletionStage<T> as(final GenericType<T> type) {
+        return as(type, /* readersDelegate */ null);
+    }
+
+    public <T> Publisher<T> asStream(Class<T> type) {
+        return asStream(type, /* readersDelegate */ null);
+    }
+
+    public <T> Publisher<T> asStream(GenericType<T> type) {
+        return asStream(type, /* readersDelegate */ null);
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> CompletionStage<T> as(final Class<T> type,
+            EntityReaders readersDelegate) {
+
+        CompletionStage<T> result;
+        try {
+            ContentInfo contentInfo = inBoundContext.contentInfo();
+            EntityReader<T> reader = readers.selectReader(type,
+                    contentInfo, readersDelegate);
+
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No reader found for class: " + type);
+            }
+
+            result = (CompletionStage<T>) reader.readEntity(
+                    filteredPublisher(type.getTypeName()), type,
+                    contentInfo, inBoundContext.defaultCharset());
+
+        } catch (IllegalArgumentException e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(e);
+            result = failedFuture;
+        } catch (Exception e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(
+                    new IllegalArgumentException("Transformation failed!", e));
+            result = failedFuture;
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> CompletionStage<T> as(final GenericType<T> type,
+            EntityReaders readersDelegate) {
+
+        CompletionStage<T> result;
+        try {
+            ContentInfo contentInfo = inBoundContext.contentInfo();
+            EntityReader<T> reader = readers.selectReader(type,
+                    contentInfo, readersDelegate);
+
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No reader found for class: " + type);
+            }
+
+            result = (CompletionStage<T>) reader.readEntity(
+                    filteredPublisher(type.getTypeName()), type,
+                    contentInfo, inBoundContext.defaultCharset());
+
+        } catch (IllegalArgumentException e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(e);
+            result = failedFuture;
+        } catch (Exception e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(
+                    new IllegalArgumentException("Transformation failed!", e));
+            result = failedFuture;
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> Publisher<T> asStream(Class<T> type, EntityReaders readersDelegate) {
+
+        Publisher<T> result;
+        try {
+            ContentInfo contentInfo = inBoundContext.contentInfo();
+            EntityStreamReader<T> streamReader = readers
+                    .selectStreamReader(type, contentInfo,
+                            readersDelegate);
+
+            if (streamReader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found for class: " + type);
+            }
+
+            result = (Publisher<T>) streamReader.readEntityStream(
+                    filteredPublisher(type.getTypeName()), type,
+                    contentInfo, inBoundContext.defaultCharset());
+
+        } catch (IllegalArgumentException e) {
+            result = new FailedPublisher<>(e);
+        } catch (Exception e) {
+            result = new FailedPublisher<>(new IllegalArgumentException(
+                    "Transformation failed!", e));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> Publisher<T> asStream(GenericType<T> type,
+            EntityReaders readersDelegate) {
+
+        Publisher<T> result;
+        try {
+            ContentInfo contentInfo = inBoundContext.contentInfo();
+            EntityStreamReader<T> streamReader = readers
+                    .selectStreamReader(type, contentInfo,
+                            readersDelegate);
+
+            if (streamReader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found for class: " + type);
+            }
+
+            result = (Publisher<T>) streamReader.readEntityStream(
+                    filteredPublisher(type.getTypeName()), type,
+                    contentInfo, inBoundContext.defaultCharset());
+
+        } catch (IllegalArgumentException e) {
+            result = new FailedPublisher<>(e);
+        } catch (Exception e) {
+            result = new FailedPublisher<>(new IllegalArgumentException(
+                    "Transformation failed!", e));
+        }
+        return result;
+    }
+
+    private Publisher<DataChunk> filteredPublisher(String type) {
+        return readers.applyFilters(originalPublisher,
+                new ContentInterceptor.WrappedFactory(inBoundContext, type));
+    }
 }

@@ -16,11 +16,11 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.EntityWriters;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import io.helidon.webserver.internal.OutBoundMediaSupport;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public final class MultiPartEncoder
         extends OriginThreadPublisher<DataChunk, DataChunk>
-        implements Processor<BodyPart, DataChunk> {
+        implements Processor<OutBoundBodyPart, DataChunk> {
 
     private Subscription partsSubscription;
     private BodyPartContentSubscriber bodyPartContentSubscriber;
@@ -40,7 +40,7 @@ public final class MultiPartEncoder
     /**
      * The out-bound media support used to marshall the body part contents.
      */
-    private final OutBoundMediaSupport mediaSupport;
+    private final EntityWriters writersSupport;
 
     /**
      * The boundary used for the generated multi-part message.
@@ -52,10 +52,12 @@ public final class MultiPartEncoder
     /**
      * Create a new multipart encoder.
      * @param boundary boundary string
-     * @param mediaSupport out-bound media support
+     * @param writersSupport entity writers support
      */
-    public MultiPartEncoder(String boundary, OutBoundMediaSupport mediaSupport) {
-        this.mediaSupport = mediaSupport;
+    public MultiPartEncoder(String boundary,
+            EntityWriters writersSupport) {
+
+        this.writersSupport = writersSupport;
         this.boundary = boundary;
         this.complete = false;
     }
@@ -80,7 +82,7 @@ public final class MultiPartEncoder
     }
 
     @Override
-    public void onNext(BodyPart bodyPart) {
+    public void onNext(OutBoundBodyPart bodyPart) {
         Map<String, List<String>> headers = bodyPart.headers().toMap();
         StringBuilder sb = new StringBuilder();
 

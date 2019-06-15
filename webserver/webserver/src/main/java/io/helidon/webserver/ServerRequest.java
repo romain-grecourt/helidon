@@ -16,9 +16,9 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.Content;
 import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.HttpRequest;
+import io.helidon.common.http.InBoundContent;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -108,9 +108,9 @@ public interface ServerRequest extends HttpRequest {
      * Returns {@link Content reactive representation} of the request content.
      *
      * @return a request content
-     * @see Content
+     * @see InBoundContent
      */
-    Content content();
+    InBoundContent content();
 
     /**
      * A unique correlation ID that is associated with this request and its associated response.

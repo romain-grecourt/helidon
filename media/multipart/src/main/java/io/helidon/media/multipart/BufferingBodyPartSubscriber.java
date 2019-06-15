@@ -15,13 +15,15 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.ContentHelper;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.InBoundContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.media.common.ContentWriters;
-import io.helidon.webserver.internal.InBoundContent;
+import io.helidon.media.common.ByteArrayCopyEntityWriter;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
@@ -31,7 +33,8 @@ import java.util.concurrent.CompletableFuture;
  * and accumulates copies in a {@code Collection<BodyPart>}. The accumulated
  * copies are made available into a future, see {@link #getFuture() }.
  */
-public final class BufferingBodyPartSubscriber implements Subscriber<InBoundBodyPart> {
+public final class BufferingBodyPartSubscriber
+        implements Subscriber<InBoundBodyPart> {
 
     /**
      * The resulting collection.
@@ -46,10 +49,8 @@ public final class BufferingBodyPartSubscriber implements Subscriber<InBoundBody
 
     /**
      * Create a new instance.
-     *
-     * @param mediaSupport in-bound media support
      */
-    BufferingBodyPartSubscriber() {
+    public BufferingBodyPartSubscriber() {
     }
 
     @Override
@@ -60,16 +61,30 @@ public final class BufferingBodyPartSubscriber implements Subscriber<InBoundBody
     @Override
     public void onNext(InBoundBodyPart bodyPart) {
         // buffer the body part as byte[]
-        bodyPart.content().as(byte[].class).thenAccept((byte[] bytes) -> {
+        InBoundContent content = bodyPart.content();
+        content.as(byte[].class).thenAccept((byte[] bytes) -> {
 
             // create a publisher from the consumed byte
-            Publisher<DataChunk> partChunks = ContentWriters
-                    .byteArrayWriter(/* copy */true).apply(bytes);
+            Publisher<DataChunk> partChunks = ByteArrayCopyEntityWriter
+                    .write(bytes);
+
+            EntityReaders readers = ContentHelper
+                    .getReaders(content);
+
+            InBoundContext inBoundContext = ContentHelper
+                    .getInBoundContext(content);
+
+            InBoundBodyPartContentContext inBoundBodyPartContentContext =
+                    new InBoundBodyPartContentContext(inBoundContext,
+                            bodyPart.headers().contentType());
+
+            InBoundContent contentCopy = new InBoundContent(partChunks,
+                    readers, inBoundBodyPartContentContext);
 
             // create a new body part with the buffered content
             InBoundBodyPart bufferedBodyPart = InBoundBodyPart.builder()
                     .headers(bodyPart.headers())
-                    .publisher(partChunks, /* */ null)
+                    .content(contentCopy)
                     .buffered()
                     .build();
             bodyParts.add(bufferedBodyPart);

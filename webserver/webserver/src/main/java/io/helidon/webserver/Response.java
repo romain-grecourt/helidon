@@ -21,20 +21,20 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Filter;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.StreamWriter;
-import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
-import io.helidon.webserver.internal.OutBoundContext;
-import io.helidon.webserver.internal.OutBoundMediaSupport;
+import io.helidon.common.http.OutBoundContext;
+import io.helidon.common.http.EntityWriters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 import reactor.core.publisher.Mono;
+import io.helidon.common.http.EntityWriter;
+import io.helidon.common.http.EntityStreamWriter;
+import io.helidon.common.http.ContentFilter;
 
 /**
  * The basic implementation of {@link ServerResponse}.
@@ -47,7 +47,7 @@ public abstract class Response implements ServerResponse {
     private final HashResponseHeaders headers;
 
     private final CompletionStage<ServerResponse> completionStage;
-    private final OutBoundMediaSupport mediaSupport;
+    private final EntityWriters mediaSupport;
 
     // Content related
     private final SendLockSupport sendLockSupport;
@@ -64,7 +64,7 @@ public abstract class Response implements ServerResponse {
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
-        this.mediaSupport = new OutBoundMediaSupport(new OutBoundContext() {
+        this.mediaSupport = new EntityWriters(new OutBoundContext() {
 
             @Override
             public void setContentType(MediaType mediaType) {
@@ -228,7 +228,7 @@ public abstract class Response implements ServerResponse {
 
     @Override
     public <T> ServerResponse registerStreamWriter(Class<T> acceptType,
-            MediaType contentType, StreamWriter<T> writer) {
+            MediaType contentType, EntityStreamWriter<T> writer) {
 
         mediaSupport.registerStreamWriter(acceptType, contentType, writer);
         return this;
@@ -236,21 +236,21 @@ public abstract class Response implements ServerResponse {
 
     @Override
     public <T> ServerResponse registerStreamWriter(Predicate<Class<T>> accept,
-            MediaType contentType, StreamWriter<T> writer) {
+            MediaType contentType, EntityStreamWriter<T> writer) {
 
         mediaSupport.registerStreamWriter(accept, contentType, writer);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Class<T> type, Writer<T> writer) {
+    public <T> Response registerWriter(Class<T> type, EntityWriter<T> writer) {
         mediaSupport.registerWriter(type, /* contentType */ null, writer);
         return this;
     }
 
     @Override
     public <T> Response registerWriter(Class<T> type, MediaType contentType,
-            Writer<T> writer) {
+            EntityWriter<T> writer) {
 
         mediaSupport.registerWriter(type, contentType, writer);
         return this;
@@ -258,7 +258,7 @@ public abstract class Response implements ServerResponse {
 
     @Override
     public <T> Response registerWriter(Predicate<?> accept,
-            Writer<T> writer) {
+            EntityWriter<T> writer) {
 
         mediaSupport.registerWriter(accept, /* contentType */ null, writer);
         return this;
@@ -266,7 +266,7 @@ public abstract class Response implements ServerResponse {
 
     @Override
     public <T> Response registerWriter(Predicate<?> accept,
-            MediaType contentType, Writer<T> writer) {
+            MediaType contentType, EntityWriter<T> writer) {
 
         mediaSupport.registerWriter(accept, contentType,
                 writer);
@@ -274,7 +274,7 @@ public abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Response registerFilter(Filter filter) {
+    public Response registerFilter(ContentFilter filter) {
         mediaSupport.registerFilter(filter);
         return this;
     }
@@ -284,7 +284,7 @@ public abstract class Response implements ServerResponse {
         return completionStage;
     }
 
-    public OutBoundMediaSupport mediaSupport() {
+    public EntityWriters mediaSupport() {
         return mediaSupport;
     }
 

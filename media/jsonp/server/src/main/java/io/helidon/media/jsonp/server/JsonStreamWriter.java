@@ -17,21 +17,21 @@
 package io.helidon.media.jsonp.server;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.StreamWriter;
 import io.helidon.common.reactive.Flow;
 import io.helidon.webserver.Response;
 import io.helidon.webserver.ServerResponse;
-import io.helidon.webserver.internal.OutBoundMediaSupport;
+import io.helidon.common.http.EntityWriters;
+import io.helidon.common.http.EntityStreamWriter;
 
 /**
  * Class JsonArrayStreamWriter.
  */
-public class JsonStreamWriter<T> implements StreamWriter<T> {
+public class JsonStreamWriter<T> implements EntityStreamWriter<T> {
 
     private DataChunk beginChunk;
     private DataChunk separatorChunk;
     private DataChunk endChunk;
-    private final OutBoundMediaSupport mediaSupport;
+    private final EntityWriters mediaSupport;
 
     public JsonStreamWriter(ServerResponse response, Class<T> type) {
         mediaSupport = ((Response) response).mediaSupport();

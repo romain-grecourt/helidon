@@ -30,10 +30,10 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.webserver.internal.InBoundContent;
-import io.helidon.webserver.internal.InBoundContext;
-import io.helidon.webserver.internal.SubscriberInterceptor;
-import io.helidon.webserver.internal.InBoundMediaSupport;
+import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.InBoundContext;
+import io.helidon.common.http.ContentInterceptor;
+import io.helidon.common.http.EntityReaders;
 import io.opentracing.Span;
 
 import io.opentracing.Tracer;
@@ -73,7 +73,7 @@ abstract class Request implements ServerRequest {
                 /* decode */ true);
         this.headers = new HashRequestHeaders(bareRequest.headers());
         this.content = new InBoundContent(req.bodyPublisher(),
-                new InBoundMediaSupport(new ContentContext()),
+                new EntityReaders(new ContentContext()),
                 new ContentReadInterceptorFactory());
     }
 
@@ -202,10 +202,10 @@ abstract class Request implements ServerRequest {
      * Subscriber interceptor factory.
      */
     private final class ContentReadInterceptorFactory
-            implements SubscriberInterceptor.Factory {
+            implements ContentInterceptor.Factory {
 
         @Override
-        public SubscriberInterceptor create(
+        public ContentInterceptor create(
                 Subscriber<? super DataChunk> subscriber,
                 String requestedType) {
 
@@ -216,7 +216,7 @@ abstract class Request implements ServerRequest {
     /**
      * Subscriber interceptor used to trace content read events.
      */
-    private final class ContentReadInterceptor extends SubscriberInterceptor {
+    private final class ContentReadInterceptor extends ContentInterceptor {
 
         private Span readSpan;
 

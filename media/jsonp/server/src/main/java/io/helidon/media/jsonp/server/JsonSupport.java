@@ -26,7 +26,6 @@ import javax.json.JsonWriter;
 
 import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow;
 import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.webserver.Handler;
@@ -37,6 +36,7 @@ import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.WebServer;
 
 import static io.helidon.media.common.ContentTypeCharset.determineCharset;
+import io.helidon.common.http.EntityReader;
 
 /**
  * It provides contains JSON-P ({@code javax.json}) support for {@link WebServer WebServer}'s
@@ -125,7 +125,7 @@ public final class JsonSupport extends JsonService {
      *         might end exceptionally with a {@link IllegalArgumentException} in case of I/O error or
      *         a {@link javax.json.JsonException}
      */
-    public Reader<JsonStructure> reader(Charset charset) {
+    public EntityReader<JsonStructure> reader(Charset charset) {
         return processingSupport.reader(charset);
     }
 
@@ -139,7 +139,7 @@ public final class JsonSupport extends JsonService {
      *         might end exceptionally with a {@link IllegalArgumentException} in case of I/O error or
      *         a {@link javax.json.JsonException}
      */
-    public Reader<JsonStructure> reader() {
+    public EntityReader<JsonStructure> reader() {
         return processingSupport.reader();
     }
 

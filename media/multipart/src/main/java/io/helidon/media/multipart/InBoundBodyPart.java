@@ -15,12 +15,9 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.InBoundContent;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.webserver.internal.InBoundMediaSupport;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import io.helidon.common.http.InBoundContent;
 
 /**
  * In-bound body part.
@@ -111,15 +108,11 @@ public final class InBoundBodyPart extends BodyPart<InBoundContent> {
         /**
          * Create a new in-bound body part backed by the specified publisher.
          *
-         * @param publisher publisher for the part content
-         * @param mediaSupport in-bound media support used to unmarshall the
-         * content
+         * @param content in-bound content
          * @return this builder instance
          */
-        Builder publisher(Publisher<DataChunk> publisher,
-                InBoundMediaSupport mediaSupport) {
-
-//            this.content = new InBoundContent(publisher, mediaSupport);
+        public Builder content(InBoundContent content) {
+            this.content = content;
             return this;
         }
 
@@ -128,7 +121,7 @@ public final class InBoundBodyPart extends BodyPart<InBoundContent> {
          *
          * @return this builder instance
          */
-        Builder buffered() {
+        public Builder buffered() {
             this.buffered = true;
             return this;
         }

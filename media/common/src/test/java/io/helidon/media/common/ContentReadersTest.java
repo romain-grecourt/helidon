@@ -36,47 +36,47 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * Unit test for {@link ContentReaders}.
  */
 class ContentReadersTest {
-    @Test
-    void testStringReader() throws Exception {
-        Flux<DataChunk> flux = Flux.just(DataChunk.create(new byte[] {(byte) 225, (byte) 226, (byte) 227}));
-
-        CompletableFuture<? extends String> future =
-                ContentReaders.stringReader(Charset.forName("cp1250"))
-                        .apply(ReactiveStreamsAdapter.publisherToFlow(flux))
-                        .toCompletableFuture();
-
-        String s = future.get(10, TimeUnit.SECONDS);
-
-        assertThat(s, is("áâă"));
-    }
-
-    @Test
-    void testByteArrayReader() throws Exception {
-        String original = "Popokatepetl";
-        byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
-
-        CompletableFuture<? extends byte[]> future = ContentReaders.byteArrayReader()
-                .apply(ReactiveStreamsAdapter.publisherToFlow(Flux.just(DataChunk.create(bytes))))
-                .toCompletableFuture();
-
-        byte[] actualBytes = future.get(10, TimeUnit.SECONDS);
-
-        assertThat(actualBytes, is(bytes));
-    }
-
-    @Test
-    void test() throws Exception {
-        String original = "Popokatepetl";
-        byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
-
-        CompletableFuture<? extends InputStream> future = ContentReaders.inputStreamReader()
-                .apply(ReactiveStreamsAdapter.publisherToFlow(Flux.just(DataChunk.create(bytes))))
-                .toCompletableFuture();
-
-        InputStream inputStream = future.get(10, TimeUnit.SECONDS);
-
-        byte[] actualBytes = InputStreamHelper.readAllBytes(inputStream);
-
-        assertThat(actualBytes, is(bytes));
-    }
+//    @Test
+//    void testStringReader() throws Exception {
+//        Flux<DataChunk> flux = Flux.just(DataChunk.create(new byte[] {(byte) 225, (byte) 226, (byte) 227}));
+//
+//        CompletableFuture<? extends String> future =
+//                ContentReaders.stringReader(Charset.forName("cp1250"))
+//                        .apply(ReactiveStreamsAdapter.publisherToFlow(flux))
+//                        .toCompletableFuture();
+//
+//        String s = future.get(10, TimeUnit.SECONDS);
+//
+//        assertThat(s, is("áâă"));
+//    }
+//
+//    @Test
+//    void testByteArrayReader() throws Exception {
+//        String original = "Popokatepetl";
+//        byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
+//
+//        CompletableFuture<? extends byte[]> future = ContentReaders.byteArrayReader()
+//                .apply(ReactiveStreamsAdapter.publisherToFlow(Flux.just(DataChunk.create(bytes))))
+//                .toCompletableFuture();
+//
+//        byte[] actualBytes = future.get(10, TimeUnit.SECONDS);
+//
+//        assertThat(actualBytes, is(bytes));
+//    }
+//
+//    @Test
+//    void test() throws Exception {
+//        String original = "Popokatepetl";
+//        byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
+//
+//        CompletableFuture<? extends InputStream> future = ContentReaders.inputStreamReader()
+//                .apply(ReactiveStreamsAdapter.publisherToFlow(Flux.just(DataChunk.create(bytes))))
+//                .toCompletableFuture();
+//
+//        InputStream inputStream = future.get(10, TimeUnit.SECONDS);
+//
+//        byte[] actualBytes = InputStreamHelper.readAllBytes(inputStream);
+//
+//        assertThat(actualBytes, is(bytes));
+//    }
 }

@@ -1,104 +1,142 @@
-/*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.helidon.common.http;
 
-import java.util.function.Predicate;
-
-import io.helidon.common.reactive.Flow;
+import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import java.nio.charset.Charset;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * Represents an out-bound {@link HttpContent} that can converted from an entity
- * or from a stream of entities.
+ * Out-bound reactive payload that can converted from entities.
  */
-public interface OutBoundContent extends HttpContent {
+public final class OutBoundContent
+        implements HttpContent, EntityWritersRegistry {
 
-    <T> void registerStreamWriter(Predicate<Class<T>> predicate,
-            MediaType contentType, StreamWriter<T> writer);
+    private final Object entity;
+    private final Publisher<? extends Object> entityStream;
+    private final Class<?> entityStreamType;
+    private final GenericType<?> entityStreamGenericType;
+    private final Publisher<DataChunk> publisher;
+    private final EntityWriters writers;
+    private final OutBoundContext context;
 
-    <T> void registerStreamWriter(Class<T> acceptType, MediaType contentType,
-            StreamWriter<T> writer);
+    public OutBoundContent(Object entity, EntityWriters writers,
+        OutBoundContext context) {
 
-    /**
-     * Registers a content writer for a given type.
-     * <p>
-     * Registered writer is used to marshal content of given type to the
-     * {@link Flow.Publisher Publisher} of {@link DataChunk}.
-     *
-     * @param type a type of the content. If {@code null} then accepts any type.
-     * @param writer a writer function
-     * @param <T> a type of the content
-     * @throws NullPointerException if {@code writer} parameter is {@code null}
-     */
-    <T> void registerWriter(Class<T> type, Writer<T> writer);
+        Objects.requireNonNull(entity, "entity cannot be null!");
+        Objects.requireNonNull(context,
+                "context cannot be null!");
+        this.publisher = null;
+        this.entityStream = null;
+        this.entityStreamType = null;
+        this.entityStreamGenericType = null;
+        this.entity = entity;
+        this.writers = writers;
+        this.context = context;
+    }
 
-    /**
-     * Registers a content writer for a given type and media type.
-     * <p>
-     * Registered writer is used to marshal content of given type to the
-     * {@link Flow.Publisher Publisher} of {@link DataChunk}. It is used only if
-     * {@code Content-Type} header is compatible with a given content type or if
-     * it is {@code null}. If {@code Content-Type} is {@code null} and it is
-     * still possible to modify headers (headers were not send yet), the
-     * provided content type will be set.
-     *
-     * @param type a type of the content. If {@code null} then accepts any type.
-     * @param contentType a {@code Content-Type} of the entity
-     * @param writer a writer function
-     * @param <T> a type of the content
-     * @throws NullPointerException if {@code writer} parameter is {@code null}
-     */
-    <T> void registerWriter(Class<T> type, MediaType contentType,
-            Writer<T> writer);
+    public OutBoundContent(Publisher<Object> entityStream, Class type,
+        EntityWriters writers, OutBoundContext context) {
 
-    /**
-     * Registers a content writer for all accepted contents.
-     * <p>
-     * Registered writer is used to marshal content of given type to the
-     * {@link Flow.Publisher Publisher} of {@link DataChunk}.
-     *
-     * @param accept a predicate to test if content is marshallable by the
-     * writer. If {@code null} then accepts any type.
-     * @param writer a writer function
-     * @param <T> a type of the content
-     * @throws NullPointerException if {@code writer} parameter is {@code null}
-     */
-    <T> void registerWriter(Predicate<?> accept, Writer<T> writer);
+        Objects.requireNonNull(entityStream, "entityStream cannot be null!");
+        Objects.requireNonNull(type, "type cannot be null!");
+        Objects.requireNonNull(context,
+                "context cannot be null!");
+        this.entityStream = entityStream;
+        this.entityStreamType = type;
+        this.entityStreamGenericType = null;
+        this.publisher = null;
+        this.entity = null;
+        this.writers = writers;
+        this.context = context;
+    }
 
-    /**
-     * Registers a content writer for all accepted contents.
-     * <p>
-     * Registered writer is used to marshal content of given type to the
-     * {@link Flow.Publisher Publisher} of {@link DataChunk}. It is used only if
-     * {@code Content-Type} header is compatible with a given content type or if
-     * it is {@code null}. If {@code Content-Type} is {@code null} and it is
-     * still possible to modify headers (headers were not send yet), the
-     * provided content type will be set.
-     *
-     * @param accept a predicate to test if content is marshallable by the
-     * writer. If {@code null} then accepts any type.
-     * @param contentType a {@code Content-Type} of the entity
-     * @param writer a writer function
-     * @param <T> a type of the content
-     * @throws NullPointerException if {@code writer} parameter is {@code null}
-     */
-    <T> void registerWriter(Predicate<?> accept, MediaType contentType,
-            Writer<T> writer);
+    public OutBoundContent(Publisher<Object> entityStream, GenericType type,
+        EntityWriters writers, OutBoundContext context) {
 
-    Publisher<DataChunk> toPublisher();
-    // TODO change object to out-bound content support
-    Publisher<DataChunk> toPublisher(Object delegate);
+        Objects.requireNonNull(entityStream, "entityStream cannot be null!");
+        Objects.requireNonNull(type, "type cannot be null!");
+        Objects.requireNonNull(context,
+                "context cannot be null!");
+        this.entityStream = entityStream;
+        this.entityStreamGenericType = type;
+        this.entity = null;
+        this.publisher = null;
+        this.entityStreamType = null;
+        this.writers = writers;
+        this.context = context;
+    }
+
+    public OutBoundContent(Publisher<DataChunk> publisher,
+            EntityWriters writers, OutBoundContext context) {
+
+        Objects.requireNonNull(publisher, "publisher cannot be null!");
+        Objects.requireNonNull(context,
+                "context cannot be null!");
+        this.publisher = publisher;
+        this.entity = null;
+        this.entityStream = null;
+        this.entityStreamType = null;
+        this.entityStreamGenericType = null;
+        this.writers = writers;
+        this.context = context;
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super DataChunk> subscriber) {
+        subscribe(subscriber, /* delegate */ null);
+    }
+
+    @SuppressWarnings("unchecked")
+    void subscribe(Subscriber<? super DataChunk> subscriber,
+            EntityWriters delegate) {
+
+        Publisher<DataChunk> pub;
+        if (publisher != null) {
+            pub = publisher;
+        } else {
+            List<MediaType> acceptedTypes = context.acceptedTypes();
+            Charset defaultCharset = context.defaultCharset();
+            if (entity != null) {
+                EntityWriter.Promise promise = writers
+                        .selectWriter(entity, acceptedTypes, delegate);
+                pub = promise.writer.writeEntity(entity, promise.info,
+                        acceptedTypes, defaultCharset);
+            } else {
+                if (entityStreamType != null) {
+                    EntityStreamWriter.Promise promise = writers
+                        .selectStreamWriter(entityStreamType, acceptedTypes,
+                                delegate);
+                    pub = promise.writer.writeEntityStream(entityStream,
+                            entityStreamType, promise.info, acceptedTypes,
+                            defaultCharset);
+                } else {
+                    EntityStreamWriter.Promise promise = writers
+                        .selectStreamWriter(entityStreamGenericType,
+                                acceptedTypes, delegate);
+                    pub = promise.writer.writeEntityStream(entityStream,
+                            entityStreamGenericType, promise.info,
+                            acceptedTypes, defaultCharset);
+                }
+            }
+        }
+        writers.applyFilters(pub, context)
+                .subscribe(subscriber);
+    }
+
+    @Override
+    public void registerFilter(ContentFilter filter) {
+        writers.registerFilter(filter);
+    }
+
+    @Override
+    public void registerWriter(EntityWriter<?> writer) {
+        writers.registerWriter(writer);
+    }
+
+    @Override
+    public void registerStreamWriter(EntityStreamWriter<?> streamWriter) {
+        writers.registerStreamWriter(streamWriter);
+    }
 }

@@ -15,10 +15,18 @@
  */
 package io.helidon.media.multipart;
 
+import io.helidon.common.http.ContentInfo;
+import io.helidon.common.http.ContentInterceptor;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.OutBoundContent;
+import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.webserver.internal.OutBoundMediaSupport;
+import io.helidon.common.http.OutBoundContent;
+import io.helidon.common.http.OutBoundContext;
+import io.helidon.common.reactive.Flow.Subscriber;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * In-bound body part.
@@ -74,7 +82,31 @@ public final class OutBoundBodyPart extends BodyPart<OutBoundContent> {
          * @return this builder instance
          */
         public Builder entity(Object entity) {
-//            this.entity = entity;
+            this.content = new OutBoundContent(entity, /* writersSupport */ null,
+                    new OutBoundContext() {
+
+                @Override
+                public List<MediaType> acceptedTypes() {
+                    return Collections.emptyList();
+                }
+
+                @Override
+                public Charset defaultCharset() {
+                    return StandardCharsets.UTF_8;
+                }
+
+                @Override
+                public void contentInfo(ContentInfo info) {
+                    // do nothing
+                }
+
+                @Override
+                public ContentInterceptor createInterceptor(
+                        Subscriber<? super DataChunk> subscriber, String type) {
+
+                    return null;
+                }
+            });
             return this;
         }
 

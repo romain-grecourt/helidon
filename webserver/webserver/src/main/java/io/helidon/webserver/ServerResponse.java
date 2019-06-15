@@ -23,12 +23,12 @@ import java.util.function.Predicate;
 
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Filter;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.StreamWriter;
-import io.helidon.common.http.Writer;
 import io.helidon.common.reactive.Flow;
+import io.helidon.common.http.EntityWriter;
+import io.helidon.common.http.EntityStreamWriter;
+import io.helidon.common.http.ContentFilter;
 
 /**
  * Represents HTTP Response.
@@ -143,9 +143,9 @@ public interface ServerResponse {
 
     <T> CompletionStage<ServerResponse> send(Flow.Publisher<T> content, Class<T> clazz);
 
-    <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate, MediaType contentType, StreamWriter<T> writer);
+    <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate, MediaType contentType, EntityStreamWriter<T> writer);
 
-    <T> ServerResponse registerStreamWriter(Class<T> acceptType, MediaType contentType, StreamWriter<T> writer);
+    <T> ServerResponse registerStreamWriter(Class<T> acceptType, MediaType contentType, EntityStreamWriter<T> writer);
 
     /**
      * Registers a content writer for a given type.
@@ -159,7 +159,7 @@ public interface ServerResponse {
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Class<T> type, Writer<T> writer);
+    <T> ServerResponse registerWriter(Class<T> type, EntityWriter<T> writer);
 
     /**
      * Registers a content writer for a given type and media type.
@@ -176,7 +176,7 @@ public interface ServerResponse {
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Class<T> type, MediaType contentType, Writer<T> writer);
+    <T> ServerResponse registerWriter(Class<T> type, MediaType contentType, EntityWriter<T> writer);
 
     /**
      * Registers a content writer for all accepted contents.
@@ -190,7 +190,7 @@ public interface ServerResponse {
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Predicate<?> accept, Writer<T> writer);
+    <T> ServerResponse registerWriter(Predicate<?> accept, EntityWriter<T> writer);
 
     /**
      * Registers a content writer for all accepted contents.
@@ -207,7 +207,7 @@ public interface ServerResponse {
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
      */
-    <T> ServerResponse registerWriter(Predicate<?> accept, MediaType contentType, Writer<T> writer);
+    <T> ServerResponse registerWriter(Predicate<?> accept, MediaType contentType, EntityWriter<T> writer);
 
     /**
      * Registers a provider of the new response content publisher - typically a filter.
@@ -227,7 +227,7 @@ public interface ServerResponse {
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if parameter {@code function} is {@code null}
      */
-    ServerResponse registerFilter(Filter filter);
+    ServerResponse registerFilter(ContentFilter filter);
 
     /**
      * Completion stage is completed when response is completed.

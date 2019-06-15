@@ -15,20 +15,12 @@
  */
 package io.helidon.common.http;
 
-import io.helidon.common.reactive.Flow;
-import java.util.function.BiFunction;
+import io.helidon.common.reactive.Flow.Publisher;
 
 /**
- * Stream reader.
- * @param <T> stream items type
+ * A filter allows a control over a content publisher.
  */
-@FunctionalInterface
-public interface StreamReader<T> extends BiFunction<Flow.Publisher<DataChunk>, Class<? super T>, Flow.Publisher<? extends T>> {
+public interface ContentFilter {
 
-    @Override
-    Flow.Publisher<? extends T> apply(Flow.Publisher<DataChunk> t, Class <? super T> clazz);
-
-    default Flow.Publisher<? extends T> apply(Flow.Publisher<DataChunk> chunks) {
-        return apply(chunks, Object.class);
-    }
+    Publisher<DataChunk> apply(Publisher<DataChunk> publisher);
 }

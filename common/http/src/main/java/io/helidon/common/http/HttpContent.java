@@ -36,7 +36,7 @@ import io.helidon.common.reactive.Flow.Subscriber;
  * of a new publisher using {@link #registerFilter(Function)} method. It can be
  * used to wrap or replace previously registered (or default) publisher.
  */
-public interface HttpContent extends Publisher<DataChunk> {
+public interface HttpContent extends Publisher<DataChunk>, ContentFiltersRegistry {
 
     /**
      * If possible, adds the given Subscriber to this publisher. This publisher
@@ -53,21 +53,4 @@ public interface HttpContent extends Publisher<DataChunk> {
      */
     @Override
     void subscribe(Subscriber<? super DataChunk> subscriber);
-
-    /**
-     * Registers a filter that allows a control of the original publisher.
-     * <p>
-     * The provided function is evaluated upon calling either of
-     * {@link #subscribe(Subscriber)} or {@link #as(Class)}. The first
-     * evaluation of the function transforms the original publisher to a new
-     * publisher. Any subsequent evaluation receives the publisher transformed
-     * by the last previously registered filter. It is up to the implementation
-     * of the given function to respect the contract of both the original
-     * publisher and the previously registered ones.
-     *
-     * @param filter a function that transforms a given publisher (that is
-     * either the original publisher or the publisher transformed by the last
-     * previously registered filter).
-     */
-    void registerFilter(Filter filter);
 }
