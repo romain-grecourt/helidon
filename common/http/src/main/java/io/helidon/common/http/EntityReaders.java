@@ -9,7 +9,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Entity readers support.
  */
-public final class EntityReaders extends ContentFilterSupport
+public final class EntityReaders extends ContentFilters
         implements EntityReadersRegistry {
 
     private final EntityReaders delegate;
@@ -44,24 +44,26 @@ public final class EntityReaders extends ContentFilterSupport
     }
 
     @Override
-    public void registerStreamReader(EntityStreamReader<?> streamReader) {
+    public EntityReaders registerStreamReader(EntityStreamReader<?> streamReader) {
         Objects.requireNonNull(streamReader, "streamReader is null!");
         try {
             streamReadersLock.writeLock().lock();
             streamReaders.addFirst(new ReaderEntry<>(
                     streamReader.getClass(), streamReader));
+            return this;
         } finally {
             streamReadersLock.writeLock().unlock();
         }
     }
 
     @Override
-    public void registerReader(EntityReader<?> reader) {
+    public EntityReaders registerReader(EntityReader<?> reader) {
         Objects.requireNonNull(reader, "reader is null!");
         try {
             readersLock.writeLock().lock();
             readers.addFirst(new ReaderEntry<>(reader.getClass(),
                     reader));
+            return this;
         } finally {
             readersLock.writeLock().unlock();
         }
@@ -111,13 +113,13 @@ public final class EntityReaders extends ContentFilterSupport
     }
 
     @SuppressWarnings("unchecked")
-    public <T> EntityReader<T> selectReader(Class<T> type, ContentInfo info,
+    public <T> EntityReader<T> selectReader(Class<T> type, InBoundScope scope,
             EntityReaders delegate) {
 
         try {
             readersLock.readLock().lock();
             for (ReaderEntry<EntityReader<?>> readerEntry : readers) {
-                if (readerEntry.reader.accept(type, info)){
+                if (readerEntry.reader.accept(type, scope)){
                     return (EntityReader<T>) readerEntry.reader;
                 }
             }
@@ -125,19 +127,19 @@ public final class EntityReaders extends ContentFilterSupport
             readersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectReader(type, info, delegate);
+            return this.delegate.selectReader(type, scope, delegate);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
     public <T> EntityReader<T> selectReader(GenericType<T> type,
-            ContentInfo info, EntityReaders delegate) {
+            InBoundScope scope, EntityReaders delegate) {
 
         try {
             readersLock.readLock().lock();
             for (ReaderEntry<EntityReader<?>> readerEntry : readers) {
-                if (readerEntry.reader.accept(type, info)){
+                if (readerEntry.reader.accept(type, scope)){
                     return (EntityReader<T>) readerEntry.reader;
                 }
             }
@@ -145,20 +147,20 @@ public final class EntityReaders extends ContentFilterSupport
             readersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectReader(type, info, delegate);
+            return this.delegate.selectReader(type, scope, delegate);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
     public <T> EntityStreamReader<T> selectStreamReader(Class<T> type,
-            ContentInfo info, EntityReaders delegate) {
+            InBoundScope scope, EntityReaders delegate) {
 
         try {
             streamReadersLock.readLock().lock();
             for (ReaderEntry<EntityStreamReader<?>> readerEntry
                     : streamReaders) {
-                if (readerEntry.reader.accept(type, info)){
+                if (readerEntry.reader.accept(type, scope)){
                     return (EntityStreamReader<T>) readerEntry.reader;
                 }
             }
@@ -166,20 +168,20 @@ public final class EntityReaders extends ContentFilterSupport
             streamReadersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectStreamReader(type, info, delegate);
+            return this.delegate.selectStreamReader(type, scope, delegate);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
     public <T> EntityStreamReader<T> selectStreamReader(GenericType<T> type,
-            ContentInfo info, EntityReaders delegate) {
+            InBoundScope scope, EntityReaders delegate) {
 
         try {
             streamReadersLock.readLock().lock();
             for (ReaderEntry<EntityStreamReader<?>> readerEntry
                     : streamReaders) {
-                if (readerEntry.reader.accept(type, info)){
+                if (readerEntry.reader.accept(type, scope)){
                     return (EntityStreamReader<T>) readerEntry.reader;
                 }
             }
@@ -187,7 +189,7 @@ public final class EntityReaders extends ContentFilterSupport
             streamReadersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectStreamReader(type, info, delegate);
+            return this.delegate.selectStreamReader(type, scope, delegate);
         }
         return null;
     }

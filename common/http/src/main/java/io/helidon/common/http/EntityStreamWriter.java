@@ -17,8 +17,6 @@ package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Publisher;
-import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -27,35 +25,41 @@ import java.util.Objects;
  */
 public interface EntityStreamWriter<T> {
 
-    Promise accept(Class<?> type, List<MediaType> acceptedTypes);
+    Promise accept(Class<?> type, OutBoundScope scope);
 
-    default Promise accept(GenericType<?> type, List<MediaType> acceptedTypes) {
-        return accept(type.rawType(), acceptedTypes);
+    default Promise accept(GenericType<?> type, OutBoundScope scope) {
+        return accept(type.rawType(), scope);
     }
 
     Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            Class<T> type, ContentInfo info, List<MediaType> acceptedTypes,
-            Charset defaultCharset);
+            Class<T> type, Promise<T> promise, OutBoundScope scope);
 
     @SuppressWarnings("unchecked")
     default Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            GenericType<T> type, ContentInfo info,
-            List<MediaType> acceptedTypes, Charset defaultCharset) {
+            GenericType<T> type, Promise<T> promise, OutBoundScope scope) {
 
-        return writeEntityStream(entityStream, (Class<T>) type.rawType(), info,
-                acceptedTypes, defaultCharset);
+        return writeEntityStream(entityStream, (Class<T>) type.rawType(),
+                promise, scope);
     }
 
     static final class Promise<T> {
 
-        final ContentInfo info;
-        final EntityStreamWriter<T> writer;
+        public final MediaType contentType;
+        public final long contentLength;
+        public final EntityStreamWriter<T> writer;
 
-        public Promise(ContentInfo info, EntityStreamWriter<T> writer) {
-            Objects.requireNonNull(info, "content info cannot be null!");
-            Objects.requireNonNull(info, "writer cannot be null!");
-            this.info = info;
+        public Promise(EntityStreamWriter<T> writer, MediaType contentType,
+                long contentLength) {
+
+            Objects.requireNonNull(writer, "writer cannot be null!");
+            Objects.requireNonNull(contentType, "contentType cannot be null!");
             this.writer = writer;
+            this.contentType = contentType;
+            this.contentLength = contentLength;
+        }
+
+        public Promise(EntityStreamWriter<T> writer, MediaType contentType) {
+            this(writer, contentType, -1);
         }
     }
 }

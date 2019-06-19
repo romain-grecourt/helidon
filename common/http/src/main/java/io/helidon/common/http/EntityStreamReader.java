@@ -17,7 +17,6 @@ package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Publisher;
-import java.nio.charset.Charset;
 
 /**
  * Entity stream reader.
@@ -25,21 +24,20 @@ import java.nio.charset.Charset;
  */
 public interface EntityStreamReader<T> {
 
-    boolean accept(Class<?> type, ContentInfo info);
+    boolean accept(Class<?> type, InBoundScope scope);
 
-    default boolean accept(GenericType<?> type, ContentInfo info) {
-        return accept(type.rawType(), info);
+    default boolean accept(GenericType<?> type, InBoundScope scope) {
+        return accept(type.rawType(), scope);
     }
 
     Publisher<? extends T> readEntityStream(Publisher<DataChunk> publisher,
-            Class<? super T> type, ContentInfo info, Charset defaultCharset);
+            Class<? super T> type, InBoundScope scope);
 
     @SuppressWarnings("unchecked")
-    default Publisher<? extends T> readEntityStream(Publisher<DataChunk> publisher,
-            GenericType<? super T> type, ContentInfo info,
-            Charset defaultCharset) {
+    default Publisher<? extends T> readEntityStream(
+            Publisher<DataChunk> publisher, GenericType<? super T> type,
+            InBoundScope scope) {
 
-        return readEntityStream(publisher, (Class<? super T>)type.rawType(),
-                info, defaultCharset);
+        return readEntityStream(publisher, (Class<? super T>)type.rawType(), scope);
     }
 }

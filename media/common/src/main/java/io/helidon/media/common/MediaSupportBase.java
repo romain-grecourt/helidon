@@ -16,8 +16,8 @@ public abstract class MediaSupportBase implements ContextProcessor {
         Optional<MediaSupport> optional = context.get(MediaSupport.class);
         if (optional.isPresent()) {
             MediaSupport mediaSupport = optional.get();
-            registerReaders(mediaSupport.readersSupport);
-            registerWriters(mediaSupport.writersSupport);
+            registerReaders(mediaSupport.readers);
+            registerWriters(mediaSupport.writers);
         }
     }
 

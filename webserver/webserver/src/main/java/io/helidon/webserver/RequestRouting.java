@@ -30,7 +30,10 @@ import java.util.stream.Collectors;
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.context.Contexts;
 import io.helidon.common.http.AlreadyCompletedException;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.EntityWriters;
 import io.helidon.common.http.Http;
+import io.helidon.media.common.MediaSupport;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -39,6 +42,7 @@ import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapExtractAdapter;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
+import java.util.Optional;
 
 /**
  * Default (and only provided) implementation of {@link Routing}.
@@ -55,9 +59,10 @@ class RequestRouting implements Routing {
      *
      * @param routes                effective route
      * @param errorHandlers         a list of error handlers
-     * @param newWebServerCallbacks a list af callback handlers for registration in new {@link WebServer}. It is copied.
+     * @param newWebServerCallbacks a list of callback handlers for registration in new {@link WebServer}. It is copied.
      */
-    RequestRouting(RouteList routes, List<ErrorHandlerRecord<?>> errorHandlers, List<Consumer<WebServer>> newWebServerCallbacks) {
+    RequestRouting(RouteList routes, List<ErrorHandlerRecord<?>> errorHandlers,
+            List<Consumer<WebServer>> newWebServerCallbacks) {
         this.routes = routes;
         this.errorHandlers = errorHandlers;
         this.newWebServerCallbacks = new ArrayList<>(newWebServerCallbacks);
@@ -65,10 +70,19 @@ class RequestRouting implements Routing {
 
     @Override
     public void route(BareRequest bareRequest, BareResponse bareResponse) {
+
         try {
             WebServer webServer = bareRequest.webServer();
+
+            // avoid context lookup per request.
+            // instead do it once and save it per serverConfig
+            MediaSupport mediaSupport = webServer.context()
+                    .get(MediaSupport.class)
+                    .orElseGet(MediaSupport::new);
+
             Span span = createRequestSpan(tracer(webServer), bareRequest);
-            RoutedResponse response = new RoutedResponse(webServer, bareResponse, span.context());
+            RoutedResponse response = new RoutedResponse(webServer, bareResponse, span.context(),
+                    mediaSupport.writers());
             response.whenSent()
                     .thenRun(() -> {
                         Http.ResponseStatus httpStatus = response.status();
@@ -97,7 +111,7 @@ class RequestRouting implements Routing {
             String rawPath = canonicalize(bareRequest.uri().normalize().getRawPath());
 
             Crawler crawler = new Crawler(routes, path, rawPath, bareRequest.method());
-            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, span);
+            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, span, mediaSupport.readers());
             // only register the span context once on the top level request, as others are cloned from it
             nextRequests.context().register(span.context());
             Contexts.runInContext(nextRequests.context(), (Runnable) nextRequests::next);
@@ -293,8 +307,10 @@ class RequestRouting implements Routing {
                       WebServer webServer,
                       Crawler crawler,
                       List<ErrorHandlerRecord<?>> errorHandlers,
-                      Span requestSpan) {
-            super(req, webServer);
+                      Span requestSpan,
+                      EntityReaders readers) {
+
+            super(req, webServer, readers);
             this.crawler = crawler;
             this.errorHandlers = new LinkedList<>(errorHandlers);
             this.path = null;
@@ -471,8 +487,10 @@ class RequestRouting implements Routing {
 
         private final SpanContext requestSpanContext;
 
-        RoutedResponse(WebServer webServer, BareResponse bareResponse, SpanContext requestSpanContext) {
-            super(webServer, bareResponse);
+        RoutedResponse(WebServer webServer, BareResponse bareResponse,
+                SpanContext requestSpanContext, EntityWriters writers) {
+
+            super(webServer, bareResponse, writers);
             this.requestSpanContext = requestSpanContext;
         }
 

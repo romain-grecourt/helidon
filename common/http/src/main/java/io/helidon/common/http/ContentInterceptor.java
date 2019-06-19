@@ -15,7 +15,6 @@
  */
 package io.helidon.common.http;
 
-import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 
@@ -24,112 +23,121 @@ import io.helidon.common.reactive.Flow.Subscription;
  */
 public abstract class ContentInterceptor implements Subscriber<DataChunk> {
 
-    public static interface Factory {
-
-        default ContentInterceptor createInterceptor(
-                Flow.Subscriber<? super DataChunk> subscriber) {
-
-            return createInterceptor(subscriber, /* type */ null);
-        }
-
-        ContentInterceptor createInterceptor(
-                Flow.Subscriber<? super DataChunk> subscriber, String type);
-    }
-
-    static final class WrappedFactory implements Factory {
-
-        private final Factory delegate;
-        private final String type;
-
-        /**
-         * Create a new instance.
-         *
-         * @param delegate delegate factory.
-         * @param type type requested for conversion
-         */
-        WrappedFactory(Factory delegate, String type) {
-            this.delegate = delegate;
-            this.type = type;
-        }
-
-        @Override
-        public ContentInterceptor createInterceptor(
-                Subscriber<? super DataChunk> subscriber) {
-
-            return delegate.createInterceptor(subscriber, type);
-        }
-
-        @Override
-        public ContentInterceptor createInterceptor(
-                Subscriber<? super DataChunk> subscriber,
-                String requestedType) {
-
-            return delegate.createInterceptor(subscriber, requestedType);
-        }
-    }
-
-    private final Subscriber<? super DataChunk> delegate;
-    protected final String type;
+    private final Subscriber<? super DataChunk> subscriber;
 
     /**
      * Create a new interceptor.
      *
      * @param subscriber delegate subscriber
-     * @param requestedType type requested for conversion
      */
-    protected ContentInterceptor(Subscriber<? super DataChunk> subscriber,
-            String requestedType) {
+    protected ContentInterceptor(Subscriber<? super DataChunk> subscriber) {
 
-        this.delegate = subscriber;
-        this.type = requestedType;
+        this.subscriber = subscriber;
     }
 
     /**
      * Invoked before {@link Subscriber#onSubscribe}.
+     * @param type type requested for conversion
      */
-    public abstract void beforeOnSubscribe();
+    public abstract void beforeOnSubscribe(String type);
 
     /**
      * Invoked after {@link Subscriber#onError(java.lang.Throwable)}.
      *
      * @param throwable error
+     * @param type type requested for conversion
      */
-    public abstract void afterOnError(Throwable throwable);
+    public abstract void afterOnError(Throwable throwable, String type);
 
     /**
      * Invoked after {@link Subscriber#onComplete()}.
+     * @param type type requested for conversion
      */
-    public abstract void afterOnComplete();
+    public abstract void afterOnComplete(String type);
 
     @Override
     public final void onSubscribe(Subscription subscription) {
         try {
-            beforeOnSubscribe();
+            beforeOnSubscribe(null);
         } finally {
-            delegate.onSubscribe(subscription);
+            subscriber.onSubscribe(subscription);
         }
     }
 
     @Override
     public final void onNext(DataChunk item) {
-        delegate.onNext(item);
+        subscriber.onNext(item);
     }
 
     @Override
     public final void onError(Throwable throwable) {
         try {
-            delegate.onError(throwable);
+            subscriber.onError(throwable);
         } finally {
-            afterOnError(throwable);
+            afterOnError(throwable, null);
         }
     }
 
     @Override
     public final void onComplete() {
         try {
-            delegate.onComplete();
+            subscriber.onComplete();
         } finally {
-            afterOnComplete();
+            afterOnComplete(null);
+        }
+    }
+
+    public static interface Factory {
+
+        ContentInterceptor create(Subscriber<? super DataChunk> subscriber);
+
+        default Factory forType(String type) {
+            return new DelegatedFactory(this, type);
+        }
+    }
+
+    private static final class DelegatedInterceptor extends ContentInterceptor {
+
+        private final ContentInterceptor delegate;
+        private final String type;
+
+        DelegatedInterceptor(ContentInterceptor delegate, String type) {
+            super(delegate.subscriber);
+            this.delegate = delegate;
+            this.type = type;
+        }
+
+        @Override
+        public void beforeOnSubscribe(String type) {
+            delegate.beforeOnSubscribe(this.type);
+        }
+
+        @Override
+        public void afterOnError(Throwable throwable, String type) {
+            delegate.afterOnError(throwable, this.type);
+        }
+
+        @Override
+        public void afterOnComplete(String type) {
+            delegate.afterOnComplete(this.type);
+        }
+    }
+
+    private static final class DelegatedFactory implements Factory {
+
+        private final String type;
+        private final Factory delegate;
+
+        DelegatedFactory(Factory delegate, String type) {
+            this.delegate = delegate;
+            this.type = type;
+        }
+
+        @Override
+        public ContentInterceptor create(
+                Subscriber<? super DataChunk> subscriber) {
+
+            return new DelegatedInterceptor(delegate.create(subscriber), type);
         }
     }
 }

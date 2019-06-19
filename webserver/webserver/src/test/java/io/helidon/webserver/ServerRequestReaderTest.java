@@ -40,33 +40,33 @@ public class ServerRequestReaderTest {
 
     static class C extends B {}
 
-    @Test
-    public void test1() throws Exception {
-        EntityReader<B> reader = (publisher, clazz) -> ReactiveStreamsAdapter.publisherFromFlow(publisher)
-                                                                             .collectList()
-                                                                             .toFuture()
-                                                                             .thenApply(byteBuffers -> new B());
-
-        CompletionStage<? extends B> apply = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()));
-
-        CompletionStage<? extends B> a = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), A.class);
-        CompletionStage<? extends B> b = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), B.class);
-
-        // this should not be possible to compile:
-        //CompletionStage<? extends B> apply2 = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
-        // which is why we have the cast method
-        CompletionStage<? extends C> c = reader.applyAndCast(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
-
-        assertThat(apply.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(B.class));
-        assertThat(a.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(A.class));
-        assertThat(b.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(B.class));
-
-        try {
-            B bOrC = c.toCompletableFuture().get(10, TimeUnit.SECONDS);
-            fail("Should have thrown an exception.. " + bOrC);
-            // if there was no explicit cast, only this would fail: Assert.assertThat(actual, IsInstanceOf.instanceOf(C.class));
-        } catch (ExecutionException e) {
-            assertThat(e.getCause(), IsInstanceOf.instanceOf(ClassCastException.class));
-        }
-    }
+//    @Test
+//    public void test1() throws Exception {
+//        EntityReader<B> reader = (publisher, clazz) -> ReactiveStreamsAdapter.publisherFromFlow(publisher)
+//                                                                             .collectList()
+//                                                                             .toFuture()
+//                                                                             .thenApply(byteBuffers -> new B());
+//
+//        CompletionStage<? extends B> apply = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()));
+//
+//        CompletionStage<? extends B> a = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), A.class);
+//        CompletionStage<? extends B> b = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), B.class);
+//
+//        // this should not be possible to compile:
+//        //CompletionStage<? extends B> apply2 = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
+//        // which is why we have the cast method
+//        CompletionStage<? extends C> c = reader.applyAndCast(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
+//
+//        assertThat(apply.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(B.class));
+//        assertThat(a.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(A.class));
+//        assertThat(b.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(B.class));
+//
+//        try {
+//            B bOrC = c.toCompletableFuture().get(10, TimeUnit.SECONDS);
+//            fail("Should have thrown an exception.. " + bOrC);
+//            // if there was no explicit cast, only this would fail: Assert.assertThat(actual, IsInstanceOf.instanceOf(C.class));
+//        } catch (ExecutionException e) {
+//            assertThat(e.getCause(), IsInstanceOf.instanceOf(ClassCastException.class));
+//        }
+//    }
 }

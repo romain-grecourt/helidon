@@ -16,6 +16,7 @@
 
 package io.helidon.media.jsonp.server;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -25,13 +26,19 @@ import javax.json.JsonException;
 import javax.json.JsonObject;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.ReactiveStreamsAdapter;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.InBoundScope;
+import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.media.jsonp.common.JsonEntityReader;
+import io.helidon.media.jsonp.common.JsonProcessing;
 
 import org.hamcrest.core.Is;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherToFlow;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,13 +49,21 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class JsonContentReaderTest {
 
+    private final static InBoundScope SCOPE = new InBoundScope(
+            ReadOnlyParameters.empty(), StandardCharsets.UTF_8, null,
+            new EntityReaders());
+
+    private final static JsonEntityReader READER = JsonProcessing.create()
+            .newReader();
+
     @Test
     public void simpleJsonObject() throws Exception {
-        Flux<DataChunk> flux = Flux.just("{ \"p\" : \"val\" }").map(s -> DataChunk.create(s.getBytes()));
+        Publisher<DataChunk> publisher = publisherToFlow(
+                Flux.just("{ \"p\" : \"val\" }")
+                        .map(s -> DataChunk.create(s.getBytes())));
 
-        CompletionStage<? extends JsonObject> stage = JsonSupport.create()
-                                                                 .reader()
-                                                                 .applyAndCast(ReactiveStreamsAdapter.publisherToFlow(flux), JsonObject.class);
+        CompletionStage<? extends JsonObject> stage = READER
+                .readEntityAndCast(publisher, JsonObject.class, SCOPE);
 
         JsonObject jsonObject = stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
         assertThat(jsonObject.getJsonString("p").getString(), Is.is("val"));
@@ -56,11 +71,12 @@ public class JsonContentReaderTest {
 
     @Test
     public void incompatibleTypes() throws Exception {
-        Flux<DataChunk> flux = Flux.just("{ \"p\" : \"val\" }").map(s -> DataChunk.create(s.getBytes()));
+        Publisher<DataChunk> publisher = publisherToFlow(
+                Flux.just("{ \"p\" : \"val\" }")
+                        .map(s -> DataChunk.create(s.getBytes())));
 
-        CompletionStage<? extends JsonArray> stage = JsonSupport.create()
-                .reader()
-                .applyAndCast(ReactiveStreamsAdapter.publisherToFlow(flux), JsonArray.class);
+        CompletionStage<? extends JsonArray> stage = READER
+                .readEntityAndCast(publisher, JsonArray.class, SCOPE);
 
         try {
             JsonArray array = stage.thenApply(o -> {
@@ -75,11 +91,12 @@ public class JsonContentReaderTest {
 
     @Test
     public void simpleJsonArray() throws Exception {
-        Flux<DataChunk> flux = Flux.just("[ \"val\" ]").map(s -> DataChunk.create(s.getBytes()));
+        Publisher<DataChunk> publisher = publisherToFlow(
+                Flux.just("[ \"val\" ]")
+                        .map(s -> DataChunk.create(s.getBytes())));
 
-        CompletionStage<? extends JsonArray> stage = JsonSupport.create()
-                .reader()
-                .applyAndCast(ReactiveStreamsAdapter.publisherToFlow(flux), JsonArray.class);
+        CompletionStage<? extends JsonArray> stage = READER
+                .readEntityAndCast(publisher, JsonArray.class, SCOPE);
 
         JsonArray array = stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
         assertThat(array.getString(0), Is.is("val"));
@@ -87,11 +104,12 @@ public class JsonContentReaderTest {
 
     @Test
     public void invalidJson() throws Exception {
-        Flux<DataChunk> flux = Flux.just("{ \"p\" : \"val\" ").map(s -> DataChunk.create(s.getBytes()));
+        Publisher<DataChunk> publisher = publisherToFlow(
+                Flux.just("{ \"p\" : \"val\" }")
+                        .map(s -> DataChunk.create(s.getBytes())));
 
-        CompletionStage<? extends JsonObject> stage = JsonSupport.create()
-                .reader()
-                .applyAndCast(ReactiveStreamsAdapter.publisherToFlow(flux), JsonObject.class);
+        CompletionStage<? extends JsonObject> stage = READER
+                .readEntityAndCast(publisher, JsonObject.class, SCOPE);
         try {
             stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
             fail("Should have thrown an exception");

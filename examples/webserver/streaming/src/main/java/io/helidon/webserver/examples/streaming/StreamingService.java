@@ -19,18 +19,19 @@ package io.helidon.webserver.examples.streaming;
 import javax.json.Json;
 import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
+import javax.json.JsonWriterFactory;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.logging.Logger;
+import java.util.logging.Level;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.FormParam;
-import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
-import io.helidon.media.jsonp.server.JsonArrayStreamWriter;
-import io.helidon.media.jsonp.server.JsonLineDelimitedStreamWriter;
+import io.helidon.media.jsonp.common.JsonArrayEntityStreamWriter;
+import io.helidon.media.jsonp.common.JsonLineDelimitedEntityStreamWriter;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -43,9 +44,21 @@ import static io.helidon.webserver.examples.streaming.Main.LARGE_FILE_RESOURCE;
  * {@code Publisher<DataChunk>} for uploading and downloading files.
  */
 public class StreamingService implements Service {
-    private static final Logger LOGGER = Logger.getLogger(StreamingService.class.getName());
 
-    private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
+    private static final Logger LOGGER =
+            Logger.getLogger(StreamingService.class.getName());
+
+    private static final JsonBuilderFactory JSON =
+            Json.createBuilderFactory(Collections.emptyMap());
+
+    private static final JsonWriterFactory JSON_WRITER_FACTORY =
+            Json.createWriterFactory(Collections.emptyMap());
+
+    private static final JsonArrayEntityStreamWriter ARRAY_WRITER =
+            new JsonArrayEntityStreamWriter(JSON_WRITER_FACTORY);
+
+    private static final JsonLineDelimitedEntityStreamWriter LINE_WRITER =
+            new JsonLineDelimitedEntityStreamWriter(JSON_WRITER_FACTORY);
 
     private final Path filePath;
 
@@ -65,33 +78,23 @@ public class StreamingService implements Service {
     }
 
     private void upload(ServerRequest request, ServerResponse response) {
-        LOGGER.info("Entering upload ... " + Thread.currentThread());
+        LOGGER.log(Level.INFO, "Entering upload ... {0}", Thread.currentThread());
         request.content().subscribe(new ServerFileWriter(response));
         LOGGER.info("Exiting upload ...");
     }
 
     private void download(ServerRequest request, ServerResponse response) {
-        LOGGER.info("Entering download ..." + Thread.currentThread());
+        LOGGER.log(Level.INFO, "Entering download ...{0}", Thread.currentThread());
         response.send(new ServerFileReader(filePath));
         LOGGER.info("Exiting download ...");
     }
 
     private void downloadJson(ServerRequest request, ServerResponse response) {
         // Register stream writers -- should be moved to JsonSupport
-        response.registerStreamWriter(
-                type -> type.isAssignableFrom(JsonObject.class)
-                        && request.headers().isAccepted(MediaType.APPLICATION_JSON),
-                MediaType.APPLICATION_JSON,
-                new JsonArrayStreamWriter<>(request, response, JsonObject.class));
+        response.registerStreamWriter(ARRAY_WRITER);
+        response.registerStreamWriter(LINE_WRITER);
 
-        response.registerStreamWriter(
-                type -> type.isAssignableFrom(JsonObject.class)
-                        && request.headers().isAccepted(MediaType.APPLICATION_STREAM_JSON),
-                MediaType.APPLICATION_STREAM_JSON,
-                new JsonLineDelimitedStreamWriter<>(request, response, JsonObject.class));
-
-
-        request.content().asPublisherOf(JsonObject.class).subscribe(
+        request.content().asStream(JsonObject.class).subscribe(
                 new Flow.Subscriber<JsonObject>() {
                     @Override
                     public void onSubscribe(Flow.Subscription subscription) {
@@ -134,7 +137,7 @@ public class StreamingService implements Service {
 
     private void processForm(ServerRequest request, ServerResponse response) {
         request.content()
-                .asPublisherOf(new GenericType<FormParam<String>>(){})
+                .asStream(new GenericType<FormParam<String>>(){})
                 .subscribe(new Flow.Subscriber<FormParam<String>>() {
                     @Override
                     public void onSubscribe(Flow.Subscription subscription) {

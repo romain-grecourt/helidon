@@ -1,15 +1,14 @@
 package io.helidon.media.common;
 
-import io.helidon.common.http.ContentInfo;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityReader;
+import io.helidon.common.http.InBoundScope;
 import io.helidon.common.http.Utils;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -19,23 +18,21 @@ import java.util.concurrent.CompletionStage;
 public final class ByteArrayEntityReader implements EntityReader<byte[]> {
 
     @Override
-    public boolean accept(Class<?> type, ContentInfo info) {
+    public boolean accept(Class<?> type, InBoundScope scope) {
         return type.isAssignableFrom(byte[].class);
-    }
-
-    @Override
-    public CompletionStage<byte[]> readEntity(
-            Publisher<DataChunk> publisher,
-            Class<? super byte[]> type, ContentInfo info,
-            Charset defaultCharset) {
-
-        return read(publisher);
     }
 
     public static CompletionStage<byte[]> read(Publisher<DataChunk> publisher) {
         ContentSubscriber subscriber = new ContentSubscriber();
         publisher.subscribe(subscriber);
         return subscriber.future;
+    }
+
+    @Override
+    public CompletionStage<byte[]> readEntity(Publisher<DataChunk> publisher,
+            Class<? super byte[]> type, InBoundScope scope) {
+
+        return read(publisher);
     }
 
     private static final class ContentSubscriber

@@ -32,7 +32,7 @@ public final class InBoundBodyPart extends BodyPart<InBoundContent> {
      * @param headers part headers
      * @param buffered buffered flag
      */
-    private InBoundBodyPart(InBoundContent content, BodyPartHeaders headers,
+    private InBoundBodyPart(InBoundContent content, InBoundBodyPartHeaders headers,
             boolean buffered) {
 
         super(content, headers);
@@ -94,7 +94,7 @@ public final class InBoundBodyPart extends BodyPart<InBoundContent> {
      */
     public static final class Builder extends BodyPart.Builder {
 
-        private BodyPartHeaders headers;
+        private InBoundBodyPartHeaders headers;
         private InBoundContent content;
         private boolean buffered;
 
@@ -127,7 +127,7 @@ public final class InBoundBodyPart extends BodyPart<InBoundContent> {
         }
 
         @Override
-        public Builder headers(BodyPartHeaders headers) {
+        public Builder headers(InBoundBodyPartHeaders headers) {
             this.headers = headers;
             return this;
         }

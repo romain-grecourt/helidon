@@ -5,7 +5,7 @@ package io.helidon.common.http;
  */
 public interface EntityWritersRegistry {
 
-   void registerWriter(EntityWriter<?> writer);
+   EntityWritersRegistry registerWriter(EntityWriter<?> writer);
 
-   void registerStreamWriter(EntityStreamWriter<?> writer); 
+   EntityWritersRegistry registerStreamWriter(EntityStreamWriter<?> writer); 
 }

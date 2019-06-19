@@ -3,8 +3,6 @@ package io.helidon.common.http;
 import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -14,73 +12,91 @@ public final class OutBoundContent
         implements HttpContent, EntityWritersRegistry {
 
     private final Object entity;
-    private final Publisher<? extends Object> entityStream;
-    private final Class<?> entityStreamType;
-    private final GenericType<?> entityStreamGenericType;
+    private final Publisher<? extends Object> stream;
+    private final Class<?> type;
+    private final GenericType<?> genericType;
     private final Publisher<DataChunk> publisher;
-    private final EntityWriters writers;
-    private final OutBoundContext context;
+    final OutBoundScope scope;
+    private final ContentInterceptor.Factory interceptorFactory;
 
-    public OutBoundContent(Object entity, EntityWriters writers,
-        OutBoundContext context) {
+    public OutBoundContent(Object entity, OutBoundScope scope,
+            ContentInterceptor.Factory interceptorFactory) {
 
         Objects.requireNonNull(entity, "entity cannot be null!");
-        Objects.requireNonNull(context,
-                "context cannot be null!");
+        Objects.requireNonNull(scope, "scope cannot be null!");
         this.publisher = null;
-        this.entityStream = null;
-        this.entityStreamType = null;
-        this.entityStreamGenericType = null;
+        this.stream = null;
+        this.type = null;
+        this.genericType = null;
         this.entity = entity;
-        this.writers = writers;
-        this.context = context;
+        this.scope = scope;
+        this.interceptorFactory = interceptorFactory;
     }
 
-    public OutBoundContent(Publisher<Object> entityStream, Class type,
-        EntityWriters writers, OutBoundContext context) {
-
-        Objects.requireNonNull(entityStream, "entityStream cannot be null!");
-        Objects.requireNonNull(type, "type cannot be null!");
-        Objects.requireNonNull(context,
-                "context cannot be null!");
-        this.entityStream = entityStream;
-        this.entityStreamType = type;
-        this.entityStreamGenericType = null;
-        this.publisher = null;
-        this.entity = null;
-        this.writers = writers;
-        this.context = context;
+    public OutBoundContent(Object entity, OutBoundScope scope) {
+        this(entity, scope, /* interceptorFactory */ null);
     }
 
-    public OutBoundContent(Publisher<Object> entityStream, GenericType type,
-        EntityWriters writers, OutBoundContext context) {
+    public OutBoundContent(Publisher<Object> stream, Class<?> type,
+        OutBoundScope scope, ContentInterceptor.Factory interceptorFactory) {
 
-        Objects.requireNonNull(entityStream, "entityStream cannot be null!");
+        Objects.requireNonNull(stream, "stream cannot be null!");
         Objects.requireNonNull(type, "type cannot be null!");
-        Objects.requireNonNull(context,
-                "context cannot be null!");
-        this.entityStream = entityStream;
-        this.entityStreamGenericType = type;
+        Objects.requireNonNull(scope, "scope cannot be null!");
+        this.stream = stream;
+        this.type = type;
+        this.genericType = null;
+        this.publisher = null;
+        this.entity = null;
+        this.scope = scope;
+        this.interceptorFactory = interceptorFactory;
+    }
+
+    public OutBoundContent(Publisher<Object> stream, Class<?> type,
+            OutBoundScope scope) {
+
+        this(stream, type, scope, /* interceptorFactory */ null);
+    }
+
+    public OutBoundContent(Publisher<Object> stream, GenericType<?> type,
+        OutBoundScope scope, ContentInterceptor.Factory interceptorFactory) {
+
+        Objects.requireNonNull(stream, "stream cannot be null!");
+        Objects.requireNonNull(type, "type cannot be null!");
+        Objects.requireNonNull(scope, "scope cannot be null!");
+        this.stream = stream;
+        this.genericType = type;
         this.entity = null;
         this.publisher = null;
-        this.entityStreamType = null;
-        this.writers = writers;
-        this.context = context;
+        this.type = null;
+        this.scope = scope;
+        this.interceptorFactory = interceptorFactory;
+    }
+
+    public OutBoundContent(Publisher<Object> stream, GenericType<?> type,
+            OutBoundScope scope) {
+
+        this(stream, type, scope, /* interceptorFactory */ null);
     }
 
     public OutBoundContent(Publisher<DataChunk> publisher,
-            EntityWriters writers, OutBoundContext context) {
+            OutBoundScope scope, ContentInterceptor.Factory interceptorFactory) {
 
         Objects.requireNonNull(publisher, "publisher cannot be null!");
-        Objects.requireNonNull(context,
-                "context cannot be null!");
+        Objects.requireNonNull(scope, "scope cannot be null!");
         this.publisher = publisher;
         this.entity = null;
-        this.entityStream = null;
-        this.entityStreamType = null;
-        this.entityStreamGenericType = null;
-        this.writers = writers;
-        this.context = context;
+        this.stream = null;
+        this.type = null;
+        this.genericType = null;
+        this.scope = scope;
+        this.interceptorFactory = interceptorFactory;
+    }
+
+    public OutBoundContent(Publisher<DataChunk> publisher,
+            OutBoundScope scope) {
+
+        this(publisher, scope, /* interceptorFactory */ null);
     }
 
     @Override
@@ -89,54 +105,62 @@ public final class OutBoundContent
     }
 
     @SuppressWarnings("unchecked")
-    void subscribe(Subscriber<? super DataChunk> subscriber,
+    public void subscribe(Subscriber<? super DataChunk> subscriber,
             EntityWriters delegate) {
 
         Publisher<DataChunk> pub;
+        ContentInterceptor.Factory ifac = null;
         if (publisher != null) {
             pub = publisher;
+            ifac = interceptorFactory;
         } else {
-            List<MediaType> acceptedTypes = context.acceptedTypes();
-            Charset defaultCharset = context.defaultCharset();
             if (entity != null) {
-                EntityWriter.Promise promise = writers
-                        .selectWriter(entity, acceptedTypes, delegate);
-                pub = promise.writer.writeEntity(entity, promise.info,
-                        acceptedTypes, defaultCharset);
+                EntityWriter.Promise promise = scope.writers
+                        .selectWriter(entity, scope, delegate);
+                pub = promise.writer.writeEntity(entity, promise, scope);
+                if (interceptorFactory != null) {
+                    ifac = interceptorFactory.forType(
+                            entity.getClass().getTypeName());
+                }
             } else {
-                if (entityStreamType != null) {
-                    EntityStreamWriter.Promise promise = writers
-                        .selectStreamWriter(entityStreamType, acceptedTypes,
-                                delegate);
-                    pub = promise.writer.writeEntityStream(entityStream,
-                            entityStreamType, promise.info, acceptedTypes,
-                            defaultCharset);
+                if (type != null) {
+                    EntityStreamWriter.Promise promise = scope.writers
+                        .selectStreamWriter(type, scope, delegate);
+                    pub = promise.writer.writeEntityStream(stream, type,
+                            promise, scope);
+                    if (interceptorFactory != null) {
+                        ifac = interceptorFactory.forType(type.getTypeName());
+                    }
                 } else {
-                    EntityStreamWriter.Promise promise = writers
-                        .selectStreamWriter(entityStreamGenericType,
-                                acceptedTypes, delegate);
-                    pub = promise.writer.writeEntityStream(entityStream,
-                            entityStreamGenericType, promise.info,
-                            acceptedTypes, defaultCharset);
+                    EntityStreamWriter.Promise promise = scope.writers
+                        .selectStreamWriter(genericType, scope, delegate);
+                    pub = promise.writer.writeEntityStream(stream,
+                            genericType, promise, scope);
+                    if (interceptorFactory != null) {
+                        ifac = interceptorFactory.forType(
+                                genericType.getTypeName());
+                    }
                 }
             }
         }
-        writers.applyFilters(pub, context)
-                .subscribe(subscriber);
+        scope.writers.applyFilters(pub, ifac).subscribe(subscriber);
     }
 
     @Override
-    public void registerFilter(ContentFilter filter) {
-        writers.registerFilter(filter);
+    public OutBoundContent registerFilter(ContentFilter filter) {
+        scope.writers.registerFilter(filter);
+        return this;
     }
 
     @Override
-    public void registerWriter(EntityWriter<?> writer) {
-        writers.registerWriter(writer);
+    public OutBoundContent registerWriter(EntityWriter<?> writer) {
+        scope.writers.registerWriter(writer);
+        return this;
     }
 
     @Override
-    public void registerStreamWriter(EntityStreamWriter<?> streamWriter) {
-        writers.registerStreamWriter(streamWriter);
+    public OutBoundContent registerStreamWriter(EntityStreamWriter<?> writer) {
+        scope.writers.registerStreamWriter(writer);
+        return this;
     }
 }

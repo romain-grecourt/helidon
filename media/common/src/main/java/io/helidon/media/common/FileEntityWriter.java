@@ -1,18 +1,17 @@
 package io.helidon.media.common;
 
-import io.helidon.common.http.ContentInfo;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityWriter;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
-import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHEMA;
 import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
+
+import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHEMA;
 
 /**
  * Entity writer for {@link File}.
@@ -20,19 +19,18 @@ import java.util.List;
 public final class FileEntityWriter implements EntityWriter<File> {
 
     @Override
-    public Promise accept(Object entity, List<MediaType> acceptedTypes) {
+    public Promise accept(Object entity, OutBoundScope scope) {
         if (File.class.isAssignableFrom(entity.getClass())) {
             File file = (File) entity;
-            return new Promise<>(new ContentInfo(
-                    MediaType.APPLICATION_OCTET_STREAM, file.getTotalSpace()),
-                    this);
+            return new Promise<>(this, MediaType.APPLICATION_OCTET_STREAM,
+                    file.getTotalSpace());
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(File file, ContentInfo info,
-            List<MediaType> acceptedTypes, Charset defaultCharset) {
+    public Publisher<DataChunk> writeEntity(File file, Promise<File> promise,
+            OutBoundScope scope) {
 
         try {
             FileChannel fc = FileChannel.open(file.toPath(),

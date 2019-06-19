@@ -24,13 +24,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Test {@link BodyPartHeaders}.
+ * Test {@link InBoundBodyPartHeaders}.
  */
 public class BodyPartHeadersTest {
 
     @Test
     public void testHeaderNameCaseInsensitive(){
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .header("content-type", "text/plain")
                 .header("Content-ID", "test")
                 .header("my-header", "abc=def; blah; key=value")
@@ -44,7 +44,7 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testContentType() {
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .header("content-type", "application/json")
                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
@@ -54,7 +54,7 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testBuilderWithContentType() {
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .contentType(MediaType.APPLICATION_JSON)
                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
@@ -64,7 +64,7 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testDefaultContentType() {
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(), is(equalTo(MediaType.TEXT_PLAIN)));
@@ -72,7 +72,7 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testDefaultContentTypeForFile() {
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .header("Content-Disposition", "form-data; filename=foo")
                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
@@ -82,7 +82,7 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testContentDisposition() {
-        BodyPartHeaders headers = BodyPartHeaders.builder()
+        InBoundBodyPartHeaders headers = InBoundBodyPartHeaders.builder()
                 .header("Content-Disposition", "form-data; name=foo")
                 .build();
         assertThat(headers.contentDisposition(), is(notNullValue()));

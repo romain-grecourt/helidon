@@ -15,31 +15,15 @@
  */
 package io.helidon.media.jsonp.common;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 import javax.json.Json;
-import javax.json.JsonReader;
 import javax.json.JsonReaderFactory;
-import javax.json.JsonStructure;
-import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
-import io.helidon.common.reactive.Flow;
-import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.ContentWriters;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 /**
- * Support for json processing integration.
+ * Support for JSON Processing integration.
  */
 public final class JsonProcessing {
 
@@ -52,74 +36,48 @@ public final class JsonProcessing {
     }
 
     /**
-     * Returns a function (reader) converting {@link Flow.Publisher Publisher} of {@link java.nio.ByteBuffer}s to
-     * a JSON-P object.
-     * <p>
-     * It is intended for derivation of others, more specific readers.
-     *
-     * @return the byte array content reader that transforms a publisher of byte buffers to a completion stage that
-     * might end exceptionally with a {@link IllegalArgumentException} in case of I/O error or
-     * a {@link javax.json.JsonException}
+     * Create a new JSON-P entity reader.
+     * @return JsonEntityReader
      */
-    public Reader<JsonStructure> reader() {
-        return reader(null);
+    public JsonEntityReader newReader() {
+        return new JsonEntityReader(jsonReaderFactory);
     }
 
     /**
-     * Returns a function (reader) converting {@link Flow.Publisher Publisher} of {@link java.nio.ByteBuffer}s to
-     * a JSON-P object.
-     * <p>
-     * It is intended for derivation of others, more specific readers.
-     *
-     * @param charset a charset to use charset
-     * @return the byte array content reader that transforms a publisher of byte buffers to a completion stage that
-     * might end exceptionally with a {@link IllegalArgumentException} in case of I/O error or
-     * a {@link javax.json.JsonException}
+     * Create a new JSON-P entity stream reader.
+     * @return JsonEntityStreamReader
      */
-    public Reader<JsonStructure> reader(Charset charset) {
-        return (publisher, clazz) -> ContentReaders.byteArrayReader()
-                .apply(publisher)
-                .thenApply(bytes -> {
-                    InputStream is = new ByteArrayInputStream(bytes);
-
-                    JsonReader reader = (charset == null)
-                            ? jsonReaderFactory.createReader(is)
-                            : jsonReaderFactory.createReader(is, charset);
-
-                    return reader.read();
-                });
+    public JsonEntityStreamReader newStreamReader() {
+        return new JsonEntityStreamReader(jsonReaderFactory);
     }
 
     /**
-     * Returns a function (writer) converting {@link JsonStructure} to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk}s.
-     *
-     * @param charset a charset to use or {@code null} for default charset
-     * @return created function
+     * Create a new JSON-P entity writer.
+     * @return JsonEntityWriter
      */
-    public Function<JsonStructure, Flow.Publisher<DataChunk>> writer(Charset charset) {
-        return json -> {
-            CharBuffer buffer = new CharBuffer();
-            JsonWriter writer = jsonWriterFactory.createWriter(buffer);
-            writer.write(json);
-            writer.close();
-            return ContentWriters.charBufferWriter(charset == null ? UTF_8 : charset).apply(buffer);
-        };
+    public JsonEntityWriter newWriter() {
+        return new JsonEntityWriter(jsonWriterFactory);
     }
 
     /**
-     * Returns a function (writer) converting {@link JsonStructure} to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk}s.
-     *
-     * @return created function
+     * Create a new line delimited JSON-P stream writer.
+     * @return JsonLineDelimitedEntityStreamWriter
      */
-    public Function<JsonStructure, Flow.Publisher<DataChunk>> writer() {
-        return writer(null);
+    public JsonLineDelimitedEntityStreamWriter newLineDelimitedStreamWriter() {
+        return new JsonLineDelimitedEntityStreamWriter(jsonWriterFactory);
+    }
+
+    /**
+     * Create a new JSON-P array stream writer.
+     * @return JsonArrayEntityStreamWriter
+     */
+    public JsonArrayEntityStreamWriter newArrayStreamWriter() {
+        return new JsonArrayEntityStreamWriter(jsonWriterFactory);
     }
 
     /**
      * Provides a default instance for JSON-P readers and writers.
-     * @return json processing with default configuration
+     * @return {@code JsonProcessing} with default configuration
      */
     public static JsonProcessing create() {
         return Builder.DEFAULT_INSTANCE;
@@ -146,8 +104,11 @@ public final class JsonProcessing {
     /**
      * Fluent-API builder for {@link io.helidon.media.jsonp.common.JsonProcessing}.
      */
-    public static class Builder implements io.helidon.common.Builder<JsonProcessing> {
-        private static final JsonProcessing DEFAULT_INSTANCE = new JsonProcessing(readerFactory(null), writerFactory(null));
+    public static class Builder
+            implements io.helidon.common.Builder<JsonProcessing> {
+
+        private static final JsonProcessing DEFAULT_INSTANCE =
+                new JsonProcessing(readerFactory(null), writerFactory(null));
 
         private JsonWriterFactory jsonWriterFactory;
         private JsonReaderFactory jsonReaderFactory;
@@ -155,7 +116,9 @@ public final class JsonProcessing {
 
         @Override
         public JsonProcessing build() {
-            if ((null == jsonReaderFactory) && (null == jsonWriterFactory) && (null == jsonPConfig)) {
+            if ((null == jsonReaderFactory)
+                    && (null == jsonWriterFactory)
+                    && (null == jsonPConfig)) {
                 return DEFAULT_INSTANCE;
             }
 
@@ -174,12 +137,12 @@ public final class JsonProcessing {
             return new JsonProcessing(jsonReaderFactory, jsonWriterFactory);
         }
 
-        private static JsonReaderFactory readerFactory(Map<String, ?> jsonPConfig) {
-            return Json.createReaderFactory(jsonPConfig);
+        private static JsonReaderFactory readerFactory(Map<String, ?> config) {
+            return Json.createReaderFactory(config);
         }
 
-        private static JsonWriterFactory writerFactory(Map<String, ?> jsonPConfig) {
-            return Json.createWriterFactory(jsonPConfig);
+        private static JsonWriterFactory writerFactory(Map<String, ?> config) {
+            return Json.createWriterFactory(config);
         }
 
         /**

@@ -18,7 +18,6 @@ package io.helidon.media.multipart;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityReaders;
 import io.helidon.common.http.InBoundContent;
-import io.helidon.common.http.InBoundContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
@@ -26,6 +25,9 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.logging.Logger;
+import io.helidon.common.http.InBoundScope;
+import java.nio.charset.Charset;
+import java.util.Objects;
 
 /**
  * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
@@ -58,14 +60,14 @@ public final class MultiPartDecoder
     private InBoundBodyPart.Builder bodyPartBuilder;
 
     /**
-     * The builder for the current {@link BodyPartHeaders}.
+     * The builder for the current {@link InBoundBodyPartHeaders}.
      */
-    private BodyPartHeaders.Builder bodyPartHeaderBuilder;
+    private InBoundBodyPartHeaders.Builder bodyPartHeaderBuilder;
 
     /**
      * The publisher for the current part.
      */
-    private BodyPartContentPublisher bodyPartContentPublisher;
+    private BodyPartContentPublisher contentPublisher;
 
     /**
      * The MIME parser.
@@ -88,21 +90,24 @@ public final class MultiPartDecoder
     private final EntityReaders readers;
 
     /**
-     * The in-bound context.
+     * The default charset.
      */
-    private final InBoundContext context;
+    private final Charset defaultCharset;
 
     /**
      * Create a new instance.
      *
-     * @param readers entity readers
-     * @param context in-bound context
+     * @param boundary mime message boundary
+     * @param defaultCharset default charset
+     * @param readers entity readers, may be {@code null}
      */
-    public MultiPartDecoder(EntityReaders readers, InBoundContext context) {
-        String boundary = null;
-        // TODO context.getHeader("boundary");
+    public MultiPartDecoder(String boundary, Charset defaultCharset,
+            EntityReaders readers) {
+
+        Objects.requireNonNull(boundary, "boundary cannot be null!");
+        Objects.requireNonNull(defaultCharset, "defaultCharset cannot be null!");
+        this.defaultCharset = defaultCharset;
         this.readers = readers;
-        this.context = context;
         parserEventProcessor = new ParserEventProcessor();
         parser = new MIMEParser(boundary, parserEventProcessor);
         bodyParts = new LinkedList<>();
@@ -152,7 +157,7 @@ public final class MultiPartDecoder
         // or if the part content subscriber needs more
         if (!complete && parserEventProcessor.isDataRequired()
                 && (!parserEventProcessor.isContentDataRequired()
-                || bodyPartContentPublisher.requiresMoreItems())) {
+                || contentPublisher.requiresMoreItems())) {
 
             LOGGER.fine("Requesting one more chunk from upstream");
             chunksSubscription.request(1);
@@ -194,8 +199,8 @@ public final class MultiPartDecoder
             LOGGER.fine(() -> "Parser event: " + eventType);
             switch (eventType) {
                 case START_PART:
-                    bodyPartContentPublisher = new BodyPartContentPublisher();
-                    bodyPartHeaderBuilder = BodyPartHeaders.builder();
+                    contentPublisher = new BodyPartContentPublisher();
+                    bodyPartHeaderBuilder = InBoundBodyPartHeaders.builder();
                     bodyPartBuilder = InBoundBodyPart.builder();
                     break;
                 case HEADER:
@@ -205,32 +210,31 @@ public final class MultiPartDecoder
                             headerEvent.value());
                     break;
                 case END_HEADERS:
-                    BodyPartHeaders partHeaders = bodyPartHeaderBuilder.build();
-                    InBoundContext partInBoundContext
-                            = new InBoundBodyPartContentContext(context,
-                                    partHeaders.contentType());
+                    InBoundBodyPartHeaders headers = bodyPartHeaderBuilder
+                            .build();
                     InBoundContent partContent = new InBoundContent(
-                            bodyPartContentPublisher,
-                            new EntityReaders(readers),
-                            partInBoundContext);
+                            contentPublisher,
+                            new InBoundScope(headers,
+                                    defaultCharset, headers.contentType(),
+                                    readers));
                     bodyParts.add(bodyPartBuilder
-                            .headers(partHeaders)
+                            .headers(headers)
                             .content(partContent)
                             .build());
                     break;
                 case CONTENT:
-                    bodyPartContentPublisher.submit(event.asContentEvent()
+                    contentPublisher.submit(event.asContentEvent()
                             .data());
                     break;
                 case END_PART:
-                    bodyPartContentPublisher.complete();
-                    bodyPartContentPublisher = null;
+                    contentPublisher.complete();
+                    contentPublisher = null;
                     bodyPartHeaderBuilder = null;
                     bodyPartBuilder = null;
                     break;
                 default:
                 // nothing to do
-                }
+            }
             lastEvent = event;
         }
 

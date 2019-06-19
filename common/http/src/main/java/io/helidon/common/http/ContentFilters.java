@@ -10,16 +10,16 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Content filter support.
  */
-public abstract class ContentFilterSupport implements ContentFiltersRegistry {
+public abstract class ContentFilters implements ContentFiltersRegistry {
 
-    private final ContentFilterSupport delegate;
+    private final ContentFilters delegate;
     private final LinkedList<ContentFilter> filters;
     private final ReadWriteLock filtersLock;
 
     /**
      * Create a new content support instance.
      */
-    protected ContentFilterSupport() {
+    protected ContentFilters() {
         this.delegate = null;
         this.filters = new LinkedList<>();
         this.filtersLock = new ReentrantReadWriteLock();
@@ -29,22 +29,19 @@ public abstract class ContentFilterSupport implements ContentFiltersRegistry {
      * Create a new delegated content support instance.
      * @param delegate content support delegate
      */
-    protected ContentFilterSupport(ContentFilterSupport delegate) {
+    protected ContentFilters(ContentFilters delegate) {
         this.delegate = delegate;
         this.filters = new LinkedList<>();
         this.filtersLock = new ReentrantReadWriteLock();
     }
 
-    /**
-     * Register a new filter.
-     * @param filter filter to register
-     */
     @Override
-    public final void registerFilter(ContentFilter filter) {
+    public final ContentFilters registerFilter(ContentFilter filter) {
         Objects.requireNonNull(filter, "filter is null!");
         try {
             filtersLock.writeLock().lock();
             filters.addLast(filter);
+            return this;
         } finally {
             filtersLock.writeLock().unlock();
         }
@@ -65,11 +62,10 @@ public abstract class ContentFilterSupport implements ContentFiltersRegistry {
     /**
      * Apply the filters by creating a publisher chain of each filter.
      * @param publisher the initial publisher
-     * @param interceptorFactory content interceptor factory
+     * @param contentScope content scope
      * @return the last publisher of the resulting chain
      */
-    final Publisher<DataChunk> applyFilters(
-            Publisher<DataChunk> publisher,
+    final Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher,
             ContentInterceptor.Factory interceptorFactory) {
 
         Publisher<DataChunk> lastPublisher = doApplyFilters(publisher);
@@ -114,15 +110,16 @@ public abstract class ContentFilterSupport implements ContentFiltersRegistry {
         }
 
         @Override
-        public void subscribe(Subscriber<? super DataChunk> delegate) {
-            Subscriber<? super DataChunk> subscriber;
+        public void subscribe(Subscriber<? super DataChunk> subscriber) {
+            ContentInterceptor interceptor = null;
             if (interceptorFactory != null) {
-                subscriber = interceptorFactory.createInterceptor(delegate);
-            } else {
-                subscriber = delegate;
+                interceptor = interceptorFactory.create(subscriber);
             }
-            originalPublisher.subscribe(
-                    interceptorFactory.createInterceptor(subscriber));
+            if (interceptor != null) {
+                originalPublisher.subscribe(interceptor);
+            } else {
+                originalPublisher.subscribe(subscriber);
+            }
         }
     }
 }

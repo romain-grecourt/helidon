@@ -20,6 +20,8 @@ import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import static io.helidon.media.multipart.BodyPartTest.DEFAULT_CHARSET;
+import static io.helidon.media.multipart.BodyPartTest.DEFAULT_READERS;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,7 +35,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.multipart.BodyPartTest.INBOUND_MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -425,7 +426,7 @@ public class MultiPartDecoderTest {
     @Test
     public void testUpstreamError() {
         MultiPartDecoder decoder = new MultiPartDecoder("boundary",
-                INBOUND_MEDIA_SUPPORT);
+                DEFAULT_CHARSET, DEFAULT_READERS);
         new Publisher<DataChunk>(){
             @Override
             public void subscribe(Subscriber<? super DataChunk> subscriber) {
@@ -443,7 +444,7 @@ public class MultiPartDecoderTest {
     @Test
     public void testSubcribingMoreThanOnce() {
         MultiPartDecoder decoder = new MultiPartDecoder("boundary",
-                INBOUND_MEDIA_SUPPORT);
+                DEFAULT_CHARSET, DEFAULT_READERS);
         new DataChunkPublisher("foo".getBytes()).subscribe(decoder);
         try {
             new DataChunkPublisher("bar".getBytes()).subscribe(decoder);
@@ -526,7 +527,7 @@ public class MultiPartDecoderTest {
             byte[]... chunks) {
 
         MultiPartDecoder decoder = new MultiPartDecoder(boundary,
-                INBOUND_MEDIA_SUPPORT);
+                DEFAULT_CHARSET, DEFAULT_READERS);
         new DataChunkPublisher(chunks).subscribe(decoder);
         return decoder;
     }

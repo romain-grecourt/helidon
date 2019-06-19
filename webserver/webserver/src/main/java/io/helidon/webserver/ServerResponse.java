@@ -29,6 +29,7 @@ import io.helidon.common.reactive.Flow;
 import io.helidon.common.http.EntityWriter;
 import io.helidon.common.http.EntityStreamWriter;
 import io.helidon.common.http.ContentFilter;
+import io.helidon.common.http.EntityWritersRegistry;
 
 /**
  * Represents HTTP Response.
@@ -41,7 +42,7 @@ import io.helidon.common.http.ContentFilter;
  * <p>
  * Response content (body/payload) can be constructed using {@link #send(Object) send(...)} methods.
  */
-public interface ServerResponse {
+public interface ServerResponse extends EntityWritersRegistry {
 
     /**
      * Returns actual {@link WebServer} instance.

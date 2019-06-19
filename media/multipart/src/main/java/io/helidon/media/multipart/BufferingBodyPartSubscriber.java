@@ -16,10 +16,7 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.ContentHelper;
-import io.helidon.common.http.EntityReaders;
 import io.helidon.common.http.InBoundContent;
-import io.helidon.common.http.InBoundContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -27,6 +24,7 @@ import io.helidon.media.common.ByteArrayCopyEntityWriter;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
+import io.helidon.common.http.InBoundScope;
 
 /**
  * A reactive subscriber of {@link BodyPart} that buffers the body part content
@@ -68,18 +66,8 @@ public final class BufferingBodyPartSubscriber
             Publisher<DataChunk> partChunks = ByteArrayCopyEntityWriter
                     .write(bytes);
 
-            EntityReaders readers = ContentHelper
-                    .getReaders(content);
-
-            InBoundContext inBoundContext = ContentHelper
-                    .getInBoundContext(content);
-
-            InBoundBodyPartContentContext inBoundBodyPartContentContext =
-                    new InBoundBodyPartContentContext(inBoundContext,
-                            bodyPart.headers().contentType());
-
             InBoundContent contentCopy = new InBoundContent(partChunks,
-                    readers, inBoundBodyPartContentContext);
+                    InBoundScope.of(content));
 
             // create a new body part with the buffered content
             InBoundBodyPart bufferedBodyPart = InBoundBodyPart.builder()

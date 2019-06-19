@@ -19,8 +19,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import io.helidon.media.multipart.MultiPartSupport.BodyPartPublisher;
-import io.helidon.media.common.ContentReaders;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.http.EntityWriters;
+import io.helidon.media.common.ByteArrayEntityReader;
 import io.helidon.media.multipart.MultiPartDecoderTest.DataChunkPublisher;
 import io.helidon.media.multipart.MultiPartDecoderTest.DataChunkSubscriber;
 import io.helidon.common.http.DataChunk;
@@ -29,8 +30,8 @@ import io.helidon.common.reactive.Flow.Subscriber;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
-import static io.helidon.media.multipart.BodyPartTest.INBOUND_MEDIA_SUPPORT;
-import static io.helidon.media.multipart.BodyPartTest.OUTBOUND_MEDIA_SUPPORT;
+import static io.helidon.media.multipart.BodyPartTest.MEDIA_SUPPORT;
+import static io.helidon.media.multipart.BodyPartTest.inBoundContent;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -41,6 +42,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Test {@link MultiPartEncoder}.
  */
 public class MultiPartEncoderTest {
+
+    static final EntityWriters DEFAULT_WRITERS = MEDIA_SUPPORT.writers();
 
     // TODO test throttling
 
@@ -63,7 +66,7 @@ public class MultiPartEncoderTest {
         String boundary = "boundary";
         String message = encodeParts(boundary,
                 OutBoundBodyPart.builder()
-                        .headers(BodyPartHeaders.builder()
+                        .headers(InBoundBodyPartHeaders.builder()
                                 .contentType(MediaType.TEXT_PLAIN)
                                 .build())
                         .entity("part1")
@@ -99,7 +102,7 @@ public class MultiPartEncoderTest {
     @Test
     public void testSubcribingMoreThanOnce() {
         MultiPartEncoder encoder = new MultiPartEncoder("boundary",
-                OUTBOUND_MEDIA_SUPPORT);
+                DEFAULT_WRITERS);
         new BodyPartPublisher(listOf()).subscribe(encoder);
         try {
             new BodyPartPublisher(listOf()).subscribe(encoder);
@@ -115,13 +118,12 @@ public class MultiPartEncoderTest {
         try {
             String boundary = "boundary";
             encodeParts(boundary, InBoundBodyPart.builder()
-                    .publisher(new DataChunkPublisher(
+                    .content(inBoundContent(new DataChunkPublisher(
                             ("--" + boundary + "\r\n"
                                     + "Content-Type:text/plain\r\n"
                                     + "\r\n"
                                     + "part1\n"
-                                    + "--" + boundary + "--").getBytes()),
-                            INBOUND_MEDIA_SUPPORT)
+                                    + "--" + boundary + "--").getBytes())))
                     .build());
         } catch (TestException ex) {
             assertThat(ex.getCause(),
@@ -134,10 +136,10 @@ public class MultiPartEncoderTest {
     @Test
     public void testUpstreamError() {
         MultiPartEncoder decoder = new MultiPartEncoder("boundary",
-                OUTBOUND_MEDIA_SUPPORT);
-        new Publisher<BodyPart>(){
+                DEFAULT_WRITERS);
+        new Publisher<OutBoundBodyPart>(){
             @Override
-            public void subscribe(Subscriber<? super BodyPart> subscriber) {
+            public void subscribe(Subscriber<? super OutBoundBodyPart> subscriber) {
                 subscriber.onError(new IllegalStateException("oops"));
             }
         }.subscribe(decoder);
@@ -158,7 +160,7 @@ public class MultiPartEncoderTest {
     @Test
     public void testPartContentPublisherError() {
         MultiPartEncoder decoder = new MultiPartEncoder("boundary",
-                OUTBOUND_MEDIA_SUPPORT);
+                DEFAULT_WRITERS);
         new BodyPartPublisher(listOf(OutBoundBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
@@ -181,11 +183,10 @@ public class MultiPartEncoderTest {
     private static String encodeParts(String boundary, BodyPart... parts) {
         BodyPartPublisher publisher = new BodyPartPublisher(listOf(parts));
         MultiPartEncoder encoder = new MultiPartEncoder(boundary,
-                OUTBOUND_MEDIA_SUPPORT);
+                DEFAULT_WRITERS);
         publisher.subscribe(encoder);
         try {
-            return new String(ContentReaders.byteArrayReader()
-                    .apply(encoder)
+            return new String(ByteArrayEntityReader.read(encoder)
                     .toCompletableFuture()
                     .get());
         } catch (InterruptedException ex) {

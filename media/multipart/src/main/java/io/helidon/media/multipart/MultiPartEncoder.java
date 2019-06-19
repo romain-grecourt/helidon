@@ -35,29 +35,32 @@ public final class MultiPartEncoder
         implements Processor<OutBoundBodyPart, DataChunk> {
 
     private Subscription partsSubscription;
-    private BodyPartContentSubscriber bodyPartContentSubscriber;
+    private BodyPartContentSubscriber contentSubscriber;
 
     /**
      * The out-bound media support used to marshall the body part contents.
      */
-    private final EntityWriters writersSupport;
+    private final EntityWriters writers;
 
     /**
      * The boundary used for the generated multi-part message.
      */
     private final String boundary;
 
+    /**
+     * Complete flag.
+     */
     private volatile boolean complete;
 
     /**
      * Create a new multipart encoder.
      * @param boundary boundary string
-     * @param writersSupport entity writers support
+     * @param writers entity writers support
      */
     public MultiPartEncoder(String boundary,
-            EntityWriters writersSupport) {
+            EntityWriters writers) {
 
-        this.writersSupport = writersSupport;
+        this.writers = writers;
         this.boundary = boundary;
         this.complete = false;
     }
@@ -66,8 +69,8 @@ public final class MultiPartEncoder
     protected void hookOnRequested(long n, long result) {
         if (tryAcquire() > 0) {
             partsSubscription.request(1);
-            if (bodyPartContentSubscriber != null) {
-                bodyPartContentSubscriber.request(n);
+            if (contentSubscriber != null) {
+                contentSubscriber.request(n);
             }
         }
     }
@@ -105,8 +108,8 @@ public final class MultiPartEncoder
         // end of headers empty line
         sb.append("\r\n");
         submit(sb.toString());
-        bodyPartContentSubscriber = new BodyPartContentSubscriber(this);
-        bodyPart.content().subscribe(bodyPartContentSubscriber);
+        contentSubscriber = new BodyPartContentSubscriber(this);
+        bodyPart.content.subscribe(contentSubscriber, writers);
     }
 
     /**
@@ -139,8 +142,8 @@ public final class MultiPartEncoder
             long n = tryAcquire();
             if (n > 0){
                 partsSubscription.request(1);
-                if (bodyPartContentSubscriber != null) {
-                    bodyPartContentSubscriber.request(n);
+                if (contentSubscriber != null) {
+                    contentSubscriber.request(n);
                 }
             }
         }

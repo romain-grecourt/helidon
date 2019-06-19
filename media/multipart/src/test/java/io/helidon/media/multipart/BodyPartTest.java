@@ -16,24 +16,16 @@
 package io.helidon.media.multipart;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MediaType;
+import io.helidon.common.http.EntityReaders;
+import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.InBoundScope;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.ContentWriters;
 import io.helidon.media.multipart.MultiPartDecoderTest.DataChunkPublisher;
-import io.helidon.webserver.internal.InBoundContext;
-import io.helidon.webserver.internal.InBoundMediaSupport;
-import io.helidon.webserver.internal.OutBoundContent;
-import io.helidon.webserver.internal.OutBoundContext;
-import io.helidon.webserver.internal.OutBoundMediaSupport;
-import io.opentracing.Span;
-import io.opentracing.Tracer;
 import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -42,35 +34,30 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import io.helidon.common.http.EntityReader;
-import io.helidon.common.http.EntityWriter;
+import io.helidon.common.http.OutBoundContent;
+import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.media.common.CharSequenceEntityWriter;
+import io.helidon.media.common.MediaSupport;
+import io.helidon.media.common.StringEntityReader;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Tests {@link BodyPart}.
  */
 public class BodyPartTest {
 
-    private static final EntityReader<String> STRING_READER =
-            ContentReaders.stringReader(Charset.defaultCharset());
+    static final MediaSupport MEDIA_SUPPORT = new MediaSupport()
+            .registerDefaults();
 
-    private static final EntityReader<byte[]> BYTES_READER =
-            ContentReaders.byteArrayReader();
+    static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
-    private static final EntityWriter<CharSequence> STRING_WRITER =
-            ContentWriters.charSequenceWriter(Charset.defaultCharset());
-
-    static final OutBoundMediaSupport OUTBOUND_MEDIA_SUPPORT =
-            getOutBoundMediaSupport();
-
-    static final InBoundMediaSupport INBOUND_MEDIA_SUPPORT =
-            getInBoundMediaSupport();
+    static final EntityReaders DEFAULT_READERS = MEDIA_SUPPORT.readers();
 
     @Test
     public void testContentFromPublisher() {
-        Publisher<DataChunk> publisher = STRING_WRITER
-                .apply("body part data");
         InBoundBodyPart bodyPart = InBoundBodyPart.builder()
-                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .content(inBoundContent(CharSequenceEntityWriter
+                        .write("body part data", DEFAULT_CHARSET)))
                 .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
@@ -86,15 +73,12 @@ public class BodyPartTest {
     @Test
     public void testContentFromEntity() {
         OutBoundBodyPart bodyPart = OutBoundBodyPart.create("body part data");
-//        Content content = bodyPart.content();
-//        assertThat(content, is(instanceOf(OutBoundContent.class)));
-//        ((OutBoundContent) content)
-//                .mediaSupport(OUTBOUND_MEDIA_SUPPORT);
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
-        STRING_READER.apply(bodyPart.content()).thenAccept(str -> {
-            acceptCalled.set(true);
-            assertThat(str, is(equalTo("body part data")));
-        }).exceptionally((Throwable ex) -> {
+        StringEntityReader.read(bodyPart.content(), DEFAULT_CHARSET)
+                .thenAccept(str -> {
+                    acceptCalled.set(true);
+                    assertThat(str, is(equalTo("body part data")));
+                }).exceptionally((Throwable ex) -> {
             fail(ex);
             return null;
         });
@@ -103,10 +87,9 @@ public class BodyPartTest {
 
     @Test
     public void testBufferedPart() {
-        Publisher<DataChunk> publisher = new DataChunkPublisher(
-                "abc".getBytes());
         InBoundBodyPart bodyPart = InBoundBodyPart.builder()
-                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .content(inBoundContent(
+                        new DataChunkPublisher("abc".getBytes())))
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -115,10 +98,9 @@ public class BodyPartTest {
 
     @Test
     public void testNonBufferedPart() {
-        Publisher<DataChunk> publisher = new DataChunkPublisher(
-                "abc".getBytes());
         InBoundBodyPart bodyPart = InBoundBodyPart.builder()
-                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .content(inBoundContent(
+                        new DataChunkPublisher("abc".getBytes())))
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(false)));
         assertThrows(IllegalStateException.class, () -> {
@@ -128,10 +110,9 @@ public class BodyPartTest {
 
     @Test
     public void testBadBufferedPart() {
-        UncompletablePublisher publisher = new UncompletablePublisher(
-                "abc".getBytes(), "def".getBytes());
         InBoundBodyPart bodyPart = InBoundBodyPart.builder()
-                .publisher(publisher, INBOUND_MEDIA_SUPPORT)
+                .content(inBoundContent(new UncompletablePublisher(
+                        "abc".getBytes(), "def".getBytes())))
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -164,7 +145,7 @@ public class BodyPartTest {
     @Test
     public void testName() {
         OutBoundBodyPart bodyPart = OutBoundBodyPart.builder()
-                .headers(BodyPartHeaders.builder()
+                .headers(InBoundBodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .name("foo")
                                 .build())
@@ -178,7 +159,7 @@ public class BodyPartTest {
     @Test
     public void testFilename() {
         BodyPart bodyPart = OutBoundBodyPart.builder()
-                .headers(BodyPartHeaders.builder()
+                .headers(InBoundBodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .filename("foo.txt")
                                 .build())
@@ -189,48 +170,11 @@ public class BodyPartTest {
         assertThat(bodyPart.name(), is(nullValue()));
     }
 
-    @SuppressWarnings("unchecked")
-    private static OutBoundMediaSupport getOutBoundMediaSupport(){
-        OutBoundMediaSupport mediaSupport = new OutBoundMediaSupport(
-                new OutBoundContext() {
-            @Override
-            public void setContentType(MediaType mediaType) {
-            }
-
-            @Override
-            public void setContentLength(long size) {
-            }
-        });
-        mediaSupport.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN,
-                STRING_WRITER);
-        return mediaSupport;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static InBoundMediaSupport getInBoundMediaSupport() {
-        InBoundMediaSupport mediaSupport = new InBoundMediaSupport(
-                mockInBoundContext());
-        mediaSupport.registerReader(String.class, STRING_READER);
-        mediaSupport.registerReader(byte[].class, BYTES_READER);
-        return mediaSupport;
-    }
-
-    private static InBoundContext mockInBoundContext() {
-        return new InBoundContext() {
-            @Override
-            public Tracer.SpanBuilder createSpanBuilder(String operationName) {
-                Tracer.SpanBuilder spanBuilderMock
-                        = Mockito.mock(Tracer.SpanBuilder.class);
-                Span spanMock = Mockito.mock(Span.class);
-                Mockito.doReturn(spanMock).when(spanBuilderMock).start();
-                return spanBuilderMock;
-            }
-
-            @Override
-            public Charset charset() {
-                return Charset.defaultCharset();
-            }
-        };
+    static InBoundContent inBoundContent(Publisher<DataChunk> chunks) {
+        return new InBoundContent(chunks, new InBoundScope(
+                ReadOnlyParameters.empty(),
+                DEFAULT_CHARSET, /* contentType */ null,
+                DEFAULT_READERS));
     }
 
     /**

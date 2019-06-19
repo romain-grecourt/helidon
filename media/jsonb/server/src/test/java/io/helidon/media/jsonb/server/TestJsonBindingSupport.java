@@ -16,7 +16,6 @@
 package io.helidon.media.jsonb.server;
 
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbBuilder;
@@ -25,8 +24,6 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
-import io.helidon.webserver.ServerRequest;
-import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.testsupport.MediaPublisher;
 import io.helidon.webserver.testsupport.TestClient;
 import io.helidon.webserver.testsupport.TestResponse;
@@ -42,13 +39,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class TestJsonBindingSupport {
 
     private static final Jsonb JSONB = JsonbBuilder.create();
-    
-    private static final BiFunction<? super ServerRequest, ? super ServerResponse, ? extends Jsonb> jsonbProvider = (req, res) -> JSONB;
-  
+
     @Test
     public void pingPong() throws Exception {
         final Routing routing = Routing.builder()
-            .register(JsonBindingSupport.create(jsonbProvider))
+            .register(JsonBindingSupport.create(JSONB))
             .post("/foo", Handler.create(Person.class, (req, res, person) -> res.send(person)))
             .build();
         final String personJson = "{\"name\":\"Frank\"}";
@@ -62,20 +57,20 @@ public class TestJsonBindingSupport {
     }
 
     public static final class Person {
-        
+
         private String name;
-        
+
         public Person() {
             super();
         }
-        
+
         public String getName() {
             return this.name;
         }
-        
+
         public void setName(final String name) {
             this.name = name;
         }
-        
+
     }
 }

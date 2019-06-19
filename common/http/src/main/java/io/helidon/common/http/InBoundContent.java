@@ -16,24 +16,36 @@ public final class InBoundContent
         implements HttpContent, EntityReadersRegistry, Content {
 
     private final Publisher<DataChunk> originalPublisher;
-    final EntityReaders readers;
-    final InBoundContext inBoundContext;
+    private final ContentInterceptor.Factory interceptorFactory;
+    final InBoundScope scope;
 
     /**
      * Create a new instance.
      * @param originalPublisher the original publisher for this content
-     * @param readers entity readers
-     * @param inBoundContext in-bound context
+     * @param scope in-bound scope
+     * @param interceptorFactory content interceptor factory, may be
+     * {@code null}
      */
     public InBoundContent(Publisher<DataChunk> originalPublisher,
-            EntityReaders readers, InBoundContext inBoundContext) {
+            InBoundScope scope, ContentInterceptor.Factory interceptorFactory) {
 
         Objects.requireNonNull(originalPublisher, "publisher is null!");
-        Objects.requireNonNull(readers, "readers is null!");
-        Objects.requireNonNull(inBoundContext, "inBoundContext is null!");
+        Objects.requireNonNull(scope, "scope is null!");
         this.originalPublisher = originalPublisher;
-        this.readers = readers;
-        this.inBoundContext = inBoundContext;
+        this.scope = scope;
+        this.interceptorFactory = interceptorFactory;
+    }
+
+    /**
+     * Create a new instance.
+     *
+     * @param originalPublisher the original publisher for this content
+     * @param scope in-bound scope
+     */
+    public InBoundContent(Publisher<DataChunk> originalPublisher,
+            InBoundScope scope) {
+
+        this(originalPublisher, scope, /* interceptorFactory */ null);
     }
 
     /**
@@ -43,29 +55,32 @@ public final class InBoundContent
     public InBoundContent(InBoundContent orig) {
         Objects.requireNonNull(orig, "orig is null!");
         this.originalPublisher = orig.originalPublisher;
-        this.readers = orig.readers;
-        this.inBoundContext = orig.inBoundContext;
+        this.scope = orig.scope;
+        this.interceptorFactory = orig.interceptorFactory;
     }
 
     @Override
-    public void registerFilter(ContentFilter filter) {
-        readers.registerFilter(filter);
+    public InBoundContent registerFilter(ContentFilter filter) {
+        scope.readers.registerFilter(filter);
+        return this;
     }
 
     @Override
-    public void registerReader(EntityReader<?> reader) {
-        readers.registerReader(reader);
+    public InBoundContent registerReader(EntityReader<?> reader) {
+        scope.readers.registerReader(reader);
+        return this;
     }
 
     @Override
-    public void registerStreamReader(EntityStreamReader<?> streamReader) {
-        readers.registerStreamReader(streamReader);
+    public InBoundContent registerStreamReader(EntityStreamReader<?> reader) {
+        scope.readers.registerStreamReader(reader);
+        return this;
     }
 
     @Override
     public void subscribe(Subscriber<? super DataChunk> subscriber) {
         try {
-            readers.applyFilters(originalPublisher, inBoundContext)
+            scope.readers.applyFilters(originalPublisher, interceptorFactory)
                     .subscribe(subscriber);
         } catch (Exception e) {
             subscriber.onError(new IllegalArgumentException(
@@ -76,144 +91,92 @@ public final class InBoundContent
 
     @Override
     public <T> CompletionStage<T> as(final Class<T> type) {
-        return as(type, /* readersDelegate */ null);
+        try {
+            EntityReader<T> reader = scope.readers
+                    .selectReader(type, scope, /* delegate */ null);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No reader found for class: " + type);
+            }
+            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
+            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
+        } catch (IllegalArgumentException e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(e);
+            return failedFuture;
+        } catch (Exception e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(
+                    new IllegalArgumentException("Transformation failed!", e));
+            return failedFuture;
+        }
     }
 
     public <T> CompletionStage<T> as(final GenericType<T> type) {
-        return as(type, /* readersDelegate */ null);
+        try {
+            EntityReader<T> reader = scope.readers.selectReader(type, scope,
+                    /* delegate */ null);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No reader found for class: " + type);
+            }
+            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
+            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
+        } catch (IllegalArgumentException e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(e);
+            return failedFuture;
+        } catch (Exception e) {
+            CompletableFuture failedFuture = new CompletableFuture<>();
+            failedFuture.completeExceptionally(
+                    new IllegalArgumentException("Transformation failed!", e));
+            return failedFuture;
+        }
     }
 
     public <T> Publisher<T> asStream(Class<T> type) {
-        return asStream(type, /* readersDelegate */ null);
+        try {
+            EntityStreamReader<T> streamReader = scope.readers
+                    .selectStreamReader(type, scope, /* delegate */ null);
+            if (streamReader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found for class: " + type);
+            }
+            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
+            return (Publisher<T>) streamReader
+                    .readEntityStream(pub, type,scope);
+        } catch (IllegalArgumentException e) {
+            return new FailedPublisher<>(e);
+        } catch (Exception e) {
+            return new FailedPublisher<>(new IllegalArgumentException(
+                    "Transformation failed!", e));
+        }
     }
 
     public <T> Publisher<T> asStream(GenericType<T> type) {
-        return asStream(type, /* readersDelegate */ null);
-    }
-
-    @SuppressWarnings("unchecked")
-    <T> CompletionStage<T> as(final Class<T> type,
-            EntityReaders readersDelegate) {
-
-        CompletionStage<T> result;
         try {
-            ContentInfo contentInfo = inBoundContext.contentInfo();
-            EntityReader<T> reader = readers.selectReader(type,
-                    contentInfo, readersDelegate);
-
-            if (reader == null) {
-                throw new IllegalArgumentException(
-                        "No reader found for class: " + type);
-            }
-
-            result = (CompletionStage<T>) reader.readEntity(
-                    filteredPublisher(type.getTypeName()), type,
-                    contentInfo, inBoundContext.defaultCharset());
-
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            result = failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            result = failedFuture;
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    <T> CompletionStage<T> as(final GenericType<T> type,
-            EntityReaders readersDelegate) {
-
-        CompletionStage<T> result;
-        try {
-            ContentInfo contentInfo = inBoundContext.contentInfo();
-            EntityReader<T> reader = readers.selectReader(type,
-                    contentInfo, readersDelegate);
-
-            if (reader == null) {
-                throw new IllegalArgumentException(
-                        "No reader found for class: " + type);
-            }
-
-            result = (CompletionStage<T>) reader.readEntity(
-                    filteredPublisher(type.getTypeName()), type,
-                    contentInfo, inBoundContext.defaultCharset());
-
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            result = failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            result = failedFuture;
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    <T> Publisher<T> asStream(Class<T> type, EntityReaders readersDelegate) {
-
-        Publisher<T> result;
-        try {
-            ContentInfo contentInfo = inBoundContext.contentInfo();
-            EntityStreamReader<T> streamReader = readers
-                    .selectStreamReader(type, contentInfo,
-                            readersDelegate);
-
+            EntityStreamReader<T> streamReader = scope.readers
+                    .selectStreamReader(type, scope, /* delegate */ null);
             if (streamReader == null) {
                 throw new IllegalArgumentException(
                         "No stream reader found for class: " + type);
             }
-
-            result = (Publisher<T>) streamReader.readEntityStream(
-                    filteredPublisher(type.getTypeName()), type,
-                    contentInfo, inBoundContext.defaultCharset());
-
+            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
+            return (Publisher<T>) streamReader
+                    .readEntityStream(pub, type, scope);
         } catch (IllegalArgumentException e) {
-            result = new FailedPublisher<>(e);
+            return new FailedPublisher<>(e);
         } catch (Exception e) {
-            result = new FailedPublisher<>(new IllegalArgumentException(
+            return new FailedPublisher<>(new IllegalArgumentException(
                     "Transformation failed!", e));
         }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    <T> Publisher<T> asStream(GenericType<T> type,
-            EntityReaders readersDelegate) {
-
-        Publisher<T> result;
-        try {
-            ContentInfo contentInfo = inBoundContext.contentInfo();
-            EntityStreamReader<T> streamReader = readers
-                    .selectStreamReader(type, contentInfo,
-                            readersDelegate);
-
-            if (streamReader == null) {
-                throw new IllegalArgumentException(
-                        "No stream reader found for class: " + type);
-            }
-
-            result = (Publisher<T>) streamReader.readEntityStream(
-                    filteredPublisher(type.getTypeName()), type,
-                    contentInfo, inBoundContext.defaultCharset());
-
-        } catch (IllegalArgumentException e) {
-            result = new FailedPublisher<>(e);
-        } catch (Exception e) {
-            result = new FailedPublisher<>(new IllegalArgumentException(
-                    "Transformation failed!", e));
-        }
-        return result;
     }
 
     private Publisher<DataChunk> filteredPublisher(String type) {
-        return readers.applyFilters(originalPublisher,
-                new ContentInterceptor.WrappedFactory(inBoundContext, type));
+        ContentInterceptor.Factory ifc = null;
+        if (interceptorFactory != null) {
+            ifc = interceptorFactory.forType(type);
+        }
+        return scope.readers.applyFilters(originalPublisher, ifc);
     }
 }

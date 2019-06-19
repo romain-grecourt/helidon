@@ -5,5 +5,5 @@ package io.helidon.common.http;
  */
 public interface ContentFiltersRegistry {
 
-    void registerFilter(ContentFilter filter);
+    ContentFiltersRegistry registerFilter(ContentFilter filter);
 }

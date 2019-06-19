@@ -20,7 +20,6 @@ import io.helidon.common.GenericType;
 import java.util.concurrent.CompletionStage;
 
 import io.helidon.common.reactive.Flow.Publisher;
-import java.nio.charset.Charset;
 
 /**
  * Entity reader.
@@ -28,21 +27,34 @@ import java.nio.charset.Charset;
  */
 public interface EntityReader<T> {
 
-    boolean accept(Class<?> type, ContentInfo info);
+    boolean accept(Class<?> type, InBoundScope scope);
 
-    default boolean accept(GenericType<?> type, ContentInfo info) {
-        return accept(type.rawType(), info);
+    default boolean accept(GenericType<?> type, InBoundScope scope) {
+        return accept(type.rawType(), scope);
     }
 
     CompletionStage<? extends T> readEntity(Publisher<DataChunk> publisher,
-            Class<? super T> type, ContentInfo info, Charset defaultCharset);
+            Class<? super T> type, InBoundScope scope);
 
-    @SuppressWarnings("unchecked")
+    default <R extends T> CompletionStage<? extends R> readEntityAndCast(
+            Publisher<DataChunk> publisher, Class<R> type, InBoundScope scope) {
+
+        return readEntity(publisher, (Class<T>)type, scope)
+                .thenApply(type::cast);
+    }
+
     default CompletionStage<? extends T> readEntity(
             Publisher<DataChunk> publisher, GenericType<? super T> type,
-            ContentInfo info, Charset defaultCharset) {
+            InBoundScope scope) {
 
-        return readEntity(publisher, (Class<? super T>)type.rawType(), info,
-                defaultCharset);
+        return readEntity(publisher, (Class<? super T>) type.rawType(), scope);
+    }
+
+    default <R extends T> CompletionStage<? extends R> readEntityAndCast(
+            Publisher<DataChunk> publisher, GenericType<R> type,
+            InBoundScope scope) {
+
+        return readEntity(publisher, (GenericType<T>)type, scope)
+                .thenApply(type::cast);
     }
 }

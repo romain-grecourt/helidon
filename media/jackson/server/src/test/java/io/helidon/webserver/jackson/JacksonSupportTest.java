@@ -39,18 +39,16 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 public class JacksonSupportTest {
 
-    private static final BiFunction<? super ServerRequest, ? super ServerResponse, ? extends ObjectMapper> objectMapperProvider = (req, res) -> new ObjectMapper();
-  
     @Test
     public void pingPong() throws Exception {
         final Routing routing = Routing.builder()
-            .register(JacksonSupport.create())
-            .post("/foo", Handler.create(Person.class, (req, res, person) -> res.send(person)))
-            .build();
+                .register(JacksonSupport.create())
+                .post("/foo", Handler.create(Person.class, (req, res, person) -> res.send(person)))
+                .build();
         final String personJson = "{\"name\":\"Frank\"}";
         final TestResponse response = TestClient.create(routing)
-            .path("/foo")
-            .post(MediaPublisher.create(MediaType.APPLICATION_JSON.withCharset("UTF-8"), personJson));
+                .path("/foo")
+                .post(MediaPublisher.create(MediaType.APPLICATION_JSON.withCharset("UTF-8"), personJson));
 
         assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null), is(MediaType.APPLICATION_JSON.toString()));
         final String json = response.asString().get(10, TimeUnit.SECONDS);
@@ -58,20 +56,20 @@ public class JacksonSupportTest {
     }
 
     public static final class Person {
-        
+
         private String name;
-        
+
         public Person() {
             super();
         }
-        
+
         public String getName() {
             return this.name;
         }
-        
+
         public void setName(final String name) {
             this.name = name;
         }
-        
+
     }
 }

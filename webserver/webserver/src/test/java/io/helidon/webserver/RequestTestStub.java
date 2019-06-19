@@ -16,6 +16,7 @@
 
 package io.helidon.webserver;
 
+import io.helidon.common.http.EntityReaders;
 import java.net.URI;
 
 
@@ -49,7 +50,7 @@ public class RequestTestStub extends Request {
     }
 
     RequestTestStub(BareRequest req, WebServer webServer, Span span) {
-        super(req, webServer);
+        super(req, webServer, new EntityReaders());
         this.span = span == null ? mock(Span.class) : span;
     }
 

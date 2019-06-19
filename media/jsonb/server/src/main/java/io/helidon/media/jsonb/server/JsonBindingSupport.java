@@ -17,63 +17,43 @@
 package io.helidon.media.jsonb.server;
 
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbBuilder;
 
-import io.helidon.media.jsonb.common.JsonBinding;
 import io.helidon.webserver.Handler;
-import io.helidon.webserver.JsonService;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
-import static io.helidon.media.common.ContentTypeCharset.determineCharset;
+import io.helidon.media.jsonb.common.JsonBindingEntityReader;
+import io.helidon.media.jsonb.common.JsonBindingEntityWriter;
+import io.helidon.webserver.Routing;
 
 /**
  * A {@link Service} and a {@link Handler} that provides <a
  * href="http://json-b.net/">JSON-B</a> support to Helidon.
  */
-public final class JsonBindingSupport extends JsonService {
+public final class JsonBindingSupport implements Service, Handler {
 
-    private final BiFunction<? super ServerRequest, ? super ServerResponse, ? extends Jsonb> jsonbProvider;
+    private final JsonBindingEntityReader reader;
+    private final JsonBindingEntityWriter writer;
 
-    private JsonBindingSupport(final BiFunction<? super ServerRequest,
-                                                ? super ServerResponse,
-                                                ? extends Jsonb> jsonbProvider) {
-        super();
-        this.jsonbProvider = Objects.requireNonNull(jsonbProvider);
+    private JsonBindingSupport(final Jsonb jsonb) {
+        this.reader = new JsonBindingEntityReader(jsonb);
+        this.writer = new JsonBindingEntityWriter(jsonb);
+    }
+
+    @Override
+    public void update(Routing.Rules rules) {
+        rules.any(this);
     }
 
     @Override
     public void accept(final ServerRequest request, final ServerResponse response) {
-        final Jsonb jsonb = this.jsonbProvider.apply(request, response);
-        // Don't register reader/writer if content is a CharSequence (String) (see #645)
-        request.content()
-            .registerReader(cls -> !CharSequence.class.isAssignableFrom(cls),
-                            JsonBinding.reader(jsonb));
-        response.registerWriter(payload -> !(payload instanceof CharSequence) && acceptsJson(request, response),
-                                JsonBinding.writer(jsonb, determineCharset(response.headers())));
+        request.content().registerReader(reader);
+        response.registerWriter(writer);
         request.next();
-    }
-
-    /**
-     * Creates a new {@link JsonBindingSupport}.
-     *
-     * @param jsonbProvider a {@link BiFunction} that returns a {@link
-     * Jsonb} when given a {@link ServerRequest} and a {@link
-     * ServerResponse}; must not be {@code null}
-     *
-     * @return a new {@link JsonBindingSupport}
-     *
-     * @exception NullPointerException if {@code jsonbProvider} is
-     * {@code null}
-     */
-    public static JsonBindingSupport create(final BiFunction<? super ServerRequest,
-                                                             ? super ServerResponse,
-                                                             ? extends Jsonb> jsonbProvider) {
-        return new JsonBindingSupport(jsonbProvider);
     }
 
     /**
@@ -88,7 +68,7 @@ public final class JsonBindingSupport extends JsonService {
      */
     public static JsonBindingSupport create(final Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
-        return create((req, res) -> jsonb);
+        return new JsonBindingSupport(jsonb);
     }
 
     /**

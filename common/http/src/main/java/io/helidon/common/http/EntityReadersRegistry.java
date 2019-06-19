@@ -5,7 +5,7 @@ package io.helidon.common.http;
  */
 public interface EntityReadersRegistry {
 
-    void registerReader(EntityReader<?> reader);
+    EntityReadersRegistry registerReader(EntityReader<?> reader);
 
-    void registerStreamReader(EntityStreamReader<?> streamReader);
+    EntityReadersRegistry registerStreamReader(EntityStreamReader<?> streamReader);
 }

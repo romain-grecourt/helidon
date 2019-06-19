@@ -16,7 +16,6 @@
 
 package io.helidon.webserver;
 
-import static io.helidon.common.CollectionsHelper.mapOf;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +30,6 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.http.InBoundContent;
-import io.helidon.common.http.InBoundContext;
 import io.helidon.common.http.ContentInterceptor;
 import io.helidon.common.http.EntityReaders;
 import io.opentracing.Span;
@@ -40,6 +38,9 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import io.helidon.common.http.InBoundScope;
+
+import static io.helidon.common.CollectionsHelper.mapOf;
 
 /**
  * The basic abstract implementation of {@link ServerRequest}.
@@ -56,7 +57,7 @@ abstract class Request implements ServerRequest {
     private final WebServer webServer;
     private final ContextualRegistry context;
     private final Parameters queryParams;
-    private final RequestHeaders headers;
+    private final HashRequestHeaders headers;
     private final InBoundContent content;
 
     /**
@@ -65,16 +66,17 @@ abstract class Request implements ServerRequest {
      * @param req bare request from HTTP SPI implementation.
      * @param webServer relevant server.
      */
-    Request(BareRequest req, WebServer webServer) {
+    Request(BareRequest req, WebServer webServer, EntityReaders readers) {
         this.bareRequest = req;
         this.webServer = webServer;
         this.context = ContextualRegistry.create(webServer.context());
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
                 /* decode */ true);
         this.headers = new HashRequestHeaders(bareRequest.headers());
+        InBoundScope scope = new InBoundScope(headers, DEFAULT_CHARSET,
+                headers.contentType().orElse(null), readers);
         this.content = new InBoundContent(req.bodyPublisher(),
-                new EntityReaders(new ContentContext()),
-                new ContentReadInterceptorFactory());
+                scope, new ContentReadInterceptorFactory());
     }
 
     /**
@@ -188,28 +190,16 @@ abstract class Request implements ServerRequest {
     }
 
     /**
-     * Server request {@link InBoundContext} implementation.
-     */
-    private final class ContentContext implements InBoundContext {
-
-        @Override
-        public Charset charset() {
-            return requestContentCharset(Request.this);
-        }
-    }
-
-    /**
-     * Subscriber interceptor factory.
+     * Server request {@link InBoundScope} implementation.
      */
     private final class ContentReadInterceptorFactory
             implements ContentInterceptor.Factory {
 
         @Override
         public ContentInterceptor create(
-                Subscriber<? super DataChunk> subscriber,
-                String requestedType) {
+                Subscriber<? super DataChunk> subscriber) {
 
-            return new ContentReadInterceptor(subscriber, requestedType);
+            return new ContentReadInterceptor(subscriber);
         }
     }
 
@@ -223,28 +213,26 @@ abstract class Request implements ServerRequest {
         /**
          * Create a new content read interceptor.
          * @param subscriber delegate subscriber
-         * @param requestedType type requested for conversion
+         * @param type type requested for conversion
          */
-        ContentReadInterceptor(Subscriber<? super DataChunk> subscriber,
-                String requestedType) {
-
-            super(subscriber, requestedType);
+        ContentReadInterceptor(Subscriber<? super DataChunk> subscriber) {
+            super(subscriber);
         }
 
         @Override
-        public void beforeOnSubscribe() {
+        public void beforeOnSubscribe(String type) {
             Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-read");
             if (span() != null) {
                 spanBuilder.asChildOf(span());
             }
-            if (requestedType != null) {
-                spanBuilder.withTag("requested.type", requestedType);
+            if (type != null) {
+                spanBuilder.withTag("requested.type", type);
             }
             readSpan = spanBuilder.start();
         }
 
         @Override
-        public void afterOnError(Throwable ex) {
+        public void afterOnError(Throwable ex, String type) {
             if (readSpan != null) {
                 Tags.ERROR.set(readSpan, Boolean.TRUE);
                 readSpan.log(mapOf("event", "error",
@@ -256,7 +244,7 @@ abstract class Request implements ServerRequest {
         }
 
         @Override
-        public void afterOnComplete() {
+        public void afterOnComplete(String type) {
             if (readSpan != null) {
                 readSpan.finish();
             }

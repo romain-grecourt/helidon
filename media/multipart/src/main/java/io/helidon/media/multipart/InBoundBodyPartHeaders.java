@@ -27,7 +27,7 @@ import java.util.TreeMap;
 /**
  * Body part headers.
  */
-public final class BodyPartHeaders extends ReadOnlyParameters
+public final class InBoundBodyPartHeaders extends ReadOnlyParameters
         implements Headers {
 
     private final Object internalLock = new Object();
@@ -38,7 +38,7 @@ public final class BodyPartHeaders extends ReadOnlyParameters
      *
      * @param params headers map
      */
-    BodyPartHeaders(Map<String, List<String>> params) {
+    InBoundBodyPartHeaders(Map<String, List<String>> params) {
         super(params);
     }
 
@@ -95,10 +95,10 @@ public final class BodyPartHeaders extends ReadOnlyParameters
     }
 
     /**
-     * Builder class to create {@link BodyPartHeaders} instances.
+     * Builder class to create {@link InBoundBodyPartHeaders} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<BodyPartHeaders> {
+            implements io.helidon.common.Builder<InBoundBodyPartHeaders> {
 
         /**
          * The headers map.
@@ -107,7 +107,7 @@ public final class BodyPartHeaders extends ReadOnlyParameters
                 = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         /**
-         * Force the use of {@link BodyPartHeaders#builder() }.
+         * Force the use of {@link InBoundBodyPartHeaders#builder() }.
          */
         private Builder() {
         }
@@ -149,8 +149,8 @@ public final class BodyPartHeaders extends ReadOnlyParameters
         }
 
         @Override
-        public BodyPartHeaders build() {
-            return new BodyPartHeaders(headers);
+        public InBoundBodyPartHeaders build() {
+            return new InBoundBodyPartHeaders(headers);
         }
     }
 }

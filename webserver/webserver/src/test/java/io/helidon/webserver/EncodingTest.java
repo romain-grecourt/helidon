@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import io.helidon.common.http.Http;
 import io.helidon.webserver.utils.SocketHttpClient;
+import java.util.logging.Level;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -63,7 +64,7 @@ public class EncodingTest {
                 .toCompletableFuture()
                 .get(10, TimeUnit.SECONDS);
 
-        LOGGER.info("Started server at: https://localhost:" + webServer.port());
+        LOGGER.log(Level.INFO, "Started server at: https://localhost:{0}", webServer.port());
     }
 
     /**

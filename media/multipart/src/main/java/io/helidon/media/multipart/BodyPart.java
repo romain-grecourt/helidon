@@ -26,9 +26,9 @@ import io.helidon.common.http.HttpContent;
 public abstract class BodyPart<T extends HttpContent> {
 
     protected final T content;
-    private final BodyPartHeaders headers;
+    private final InBoundBodyPartHeaders headers;
 
-    protected BodyPart(T content, BodyPartHeaders headers) {
+    protected BodyPart(T content, InBoundBodyPartHeaders headers) {
         this.content = content;
         this.headers = headers;
     }
@@ -45,7 +45,7 @@ public abstract class BodyPart<T extends HttpContent> {
      * Returns http part headers.
      * @return BodyPartHeaders, never {@code null}
      */
-    public BodyPartHeaders headers(){
+    public InBoundBodyPartHeaders headers(){
         return headers;
     }
 
@@ -80,6 +80,6 @@ public abstract class BodyPart<T extends HttpContent> {
          * @param headers headers
          * @return this builder instance
          */
-        public abstract Builder headers(BodyPartHeaders headers);
+        public abstract Builder headers(InBoundBodyPartHeaders headers);
     }
 }

@@ -8,30 +8,39 @@ import io.helidon.common.http.EntityWriters;
  */
 public final class MediaSupport {
 
-    final EntityReaders readersSupport;
-    final EntityWriters writersSupport;
+    final EntityReaders readers;
+    final EntityWriters writers;
 
     public MediaSupport() {
-        readersSupport = new EntityReaders();
-        writersSupport = new EntityWriters();
+        readers = new EntityReaders();
+        writers = new EntityWriters();
     }
 
     public MediaSupport(MediaSupport delegate) {
-        readersSupport = new EntityReaders(delegate.readersSupport);
-        writersSupport = new EntityWriters(delegate.writersSupport);
+        readers = new EntityReaders(delegate.readers);
+        writers = new EntityWriters(delegate.writers);
     }
 
-    public void registerDefaults() {
+    public MediaSupport registerDefaults() {
         // default readers
-        readersSupport.registerReader(new StringEntityReader());
-        readersSupport.registerReader(new ByteArrayEntityReader());
-        readersSupport.registerReader(new InputStreamEntityReader());
+        readers.registerReader(new StringEntityReader());
+        readers.registerReader(new ByteArrayEntityReader());
+        readers.registerReader(new InputStreamEntityReader());
 
         // default writers
-        writersSupport.registerWriter(new ByteArrayCopyEntityWriter());
-        writersSupport.registerWriter(new CharSequenceEntityWriter());
-        writersSupport.registerWriter(new ByteChannelEntityWriter());
-        writersSupport.registerWriter(new PathEntityWriter());
-        writersSupport.registerWriter(new FileEntityWriter());
+        writers.registerWriter(new ByteArrayCopyEntityWriter());
+        writers.registerWriter(new CharSequenceEntityWriter());
+        writers.registerWriter(new ByteChannelEntityWriter());
+        writers.registerWriter(new PathEntityWriter());
+        writers.registerWriter(new FileEntityWriter());
+        return this;
+    }
+
+    public EntityReaders readers() {
+        return readers;
+    }
+
+    public EntityWriters writers() {
+        return writers;
     }
 }

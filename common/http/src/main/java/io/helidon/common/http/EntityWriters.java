@@ -3,14 +3,13 @@ package io.helidon.common.http;
 import io.helidon.common.GenericType;
 import java.util.Objects;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Entity writers support.
  */
-public final class EntityWriters extends ContentFilterSupport
+public final class EntityWriters extends ContentFilters
         implements EntityWritersRegistry {
 
     private final EntityWriters delegate;
@@ -38,24 +37,26 @@ public final class EntityWriters extends ContentFilterSupport
     }
 
     @Override
-    public void registerWriter(EntityWriter<?> writer) {
+    public EntityWriters registerWriter(EntityWriter<?> writer) {
         Objects.requireNonNull(writer, "writer is null!");
         try {
             writersLock.writeLock().lock();
             writers.addFirst(new WriterEntry<>(writer.getClass(),
                     writer));
+            return this;
         } finally {
             writersLock.writeLock().unlock();
         }
     }
 
     @Override
-    public void registerStreamWriter(EntityStreamWriter<?> streamWriter) {
+    public EntityWriters registerStreamWriter(EntityStreamWriter<?> streamWriter) {
         Objects.requireNonNull(streamWriter, "streamWriter is null!");
         try {
             streamWritersLock.writeLock().lock();
             streamWriters.addFirst(new WriterEntry<>(
                     streamWriter.getClass(), streamWriter));
+            return this;
         } finally {
             streamWritersLock.writeLock().unlock();
         }
@@ -106,13 +107,13 @@ public final class EntityWriters extends ContentFilterSupport
 
     @SuppressWarnings("unchecked")
     public <T> EntityWriter.Promise<T> selectWriter(Object entity,
-            List<MediaType> acceptedTypes, EntityWriters delegate) {
+            OutBoundScope scope, EntityWriters delegate) {
 
         try {
             writersLock.readLock().lock();
             for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
                 EntityWriter.Promise<T> promise = (EntityWriter.Promise<T>)
-                        writerEntry.writer.accept(entity, acceptedTypes);
+                        writerEntry.writer.accept(entity, scope);
                 if (promise != null) {
                     return promise;
                 }
@@ -121,21 +122,21 @@ public final class EntityWriters extends ContentFilterSupport
             writersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectWriter(entity, acceptedTypes, delegate);
+            return this.delegate.selectWriter(entity, scope, delegate);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
     public <T> EntityWriter.Promise<T> selectWriter(Object entity,
-            GenericType<T> entityType, List<MediaType> acceptedTypes,
+            GenericType<T> entityType, OutBoundScope scope,
             EntityWriters delegate) {
 
         try {
             writersLock.readLock().lock();
             for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
                 EntityWriter.Promise<T> promise = (EntityWriter.Promise<T>)
-                        writerEntry.writer.accept(entity, acceptedTypes);
+                        writerEntry.writer.accept(entity, scope);
                 if (promise != null) {
                     return promise;
                 }
@@ -144,15 +145,41 @@ public final class EntityWriters extends ContentFilterSupport
             writersLock.readLock().unlock();
         }
         if (this.delegate != null) {
-            return this.delegate.selectWriter(entity, entityType,
-                    acceptedTypes, delegate);
+            return this.delegate.selectWriter(entity, entityType, scope,
+                    delegate);
         }
         return null;
     }
 
     @SuppressWarnings("unchecked")
     public <T> EntityStreamWriter.Promise<T> selectStreamWriter(
-            Class<T> entityType, List<MediaType> acceptedTypes,
+            Class<T> entityType, OutBoundScope scope,
+            EntityWriters delegate) {
+
+        try {
+            streamWritersLock.readLock().lock();
+            for (WriterEntry<EntityStreamWriter<?>> writerEntry
+                    : streamWriters) {
+                EntityStreamWriter.Promise<T> promise
+                        = (EntityStreamWriter.Promise<T>) writerEntry
+                                .writer.accept(entityType, null);
+                if (promise != null) {
+                    return promise;
+                }
+            }
+        } finally {
+            streamWritersLock.readLock().unlock();
+        }
+        if (this.delegate != null) {
+            return this.delegate.selectStreamWriter(entityType, scope,
+                    delegate);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> EntityStreamWriter.Promise<T> selectStreamWriter(
+            GenericType<T> entityType, OutBoundScope scope,
             EntityWriters delegate) {
 
         try {
@@ -171,33 +198,7 @@ public final class EntityWriters extends ContentFilterSupport
         }
         if (this.delegate != null) {
             return this.delegate.selectStreamWriter(entityType,
-                    acceptedTypes, delegate);
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityStreamWriter.Promise<T> selectStreamWriter(
-            GenericType<T> entityType, List<MediaType> acceptedTypes,
-            EntityWriters delegate) {
-
-        try {
-            streamWritersLock.readLock().lock();
-            for (WriterEntry<EntityStreamWriter<?>> writerEntry
-                    : streamWriters) {
-                EntityStreamWriter.Promise<T> promise
-                        = (EntityStreamWriter.Promise<T>) writerEntry
-                                .writer.accept(entityType, null);
-                if (promise != null) {
-                    return promise;
-                }
-            }
-        } finally {
-            streamWritersLock.readLock().unlock();
-        }
-        if (this.delegate != null) {
-            return this.delegate.selectStreamWriter(entityType,
-                    acceptedTypes, delegate);
+                    scope, delegate);
         }
         return null;
     }
