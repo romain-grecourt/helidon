@@ -18,11 +18,11 @@ public class JsonLineDelimitedEntityStreamWriter
     }
 
     @Override
-    public Promise accept(Class<?> type, OutBoundScope scope) {
+    public Ack<JsonStructure> accept(Class<?> type, OutBoundScope scope) {
         if (JsonStructure.class.isAssignableFrom(type)) {
             MediaType contentType = findAccepted(scope.acceptedTypes);
             if (contentType != null) {
-                return new Promise(this, contentType);
+                return new Ack<>(this, contentType);
             }
         }
         return null;

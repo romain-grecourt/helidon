@@ -17,7 +17,6 @@ package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Publisher;
-import java.util.Objects;
 
 /**
  * Stream writer.
@@ -25,41 +24,33 @@ import java.util.Objects;
  */
 public interface EntityStreamWriter<T> {
 
-    Promise accept(Class<?> type, OutBoundScope scope);
+    Ack<T> accept(Class<?> type, OutBoundScope scope);
 
-    default Promise accept(GenericType<?> type, OutBoundScope scope) {
+    default Ack<T> accept(GenericType<?> type, OutBoundScope scope) {
         return accept(type.rawType(), scope);
     }
 
     Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            Class<T> type, Promise<T> promise, OutBoundScope scope);
+            Class<T> type, Ack<T> ack, OutBoundScope scope);
 
     @SuppressWarnings("unchecked")
     default Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            GenericType<T> type, Promise<T> promise, OutBoundScope scope) {
+            GenericType<T> type, Ack<T> ack, OutBoundScope scope) {
 
         return writeEntityStream(entityStream, (Class<T>) type.rawType(),
-                promise, scope);
+                ack, scope);
     }
 
-    static final class Promise<T> {
+    public static final class Ack<T> extends EntityAck<EntityStreamWriter<T>> {
 
-        public final MediaType contentType;
-        public final long contentLength;
-        public final EntityStreamWriter<T> writer;
-
-        public Promise(EntityStreamWriter<T> writer, MediaType contentType,
-                long contentLength) {
-
-            Objects.requireNonNull(writer, "writer cannot be null!");
-            Objects.requireNonNull(contentType, "contentType cannot be null!");
-            this.writer = writer;
-            this.contentType = contentType;
-            this.contentLength = contentLength;
+        public Ack(EntityStreamWriter<T> writer, MediaType contentType) {
+            super(writer, contentType);
         }
 
-        public Promise(EntityStreamWriter<T> writer, MediaType contentType) {
-            this(writer, contentType, -1);
+        public Ack(EntityStreamWriter<T> writer, MediaType contentType,
+                long contentLength) {
+
+            super(writer, contentType, contentLength);
         }
     }
 }

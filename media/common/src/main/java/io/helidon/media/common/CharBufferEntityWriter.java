@@ -16,16 +16,16 @@ import java.nio.charset.Charset;
 public final class CharBufferEntityWriter implements EntityWriter<CharBuffer> {
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<CharBuffer> accept(Object entity, OutBoundScope scope) {
         if (CharBuffer.class.isAssignableFrom(entity.getClass())){
-            return new Promise<>(this, MediaType.TEXT_PLAIN);
+            return new Ack<>(this, MediaType.TEXT_PLAIN);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(CharBuffer buffer,
-            Promise<CharBuffer> promise, OutBoundScope scope) {
+            Ack<CharBuffer> ack, OutBoundScope scope) {
 
         if (buffer == null || buffer.size() == 0) {
             return new EmptyPublisher<>();

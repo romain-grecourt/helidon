@@ -9,7 +9,6 @@ import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.CharBufferEntityWriter;
-import io.helidon.media.common.JsonHelper;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -26,14 +25,15 @@ public class JacksonEntityWriter implements EntityWriter<Object> {
     }
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<Object> accept(Object entity, OutBoundScope scope) {
         if (entity != null
                 && !(entity instanceof CharSequence)
                 && objectMapper.canSerialize(entity.getClass())) {
 
-            MediaType contentType = JsonHelper.getOutBoundContentType(scope);
+            MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
+                    MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Promise<>(this, contentType);
+                return new Ack<>(this, contentType);
             }
         }
         return null;
@@ -41,7 +41,7 @@ public class JacksonEntityWriter implements EntityWriter<Object> {
 
     @Override
     public Publisher<DataChunk> writeEntity(Object entity,
-            Promise<Object> promise, OutBoundScope scope) {
+            Ack<Object> ack, OutBoundScope scope) {
 
         try {
             CharBuffer buffer = new CharBuffer();

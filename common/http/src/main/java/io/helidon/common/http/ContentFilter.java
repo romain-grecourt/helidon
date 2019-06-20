@@ -20,6 +20,7 @@ import io.helidon.common.reactive.Flow.Publisher;
 /**
  * A filter allows a control over a content publisher.
  */
+@FunctionalInterface
 public interface ContentFilter {
 
     Publisher<DataChunk> apply(Publisher<DataChunk> publisher);

@@ -28,16 +28,16 @@ public final class ByteChannelEntityWriter
     }
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<ReadableByteChannel> accept(Object entity, OutBoundScope scope) {
         if (ReadableByteChannel.class.isAssignableFrom(entity.getClass())) {
-            return new Promise<>(this, MediaType.APPLICATION_OCTET_STREAM);
+            return new Ack<>(this, MediaType.APPLICATION_OCTET_STREAM);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(ReadableByteChannel channel,
-            Promise<ReadableByteChannel> promise, OutBoundScope scope) {
+            Ack<ReadableByteChannel> ack, OutBoundScope scope) {
 
         return new ReadableByteChannelPublisher(channel, schema);
     }

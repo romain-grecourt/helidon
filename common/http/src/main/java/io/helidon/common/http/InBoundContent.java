@@ -1,12 +1,11 @@
 package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Predicate;
 
 /**
  * In-bound reactive payload that can be converted to entities.
@@ -17,7 +16,8 @@ public final class InBoundContent
 
     private final Publisher<DataChunk> originalPublisher;
     private final ContentInterceptor.Factory interceptorFactory;
-    final InBoundScope scope;
+    private final InBoundScope scope;
+    private final EntityReaders readers;
 
     /**
      * Create a new instance.
@@ -33,6 +33,7 @@ public final class InBoundContent
         Objects.requireNonNull(scope, "scope is null!");
         this.originalPublisher = originalPublisher;
         this.scope = scope;
+        this.readers = scope.readers();
         this.interceptorFactory = interceptorFactory;
     }
 
@@ -56,31 +57,48 @@ public final class InBoundContent
         Objects.requireNonNull(orig, "orig is null!");
         this.originalPublisher = orig.originalPublisher;
         this.scope = orig.scope;
+        this.readers = orig.readers;
         this.interceptorFactory = orig.interceptorFactory;
+    }
+
+    InBoundScope scope() {
+        return scope;
     }
 
     @Override
     public InBoundContent registerFilter(ContentFilter filter) {
-        scope.readers.registerFilter(filter);
+        readers.registerFilter(filter);
         return this;
     }
 
     @Override
     public InBoundContent registerReader(EntityReader<?> reader) {
-        scope.readers.registerReader(reader);
+        readers.registerReader(reader);
         return this;
     }
 
     @Override
     public InBoundContent registerStreamReader(EntityStreamReader<?> reader) {
-        scope.readers.registerStreamReader(reader);
+        readers.registerStreamReader(reader);
         return this;
+    }
+
+    @Override
+    public <T> void registerReader(Class<T> type, Reader<T> reader) {
+        readers.registerReader(type, reader);
+    }
+
+    @Override
+    public <T> void registerReader(Predicate<Class<?>> predicate,
+            Reader<T> reader) {
+
+        readers.registerReader(predicate, reader);
     }
 
     @Override
     public void subscribe(Subscriber<? super DataChunk> subscriber) {
         try {
-            scope.readers.applyFilters(originalPublisher, interceptorFactory)
+            readers.applyFilters(originalPublisher, interceptorFactory)
                     .subscribe(subscriber);
         } catch (Exception e) {
             subscriber.onError(new IllegalArgumentException(
@@ -90,93 +108,27 @@ public final class InBoundContent
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> CompletionStage<T> as(final Class<T> type) {
-        try {
-            EntityReader<T> reader = scope.readers
-                    .selectReader(type, scope, /* delegate */ null);
-            if (reader == null) {
-                throw new IllegalArgumentException(
-                        "No reader found for class: " + type);
-            }
-            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
-            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            return failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            return failedFuture;
-        }
+        return readers.unmarshall(originalPublisher, type, scope,
+                /* readersFallback */ null, interceptorFactory);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> CompletionStage<T> as(final GenericType<T> type) {
-        try {
-            EntityReader<T> reader = scope.readers.selectReader(type, scope,
-                    /* delegate */ null);
-            if (reader == null) {
-                throw new IllegalArgumentException(
-                        "No reader found for class: " + type);
-            }
-            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
-            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            return failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            return failedFuture;
-        }
+        return readers.unmarshall(originalPublisher, type, scope,
+                /* readersFallback */ null, interceptorFactory);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<T> asStream(Class<T> type) {
-        try {
-            EntityStreamReader<T> streamReader = scope.readers
-                    .selectStreamReader(type, scope, /* delegate */ null);
-            if (streamReader == null) {
-                throw new IllegalArgumentException(
-                        "No stream reader found for class: " + type);
-            }
-            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
-            return (Publisher<T>) streamReader
-                    .readEntityStream(pub, type,scope);
-        } catch (IllegalArgumentException e) {
-            return new FailedPublisher<>(e);
-        } catch (Exception e) {
-            return new FailedPublisher<>(new IllegalArgumentException(
-                    "Transformation failed!", e));
-        }
+        return readers.unmarshallStream(originalPublisher, type, scope,
+                /* readersFallback */ null, interceptorFactory);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<T> asStream(GenericType<T> type) {
-        try {
-            EntityStreamReader<T> streamReader = scope.readers
-                    .selectStreamReader(type, scope, /* delegate */ null);
-            if (streamReader == null) {
-                throw new IllegalArgumentException(
-                        "No stream reader found for class: " + type);
-            }
-            Publisher<DataChunk> pub = filteredPublisher(type.getTypeName());
-            return (Publisher<T>) streamReader
-                    .readEntityStream(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            return new FailedPublisher<>(e);
-        } catch (Exception e) {
-            return new FailedPublisher<>(new IllegalArgumentException(
-                    "Transformation failed!", e));
-        }
-    }
-
-    private Publisher<DataChunk> filteredPublisher(String type) {
-        ContentInterceptor.Factory ifc = null;
-        if (interceptorFactory != null) {
-            ifc = interceptorFactory.forType(type);
-        }
-        return scope.readers.applyFilters(originalPublisher, ifc);
+        return readers.unmarshallStream(originalPublisher, type, scope,
+                /* readersFallback */ null, interceptorFactory);
     }
 }

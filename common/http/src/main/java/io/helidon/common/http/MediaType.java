@@ -22,7 +22,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
  * An abstraction for a media type. Instances are immutable.
@@ -135,8 +134,8 @@ public final class MediaType implements AcceptPredicate<MediaType> {
      * Predicate to test if {@link MediaType} is {@code application/json} or has {@code json} suffix.
      */
     public static final Predicate<MediaType> JSON_PREDICATE = APPLICATION_JSON
-            .or(APPLICATION_JAVASCRIPT)
             .or(mt -> mt.hasSuffix("json"));
+
     /**
      * Matcher for type, subtype and attributes.
      */

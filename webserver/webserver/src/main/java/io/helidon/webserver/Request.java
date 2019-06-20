@@ -66,13 +66,15 @@ abstract class Request implements ServerRequest {
      * @param req bare request from HTTP SPI implementation.
      * @param webServer relevant server.
      */
-    Request(BareRequest req, WebServer webServer, EntityReaders readers) {
+    Request(BareRequest req, WebServer webServer, HashRequestHeaders headers,
+            EntityReaders readers) {
+
         this.bareRequest = req;
         this.webServer = webServer;
+        this.headers = headers;
         this.context = ContextualRegistry.create(webServer.context());
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
                 /* decode */ true);
-        this.headers = new HashRequestHeaders(bareRequest.headers());
         InBoundScope scope = new InBoundScope(headers, DEFAULT_CHARSET,
                 headers.contentType().orElse(null), readers);
         this.content = new InBoundContent(req.bodyPublisher(),
@@ -99,7 +101,7 @@ abstract class Request implements ServerRequest {
      * @param request the request to extract the charset from
      * @return the charset or {@link #DEFAULT_CHARSET} if none found
      */
-    static Charset requestContentCharset(ServerRequest request) {
+    static Charset contentCharset(ServerRequest request) {
         return request.headers()
                       .contentType()
                       .flatMap(MediaType::charset)

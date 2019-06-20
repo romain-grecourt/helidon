@@ -32,9 +32,10 @@ import io.opentracing.util.GlobalTracer;
 import io.helidon.common.http.EntityWriter;
 import io.helidon.common.http.EntityStreamWriter;
 import io.helidon.common.http.ContentFilter;
-import io.helidon.common.http.EntityWritersRegistry;
 import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.EmptyPublisher;
+import java.util.List;
+import java.util.function.Function;
 
 /**
  * The basic implementation of {@link ServerResponse}.
@@ -47,6 +48,7 @@ abstract class Response implements ServerResponse {
 
     private final CompletionStage<ServerResponse> completionStage;
     private final OutBoundScope scope;
+    private final EntityWriters writers;
 
     // Content related
     private final SendLockSupport sendLockSupport;
@@ -58,16 +60,16 @@ abstract class Response implements ServerResponse {
      * @param bareResponse an implementation of the response SPI.
      */
     Response(WebServer webServer, BareResponse bareResponse,
-            EntityWriters writers) {
+            List<MediaType> acceptedTypes, EntityWriters parentWriters) {
 
         this.webServer = webServer;
         this.bareResponse = bareResponse;
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
-        // TODO accepted types
         this.scope = new OutBoundScope(headers, Request.DEFAULT_CHARSET,
-                /* acceptedTypes */ null, writers);
+                acceptedTypes, parentWriters);
+        this.writers = scope.writers();
     }
 
     /**
@@ -82,6 +84,7 @@ abstract class Response implements ServerResponse {
         this.completionStage = response.completionStage;
         this.sendLockSupport = response.sendLockSupport;
         this.scope = response.scope;
+        this.writers = response.writers;
     }
 
     /**
@@ -144,20 +147,11 @@ abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                EntityWriter.Promise<Object> promise = scope.writers
-                        .selectWriter(content, scope, null);
-                Publisher<DataChunk> publisher = promise.writer
-                        .writeEntity(content, promise, scope);
-                if (publisher == null) {
-                    throw new IllegalArgumentException(
-                            "Cannot write! No registered writer for '"
-                            + content.getClass().toString() + "'.");
-                }
-                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
-                        headers, writeSpan,
-                        scope.writers.applyFilters(publisher));
+                Publisher<DataChunk> publisher = writers.marshall(content,
+                        scope, /* writersFallback */ null, headers,
+                        /* interceptorFactory */ null);
                 sendLockSupport.contentSend = true;
-                pub.subscribe(bareResponse);
+                publisher.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -175,8 +169,7 @@ abstract class Response implements ServerResponse {
                     : content;
             sendLockSupport.execute(() -> {
                 Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
-                        headers, writeSpan,
-                        scope.writers.applyFilters(publisher));
+                        headers, writeSpan, writers.applyFilters(publisher));
                 sendLockSupport.contentSend = true;
                 pub.subscribe(bareResponse);
             }, content == null);
@@ -199,28 +192,11 @@ abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                EntityStreamWriter.Promise<T> promise = scope.writers
-                        .selectStreamWriter(itemClass, scope, null);
-                Publisher<DataChunk> publisher = promise.writer
-                        .writeEntityStream(content, itemClass, promise, scope);
-                if (publisher == null) {
-                    throw new IllegalArgumentException(
-                            "Cannot write! No registered stream writer for '"
-                            + content.getClass().toString() + "'.");
-                }
-                if (promise.contentType != null) {
-                    headers.put(Http.Header.CONTENT_TYPE,
-                            promise.contentType.toString());
-                }
-                if (promise.contentLength > 0) {
-                    headers.put(Http.Header.CONTENT_LENGTH,
-                            String.valueOf(promise.contentLength));
-                }
-                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
-                        headers, writeSpan,
-                        scope.writers.applyFilters(publisher));
+                Publisher<DataChunk> publisher = writers.marshallStream(content,
+                        itemClass, scope, /* writersFallback */ null, headers,
+                        /* interceptorFactory */ null);
                 sendLockSupport.contentSend = true;
-                pub.subscribe(bareResponse);
+                publisher.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -230,67 +206,52 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public <T> ServerResponse registerStreamWriter(Class<T> acceptType,
-            MediaType contentType, EntityStreamWriter<T> writer) {
+    public <T> Response registerWriter(Class<T> type,
+            Function<T, Publisher<DataChunk>> function) {
 
-        // TODO
+        writers.registerWriter(type, function);
         return this;
     }
 
     @Override
-    public <T> ServerResponse registerStreamWriter(Predicate<Class<T>> accept,
-            MediaType contentType, EntityStreamWriter<T> writer) {
+    public <T> Response registerWriter(Predicate<?> predicate,
+            Function<T, Publisher<DataChunk>> function) {
 
-        // TODO
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Class<T> type, EntityWriter<T> writer) {
-        // TODO
+        writers.registerWriter(predicate, function);
         return this;
     }
 
     @Override
     public <T> Response registerWriter(Class<T> type, MediaType contentType,
-            EntityWriter<T> writer) {
+            Function<? extends T, Publisher<DataChunk>> function) {
 
-        // TODO
+        writers.registerWriter(type, contentType, function);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Predicate<?> accept,
-            EntityWriter<T> writer) {
+    public <T> Response registerWriter(Predicate<?> predicate,
+            MediaType contentType, Function<T, Publisher<DataChunk>> function) {
 
-        // TODO
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Predicate<?> accept,
-            MediaType contentType, EntityWriter<T> writer) {
-
-        // TODO
+        writers.registerWriter(predicate, contentType, function);
         return this;
     }
 
     @Override
     public Response registerWriter(EntityWriter<?> writer) {
-        scope.writers.registerWriter(writer);
+        writers.registerWriter(writer);
         return this;
     }
 
     @Override
     public Response registerStreamWriter(EntityStreamWriter<?> writer) {
-        scope.writers.registerStreamWriter(writer);
+        writers.registerStreamWriter(writer);
         return this;
     }
 
-
     @Override
     public Response registerFilter(ContentFilter filter) {
-        scope.writers.registerFilter(filter);
+        writers.registerFilter(filter);
         return this;
     }
 

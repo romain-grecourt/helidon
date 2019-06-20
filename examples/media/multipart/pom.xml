@@ -44,8 +44,13 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.helidon.media</groupId>
-            <artifactId>helidon-media-multipart</artifactId>
+            <groupId>io.helidon.media.multipart</groupId>
+            <artifactId>helidon-media-multipart-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.media.multipart</groupId>
+            <artifactId>helidon-media-multipart-server</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

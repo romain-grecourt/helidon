@@ -17,24 +17,13 @@
 package io.helidon.webserver;
 
 import java.net.URI;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
-import io.helidon.common.reactive.SubmissionPublisher;
 import io.helidon.webserver.utils.TestUtils;
 
 import org.junit.jupiter.api.Test;
@@ -47,11 +36,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
 import static org.hamcrest.core.AllOf.allOf;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsCollectionContaining.hasItems;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
+
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherFromFlow;
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherToFlow;
 
 /**
  * The RequestContentTest.
@@ -61,7 +52,7 @@ public class RequestContentTest {
     private static Request requestTestStub(Publisher<DataChunk> flux) {
         BareRequest bareRequestMock = Mockito.mock(BareRequest.class);
         Mockito.doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
-        Mockito.doReturn(ReactiveStreamsAdapter.publisherToFlow(flux)).when(bareRequestMock).bodyPublisher();
+        Mockito.doReturn(publisherToFlow(flux)).when(bareRequestMock).bodyPublisher();
         return new RequestTestStub(bareRequestMock, Mockito.mock(WebServer.class));
     }
 
@@ -88,12 +79,11 @@ public class RequestContentTest {
 
         Request request = requestTestStub(flux);
 
-        request.content().registerFilter(publisher -> {
+        request.content().registerFilter((Flow.Publisher<DataChunk> publisher) -> {
             sb.append("apply_filter-");
-
-            Flux<DataChunk> byteBufferFlux = ReactiveStreamsAdapter.publisherFromFlow(publisher);
+            Flux<DataChunk> byteBufferFlux = publisherFromFlow(publisher);
             Flux<DataChunk> stringFlux = byteBufferFlux.map(TestUtils::requestChunkAsString)
-                                                          .map(String::toUpperCase)
+                    .map(String::toUpperCase)
                     .map(s -> DataChunk.create(s.getBytes()));
             return ReactiveStreamsAdapter.publisherToFlow(stringFlux);
         });
@@ -285,9 +275,9 @@ public class RequestContentTest {
         Request request = requestTestStub(Flux.just(DataChunk.create("data".getBytes())));
 
         request.content()
-               .registerFilter(publisher -> {
-                   throw new IllegalStateException("failed-publisher-transformation");
-               });
+                .registerFilter((Flow.Publisher<DataChunk> publisher) -> {
+                    throw new IllegalStateException("failed-publisher-transformation");
+        });
 
         AtomicReference<Throwable> receivedThrowable = new AtomicReference<>();
 

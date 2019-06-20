@@ -19,25 +19,19 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <groupId>io.helidon.media</groupId>
-        <artifactId>helidon-media-project</artifactId>
+        <groupId>io.helidon.media.multipart</groupId>
+        <artifactId>helidon-media-multipart-project</artifactId>
         <version>1.1.2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <packaging>jar</packaging>
-    <artifactId>helidon-media-multipart</artifactId>
-    <name>Helidon Media Multipart Support</name>
+    <artifactId>helidon-media-multipart-common</artifactId>
+    <name>Helidon Media Multipart Common</name>
 
     <description>
-        Multipart Support for WebServer
+        Multipart Common Support
     </description>
 
     <dependencies>
-        <dependency>
-            <groupId>io.helidon.webserver</groupId>
-            <artifactId>helidon-webserver</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <dependency>
             <groupId>io.helidon.media</groupId>
             <artifactId>helidon-media-common</artifactId>
@@ -46,6 +40,11 @@
         <dependency>
             <groupId>io.helidon.common</groupId>
             <artifactId>helidon-common-http</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.common</groupId>
+            <artifactId>helidon-common-reactive</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -62,12 +61,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common-reactive</artifactId>
-            <version>1.1.2-SNAPSHOT</version>
-            <type>jar</type>
         </dependency>
     </dependencies>
 </project>

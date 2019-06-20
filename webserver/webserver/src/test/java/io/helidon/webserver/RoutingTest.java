@@ -16,10 +16,13 @@
 
 package io.helidon.webserver;
 
+import io.helidon.common.context.Context;
+import io.helidon.common.http.ContextualRegistry;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.Http;
+import io.helidon.common.reactive.EmptyPublisher;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -115,7 +118,10 @@ public class RoutingTest {
         BareRequest bareRequestMock = Mockito.mock(BareRequest.class);
         Mockito.doReturn(URI.create("http://0.0.0.0:1234/" + path)).when(bareRequestMock).uri();
         Mockito.doReturn(method).when(bareRequestMock).method();
-        Mockito.doReturn(Mockito.mock(WebServer.class)).when(bareRequestMock).webServer();
+        Mockito.doReturn(new EmptyPublisher<>()).when(bareRequestMock).bodyPublisher();
+        WebServer webServerMock = Mockito.mock(WebServer.class);
+        Mockito.when(webServerMock.context()).thenReturn(ContextualRegistry.create());
+        Mockito.doReturn(webServerMock).when(bareRequestMock).webServer();
         return bareRequestMock;
     }
 

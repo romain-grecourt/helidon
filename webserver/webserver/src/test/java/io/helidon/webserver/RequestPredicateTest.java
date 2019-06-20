@@ -28,6 +28,7 @@ import org.mockito.Mockito;
 
 import static io.helidon.common.CollectionsHelper.listOf;
 import static io.helidon.common.CollectionsHelper.mapOf;
+import io.helidon.common.context.Context;
 import static io.helidon.webserver.RoutingTest.mockResponse;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;

@@ -141,7 +141,7 @@ class JsonSupportTest {
         assertThat(response.status(), is(Http.Status.OK_200));
         assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null), is(MediaType.APPLICATION_JSON.toString()));
 
-        // With JOSNP standard application/javascript
+        // With JSONP standard application/javascript
         response = TestClient.create(routing)
                 .path("/foo")
                 .header("Accept", "application/javascript")

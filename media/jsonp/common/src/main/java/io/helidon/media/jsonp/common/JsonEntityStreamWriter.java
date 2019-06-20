@@ -9,7 +9,6 @@ import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.media.common.JsonHelper;
 import static io.helidon.media.jsonp.common.JsonEntityWriter.write;
 import java.nio.charset.Charset;
 import java.util.Objects;
@@ -39,11 +38,12 @@ public abstract class JsonEntityStreamWriter
     }
 
     @Override
-    public Promise accept(Class<?> type, OutBoundScope scope) {
+    public Ack<JsonStructure> accept(Class<?> type, OutBoundScope scope) {
         if (JsonStructure.class.isAssignableFrom(type)) {
-            MediaType contentType = JsonHelper.getOutBoundContentType(scope);
+            MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
+                    MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Promise<>(this, contentType);
+                return new Ack<>(this, contentType);
             }
         }
         return null;
@@ -52,7 +52,7 @@ public abstract class JsonEntityStreamWriter
     @Override
     public Publisher<DataChunk> writeEntityStream(
             Publisher<JsonStructure> entityStream, Class<JsonStructure> type,
-            Promise<JsonStructure> promise, OutBoundScope scope) {
+            Ack<JsonStructure> ack, OutBoundScope scope) {
 
         try {
             return new JsonArrayStreamProcessor(entityStream, scope.charset());

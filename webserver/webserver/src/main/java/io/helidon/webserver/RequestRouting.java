@@ -33,6 +33,7 @@ import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.EntityReaders;
 import io.helidon.common.http.EntityWriters;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 import io.helidon.media.common.MediaSupport;
 
 import io.opentracing.Span;
@@ -42,7 +43,6 @@ import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapExtractAdapter;
 import io.opentracing.tag.Tags;
 import io.opentracing.util.GlobalTracer;
-import java.util.Optional;
 
 /**
  * Default (and only provided) implementation of {@link Routing}.
@@ -78,10 +78,13 @@ class RequestRouting implements Routing {
             // instead do it once and save it per serverConfig
             MediaSupport mediaSupport = webServer.context()
                     .get(MediaSupport.class)
-                    .orElseGet(MediaSupport::new);
+                    .orElseGet(MediaSupport::createWithDefaults);
 
             Span span = createRequestSpan(tracer(webServer), bareRequest);
-            RoutedResponse response = new RoutedResponse(webServer, bareResponse, span.context(),
+            HashRequestHeaders requestHeaders = new HashRequestHeaders(
+                    bareRequest.headers());
+            RoutedResponse response = new RoutedResponse(webServer,
+                    bareResponse, span.context(), requestHeaders.acceptedTypes(),
                     mediaSupport.writers());
             response.whenSent()
                     .thenRun(() -> {
@@ -111,7 +114,8 @@ class RequestRouting implements Routing {
             String rawPath = canonicalize(bareRequest.uri().normalize().getRawPath());
 
             Crawler crawler = new Crawler(routes, path, rawPath, bareRequest.method());
-            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, span, mediaSupport.readers());
+            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response,
+                    webServer,crawler, errorHandlers, span, requestHeaders, mediaSupport.readers());
             // only register the span context once on the top level request, as others are cloned from it
             nextRequests.context().register(span.context());
             Contexts.runInContext(nextRequests.context(), (Runnable) nextRequests::next);
@@ -308,9 +312,10 @@ class RequestRouting implements Routing {
                       Crawler crawler,
                       List<ErrorHandlerRecord<?>> errorHandlers,
                       Span requestSpan,
+                      HashRequestHeaders headers,
                       EntityReaders readers) {
 
-            super(req, webServer, readers);
+            super(req, webServer, headers, readers);
             this.crawler = crawler;
             this.errorHandlers = new LinkedList<>(errorHandlers);
             this.path = null;
@@ -488,9 +493,10 @@ class RequestRouting implements Routing {
         private final SpanContext requestSpanContext;
 
         RoutedResponse(WebServer webServer, BareResponse bareResponse,
-                SpanContext requestSpanContext, EntityWriters writers) {
+                SpanContext requestSpanContext, List<MediaType> acceptedTypes,
+                EntityWriters writers) {
 
-            super(webServer, bareResponse, writers);
+            super(webServer, bareResponse, acceptedTypes, writers);
             this.requestSpanContext = requestSpanContext;
         }
 

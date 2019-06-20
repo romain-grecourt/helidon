@@ -105,7 +105,7 @@ public class JsonContentReaderTest {
     @Test
     public void invalidJson() throws Exception {
         Publisher<DataChunk> publisher = publisherToFlow(
-                Flux.just("{ \"p\" : \"val\" }")
+                Flux.just("{ \"p\" : \"val\" ")
                         .map(s -> DataChunk.create(s.getBytes())));
 
         CompletionStage<? extends JsonObject> stage = READER

@@ -10,10 +10,10 @@ import java.util.Objects;
  */
 public class InBoundScope {
 
-    public final ReadOnlyParameters headers;
-    public final Charset defaultCharset;
-    public final MediaType contentType;
-    public final EntityReaders readers;
+    private final ReadOnlyParameters headers;
+    private final Charset defaultCharset;
+    private final MediaType contentType;
+    private final EntityReaders readers;
 
     public InBoundScope(ReadOnlyParameters headers, Charset defaultCharset,
             MediaType contentType, EntityReaders readers) {
@@ -31,6 +31,22 @@ public class InBoundScope {
         }
     }
 
+    public ReadOnlyParameters headers() {
+        return headers;
+    }
+
+    public Charset defaultCharset() {
+        return defaultCharset;
+    }
+
+    public MediaType contentType() {
+        return contentType;
+    }
+
+    public EntityReaders readers() {
+        return readers;
+    }
+
     public final Charset charset() {
         if (contentType != null) {
             try {
@@ -45,6 +61,6 @@ public class InBoundScope {
     }
 
     public static InBoundScope of(InBoundContent content) {
-        return content.scope;
+        return content.scope();
     }
 }

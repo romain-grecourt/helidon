@@ -16,6 +16,7 @@
 
 package io.helidon.webserver;
 
+import static io.helidon.common.CollectionsHelper.listOf;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -234,7 +235,7 @@ public class ResponseTest {
     static class ResponseImpl extends Response {
 
         public ResponseImpl(WebServer webServer, BareResponse bareResponse) {
-            super(webServer, bareResponse, new EntityWriters());
+            super(webServer, bareResponse, listOf(), new EntityWriters());
         }
 
         @Override

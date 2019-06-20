@@ -16,6 +16,7 @@
 
 package io.helidon.webserver;
 
+import io.helidon.common.http.HashParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

@@ -32,9 +32,13 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import io.helidon.common.InputStreamHelper;
+import io.helidon.common.http.ContentFilter;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
+import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherFromFlow;
+import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherToFlow;
 import io.helidon.webserver.utils.SocketHttpClient;
 
 import org.junit.jupiter.api.AfterAll;
@@ -88,10 +92,13 @@ public class BytesReuseTest {
                 ServerConfiguration.builder().port(port).build(),
                 Routing.builder()
                         .any((req, res) -> {
-                            req.content().registerFilter(requestChunkPublisher -> ReactiveStreamsAdapter.publisherToFlow(
-                                    ReactiveStreamsAdapter.publisherFromFlow(requestChunkPublisher)
+                            req.content().registerFilter((Publisher<DataChunk> publisher) -> publisherToFlow(
+                                    publisherFromFlow(publisher)
                                             .map(chunk -> {
-                                                if (req.queryParams().first("keep_chunks").map(Boolean::valueOf).orElse(true)) {
+                                                if (req.queryParams()
+                                                        .first("keep_chunks")
+                                                        .map(Boolean::valueOf)
+                                                        .orElse(true)) {
                                                     chunkReference.add(chunk);
                                                 }
                                                 return chunk;

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.helidon.common.http;
 
 import io.helidon.common.reactive.Flow.Publisher;
@@ -12,7 +27,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public abstract class ContentFilters implements ContentFiltersRegistry {
 
-    private final ContentFilters delegate;
+    private final ContentFilters parent;
     private final LinkedList<ContentFilter> filters;
     private final ReadWriteLock filtersLock;
 
@@ -20,17 +35,17 @@ public abstract class ContentFilters implements ContentFiltersRegistry {
      * Create a new content support instance.
      */
     protected ContentFilters() {
-        this.delegate = null;
+        this.parent = null;
         this.filters = new LinkedList<>();
         this.filtersLock = new ReentrantReadWriteLock();
     }
 
     /**
-     * Create a new delegated content support instance.
-     * @param delegate content support delegate
+     * Create a new parented content support instance.
+     * @param parent content filters parent
      */
-    protected ContentFilters(ContentFilters delegate) {
-        this.delegate = delegate;
+    protected ContentFilters(ContentFilters parent) {
+        this.parent = parent;
         this.filters = new LinkedList<>();
         this.filtersLock = new ReentrantReadWriteLock();
     }
@@ -56,23 +71,24 @@ public abstract class ContentFilters implements ContentFiltersRegistry {
     public final Publisher<DataChunk> applyFilters(
             Publisher<DataChunk> publisher) {
 
-        return applyFilters(publisher, /* interceptor */ null);
+        return applyFilters(publisher, null);
     }
 
     /**
      * Apply the filters by creating a publisher chain of each filter.
      * @param publisher the initial publisher
-     * @param contentScope content scope
+     * @param ifc interceptor factory
      * @return the last publisher of the resulting chain
      */
-    final Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher,
-            ContentInterceptor.Factory interceptorFactory) {
+    public final Publisher<DataChunk> applyFilters(
+            Publisher<DataChunk> publisher, ContentInterceptor.Factory ifc) {
 
-        Publisher<DataChunk> lastPublisher = doApplyFilters(publisher);
-        if (delegate != null) {
-            lastPublisher = delegate.doApplyFilters(lastPublisher);
+        Objects.requireNonNull(publisher, "publisher cannot be null!");
+        Publisher<DataChunk> last = doApplyFilters(publisher);
+        if (parent != null) {
+            last = parent.doApplyFilters(last);
         }
-        return new FilteredPublisher(lastPublisher, interceptorFactory);
+        return new FilteredPublisher(last, ifc);
     }
 
     private Publisher<DataChunk> doApplyFilters(
@@ -99,26 +115,26 @@ public abstract class ContentFilters implements ContentFiltersRegistry {
     private static final class FilteredPublisher
             implements Publisher<DataChunk> {
 
-        private final Publisher<DataChunk> originalPublisher;
-        private final ContentInterceptor.Factory interceptorFactory;
+        private final Publisher<DataChunk> publisher;
+        private final ContentInterceptor.Factory ifc;
 
-        FilteredPublisher(Publisher<DataChunk> originalPublisher,
-                ContentInterceptor.Factory interceptorFactory) {
+        FilteredPublisher(Publisher<DataChunk> publisher,
+                ContentInterceptor.Factory ifc) {
 
-            this.originalPublisher = originalPublisher;
-            this.interceptorFactory = interceptorFactory;
+            this.publisher = publisher;
+            this.ifc = ifc;
         }
 
         @Override
         public void subscribe(Subscriber<? super DataChunk> subscriber) {
-            ContentInterceptor interceptor = null;
-            if (interceptorFactory != null) {
-                interceptor = interceptorFactory.create(subscriber);
+            ContentInterceptor ic = null;
+            if (ifc != null) {
+                ic = ifc.create(subscriber);
             }
-            if (interceptor != null) {
-                originalPublisher.subscribe(interceptor);
+            if (ic != null) {
+                publisher.subscribe(ic);
             } else {
-                originalPublisher.subscribe(subscriber);
+                publisher.subscribe(subscriber);
             }
         }
     }

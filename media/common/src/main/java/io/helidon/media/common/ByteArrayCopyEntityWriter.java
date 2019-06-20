@@ -2,7 +2,6 @@ package io.helidon.media.common;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityWriter;
-import io.helidon.common.http.EntityWriter.Promise;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.EmptyPublisher;
@@ -15,15 +14,15 @@ import io.helidon.common.reactive.SingleItemPublisher;
 public final class ByteArrayCopyEntityWriter implements EntityWriter<byte[]> {
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<byte[]> accept(Object entity, OutBoundScope scope) {
         if (entity.getClass().isAssignableFrom(byte[].class)) {
-            return new Promise(this, MediaType.APPLICATION_OCTET_STREAM);
+            return new Ack<>(this, MediaType.APPLICATION_OCTET_STREAM);
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(byte[] bytes, Promise promise,
+    public Publisher<DataChunk> writeEntity(byte[] bytes, Ack<byte[]> ack,
             OutBoundScope scope) {
 
         return write(bytes);

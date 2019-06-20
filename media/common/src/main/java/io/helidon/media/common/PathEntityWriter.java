@@ -11,6 +11,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Predicate;
 
 import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHEMA;
 
@@ -19,23 +20,29 @@ import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHE
  */
 public final class PathEntityWriter implements EntityWriter<Path> {
 
+    static final Predicate<MediaType> ANY = new AnyPredicate();
+
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<Path> accept(Object entity, OutBoundScope scope) {
         if (Path.class.isAssignableFrom(entity.getClass())) {
-            Path path = (Path) entity;
-            long size;
-            try {
-                size = Files.size(path);
-            } catch (IOException ex) {
-                size = 1;
+            MediaType contentType = scope.findAccepted(ANY,
+                    MediaType.APPLICATION_OCTET_STREAM);
+            if (contentType != null) {
+                Path path = (Path) entity;
+                long size;
+                try {
+                    size = Files.size(path);
+                } catch (IOException ex) {
+                    size = 1;
+                }
+                return new Ack<>(this, contentType, size);
             }
-            return new Promise<>(this, MediaType.APPLICATION_OCTET_STREAM, size);
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(Path path, Promise<Path> promise,
+    public Publisher<DataChunk> writeEntity(Path path, Ack<Path> ack,
             OutBoundScope scope) {
 
         try {
@@ -43,6 +50,17 @@ public final class PathEntityWriter implements EntityWriter<Path> {
             return new ReadableByteChannelPublisher(fc, DEFAULT_RETRY_SCHEMA);
         } catch (IOException ex) {
             return new FailedPublisher<>(ex);
+        }
+    }
+
+    /**
+     * A media type predicate that accepts any type.
+     */
+    private static final class AnyPredicate implements Predicate<MediaType> {
+
+        @Override
+        public boolean test(MediaType t) {
+            return true;
         }
     }
 }

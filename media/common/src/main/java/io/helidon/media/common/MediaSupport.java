@@ -21,7 +21,7 @@ public final class MediaSupport {
         writers = new EntityWriters(delegate.writers);
     }
 
-    public MediaSupport registerDefaults() {
+    private MediaSupport registerDefaults() {
         // default readers
         readers.registerReader(new StringEntityReader());
         readers.registerReader(new ByteArrayEntityReader());
@@ -42,5 +42,9 @@ public final class MediaSupport {
 
     public EntityWriters writers() {
         return writers;
+    }
+
+    public static MediaSupport createWithDefaults() {
+        return new MediaSupport().registerDefaults();
     }
 }

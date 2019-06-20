@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ public interface EntityReader<T> {
     CompletionStage<? extends T> readEntity(Publisher<DataChunk> publisher,
             Class<? super T> type, InBoundScope scope);
 
+    @SuppressWarnings("unchecked")
     default <R extends T> CompletionStage<? extends R> readEntityAndCast(
             Publisher<DataChunk> publisher, Class<R> type, InBoundScope scope) {
 
@@ -43,6 +44,7 @@ public interface EntityReader<T> {
                 .thenApply(type::cast);
     }
 
+    @SuppressWarnings("unchecked")
     default CompletionStage<? extends T> readEntity(
             Publisher<DataChunk> publisher, GenericType<? super T> type,
             InBoundScope scope) {
@@ -50,6 +52,7 @@ public interface EntityReader<T> {
         return readEntity(publisher, (Class<? super T>) type.rawType(), scope);
     }
 
+    @SuppressWarnings("unchecked")
     default <R extends T> CompletionStage<? extends R> readEntityAndCast(
             Publisher<DataChunk> publisher, GenericType<R> type,
             InBoundScope scope) {

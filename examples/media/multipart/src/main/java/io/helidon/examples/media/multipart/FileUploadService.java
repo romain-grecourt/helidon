@@ -15,15 +15,13 @@
  */
 package io.helidon.examples.media.multipart;
 
-import io.helidon.media.multipart.InBoundBodyPart;
-import io.helidon.media.multipart.InBoundMultiPart;
-import io.helidon.media.multipart.MultiPartSupport;
+import io.helidon.media.multipart.common.InBoundBodyPart;
+import io.helidon.media.multipart.common.InBoundMultiPart;
+import io.helidon.media.multipart.server.MultiPartSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-import java.util.List;
-import java.util.Map.Entry;
 
 /**
  * Exposes an endpoint that handles multipart requests.
@@ -47,19 +45,8 @@ public final class FileUploadService implements Service {
     private void test1(ServerRequest req, ServerResponse res) {
         req.content().as(InBoundMultiPart.class).thenAccept(multiPart -> {
             for(InBoundBodyPart part : multiPart.bodyParts()){
-                System.out.println("\n****** PART ******");
-                System.out.println("Headers:");
-                for (Entry<String, List<String>> header
-                        : part.headers().toMap().entrySet()) {
-                    String name = header.getKey();
-                    for (String value : header.getValue()) {
-                        System.out.println(name + ":" + value);
-                    }
-                }
-                part.content().as(String.class).thenAccept(partContent -> {
-                    System.out.println("Content:");
-                    System.out.println(partContent);
-                });
+                System.out.println("Headers: " + part.headers().toMap());
+                System.out.println("Content: " + part.as(String.class));
             }
             res.send();
         });

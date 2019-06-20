@@ -19,16 +19,12 @@ package io.helidon.webserver;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
-import io.helidon.common.http.EntityWriter;
-import io.helidon.common.http.EntityStreamWriter;
-import io.helidon.common.http.ContentFilter;
+import io.helidon.common.http.ContentFiltersRegistry;
 import io.helidon.common.http.EntityWritersRegistry;
 
 /**
@@ -42,7 +38,7 @@ import io.helidon.common.http.EntityWritersRegistry;
  * <p>
  * Response content (body/payload) can be constructed using {@link #send(Object) send(...)} methods.
  */
-public interface ServerResponse extends EntityWritersRegistry {
+public interface ServerResponse extends EntityWritersRegistry, ContentFiltersRegistry {
 
     /**
      * Returns actual {@link WebServer} instance.
@@ -143,92 +139,6 @@ public interface ServerResponse extends EntityWritersRegistry {
     CompletionStage<ServerResponse> send();
 
     <T> CompletionStage<ServerResponse> send(Flow.Publisher<T> content, Class<T> clazz);
-
-    <T> ServerResponse registerStreamWriter(Predicate<Class<T>> predicate, MediaType contentType, EntityStreamWriter<T> writer);
-
-    <T> ServerResponse registerStreamWriter(Class<T> acceptType, MediaType contentType, EntityStreamWriter<T> writer);
-
-    /**
-     * Registers a content writer for a given type.
-     * <p>
-     * Registered writer is used to marshal response content of given type to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk response chunks}.
-     *
-     * @param type a type of the content. If {@code null} then accepts any type.
-     * @param writer a writer function
-     * @param <T> a type of the content
-     * @return this instance of {@link ServerResponse}
-     * @throws NullPointerException if {@code function} parameter is {@code null}
-     */
-    <T> ServerResponse registerWriter(Class<T> type, EntityWriter<T> writer);
-
-    /**
-     * Registers a content writer for a given type and media type.
-     * <p>
-     * Registered writer is used to marshal response content of given type to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk response chunks}. It is used only if {@code Content-Type} header is compatible with a given
-     * content type or if it is {@code null}. If {@code Content-Type} is {@code null} and it is still possible to modify
-     * headers (headers were not send yet), the provided content type will be set.
-     *
-     * @param type        a type of the content. If {@code null} then accepts any type.
-     * @param contentType a {@code Content-Type} of the entity
-     * @param writer    a writer function
-     * @param <T>         a type of the content
-     * @return this instance of {@link ServerResponse}
-     * @throws NullPointerException if {@code function} parameter is {@code null}
-     */
-    <T> ServerResponse registerWriter(Class<T> type, MediaType contentType, EntityWriter<T> writer);
-
-    /**
-     * Registers a content writer for all accepted contents.
-     * <p>
-     * Registered writer is used to marshal response content of given type to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk response chunks}.
-     *
-     * @param accept   a predicate to test if content is marshallable by the writer. If {@code null} then accepts any type.
-     * @param writer a writer function
-     * @param <T>      a type of the content
-     * @return this instance of {@link ServerResponse}
-     * @throws NullPointerException if {@code function} parameter is {@code null}
-     */
-    <T> ServerResponse registerWriter(Predicate<?> accept, EntityWriter<T> writer);
-
-    /**
-     * Registers a content writer for all accepted contents.
-     * <p>
-     * Registered writer is used to marshal response content of given type to the {@link Flow.Publisher Publisher}
-     * of {@link DataChunk response chunks}. It is used only if {@code Content-Type} header is compatible with a given
-     * content type or if it is {@code null}. If {@code Content-Type} is {@code null} and it is still possible to modify
-     * headers (headers were not send yet), the provided content type will be set.
-     *
-     * @param accept      a predicate to test if content is marshallable by the writer. If {@code null} then accepts any type.
-     * @param contentType a {@code Content-Type} of the entity
-     * @param writer    a writer function
-     * @param <T>         a type of the content
-     * @return this instance of {@link ServerResponse}
-     * @throws NullPointerException if {@code function} parameter is {@code null}
-     */
-    <T> ServerResponse registerWriter(Predicate<?> accept, MediaType contentType, EntityWriter<T> writer);
-
-    /**
-     * Registers a provider of the new response content publisher - typically a filter.
-     * <p>
-     * All response content is always represented by a single {@link Flow.Publisher Publisher}
-     * of {@link DataChunk response chunks}. This method can be used to filter or completely replace original publisher by
-     * a new one with different contract. For example data coding, logging, filtering, caching, etc.
-     * <p>
-     * New publisher is created at the moment of content write by any {@link #send(Object) send(...)} method including the empty
-     * one.
-     * <p>
-     * All registered filters are used as a chain from original content {@code Publisher}, first registered to the last
-     * registered.
-     *
-     * @param filter a function to map previously registered or original {@code Publisher} to the new one. If returns
-     *                 {@code null} then the result will be ignored.
-     * @return this instance of {@link ServerResponse}
-     * @throws NullPointerException if parameter {@code function} is {@code null}
-     */
-    ServerResponse registerFilter(ContentFilter filter);
 
     /**
      * Completion stage is completed when response is completed.

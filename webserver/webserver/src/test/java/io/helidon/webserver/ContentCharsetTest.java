@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
 import static io.helidon.common.CollectionsHelper.mapOf;
+import io.helidon.common.reactive.EmptyPublisher;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,35 +43,35 @@ public class ContentCharsetTest {
     public void requestContentCharset() {
         RequestTestStub request = charset(mapOf("content-type", listOf("application/json; charset=cp1250")));
 
-        assertThat(Request.requestContentCharset(request), is(Charset.forName("cp1250")));
+        assertThat(Request.contentCharset(request), is(Charset.forName("cp1250")));
     }
 
     @Test
     public void invalidRequestContentCharset() {
         RequestTestStub request = charset(mapOf("content-type", listOf("application/json; charset=invalid-charset-name")));
 
-        assertThrows(UnsupportedCharsetException.class, () -> Request.requestContentCharset(request));
+        assertThrows(UnsupportedCharsetException.class, () -> Request.contentCharset(request));
     }
 
     @Test
     public void nonexistentCharset() {
         RequestTestStub request = charset(mapOf("content-type", listOf("application/json")));
 
-        assertThat(Request.requestContentCharset(request), is(Request.DEFAULT_CHARSET));
+        assertThat(Request.contentCharset(request), is(Request.DEFAULT_CHARSET));
     }
 
     @Test
     public void missingContentType() {
         RequestTestStub request = charset(CollectionsHelper.mapOf());
 
-        assertThat(Request.requestContentCharset(request), is(Request.DEFAULT_CHARSET));
+        assertThat(Request.contentCharset(request), is(Request.DEFAULT_CHARSET));
     }
 
     private RequestTestStub charset(Map<String, List<String>> map) {
         BareRequest bareRequestMock = mock(BareRequest.class);
         doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
+        doReturn(new EmptyPublisher<>()).when(bareRequestMock).bodyPublisher();
         doReturn(map).when(bareRequestMock).headers();
-
         return new RequestTestStub(bareRequestMock, mock(WebServer.class));
     }
 }

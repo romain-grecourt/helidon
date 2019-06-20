@@ -8,7 +8,6 @@ import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.CharBufferEntityWriter;
-import io.helidon.media.common.JsonHelper;
 import java.nio.charset.Charset;
 import javax.json.JsonException;
 import javax.json.JsonStructure;
@@ -27,11 +26,12 @@ public class JsonEntityWriter implements EntityWriter<JsonStructure> {
     }
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<JsonStructure> accept(Object entity, OutBoundScope scope) {
         if (entity != null && entity instanceof JsonStructure) {
-            MediaType contentType = JsonHelper.getOutBoundContentType(scope);
+            MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
+                    MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Promise<>(this, contentType);
+                return new Ack<>(this, contentType);
             }
         }
         return null;
@@ -39,7 +39,7 @@ public class JsonEntityWriter implements EntityWriter<JsonStructure> {
 
     @Override
     public Publisher<DataChunk> writeEntity(JsonStructure entity,
-            Promise<JsonStructure> promise, OutBoundScope scope) {
+            Ack<JsonStructure> ack, OutBoundScope scope) {
 
         try {
             return write(jsonWriterFactory, entity,  scope.charset());

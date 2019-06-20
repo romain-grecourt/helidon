@@ -6,16 +6,21 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * Out-bound scope.
  */
 public class OutBoundScope {
 
-    public final Parameters headers;
-    public final Charset defaultCharset;
-    public final List<MediaType> acceptedTypes;
-    public final EntityWriters writers;
+    private final Parameters headers;
+    private final Charset defaultCharset;
+    private final List<MediaType> acceptedTypes;
+    private final EntityWriters writers;
+    private boolean contentTypeCached;
+    private MediaType contentTypeCache;
+    private boolean charsetCached;
+    private Charset charsetCache;
 
     public OutBoundScope(Parameters headers, Charset defaultCharset,
             List<MediaType> acceptedTypes, EntityWriters writers) {
@@ -41,26 +46,85 @@ public class OutBoundScope {
                 /* writers */ null);
     }
 
+    public EntityWriters writers() {
+        return writers;
+    }
+
+    public List<MediaType> acceptedTypes() {
+        return acceptedTypes;
+    }
+
+    public Charset defaultCharset() {
+        return defaultCharset;
+    }
+
+    public Parameters headers() {
+        return headers;
+    }
+
     public final MediaType contentType() {
-        return headers.first(Http.Header.CONTENT_TYPE).map(MediaType::parse)
+        if (contentTypeCached) {
+            return contentTypeCache;
+        }
+        contentTypeCache = headers
+                .first(Http.Header.CONTENT_TYPE)
+                .map(MediaType::parse)
                 .orElse(null);
+        contentTypeCached = true;
+        return contentTypeCache;
+    }
+
+    public MediaType findAccepted(Predicate<MediaType> predicate,
+            MediaType defaultType) {
+
+        Objects.requireNonNull(predicate, "predicate cannot be null");
+        Objects.requireNonNull(defaultType, "defaultType cannot be null");
+        MediaType contentType = contentType();
+        if (contentType == null) {
+            if (acceptedTypes.isEmpty()) {
+                return defaultType;
+            } else {
+                for (final MediaType acceptedType : acceptedTypes) {
+                    if (predicate.test(acceptedType)) {
+                        if (acceptedType.isWildcardType()
+                                || acceptedType.isWildcardSubtype()) {
+                            return defaultType;
+                        }
+                        return MediaType.create(acceptedType.type(),
+                                acceptedType.subtype());
+                    }
+                }
+            }
+        } else {
+            if (predicate.test(contentType)) {
+                return contentType;
+            }
+        }
+        return null;
     }
 
     public final Charset charset() throws IllegalStateException {
+        if (charsetCached) {
+            return charsetCache;
+        }
         MediaType contentType = contentType();
         if (contentType != null) {
             try {
-                return contentType.charset().map(Charset::forName)
+                charsetCache = contentType.charset().map(Charset::forName)
                         .orElse(defaultCharset);
+                charsetCached = true;
+                return charsetCache;
             } catch (IllegalCharsetNameException
                     | UnsupportedCharsetException ex) {
                 throw new IllegalStateException(ex);
             }
         }
-        return defaultCharset;
+        charsetCache = defaultCharset;
+        charsetCached = true;
+        return charsetCache;
     }
 
     public static OutBoundScope of(OutBoundContent content) {
-        return content.scope;
+        return content.scope();
     }
 }

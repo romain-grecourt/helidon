@@ -18,16 +18,16 @@ public final class CharSequenceEntityWriter
         implements EntityWriter<CharSequence> {
 
     @Override
-    public Promise accept(Object entity, OutBoundScope scope) {
+    public Ack<CharSequence> accept(Object entity, OutBoundScope scope) {
         if (CharSequence.class.isAssignableFrom(entity.getClass())){
-            return new Promise<>(this, MediaType.TEXT_PLAIN);
+            return new Ack<>(this, MediaType.TEXT_PLAIN);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(CharSequence cs,
-            Promise<CharSequence> promise, OutBoundScope scope) {
+            Ack<CharSequence> ack, OutBoundScope scope) {
 
         try {
             return write(cs, scope.charset());
