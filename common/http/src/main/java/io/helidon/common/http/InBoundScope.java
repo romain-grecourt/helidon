@@ -16,16 +16,16 @@ public class InBoundScope {
     private final EntityReaders readers;
 
     public InBoundScope(ReadOnlyParameters headers, Charset defaultCharset,
-            MediaType contentType, EntityReaders readers) {
+            MediaType contentType, EntityReaders parentReaders) {
 
         Objects.requireNonNull(headers, "headers cannot be null!");
         Objects.requireNonNull(defaultCharset, "defaultCharset cannot be null!");
-        Objects.requireNonNull(readers, "readers cannot be null!");
+        Objects.requireNonNull(parentReaders, "readers cannot be null!");
         this.headers = headers;
         this.defaultCharset = defaultCharset;
         this.contentType = contentType;
-        if (readers != null) {
-            this.readers = new EntityReaders(readers);
+        if (parentReaders != null) {
+            this.readers = new EntityReaders(parentReaders);
         } else {
             this.readers = new EntityReaders();
         }

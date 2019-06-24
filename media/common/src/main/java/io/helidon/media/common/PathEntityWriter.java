@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Predicate;
 
-import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHEMA;
+import static io.helidon.media.common.ByteChannelWriter.DEFAULT_RETRY_SCHEMA;
 
 /**
  * Entity writer for {@link Path}.
@@ -23,8 +23,8 @@ public final class PathEntityWriter implements EntityWriter<Path> {
     static final Predicate<MediaType> ANY = new AnyPredicate();
 
     @Override
-    public Ack<Path> accept(Object entity, OutBoundScope scope) {
-        if (Path.class.isAssignableFrom(entity.getClass())) {
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (Path.class.isAssignableFrom(type)) {
             MediaType contentType = scope.findAccepted(ANY,
                     MediaType.APPLICATION_OCTET_STREAM);
             if (contentType != null) {
@@ -35,16 +35,14 @@ public final class PathEntityWriter implements EntityWriter<Path> {
                 } catch (IOException ex) {
                     size = 1;
                 }
-                return new Ack<>(this, contentType, size);
+                return new Ack(contentType, size);
             }
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(Path path, Ack<Path> ack,
-            OutBoundScope scope) {
-
+    public Publisher<DataChunk> writeEntity(Path path, OutBoundScope scope) {
         try {
             FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
             return new ReadableByteChannelPublisher(fc, DEFAULT_RETRY_SCHEMA);

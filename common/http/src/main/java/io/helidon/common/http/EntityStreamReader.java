@@ -22,13 +22,7 @@ import io.helidon.common.reactive.Flow.Publisher;
  * Entity stream reader.
  * @param <T> stream entity type
  */
-public interface EntityStreamReader<T> {
-
-    boolean accept(Class<?> type, InBoundScope scope);
-
-    default boolean accept(GenericType<?> type, InBoundScope scope) {
-        return accept(type.rawType(), scope);
-    }
+public interface EntityStreamReader<T> extends ContentReader {
 
     Publisher<? extends T> readEntityStream(Publisher<DataChunk> publisher,
             Class<? super T> type, InBoundScope scope);

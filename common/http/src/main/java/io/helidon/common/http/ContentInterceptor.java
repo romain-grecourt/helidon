@@ -94,6 +94,13 @@ public abstract class ContentInterceptor implements Subscriber<DataChunk> {
         default Factory forType(String type) {
             return new DelegatedFactory(this, type);
         }
+
+        static Factory forType(Factory factory, String type) {
+            if (factory == null) {
+                return null;
+            }
+            return factory.forType(type);
+        }
     }
 
     private static final class DelegatedInterceptor extends ContentInterceptor {

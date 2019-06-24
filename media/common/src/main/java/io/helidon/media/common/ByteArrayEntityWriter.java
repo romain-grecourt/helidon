@@ -14,17 +14,15 @@ import io.helidon.common.reactive.SingleItemPublisher;
 public final class ByteArrayEntityWriter implements EntityWriter<byte[]> {
 
     @Override
-    public Ack<byte[]> accept(Object entity, OutBoundScope scope) {
-        if (entity.getClass().isAssignableFrom(byte[].class)) {
-            return new Ack<>(this, MediaType.APPLICATION_OCTET_STREAM);
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (byte[].class.isAssignableFrom(type)) {
+            return new Ack(MediaType.APPLICATION_OCTET_STREAM);
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(byte[] bytes, Ack<byte[]> ack,
-            OutBoundScope scope) {
-
+    public Publisher<DataChunk> writeEntity(byte[] bytes, OutBoundScope scope) {
         return write(bytes);
     }
 

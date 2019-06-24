@@ -28,9 +28,9 @@ import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.media.common.CharSequenceEntityWriter;
+import io.helidon.media.common.CharSequenceWriter;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.StringEntityReader;
+import io.helidon.media.common.StringReader;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkPublisher;
 import org.junit.jupiter.api.Test;
 
@@ -55,7 +55,7 @@ public class BodyPartTest {
     @Test
     public void testContentFromPublisher() {
         InBoundBodyPart bodyPart = InBoundBodyPart.builder()
-                .content(inBoundContent(CharSequenceEntityWriter
+                .content(inBoundContent(CharSequenceWriter
                         .write("body part data", DEFAULT_CHARSET)))
                 .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
@@ -75,7 +75,7 @@ public class BodyPartTest {
         Publisher<DataChunk> publisher = bodyPart.content()
                 .toPublisher(DEFAULT_WRITERS, null);
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
-        StringEntityReader.read(publisher, DEFAULT_CHARSET)
+        StringReader.read(publisher, DEFAULT_CHARSET)
                 .thenAccept(str -> {
                     acceptCalled.set(true);
                     assertThat(str, is(equalTo("body part data")));

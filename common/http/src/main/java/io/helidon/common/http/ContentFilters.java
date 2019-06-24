@@ -17,27 +17,20 @@ package io.helidon.common.http;
 
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import java.util.LinkedList;
 import java.util.Objects;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Content filter support.
  */
 public abstract class ContentFilters implements ContentFiltersRegistry {
 
-    private final ContentFilters parent;
-    private final LinkedList<ContentFilter> filters;
-    private final ReadWriteLock filtersLock;
+    private final ContentOperatorRegistry<ContentFilter> filters;
 
     /**
      * Create a new content support instance.
      */
     protected ContentFilters() {
-        this.parent = null;
-        this.filters = new LinkedList<>();
-        this.filtersLock = new ReentrantReadWriteLock();
+        filters = new ContentOperatorRegistry<>(null);
     }
 
     /**
@@ -45,68 +38,48 @@ public abstract class ContentFilters implements ContentFiltersRegistry {
      * @param parent content filters parent
      */
     protected ContentFilters(ContentFilters parent) {
-        this.parent = parent;
-        this.filters = new LinkedList<>();
-        this.filtersLock = new ReentrantReadWriteLock();
+        Objects.requireNonNull(parent, "parent cannot be null!");
+        filters = new ContentOperatorRegistry<>(parent.filters);
     }
 
     @Override
     public final ContentFilters registerFilter(ContentFilter filter) {
-        Objects.requireNonNull(filter, "filter is null!");
-        try {
-            filtersLock.writeLock().lock();
-            filters.addLast(filter);
-            return this;
-        } finally {
-            filtersLock.writeLock().unlock();
-        }
+        filters.registerLast(filter);
+        return this;
     }
 
     /**
      * Apply the filters by creating a publisher chain of each filter.
      *
-     * @param publisher the initial publisher
+     * @param pub the initial publisher
      * @return the last publisher of the resulting chain
      */
-    public final Publisher<DataChunk> applyFilters(
-            Publisher<DataChunk> publisher) {
-
-        return applyFilters(publisher, null);
+    public final Publisher<DataChunk> applyFilters(Publisher<DataChunk> pub) {
+        return applyFilters(pub, null);
     }
 
     /**
      * Apply the filters by creating a publisher chain of each filter.
-     * @param publisher the initial publisher
+     * @param pub the initial publisher
      * @param ifc interceptor factory
      * @return the last publisher of the resulting chain
      */
-    public final Publisher<DataChunk> applyFilters(
-            Publisher<DataChunk> publisher, ContentInterceptor.Factory ifc) {
+    public final Publisher<DataChunk> applyFilters(Publisher<DataChunk> pub,
+            ContentInterceptor.Factory ifc) {
 
-        Objects.requireNonNull(publisher, "publisher cannot be null!");
-        Publisher<DataChunk> last = doApplyFilters(publisher);
-        if (parent != null) {
-            last = parent.doApplyFilters(last);
-        }
-        return new FilteredPublisher(last, ifc);
-    }
-
-    private Publisher<DataChunk> doApplyFilters(
-            Publisher<DataChunk> publisher) {
-
-        Publisher<DataChunk> lastPublisher = publisher;
+        Objects.requireNonNull(pub, "pub cannot be null!");
         try {
-            filtersLock.readLock().lock();
+            Publisher<DataChunk> last = pub;
             for (ContentFilter filter : filters) {
-                Publisher<DataChunk> p = filter.apply(lastPublisher);
-                if (p != null) {
-                    lastPublisher = p;
+                Publisher<DataChunk> filtered = filter.apply(last);
+                if (filtered != null) {
+                    last = filtered;
                 }
             }
+            return new FilteredPublisher(last, ifc);
         } finally {
-            filtersLock.readLock().unlock();
+            filters.close();
         }
-        return lastPublisher;
     }
 
     /**

@@ -22,35 +22,16 @@ import io.helidon.common.reactive.Flow.Publisher;
  * Stream writer.
  * @param <T> stream entity type
  */
-public interface EntityStreamWriter<T> {
-
-    Ack<T> accept(Class<?> type, OutBoundScope scope);
-
-    default Ack<T> accept(GenericType<?> type, OutBoundScope scope) {
-        return accept(type.rawType(), scope);
-    }
+public interface EntityStreamWriter<T> extends ContentWriter<Publisher<Object>> {
 
     Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            Class<T> type, Ack<T> ack, OutBoundScope scope);
+            Class<T> type, OutBoundScope scope);
 
     @SuppressWarnings("unchecked")
     default Publisher<DataChunk> writeEntityStream(Publisher<T> entityStream,
-            GenericType<T> type, Ack<T> ack, OutBoundScope scope) {
+            GenericType<T> type, OutBoundScope scope) {
 
         return writeEntityStream(entityStream, (Class<T>) type.rawType(),
-                ack, scope);
-    }
-
-    public static final class Ack<T> extends EntityAck<EntityStreamWriter<T>> {
-
-        public Ack(EntityStreamWriter<T> writer, MediaType contentType) {
-            super(writer, contentType);
-        }
-
-        public Ack(EntityStreamWriter<T> writer, MediaType contentType,
-                long contentLength) {
-
-            super(writer, contentType, contentLength);
-        }
+                scope);
     }
 }

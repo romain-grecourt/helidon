@@ -14,20 +14,20 @@ import java.nio.charset.Charset;
 /**
  * Entity writer for {@code CharSequence}.
  */
-public final class CharSequenceEntityWriter
+public final class CharSequenceWriter
         implements EntityWriter<CharSequence> {
 
     @Override
-    public Ack<CharSequence> accept(Object entity, OutBoundScope scope) {
-        if (CharSequence.class.isAssignableFrom(entity.getClass())){
-            return new Ack<>(this, MediaType.TEXT_PLAIN);
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (CharSequence.class.isAssignableFrom(type)){
+            return new Ack(MediaType.TEXT_PLAIN);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(CharSequence cs,
-            Ack<CharSequence> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         try {
             return write(cs, scope.charset());

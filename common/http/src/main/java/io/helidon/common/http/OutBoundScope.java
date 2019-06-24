@@ -23,7 +23,7 @@ public class OutBoundScope {
     private Charset charsetCache;
 
     public OutBoundScope(Parameters headers, Charset defaultCharset,
-            List<MediaType> acceptedTypes, EntityWriters writers) {
+            List<MediaType> acceptedTypes, EntityWriters parentWriters) {
 
         Objects.requireNonNull(headers, "headers cannot be null!");
         Objects.requireNonNull(defaultCharset, "defaultCharset cannot be null!");
@@ -34,8 +34,8 @@ public class OutBoundScope {
         } else {
             this.acceptedTypes = CollectionsHelper.listOf();
         }
-        if (writers != null) {
-            this.writers = new EntityWriters(writers);
+        if (parentWriters != null) {
+            this.writers = new EntityWriters(parentWriters);
         } else {
             this.writers = new EntityWriters();
         }
@@ -98,6 +98,16 @@ public class OutBoundScope {
         } else {
             if (predicate.test(contentType)) {
                 return contentType;
+            }
+        }
+        return null;
+    }
+
+    public MediaType findAccepted(MediaType mediaType) {
+        Objects.requireNonNull(mediaType, "mediaType cannot be null");
+        for (MediaType acceptedType : acceptedTypes) {
+            if (mediaType.equals(acceptedType)) {
+                return acceptedType;
             }
         }
         return null;

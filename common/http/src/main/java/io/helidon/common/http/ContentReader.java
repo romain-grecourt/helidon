@@ -16,19 +16,15 @@
 package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.reactive.Flow.Publisher;
 
 /**
- * Entity writer.
- * @param <T> entity type
+ * Content reader.
  */
-public interface EntityWriter<T> extends ContentWriter<Object> {
+public interface ContentReader {
 
-    Publisher<DataChunk> writeEntity(T entity, OutBoundScope scope);
+    boolean accept(Class<?> type, InBoundScope scope);
 
-    default Publisher<DataChunk> writeEntity(T entity, GenericType<?> type,
-            OutBoundScope scope) {
-
-        return writeEntity(entity, scope);
+    default boolean accept(GenericType<?> type, InBoundScope scope) {
+        return accept(type.rawType(), scope);
     }
 }

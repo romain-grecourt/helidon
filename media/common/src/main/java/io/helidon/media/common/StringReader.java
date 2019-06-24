@@ -11,11 +11,11 @@ import java.util.concurrent.CompletionStage;
 /**
  * String entity reader.
  */
-public final class StringEntityReader implements EntityReader<String> {
+public final class StringReader implements EntityReader<String> {
 
     @Override
     public boolean accept(Class<?> type, InBoundScope scope) {
-        return type.isAssignableFrom(String.class);
+        return String.class.isAssignableFrom(type);
     }
 
     @Override
@@ -30,7 +30,7 @@ public final class StringEntityReader implements EntityReader<String> {
             Charset charset) {
 
         try {
-            return ByteArrayEntityReader.read(publisher)
+            return ByteArrayReader.read(publisher)
                     .thenApply(bytes -> new String(bytes, charset));
         } catch (IllegalStateException ex) {
             CompletableFuture<String> result = new CompletableFuture<>();

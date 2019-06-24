@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import io.helidon.common.http.MediaType;
-import io.helidon.media.common.ByteArrayEntityReader;
+import io.helidon.media.common.ByteArrayReader;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkSubscriber;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
@@ -169,7 +169,7 @@ public class MultiPartEncoderTest {
                 DEFAULT_WRITERS);
         publisher.subscribe(encoder);
         try {
-            return new String(ByteArrayEntityReader.read(encoder)
+            return new String(ByteArrayReader.read(encoder)
                     .toCompletableFuture()
                     .get());
         } catch (InterruptedException ex) {

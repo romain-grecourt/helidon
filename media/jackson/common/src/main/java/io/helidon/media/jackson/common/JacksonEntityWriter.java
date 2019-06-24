@@ -8,7 +8,7 @@ import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferEntityWriter;
+import io.helidon.media.common.CharBufferWriter;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -25,7 +25,7 @@ public class JacksonEntityWriter implements EntityWriter<Object> {
     }
 
     @Override
-    public Ack<Object> accept(Object entity, OutBoundScope scope) {
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
         if (entity != null
                 && !(entity instanceof CharSequence)
                 && objectMapper.canSerialize(entity.getClass())) {
@@ -33,7 +33,7 @@ public class JacksonEntityWriter implements EntityWriter<Object> {
             MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
                     MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Ack<>(this, contentType);
+                return new Ack(contentType);
             }
         }
         return null;
@@ -41,12 +41,12 @@ public class JacksonEntityWriter implements EntityWriter<Object> {
 
     @Override
     public Publisher<DataChunk> writeEntity(Object entity,
-            Ack<Object> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         try {
             CharBuffer buffer = new CharBuffer();
             objectMapper.writeValue(buffer, entity);
-            return CharBufferEntityWriter.write(buffer, scope.charset());
+            return CharBufferWriter.write(buffer, scope.charset());
         } catch (IOException wrapMe) {
             return new FailedPublisher<>(new JacksonRuntimeException(
                     wrapMe.getMessage(), wrapMe));

@@ -16,7 +16,6 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.context.Context;
 import io.helidon.common.http.ContextualRegistry;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;

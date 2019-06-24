@@ -11,7 +11,7 @@ import java.nio.channels.ReadableByteChannel;
 /**
  * EntityWriter for {@link ReadableByteChannel}.
  */
-public final class ByteChannelEntityWriter
+public final class ByteChannelWriter
         implements EntityWriter<ReadableByteChannel> {
 
     static final RetrySchema DEFAULT_RETRY_SCHEMA =
@@ -19,25 +19,25 @@ public final class ByteChannelEntityWriter
 
     private final RetrySchema schema;
 
-    public ByteChannelEntityWriter() {
+    public ByteChannelWriter() {
         this.schema = DEFAULT_RETRY_SCHEMA;
     }
 
-    public ByteChannelEntityWriter(RetrySchema schema) {
+    public ByteChannelWriter(RetrySchema schema) {
         this.schema = schema;
     }
 
     @Override
-    public Ack<ReadableByteChannel> accept(Object entity, OutBoundScope scope) {
-        if (ReadableByteChannel.class.isAssignableFrom(entity.getClass())) {
-            return new Ack<>(this, MediaType.APPLICATION_OCTET_STREAM);
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (ReadableByteChannel.class.isAssignableFrom(type)) {
+            return new Ack(MediaType.APPLICATION_OCTET_STREAM);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(ReadableByteChannel channel,
-            Ack<ReadableByteChannel> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         return new ReadableByteChannelPublisher(channel, schema);
     }

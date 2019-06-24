@@ -15,11 +15,11 @@ import java.util.concurrent.CompletionStage;
 /**
  * Entity reader for {@code byte[]}.
  */
-public final class ByteArrayEntityReader implements EntityReader<byte[]> {
+public final class ByteArrayReader implements EntityReader<byte[]> {
 
     @Override
     public boolean accept(Class<?> type, InBoundScope scope) {
-        return type.isAssignableFrom(byte[].class);
+        return byte[].class.isAssignableFrom(type);
     }
 
     public static CompletionStage<byte[]> read(Publisher<DataChunk> publisher) {

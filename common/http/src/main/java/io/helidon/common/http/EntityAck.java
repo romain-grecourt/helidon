@@ -19,28 +19,20 @@ import java.util.Objects;
 
 /**
  * Entity acknowledgement.
- * @param <T> content writer type
  */
-public abstract class EntityAck<T> {
+public final class EntityAck {
 
     private final MediaType contentType;
     private final long contentLength;
-    private final T writer;
 
-    protected EntityAck(T writer, MediaType contentType, long contentLength) {
-        Objects.requireNonNull(writer, "writer cannot be null!");
+    protected EntityAck(MediaType contentType, long contentLength) {
         Objects.requireNonNull(contentType, "contentType cannot be null!");
-        this.writer = writer;
         this.contentType = contentType;
         this.contentLength = contentLength;
     }
 
-    protected EntityAck(T writer, MediaType contentType) {
-        this(writer, contentType, -1);
-    }
-
-    public T writer() {
-        return writer;
+    protected EntityAck(MediaType contentType) {
+        this(contentType, -1);
     }
 
     public void processHeaders(HashParameters headers) {

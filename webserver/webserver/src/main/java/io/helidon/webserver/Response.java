@@ -147,11 +147,13 @@ abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> publisher = writers.marshall(content,
-                        scope, /* writersFallback */ null, headers,
+                Publisher<DataChunk> contentPublisher = writers.marshall(
+                        content, scope, /* writersFallback */ null, headers,
                         /* interceptorFactory */ null);
+                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
+                        headers, writeSpan, contentPublisher);
                 sendLockSupport.contentSend = true;
-                publisher.subscribe(bareResponse);
+                pub.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {

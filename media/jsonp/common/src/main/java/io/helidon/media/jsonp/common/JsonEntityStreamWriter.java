@@ -38,12 +38,14 @@ public abstract class JsonEntityStreamWriter
     }
 
     @Override
-    public Ack<JsonStructure> accept(Class<?> type, OutBoundScope scope) {
+    public Ack accept(Publisher<Object> stream, Class<?> type,
+            OutBoundScope scope) {
+
         if (JsonStructure.class.isAssignableFrom(type)) {
             MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
                     MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Ack<>(this, contentType);
+                return new Ack(contentType);
             }
         }
         return null;
@@ -52,7 +54,7 @@ public abstract class JsonEntityStreamWriter
     @Override
     public Publisher<DataChunk> writeEntityStream(
             Publisher<JsonStructure> entityStream, Class<JsonStructure> type,
-            Ack<JsonStructure> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         try {
             return new JsonArrayStreamProcessor(entityStream, scope.charset());

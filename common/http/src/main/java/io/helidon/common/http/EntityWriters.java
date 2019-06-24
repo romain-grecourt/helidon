@@ -20,9 +20,6 @@ import io.helidon.common.reactive.EmptyPublisher;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import java.util.Objects;
-import java.util.LinkedList;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -32,54 +29,31 @@ import java.util.function.Predicate;
 public final class EntityWriters extends ContentFilters
         implements EntityWritersRegistry {
 
-    private final EntityWriters parent;
-    private final LinkedList<WriterEntry<EntityWriter<?>>> writers;
-    private final ReadWriteLock writersLock;
-    private final LinkedList<WriterEntry<EntityStreamWriter<?>>> streamWriters;
-    private final ReadWriteLock streamWritersLock;
+    private final ContentOperatorRegistry<EntityWriter<?>> writers;
+    private final ContentOperatorRegistry<EntityStreamWriter<?>> swriters;
 
     public EntityWriters() {
         super();
-        this.parent = null;
-        this.writers = new LinkedList<>();
-        this.writersLock = new ReentrantReadWriteLock();
-        this.streamWriters = new LinkedList<>();
-        this.streamWritersLock = new ReentrantReadWriteLock();
+        this.writers = new ContentOperatorRegistry<>();
+        this.swriters = new ContentOperatorRegistry<>();
     }
 
     public EntityWriters(EntityWriters parent) {
         super();
-        this.parent = parent;
-        this.writers = new LinkedList<>();
-        this.writersLock = new ReentrantReadWriteLock();
-        this.streamWriters = new LinkedList<>();
-        this.streamWritersLock = new ReentrantReadWriteLock();
+        this.writers = new ContentOperatorRegistry<>(parent.writers);
+        this.swriters = new ContentOperatorRegistry<>(parent.swriters);
     }
 
     @Override
     public EntityWriters registerWriter(EntityWriter<?> writer) {
-        Objects.requireNonNull(writer, "writer is null!");
-        try {
-            writersLock.writeLock().lock();
-            writers.addFirst(new WriterEntry<>(writer.getClass(),
-                    writer));
-            return this;
-        } finally {
-            writersLock.writeLock().unlock();
-        }
+        writers.registerFirst(writer);
+        return this;
     }
 
     @Override
     public EntityWriters registerStreamWriter(EntityStreamWriter<?> writer) {
-        Objects.requireNonNull(writer, "writer is null!");
-        try {
-            streamWritersLock.writeLock().lock();
-            streamWriters.addFirst(new WriterEntry<>(
-                    writer.getClass(), writer));
-            return this;
-        } finally {
-            streamWritersLock.writeLock().unlock();
-        }
+        swriters.registerFirst(writer);
+        return this;
     }
 
     @Override
@@ -113,357 +87,326 @@ public final class EntityWriters extends ContentFilters
     }
 
     @SuppressWarnings("unchecked")
-    private <T> EntityWriter.Ack<T> selectWriter(
-            Class<? extends EntityWriter<T>> cls, T entity, OutBoundScope scope,
-            EntityWriters fallback) {
-
-        try {
-            writersLock.readLock().lock();
-            for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
-                if (writerEntry.writerClass.equals(cls)) {
-                    EntityWriter.Ack<T> ack = (EntityWriter.Ack<T>)
-                            writerEntry.writer.accept(entity, scope);
-                    if (ack != null) {
-                        return ack;
-                    }
-                }
-            }
-        } finally {
-            writersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectWriter(cls, entity, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectWriter(cls, entity, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer of type "
-                + cls.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityWriter.Ack<T> selectWriter(T entity,
-            OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            writersLock.readLock().lock();
-            for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
-                EntityWriter.Ack<T> ack = (EntityWriter.Ack<T>)
-                        writerEntry.writer.accept(entity, scope);
-                if (ack != null) {
-                    return ack;
-                }
-            }
-        } finally {
-            writersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectWriter(entity, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectWriter(entity, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer for "
-                + entity.getClass().getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityWriter.Ack<T> selectWriter(
-            Class<? extends EntityWriter<T>> cls, T entity, GenericType<T> type,
-            OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            writersLock.readLock().lock();
-            for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
-                if (writerEntry.writerClass.equals(cls)) {
-                    EntityWriter.Ack<T> ack = (EntityWriter.Ack<T>)
-                            writerEntry.writer.accept(entity, type, scope);
-                    if (ack != null) {
-                        return ack;
-                    }
-                }
-            }
-        } finally {
-            writersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectWriter(cls, entity, type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectWriter(cls, entity, type, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer of type "
-                + cls.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityWriter.Ack<T> selectWriter(T entity,
-            GenericType<T> type, OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            writersLock.readLock().lock();
-            for (WriterEntry<EntityWriter<?>> writerEntry : writers) {
-                EntityWriter.Ack<T> ack = (EntityWriter.Ack<T>)
-                        writerEntry.writer.accept(entity,type, scope);
-                if (ack != null) {
-                    return ack;
-                }
-            }
-        } finally {
-            writersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectWriter(entity, type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectWriter(entity, type, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer for "
-                + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityStreamWriter.Ack<T> selectStreamWriter(
-            Class<? extends EntityStreamWriter<T>> cls, Class<T> type,
-            OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            streamWritersLock.readLock().lock();
-            for (WriterEntry<EntityStreamWriter<?>> writerEntry
-                    : streamWriters) {
-                if (writerEntry.writerClass.equals(cls)) {
-                    EntityStreamWriter.Ack<T> ack = (EntityStreamWriter.Ack<T>)
-                            writerEntry.writer.accept(type, scope);
-                    if (ack != null) {
-                        return ack;
-                    }
-                }
-            }
-        } finally {
-            streamWritersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamWriter(cls, type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamWriter(cls, type, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer of type"
-                    + cls.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityStreamWriter.Ack<T> selectStreamWriter(Class<T> type,
-            OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            streamWritersLock.readLock().lock();
-            for (WriterEntry<EntityStreamWriter<?>> writerEntry
-                    : streamWriters) {
-                EntityStreamWriter.Ack<T> ack = (EntityStreamWriter.Ack<T>)
-                        writerEntry.writer.accept(type, null);
-                if (ack != null) {
-                    return ack;
-                }
-            }
-        } finally {
-            streamWritersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamWriter(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamWriter(type, scope, null);
-        }
-        throw new IllegalArgumentException( "No registered writer for "
-                + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityStreamWriter.Ack<T> selectStreamWriter(
-            GenericType<T> type, OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            streamWritersLock.readLock().lock();
-            for (WriterEntry<EntityStreamWriter<?>> writerEntry
-                    : streamWriters) {
-                EntityStreamWriter.Ack<T> ack = (EntityStreamWriter.Ack<T>)
-                        writerEntry.writer.accept(type, null);
-                if (ack != null) {
-                    return ack;
-                }
-            }
-        } finally {
-            streamWritersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamWriter(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamWriter(type, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer for "
-                + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> EntityStreamWriter.Ack<T> selectStreamWriter(
-            Class<? extends EntityStreamWriter<T>> cls, GenericType<T> type,
-            OutBoundScope scope, EntityWriters fallback) {
-
-        try {
-            streamWritersLock.readLock().lock();
-            for (WriterEntry<EntityStreamWriter<?>> writerEntry
-                    : streamWriters) {
-                if (writerEntry.writerClass.equals(cls)) {
-                    EntityStreamWriter.Ack<T> ack = (EntityStreamWriter.Ack<T>)
-                            writerEntry.writer.accept(type, scope);
-                    if (ack != null) {
-                        return ack;
-                    }
-                }
-            }
-        } finally {
-            streamWritersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamWriter(cls, type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamWriter(cls, type, scope, null);
-        }
-        throw new IllegalArgumentException("No registered writer of type"
-                    + cls.getTypeName());
-    }
-
-    private <T> Publisher<DataChunk> doMarshall(EntityWriter.Ack<T> ack,
-            T entity, OutBoundScope scope, HashParameters headers,
-            ContentInterceptor.Factory ifc) {
-
-        ack.processHeaders(headers);
-        Publisher<DataChunk> publisher = ack.writer()
-                .writeEntity(entity, ack, scope);
-        if (publisher == null) {
-            publisher = new EmptyPublisher<>();
-        }
-        return applyFilters(publisher, ifc);
-    }
-
-    private <T> Publisher<DataChunk> doMarshall(EntityWriter.Ack<T> ack,
-            T entity, GenericType<T> type, OutBoundScope scope,
-            HashParameters headers, ContentInterceptor.Factory ifc) {
-
-        ack.processHeaders(headers);
-        Publisher<DataChunk> publisher = ack.writer()
-                .writeEntity(entity, type, ack, scope);
-        if (publisher == null) {
-            publisher = new EmptyPublisher<>();
-        }
-        return applyFilters(publisher, ifc);
-    }
-
-    private <T> Publisher<DataChunk> doMarshallStream(
-            EntityStreamWriter.Ack<T> ack, Publisher<T> stream, Class<T> type,
-            OutBoundScope scope, HashParameters headers,
-            ContentInterceptor.Factory ifc) {
-
-        ack.processHeaders(headers);
-        Publisher<DataChunk> publisher = ack.writer()
-                .writeEntityStream(stream, type, ack, scope);
-        if (publisher == null) {
-            publisher = new EmptyPublisher<>();
-        }
-        return applyFilters(publisher, ifc);
-    }
-
-    private <T> Publisher<DataChunk> doMarshallStream(
-            EntityStreamWriter.Ack<T> ack, Publisher<T> stream,
-            GenericType<T> type, OutBoundScope scope, HashParameters headers,
-            ContentInterceptor.Factory ifc) {
-
-        ack.processHeaders(headers);
-        Publisher<DataChunk> publisher = ack.writer()
-                .writeEntityStream(stream, type, ack, scope);
-        if (publisher == null) {
-            publisher = new EmptyPublisher<>();
-        }
-        return applyFilters(publisher, ifc);
-    }
-
     public <T> Publisher<DataChunk> marshall(T entity, OutBoundScope scope,
             EntityWriters fallback, HashParameters headers,
             ContentInterceptor.Factory ifc) {
 
-        return doMarshall(this.<T>selectWriter(entity, scope, fallback),
-                entity, scope, headers, ifc);
+        WriterPredicate predicate = new WriterPredicate(entity, scope);
+        ContentOperatorRegistry<EntityWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.writers;
+        } else {
+            writersFb = null;
+        }
+        EntityWriter<T> writer = writers.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found for class: "
+                    + entity.getClass().getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntity(entity, scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        String type = entity.getClass().getTypeName();
+        ifc = ContentInterceptor.Factory.forType(ifc, type);
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshall(
             Class<? extends EntityWriter<T>> writerCls, T entity,
             OutBoundScope scope, EntityWriters fallback, HashParameters headers,
             ContentInterceptor.Factory ifc) {
 
-        return doMarshall(
-                this.<T>selectWriter(writerCls, entity, scope, fallback),
-                entity, scope, headers, ifc);
+        WriterClassPredicate predicate =
+                new WriterClassPredicate<>(writerCls, entity, scope);
+        ContentOperatorRegistry<EntityWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.writers;
+        } else {
+            writersFb = null;
+        }
+        EntityWriter<T> writer = writers.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found of type: "
+                    + entity.getClass().getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntity(entity, scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        String type = entity.getClass().getTypeName();
+        ifc = ContentInterceptor.Factory.forType(ifc, type);
+        return applyFilters(publisher, ifc);
     }
 
-    public <T> Publisher<DataChunk> marshall(T entity, GenericType<T> type,
+    @SuppressWarnings("unchecked")
+    public <T> Publisher<DataChunk> marshall(T entity, GenericType<T> gtype,
             OutBoundScope scope, EntityWriters fallback, HashParameters headers,
             ContentInterceptor.Factory ifc) {
 
-        return doMarshall(this.<T>selectWriter(entity, type, scope, fallback),
-                entity, type, scope, headers, ifc);
+        WriterPredicate predicate = new WriterPredicate(entity, gtype, scope);
+        ContentOperatorRegistry<EntityWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.writers;
+        } else {
+            writersFb = null;
+        }
+        EntityWriter<T> writer = writers.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found for class: "
+                    + entity.getClass().getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntity(entity, scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshall(
             Class<? extends EntityWriter<T>> writerCls, T entity,
-            GenericType<T> type, OutBoundScope scope, EntityWriters fallback,
+            GenericType<T> gtype, OutBoundScope scope, EntityWriters fallback,
             HashParameters headers, ContentInterceptor.Factory ifc) {
 
-        return doMarshall(
-                this.<T>selectWriter(writerCls, entity, type, scope, fallback),
-                entity, scope, headers, ifc);
+        WriterClassPredicate predicate =
+                new WriterClassPredicate<>(writerCls, entity, gtype, scope);
+        ContentOperatorRegistry<EntityWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.writers;
+        } else {
+            writersFb = null;
+        }
+        EntityWriter<T> writer = writers.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found of type: "
+                    + entity.getClass().getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntity(entity, scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(Publisher<T> stream,
             Class<T> type, OutBoundScope scope, EntityWriters fallback,
             HashParameters headers, ContentInterceptor.Factory ifc) {
 
-        return doMarshallStream(
-                this.<T>selectStreamWriter(type, scope, fallback),
-                stream, type, scope, headers, ifc);
+        WriterPredicate predicate = new WriterPredicate(stream, type, scope);
+        ContentOperatorRegistry<EntityStreamWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.swriters;
+        } else {
+            writersFb = null;
+        }
+        EntityStreamWriter<T> writer = swriters.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found for class: "
+                    + type.getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntityStream(stream, type,
+                scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(
             Class<? extends EntityStreamWriter<T>> writerCls,
             Publisher<T> stream, Class<T> type, OutBoundScope scope,
             EntityWriters fallback, HashParameters headers,
             ContentInterceptor.Factory ifc) {
 
-        return doMarshallStream(
-                this.<T>selectStreamWriter(writerCls, type, scope, fallback),
-                stream, type, scope, headers, ifc);
+        WriterClassPredicate predicate = new WriterClassPredicate(writerCls,
+                stream, type, scope);
+        ContentOperatorRegistry<EntityStreamWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.swriters;
+        } else {
+            writersFb = null;
+        }
+        EntityStreamWriter<T> writer = swriters.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found of type: "
+                    + type.getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntityStream(stream, type,
+                scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(Publisher<T> stream,
             GenericType<T> type, OutBoundScope scope, EntityWriters fallback,
             HashParameters headers, ContentInterceptor.Factory ifc) {
 
-        return doMarshallStream(
-                this.<T>selectStreamWriter(type, scope, fallback),
-                stream, type, scope, headers, ifc);
+        WriterPredicate predicate = new WriterPredicate(stream, type, scope);
+        ContentOperatorRegistry<EntityStreamWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.swriters;
+        } else {
+            writersFb = null;
+        }
+        EntityStreamWriter<T> writer = swriters.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found for class: "
+                    + type.getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntityStream(stream, type,
+                scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+        return applyFilters(publisher, ifc);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(
             Class<? extends EntityStreamWriter<T>> writerCls,
             Publisher<T> stream, GenericType<T> type, OutBoundScope scope,
             EntityWriters fallback, HashParameters headers,
             ContentInterceptor.Factory ifc) {
 
-        return doMarshallStream(
-                this.<T>selectStreamWriter(writerCls, type, scope, fallback),
-                stream, type, scope, headers, ifc);
+        WriterClassPredicate predicate = new WriterClassPredicate(writerCls,
+                stream, type, scope);
+        ContentOperatorRegistry<EntityStreamWriter<?>> writersFb;
+        if (fallback != null) {
+            writersFb = fallback.swriters;
+        } else {
+            writersFb = null;
+        }
+        EntityStreamWriter<T> writer = swriters.select(predicate, writersFb);
+        if (writer == null) {
+            throw new IllegalArgumentException(
+                    "No writer found of type: "
+                    + type.getTypeName());
+        }
+        predicate.ack.processHeaders(headers);
+        Publisher<DataChunk> publisher = writer.writeEntityStream(stream, type,
+                scope);
+        if (publisher == null) {
+            publisher = new EmptyPublisher<>();
+        }
+        ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+        return applyFilters(publisher, ifc);
+    }
+
+    /**
+     * Predicate to select writer by class.
+     */
+    private static final class WriterClassPredicate<T extends ContentWriter<U>, U>
+            extends WriterPredicate<T, U> {
+
+        private final Class clazz;
+
+        WriterClassPredicate(Class clazz, U entity, OutBoundScope scope) {
+            super(entity, scope);
+            Objects.requireNonNull(clazz, "class cannot be null!");
+            this.clazz = clazz;
+        }
+
+        WriterClassPredicate(Class clazz, U entity, Class<?> type,
+                OutBoundScope scope) {
+
+            super(entity, type, scope);
+            this.clazz = clazz;
+        }
+
+        WriterClassPredicate(Class clazz, U entity, GenericType<?> gtype,
+                OutBoundScope scope) {
+
+            super(entity, gtype, scope);
+            this.clazz = clazz;
+        }
+
+        @Override
+        public boolean test(T writer) {
+            if (clazz.equals(writer.getClass())) {
+                return super.test(writer);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Predicate of {@link EntityWriter} or {@link EntityStreamWriter}.
+     * @param <T> entity type
+     */
+    private static class WriterPredicate<T extends ContentWriter<U>, U>
+            implements Predicate<T> {
+
+        private final U entity;
+        private final Class<?> type;
+        private final GenericType<?> gtype;
+        private final OutBoundScope scope;
+        volatile ContentWriter.Ack ack;
+
+        WriterPredicate(U entity, OutBoundScope scope) {
+            Objects.requireNonNull(entity, "entity cannot be null");
+            Objects.requireNonNull(scope, "scope cannot be null");
+            this.entity = entity;
+            this.type = entity.getClass();
+            this.gtype = null;
+            this.scope = scope;
+        }
+
+        WriterPredicate(U entity, Class<?> type, OutBoundScope scope) {
+            Objects.requireNonNull(entity, "entity cannot be null");
+            Objects.requireNonNull(scope, "scope cannot be null");
+            this.entity = entity;
+            this.type = type;
+            this.gtype = null;
+            this.scope = scope;
+        }
+
+        WriterPredicate(U entity, GenericType<?> gtype,
+                OutBoundScope scope) {
+
+            Objects.requireNonNull(entity, "entity cannot be null");
+            Objects.requireNonNull(gtype, "type cannot be null");
+            Objects.requireNonNull(scope, "scope cannot be null");
+            this.entity = entity;
+            this.type = null;
+            this.gtype = gtype;
+            this.scope = scope;
+        }
+
+        @Override
+        public boolean test(T writer) {
+            if (type != null) {
+                ack = writer.accept(entity, type, scope);
+            } else {
+                ack = writer.accept(entity, gtype, scope);
+            }
+            return ack != null;
+        }
     }
 
     /**
@@ -501,33 +444,16 @@ public final class EntityWriters extends ContentFilters
 
         @Override
         @SuppressWarnings("unchecked")
-        public Ack<T> accept(Object entity, OutBoundScope scope) {
+        public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
             if (predicate.test(entity)) {
-                return new Ack<>(this, contentType);
+                return new Ack(contentType);
             }
             return null;
         }
 
         @Override
-        public Publisher<DataChunk> writeEntity(T entity, Ack<T> ack,
-                OutBoundScope scope) {
-
+        public Publisher<DataChunk> writeEntity(T entity, OutBoundScope scope) {
             return function.apply(entity);
-        }
-    }
-
-    /**
-     * Pair of writer and type.
-     * @param <T> writer type
-     */
-    private static final class WriterEntry<T> {
-
-        final Class<?> writerClass;
-        final T writer;
-
-        WriterEntry(Class<?> writerClass, T writer) {
-            this.writerClass = writerClass;
-            this.writer = writer;
         }
     }
 }

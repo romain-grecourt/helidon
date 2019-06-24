@@ -23,16 +23,16 @@ public final class MediaSupport {
 
     private MediaSupport registerDefaults() {
         // default readers
-        readers.registerReader(new StringEntityReader());
-        readers.registerReader(new ByteArrayEntityReader());
-        readers.registerReader(new InputStreamEntityReader());
+        readers.registerReader(new StringReader());
+        readers.registerReader(new ByteArrayReader());
+        readers.registerReader(new InputStreamReader());
 
         // default writers
-        writers.registerWriter(new ByteArrayCopyEntityWriter());
-        writers.registerWriter(new CharSequenceEntityWriter());
-        writers.registerWriter(new ByteChannelEntityWriter());
+        writers.registerWriter(new ByteArrayCopyWriter());
+        writers.registerWriter(new CharSequenceWriter());
+        writers.registerWriter(new ByteChannelWriter());
         writers.registerWriter(new PathEntityWriter());
-        writers.registerWriter(new FileEntityWriter());
+        writers.registerWriter(new FileWriter());
         return this;
     }
 

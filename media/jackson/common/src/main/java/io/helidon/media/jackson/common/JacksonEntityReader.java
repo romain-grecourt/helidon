@@ -5,7 +5,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityReader;
 import io.helidon.common.http.InBoundScope;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.ByteArrayEntityReader;
+import io.helidon.media.common.ByteArrayReader;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
@@ -34,7 +34,7 @@ public final class JacksonEntityReader implements EntityReader<Object> {
             Class<Object> type, InBoundScope scope) {
 
         ValueReader<Object> valueReader = new ValueReader<>(type);
-        return ByteArrayEntityReader.read(publisher)
+        return ByteArrayReader.read(publisher)
                 .thenApply(valueReader::read);
     }
 

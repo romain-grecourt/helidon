@@ -27,16 +27,16 @@ public class MultiPartEntityWriter implements EntityWriter<OutBoundMultiPart> {
     }
 
     @Override
-    public Ack<OutBoundMultiPart> accept(Object entity, OutBoundScope scope) {
-        if (OutBoundMultiPart.class.isAssignableFrom(entity.getClass())) {
-            return new Ack<>(this, MediaType.MULTIPART_FORM_DATA);
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (type.isAssignableFrom(OutBoundMultiPart.class)) {
+            return new Ack(MediaType.MULTIPART_FORM_DATA);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(OutBoundMultiPart multiPart,
-            Ack<OutBoundMultiPart> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         MultiPartEncoder encoder = new MultiPartEncoder(boundary,
                 scope.writers());

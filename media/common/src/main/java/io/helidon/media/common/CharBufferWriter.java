@@ -13,19 +13,19 @@ import java.nio.charset.Charset;
 /**
  * Entity writer for {@link CharBuffer}.
  */
-public final class CharBufferEntityWriter implements EntityWriter<CharBuffer> {
+public final class CharBufferWriter implements EntityWriter<CharBuffer> {
 
     @Override
-    public Ack<CharBuffer> accept(Object entity, OutBoundScope scope) {
-        if (CharBuffer.class.isAssignableFrom(entity.getClass())){
-            return new Ack<>(this, MediaType.TEXT_PLAIN);
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (CharBuffer.class.isAssignableFrom(type)){
+            return new Ack(MediaType.TEXT_PLAIN);
         }
         return null;
     }
 
     @Override
     public Publisher<DataChunk> writeEntity(CharBuffer buffer,
-            Ack<CharBuffer> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         if (buffer == null || buffer.size() == 0) {
             return new EmptyPublisher<>();

@@ -11,7 +11,7 @@ import java.util.concurrent.CompletionStage;
 /**
  * Entity reader for {@code InputStream}.
  */
-public class InputStreamEntityReader implements EntityReader<InputStream> {
+public class InputStreamReader implements EntityReader<InputStream> {
 
     @Override
     public boolean accept(Class<?> type, InBoundScope scope) {

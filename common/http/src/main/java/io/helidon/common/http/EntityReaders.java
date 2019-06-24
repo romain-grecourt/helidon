@@ -15,16 +15,14 @@
  */
 package io.helidon.common.http;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.reactive.FailedPublisher;
-import io.helidon.common.reactive.Flow.Publisher;
-import java.util.LinkedList;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
+import java.util.Objects;
+import io.helidon.common.GenericType;
+import io.helidon.common.http.ContentOperatorRegistry.ClassPredicate;
+import io.helidon.common.reactive.FailedPublisher;
+import io.helidon.common.reactive.Flow.Publisher;
 
 /**
  * Entity readers support.
@@ -32,22 +30,16 @@ import java.util.function.Predicate;
 public final class EntityReaders extends ContentFilters
         implements EntityReadersRegistry {
 
-    private final EntityReaders parent;
-    private final LinkedList<ReaderEntry<EntityReader<?>>> readers;
-    private final ReadWriteLock readersLock;
-    private final LinkedList<ReaderEntry<EntityStreamReader<?>>> streamReaders;
-    private final ReadWriteLock streamReadersLock;
+    private final ContentOperatorRegistry<EntityReader<?>> readers;
+    private final ContentOperatorRegistry<EntityStreamReader<?>> sreaders;
 
     /**
      * Create a new instance.
      */
     public EntityReaders() {
         super();
-        this.parent = null;
-        this.readers = new LinkedList<>();
-        this.readersLock = new ReentrantReadWriteLock();
-        this.streamReaders = new LinkedList<>();
-        this.streamReadersLock = new ReentrantReadWriteLock();
+        this.readers = new ContentOperatorRegistry<>();
+        this.sreaders = new ContentOperatorRegistry<>();
     }
 
     /**
@@ -56,266 +48,20 @@ public final class EntityReaders extends ContentFilters
      */
     public EntityReaders(EntityReaders parent) {
         super(parent);
-        this.parent = parent;
-        this.readers = new LinkedList<>();
-        this.readersLock = new ReentrantReadWriteLock();
-        this.streamReaders = new LinkedList<>();
-        this.streamReadersLock = new ReentrantReadWriteLock();
+        this.readers = new ContentOperatorRegistry<>(parent.readers);
+        this.sreaders = new ContentOperatorRegistry<>(parent.sreaders);
     }
 
     @Override
     public EntityReaders registerStreamReader(EntityStreamReader<?> reader) {
-        Objects.requireNonNull(reader, "streamReader is null!");
-        try {
-            streamReadersLock.writeLock().lock();
-            streamReaders.addFirst(new ReaderEntry<>(
-                    reader.getClass(), reader));
-            return this;
-        } finally {
-            streamReadersLock.writeLock().unlock();
-        }
+        sreaders.registerFirst(reader);
+        return this;
     }
 
     @Override
     public EntityReaders registerReader(EntityReader<?> reader) {
-        Objects.requireNonNull(reader, "reader is null!");
-        try {
-            readersLock.writeLock().lock();
-            readers.addFirst(new ReaderEntry<>(reader.getClass(),
-                    reader));
-            return this;
-        } finally {
-            readersLock.writeLock().unlock();
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityReader<T> getReader(Class<? extends EntityReader<T>> cls,
-            EntityReaders fallback) {
-
-        try {
-            readersLock.readLock().lock();
-            for (ReaderEntry<EntityReader<?>> readerEntry : readers) {
-                if (readerEntry.readerClass.equals(cls)){
-                    return (EntityReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            readersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.getReader(cls, fallback);
-        }
-        if (fallback != null) {
-            return fallback.getReader(cls, null);
-        }
-        throw new IllegalArgumentException("No reader found of type "
-                + cls.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityStreamReader<T> getStreamReader(
-            Class<? extends EntityStreamReader<T>> cls,
-            EntityReaders fallback) {
-
-        try {
-            streamReadersLock.readLock().lock();
-            for (ReaderEntry<EntityStreamReader<?>> readerEntry
-                    : streamReaders) {
-                if (readerEntry.readerClass.equals(cls)){
-                    return (EntityStreamReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            streamReadersLock.readLock().unlock();
-        }
-        if (this.parent != null) {
-            return this.parent.getStreamReader(cls, fallback);
-        }
-        if (fallback != null) {
-            return fallback.getStreamReader(cls, null);
-        }
-        throw new IllegalArgumentException("No stream reader found of type "
-                + cls.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityReader<T> selectReader(Class<T> type, InBoundScope scope,
-            EntityReaders fallback) {
-
-        try {
-            readersLock.readLock().lock();
-            for (ReaderEntry<EntityReader<?>> readerEntry : readers) {
-                if (readerEntry.reader.accept(type, scope)){
-                    return (EntityReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            readersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectReader(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectReader(type, scope, null);
-        }
-        throw new IllegalArgumentException("No reader found for entity type "
-                + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityReader<T> selectReader(GenericType<T> type,
-            InBoundScope scope, EntityReaders fallback) {
-
-        try {
-            readersLock.readLock().lock();
-            for (ReaderEntry<EntityReader<?>> readerEntry : readers) {
-                if (readerEntry.reader.accept(type, scope)){
-                    return (EntityReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            readersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectReader(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectReader(type, scope, null);
-        }
-        throw new IllegalArgumentException("No reader found for entity type "
-                + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityStreamReader<T> selectStreamReader(Class<T> type,
-            InBoundScope scope, EntityReaders fallback) {
-
-        try {
-            streamReadersLock.readLock().lock();
-            for (ReaderEntry<EntityStreamReader<?>> readerEntry
-                    : streamReaders) {
-                if (readerEntry.reader.accept(type, scope)){
-                    return (EntityStreamReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            streamReadersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamReader(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamReader(type, scope, null);
-        }
-        throw new IllegalArgumentException(
-                "No stream reader found for entity type " + type.getTypeName());
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> EntityStreamReader<T> selectStreamReader(GenericType<T> type,
-            InBoundScope scope, EntityReaders fallback) {
-
-        try {
-            streamReadersLock.readLock().lock();
-            for (ReaderEntry<EntityStreamReader<?>> readerEntry
-                    : streamReaders) {
-                if (readerEntry.reader.accept(type, scope)){
-                    return (EntityStreamReader<T>) readerEntry.reader;
-                }
-            }
-        } finally {
-            streamReadersLock.readLock().unlock();
-        }
-        if (parent != null) {
-            return parent.selectStreamReader(type, scope, fallback);
-        }
-        if (fallback != null) {
-            return fallback.selectStreamReader(type, scope, null);
-        }
-        return null;
-    }
-
-    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
-            Class<T> type, InBoundScope scope, EntityReaders fallback,
-            ContentInterceptor.Factory ifc) {
-
-        try {
-            EntityReader<T> reader = selectReader(type, scope, fallback);
-            Publisher<DataChunk> pub = filteredPublisher(publisher,
-                    type.getTypeName(), ifc);
-            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            return failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            return failedFuture;
-        }
-    }
-
-    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
-            final GenericType<T> type, InBoundScope scope,
-            EntityReaders fallback, ContentInterceptor.Factory ifc) {
-
-        try {
-            EntityReader<T> reader = selectReader(type, scope, fallback);
-            Publisher<DataChunk> pub = filteredPublisher(publisher,
-                    type.getTypeName(), ifc);
-            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(e);
-            return failedFuture;
-        } catch (Exception e) {
-            CompletableFuture failedFuture = new CompletableFuture<>();
-            failedFuture.completeExceptionally(
-                    new IllegalArgumentException("Transformation failed!", e));
-            return failedFuture;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
-            Class<T> type, InBoundScope scope, EntityReaders fallback,
-            ContentInterceptor.Factory ifc) {
-
-        try {
-            EntityStreamReader<T> streamReader = selectStreamReader(type,
-                    scope, fallback);
-            Publisher<DataChunk> pub = filteredPublisher(publisher,
-                    type.getTypeName(), ifc);
-            return (Publisher<T>) streamReader
-                    .readEntityStream(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            return new FailedPublisher<>(e);
-        } catch (Exception e) {
-            return new FailedPublisher<>(new IllegalArgumentException(
-                    "Transformation failed!", e));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
-            GenericType<T> type, InBoundScope scope, EntityReaders fallback,
-            ContentInterceptor.Factory ifc) {
-
-        try {
-            EntityStreamReader<T> streamReader = selectStreamReader(type,
-                    scope, fallback);
-            Publisher<DataChunk> pub = filteredPublisher(publisher,
-                    type.getTypeName(), ifc);
-            return (Publisher<T>) streamReader
-                    .readEntityStream(pub, type, scope);
-        } catch (IllegalArgumentException e) {
-            return new FailedPublisher<>(e);
-        } catch (Exception e) {
-            return new FailedPublisher<>(new IllegalArgumentException(
-                    "Transformation failed!", e));
-        }
+        readers.registerFirst(reader);
+        return this;
     }
 
     @Override
@@ -330,30 +76,302 @@ public final class EntityReaders extends ContentFilters
         registerReader(new CompositeReader<>(predicate, reader));
     }
 
-    private Publisher<DataChunk> filteredPublisher(
-            Publisher<DataChunk> publisher, String type,
+    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
+            Class<T> type, InBoundScope scope, EntityReaders fallback,
             ContentInterceptor.Factory ifc) {
 
-        if (ifc != null) {
-            return applyFilters(publisher, ifc.forType(type));
+        try {
+            ReaderPredicate predicate = new ReaderPredicate(type, scope);
+            ContentOperatorRegistry<EntityReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.readers;
+            } else {
+                readersFb = null;
+            }
+            EntityReader<T> reader = (EntityReader<T>) readers
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException("No reader found for type: "
+                        + type.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
+        } catch (Throwable ex) {
+            return transformationFailed(ex);
         }
-        return applyFilters(publisher, null);
+    }
+
+    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
+            Class<? extends EntityReader<T>> readerClass, Class<T> type,
+            InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ClassPredicate predicate = new ClassPredicate(readerClass);
+            ContentOperatorRegistry<EntityReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.readers;
+            } else {
+                readersFb = null;
+            }
+            EntityReader<T> reader = (EntityReader<T>) readers
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException("No reader found of class: "
+                        + readerClass.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (CompletionStage<T>) reader.readEntity(pub, type, scope);
+        } catch (Throwable ex) {
+            return transformationFailed(ex);
+        }
+    }
+
+    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
+            GenericType<T> gtype, InBoundScope scope,
+            EntityReaders fallback, ContentInterceptor.Factory ifc) {
+
+        try {
+            ReaderPredicate predicate = new ReaderPredicate(gtype, scope);
+            ContentOperatorRegistry<EntityReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.readers;
+            } else {
+                readersFb = null;
+            }
+            EntityReader<T> reader = (EntityReader<T>) readers
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException("No reader found for type: "
+                        + gtype.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (CompletionStage<T>) reader.readEntity(pub, gtype, scope);
+        } catch (Throwable ex) {
+            return transformationFailed(ex);
+        }
+    }
+
+    public <T> CompletionStage<T> unmarshall(Publisher<DataChunk> publisher,
+            Class<? extends EntityReader<T>> readerClass, GenericType<T> gtype,
+            InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ClassPredicate predicate = new ClassPredicate(readerClass);
+            ContentOperatorRegistry<EntityReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.readers;
+            } else {
+                readersFb = null;
+            }
+            EntityReader<T> reader = (EntityReader<T>) readers
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException("No reader found of class: "
+                        + readerClass.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (CompletionStage<T>) reader.readEntity(pub, gtype, scope);
+        } catch (Throwable ex) {
+            return transformationFailed(ex);
+        }
+    }
+
+    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
+            Class<T> type, InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ReaderPredicate predicate = new ReaderPredicate(type, scope);
+            ContentOperatorRegistry<EntityStreamReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.sreaders;
+            } else {
+                readersFb = null;
+            }
+            EntityStreamReader<T> reader = (EntityStreamReader<T>) sreaders
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found for type: " + type.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (Publisher<T>) reader.readEntityStream(pub, type, scope);
+        } catch (Throwable ex) {
+            return streamTransformationFailed(ex);
+        }
+    }
+
+    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
+            Class<? extends EntityStreamReader<T>> readerClass, Class<T> type,
+            InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ClassPredicate predicate = new ClassPredicate(readerClass);
+            ContentOperatorRegistry<EntityStreamReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.sreaders;
+            } else {
+                readersFb = null;
+            }
+            EntityStreamReader<T> reader = (EntityStreamReader<T>) sreaders
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found of class: "
+                                + type.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, type.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (Publisher<T>) reader.readEntityStream(pub, type, scope);
+        } catch (Throwable ex) {
+            return streamTransformationFailed(ex);
+        }
+    }
+
+    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
+            GenericType<T> gtype, InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ReaderPredicate predicate = new ReaderPredicate(gtype, scope);
+            ContentOperatorRegistry<EntityStreamReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.sreaders;
+            } else {
+                readersFb = null;
+            }
+            EntityStreamReader<T> reader = (EntityStreamReader<T>) sreaders
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found for type: "
+                                + gtype.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (Publisher<T>) reader.readEntityStream(pub, gtype, scope);
+        } catch (Throwable ex) {
+            return streamTransformationFailed(ex);
+        }
+    }
+
+   public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> publisher,
+            Class<? extends EntityStreamReader<T>> readerClass,
+            GenericType<T> gtype, InBoundScope scope, EntityReaders fallback,
+            ContentInterceptor.Factory ifc) {
+
+        try {
+            ClassPredicate predicate = new ClassPredicate(readerClass);
+            ContentOperatorRegistry<EntityStreamReader<?>> readersFb;
+            if (fallback != null) {
+                readersFb = fallback.sreaders;
+            } else {
+                readersFb = null;
+            }
+            EntityStreamReader<T> reader = (EntityStreamReader<T>) sreaders
+                    .select(predicate, readersFb);
+            if (reader == null) {
+                throw new IllegalArgumentException(
+                        "No stream reader found of class: "
+                                + gtype.getTypeName());
+            }
+            ifc = ContentInterceptor.Factory.forType(ifc, gtype.getTypeName());
+            Publisher<DataChunk> pub = applyFilters(publisher, ifc);
+            return (Publisher<T>) reader.readEntityStream(pub, gtype, scope);
+        } catch (Throwable ex) {
+            return streamTransformationFailed(ex);
+        }
     }
 
     /**
-     * A "static" implementation of {@link Predicate} to test tests.
+     * Created a failed future for a failed reader transformation.
+     * @param ex exception raised
+     * @return CompletableFuture
+     */
+    private static CompletableFuture transformationFailed(Throwable ex) {
+        CompletableFuture failedFuture = new CompletableFuture();
+        if (ex instanceof IllegalArgumentException) {
+            failedFuture.completeExceptionally(ex);
+        } else {
+            failedFuture.completeExceptionally(
+                    new IllegalStateException("Transformation failed!", ex));
+        }
+        return failedFuture;
+    }
+
+    /**
+     * Create a failed publisher for a failed stream reader transformation.
+     * @param ex exception raised
+     * @return FailedPublisher
+     */
+    private static FailedPublisher streamTransformationFailed(Throwable ex) {
+        if (ex instanceof IllegalArgumentException) {
+            return new FailedPublisher(ex);
+        } else {
+            return new FailedPublisher<>(
+                    new IllegalStateException("Transformation failed!", ex));
+        }
+    }
+
+    /**
+     * Selector of {@link EntityReader} or {@link EntityStreamReader}.
+     * @param <T> entity type
+     */
+    private static final class ReaderPredicate<T>
+            implements Predicate<ContentReader> {
+
+        private final Class<?> type;
+        private final GenericType<?> gtype;
+        private final InBoundScope scope;
+
+        ReaderPredicate(Class<?> type, InBoundScope scope) {
+            Objects.requireNonNull(type, "type cannot be null");
+            Objects.requireNonNull(scope, "scope cannot be null");
+            this.type = type;
+            this.gtype = null;
+            this.scope = scope;
+        }
+
+        ReaderPredicate(GenericType<?> gtype, InBoundScope scope) {
+            Objects.requireNonNull(gtype, "type cannot be null");
+            Objects.requireNonNull(scope, "scope cannot be null");
+            this.type = null;
+            this.gtype = gtype;
+            this.scope = scope;
+        }
+
+        @Override
+        public boolean test(ContentReader reader) {
+            if (type != null) {
+                return reader.accept(type, scope);
+            } else {
+                return reader.accept(gtype, scope);
+            }
+        }
+    }
+
+    /**
+     * Static predicate for composite readers registered with a given class.
      */
     private static final class TypePredicate implements Predicate<Class<?>> {
 
-        private final Class<?> type;
+        private final Class<?> clazz;
 
-        TypePredicate(Class<?> type) {
-            this.type = type;
+        TypePredicate(Class<?> clazz) {
+            this.clazz = clazz;
         }
 
         @Override
         public boolean test(Class<?> cls) {
-            return cls.isAssignableFrom(type);
+            return cls.isAssignableFrom(clazz);
         }
     }
 
@@ -383,23 +401,6 @@ public final class EntityReaders extends ContentFilters
                 InBoundScope scope) {
 
             return reader.apply(publisher, type);
-        }
-    }
-
-    /**
-     * Pair of reader and type.
-     *
-     * @param <T> reader type either {@link EntityReader} or
-     * {@link EntityStreamReader}.
-     */
-    private static final class ReaderEntry<T> {
-
-        final Class<?> readerClass;
-        final T reader;
-
-        ReaderEntry(Class<?> readerClass, T reader) {
-            this.readerClass = readerClass;
-            this.reader = reader;
         }
     }
 }

@@ -20,7 +20,7 @@ import io.helidon.common.http.InBoundContent;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.media.common.ByteArrayCopyEntityWriter;
+import io.helidon.media.common.ByteArrayCopyWriter;
 import java.util.LinkedList;
 import java.util.concurrent.CompletableFuture;
 import io.helidon.common.http.InBoundScope;
@@ -63,7 +63,7 @@ public final class BufferingBodyPartSubscriber
         content.as(byte[].class).thenAccept((byte[] bytes) -> {
 
             // create a publisher from the consumed byte
-            Publisher<DataChunk> partChunks = ByteArrayCopyEntityWriter
+            Publisher<DataChunk> partChunks = ByteArrayCopyWriter
                     .write(bytes);
 
             InBoundContent contentCopy = new InBoundContent(partChunks,

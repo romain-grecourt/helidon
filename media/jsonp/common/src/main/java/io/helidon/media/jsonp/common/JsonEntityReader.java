@@ -4,7 +4,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.EntityReader;
 import io.helidon.common.http.InBoundScope;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.ByteArrayEntityReader;
+import io.helidon.media.common.ByteArrayReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -39,7 +39,7 @@ public class JsonEntityReader implements EntityReader<JsonStructure> {
 
         ValueReader<? extends JsonStructure> valueReader =
                 new ValueReader<>(scope.charset());
-        return ByteArrayEntityReader.read(publisher)
+        return ByteArrayReader.read(publisher)
                 .thenApply(valueReader::read);
     }
 

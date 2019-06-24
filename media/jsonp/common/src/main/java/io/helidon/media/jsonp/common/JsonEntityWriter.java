@@ -7,7 +7,7 @@ import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferEntityWriter;
+import io.helidon.media.common.CharBufferWriter;
 import java.nio.charset.Charset;
 import javax.json.JsonException;
 import javax.json.JsonStructure;
@@ -26,12 +26,12 @@ public class JsonEntityWriter implements EntityWriter<JsonStructure> {
     }
 
     @Override
-    public Ack<JsonStructure> accept(Object entity, OutBoundScope scope) {
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
         if (entity != null && entity instanceof JsonStructure) {
             MediaType contentType = scope.findAccepted(MediaType.JSON_PREDICATE,
                     MediaType.APPLICATION_JSON);
             if (contentType != null) {
-                return new Ack<>(this, contentType);
+                return new Ack(contentType);
             }
         }
         return null;
@@ -39,7 +39,7 @@ public class JsonEntityWriter implements EntityWriter<JsonStructure> {
 
     @Override
     public Publisher<DataChunk> writeEntity(JsonStructure entity,
-            Ack<JsonStructure> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         try {
             return write(jsonWriterFactory, entity,  scope.charset());
@@ -54,7 +54,7 @@ public class JsonEntityWriter implements EntityWriter<JsonStructure> {
         CharBuffer buffer = new CharBuffer();
         try (JsonWriter writer = factory.createWriter(buffer)) {
             writer.write(entity);
-            return CharBufferEntityWriter.write(buffer, charset);
+            return CharBufferWriter.write(buffer, charset);
         } catch (IllegalStateException | JsonException ex) {
             return new FailedPublisher<>(ex);
         }

@@ -28,9 +28,10 @@ public class BodyPartEntityStreamWriter
     }
 
     @Override
-    public Ack<OutBoundBodyPart> accept(Class<?> type, OutBoundScope scope) {
+    public Ack accept(Publisher<Object> stream, Class<?> type,
+            OutBoundScope scope) {
         if (OutBoundBodyPart.class.isAssignableFrom(type)) {
-            return new Ack<>(this, MediaType.MULTIPART_FORM_DATA);
+            return new Ack(MediaType.MULTIPART_FORM_DATA);
         }
         return null;
     }
@@ -38,7 +39,7 @@ public class BodyPartEntityStreamWriter
     @Override
     public Publisher<DataChunk> writeEntityStream(
             Publisher<OutBoundBodyPart> parts, Class<OutBoundBodyPart> type,
-            Ack<OutBoundBodyPart> ack, OutBoundScope scope) {
+            OutBoundScope scope) {
 
         MultiPartEncoder encoder = new MultiPartEncoder(boundary,
                 scope.writers());

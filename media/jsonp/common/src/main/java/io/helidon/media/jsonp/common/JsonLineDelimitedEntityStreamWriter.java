@@ -2,7 +2,7 @@ package io.helidon.media.jsonp.common;
 
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.OutBoundScope;
-import java.util.List;
+import io.helidon.common.reactive.Flow.Publisher;
 import javax.json.JsonStructure;
 import javax.json.JsonWriterFactory;
 
@@ -13,27 +13,19 @@ import javax.json.JsonWriterFactory;
 public class JsonLineDelimitedEntityStreamWriter
         extends JsonEntityStreamWriter {
 
-    public JsonLineDelimitedEntityStreamWriter(JsonWriterFactory writerFactory) {
-        super(writerFactory, /* begin */ null, "\r\n", /* end */ null);
+    public JsonLineDelimitedEntityStreamWriter(JsonWriterFactory factory) {
+        super(factory, /* begin */ null, "\r\n", /* end */ null);
     }
 
     @Override
-    public Ack<JsonStructure> accept(Class<?> type, OutBoundScope scope) {
-        if (JsonStructure.class.isAssignableFrom(type)) {
-            MediaType contentType = findAccepted(scope.acceptedTypes);
-            if (contentType != null) {
-                return new Ack<>(this, contentType);
-            }
-        }
-        return null;
-    }
+    public Ack accept(Publisher<Object> stream, Class<?> type,
+            OutBoundScope scope) {
 
-    private static MediaType findAccepted(List<MediaType> acceptedTypes) {
-        if (acceptedTypes != null) {
-            for (MediaType acceptedType : acceptedTypes) {
-                if (MediaType.APPLICATION_STREAM_JSON.equals(acceptedType)) {
-                    return acceptedType;
-                }
+        if (JsonStructure.class.isAssignableFrom(type)) {
+            MediaType contentType = scope.findAccepted(
+                    MediaType.APPLICATION_STREAM_JSON);
+            if (contentType != null) {
+                return new Ack(contentType);
             }
         }
         return null;

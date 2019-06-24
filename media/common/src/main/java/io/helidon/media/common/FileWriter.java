@@ -11,31 +11,29 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
-import static io.helidon.media.common.ByteChannelEntityWriter.DEFAULT_RETRY_SCHEMA;
+import static io.helidon.media.common.ByteChannelWriter.DEFAULT_RETRY_SCHEMA;
 import static io.helidon.media.common.PathEntityWriter.ANY;
 
 /**
  * Entity writer for {@link File}.
  */
-public final class FileEntityWriter implements EntityWriter<File> {
+public final class FileWriter implements EntityWriter<File> {
 
     @Override
-    public Ack<File> accept(Object entity, OutBoundScope scope) {
-        if (File.class.isAssignableFrom(entity.getClass())) {
+    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
+        if (File.class.isAssignableFrom(type)) {
             MediaType contentType = scope.findAccepted(ANY,
                     MediaType.APPLICATION_OCTET_STREAM);
             if (contentType != null) {
                 File file = (File) entity;
-                return new Ack<>(this, contentType, file.getTotalSpace());
+                return new Ack(contentType, file.getTotalSpace());
             }
         }
         return null;
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(File file, Ack<File> promise,
-            OutBoundScope scope) {
-
+    public Publisher<DataChunk> writeEntity(File file, OutBoundScope scope) {
         try {
             FileChannel fc = FileChannel.open(file.toPath(),
                     StandardOpenOption.READ);
