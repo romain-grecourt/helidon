@@ -16,26 +16,25 @@
 
 package io.helidon.webserver;
 
+import io.helidon.common.GenericType;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
-import java.util.function.Predicate;
-
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.http.EntityWriters;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
-import io.helidon.common.http.EntityWriter;
-import io.helidon.common.http.EntityStreamWriter;
-import io.helidon.common.http.ContentFilter;
-import io.helidon.common.http.OutBoundScope;
 import io.helidon.common.reactive.EmptyPublisher;
 import java.util.List;
+import io.helidon.common.http.MessageBody;
+import io.helidon.common.http.MessageBodyContextBase;
+import io.helidon.common.http.MessageBodyWriterContext;
+import io.helidon.common.reactive.SingleItemPublisher;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * The basic implementation of {@link ServerResponse}.
@@ -47,8 +46,8 @@ abstract class Response implements ServerResponse {
     private final HashResponseHeaders headers;
 
     private final CompletionStage<ServerResponse> completionStage;
-    private final OutBoundScope scope;
-    private final EntityWriters writers;
+    private final MessageBodyWriterContext writerContext;
+    private final MessageBodyEventListener eventListener;
 
     // Content related
     private final SendLockSupport sendLockSupport;
@@ -60,16 +59,17 @@ abstract class Response implements ServerResponse {
      * @param bareResponse an implementation of the response SPI.
      */
     Response(WebServer webServer, BareResponse bareResponse,
-            List<MediaType> acceptedTypes, EntityWriters parentWriters) {
+            List<MediaType> acceptedTypes) {
 
         this.webServer = webServer;
         this.bareResponse = bareResponse;
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
-        this.scope = new OutBoundScope(headers, Request.DEFAULT_CHARSET,
-                acceptedTypes, parentWriters);
-        this.writers = scope.writers();
+        this.eventListener = new MessageBodyEventListener();
+        this.writerContext = MessageBodyWriterContext.create(
+                webServer.mediaSupport().writerContext(), eventListener,
+                headers, acceptedTypes);
     }
 
     /**
@@ -83,8 +83,8 @@ abstract class Response implements ServerResponse {
         this.headers = response.headers;
         this.completionStage = response.completionStage;
         this.sendLockSupport = response.sendLockSupport;
-        this.scope = response.scope;
-        this.writers = response.writers;
+        this.writerContext = response.writerContext;
+        this.eventListener = response.eventListener;
     }
 
     /**
@@ -147,13 +147,11 @@ abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> contentPublisher = writers.marshall(
-                        content, scope, /* writersFallback */ null, headers,
-                        /* interceptorFactory */ null);
-                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
-                        headers, writeSpan, contentPublisher);
+                Publisher<DataChunk> sendPublisher = writerContext
+                        .marshall(new SingleItemPublisher<>(content),
+                                GenericType.create((Class<T>)content.getClass()));
                 sendLockSupport.contentSend = true;
-                pub.subscribe(bareResponse);
+                sendPublisher.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -166,14 +164,12 @@ abstract class Response implements ServerResponse {
     public CompletionStage<ServerResponse> send(Publisher<DataChunk> content) {
         Span writeSpan = createWriteSpan(content);
         try {
-            Publisher<DataChunk> publisher = (content == null)
+            Publisher<DataChunk> sendPublisher = (content == null)
                     ? new EmptyPublisher<>()
-                    : content;
+                    : writerContext.applyFilters(content);
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> pub = new SendHeadersFirstPublisher<>(
-                        headers, writeSpan, writers.applyFilters(publisher));
                 sendLockSupport.contentSend = true;
-                pub.subscribe(bareResponse);
+                sendPublisher.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -194,11 +190,11 @@ abstract class Response implements ServerResponse {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> publisher = writers.marshallStream(content,
-                        itemClass, scope, /* writersFallback */ null, headers,
-                        /* interceptorFactory */ null);
+                GenericType<T> type = GenericType.create(itemClass);
+                Publisher<DataChunk> sendPublisher = writerContext
+                        .marshallStream(content, type);
                 sendLockSupport.contentSend = true;
-                publisher.subscribe(bareResponse);
+                sendPublisher.subscribe(bareResponse);
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
@@ -208,52 +204,65 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public <T> Response registerWriter(Class<T> type,
-            Function<T, Publisher<DataChunk>> function) {
-
-        writers.registerWriter(type, function);
+    public Response registerWriter(MessageBody.Writer<?> writer) {
+        writerContext.registerWriter(writer);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Predicate<?> predicate,
-            Function<T, Publisher<DataChunk>> function) {
-
-        writers.registerWriter(predicate, function);
+    public Response registerStreamWriter(MessageBody.Writer<?> writer) {
+        writerContext.registerStreamWriter(writer);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Class<T> type, MediaType contentType,
+    public Response registerFilter(MessageBody.Filter filter) {
+        writerContext.registerFilter(filter);
+        return this;
+    }
+
+    @Deprecated
+    @Override
+    public void registerFilter(
+            Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
+
+        writerContext.registerFilter(function);
+    }
+
+    @Deprecated
+    @Override
+    public <T> MessageBody.Writers registerWriter(Class<T> type,
+            Function<T, Publisher<DataChunk>> function) {
+
+        writerContext.registerWriter(type, function);
+        return this;
+    }
+
+    @Deprecated
+    @Override
+    public <T> MessageBody.Writers registerWriter(Predicate<?> accept,
+            Function<T, Publisher<DataChunk>> function) {
+
+        writerContext.registerWriter(accept, function);
+        return this;
+    }
+
+    @Deprecated
+    @Override
+    public <T> MessageBody.Writers registerWriter(Class<T> type,
+            MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
-        writers.registerWriter(type, contentType, function);
+        writerContext.registerWriter(type, contentType, function);
         return this;
     }
 
+    @Deprecated
     @Override
-    public <T> Response registerWriter(Predicate<?> predicate,
+    public <T> MessageBody.Writers registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
 
-        writers.registerWriter(predicate, contentType, function);
-        return this;
-    }
-
-    @Override
-    public Response registerWriter(EntityWriter<?> writer) {
-        writers.registerWriter(writer);
-        return this;
-    }
-
-    @Override
-    public Response registerStreamWriter(EntityStreamWriter<?> writer) {
-        writers.registerStreamWriter(writer);
-        return this;
-    }
-
-    @Override
-    public Response registerFilter(ContentFilter filter) {
-        writers.registerFilter(filter);
+        writerContext.registerWriter(accept, contentType, function);
         return this;
     }
 
@@ -265,6 +274,61 @@ abstract class Response implements ServerResponse {
     @Override
     public long requestId() {
         return bareResponse.requestId();
+    }
+
+    private final class MessageBodyEventListener
+            implements MessageBodyContextBase.EventListener {
+
+        private Span span;
+
+        // Sent switch just once from false to true near the beginning.
+        // It use combination with volatile to faster check.
+        private boolean sent;
+        private volatile boolean sentVolatile;
+
+        @Override
+        public void onEvent(MessageBodyContextBase.Event event) {
+            switch(event.eventType()) {
+                case BEFORE_ONSUBSCRIBE:
+                    Tracer.SpanBuilder spanBuilder = tracer()
+                            .buildSpan("content-write");
+                    if (spanContext() != null) {
+                        spanBuilder.asChildOf(spanContext());
+                    }
+                    GenericType<?> type = event.entityType().orElse(null);
+                    if (type != null) {
+                        spanBuilder.withTag("response.type", type.getTypeName());
+                    }
+                    span = spanBuilder.start();
+                    break;
+                case BEFORE_ONNEXT:
+                    // send headers if needed
+                    if (headers != null && !sent && !sentVolatile) {
+                        synchronized (this) {
+                            if (!sent && !sentVolatile) {
+                                sent = true;
+                                sentVolatile = true;
+                                headers.send();
+                            }
+                        }
+                    }
+                    break;
+                case AFTER_ONERROR:
+                    if (span != null) {
+                        span.finish();
+                    }
+                    break;
+                case BEFORE_ONCOMPLETE:
+                case AFTER_ONCOMPLETE:
+                    if (span != null) {
+                        // no-op if called more than once
+                        span.finish();
+                    }
+                    break;
+                default:
+                    // do nothing
+            }
+        }
     }
 
     private static class SendLockSupport {

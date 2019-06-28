@@ -23,9 +23,8 @@ import java.util.function.Function;
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.MessageBody;
 import io.helidon.common.reactive.Flow;
-import io.helidon.common.http.ContentFiltersRegistry;
-import io.helidon.common.http.EntityWritersRegistry;
 
 /**
  * Represents HTTP Response.
@@ -38,7 +37,7 @@ import io.helidon.common.http.EntityWritersRegistry;
  * <p>
  * Response content (body/payload) can be constructed using {@link #send(Object) send(...)} methods.
  */
-public interface ServerResponse extends EntityWritersRegistry, ContentFiltersRegistry {
+public interface ServerResponse extends MessageBody.Filters, MessageBody.Writers {
 
     /**
      * Returns actual {@link WebServer} instance.
@@ -155,4 +154,12 @@ public interface ServerResponse extends EntityWritersRegistry, ContentFiltersReg
      * @return a unique correlation ID associated with this response and its request
      */
     long requestId();
+
+    @Override
+    public ServerResponse registerFilter(MessageBody.Filter filter);
+
+    @Override
+    public ServerResponse registerWriter(MessageBody.Writer<?> writer);
+
+    ServerResponse registerStreamWriter(MessageBody.Writer<?> writer);
 }

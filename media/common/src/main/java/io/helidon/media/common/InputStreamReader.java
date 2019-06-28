@@ -1,29 +1,36 @@
 package io.helidon.media.common;
 
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityReader;
-import io.helidon.common.http.InBoundScope;
 import io.helidon.common.reactive.Flow.Publisher;
 import java.io.InputStream;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import io.helidon.common.http.MessageBody.Reader;
+import io.helidon.common.http.MessageBody.ReaderContext;
+import io.helidon.common.reactive.SingleItemPublisher;
 
 /**
  * Entity reader for {@code InputStream}.
  */
-public class InputStreamReader implements EntityReader<InputStream> {
+public class InputStreamReader implements Reader<InputStream> {
 
-    @Override
-    public boolean accept(Class<?> type, InBoundScope scope) {
-        return type.isAssignableFrom(InputStream.class);
+    private InputStreamReader() {
     }
 
     @Override
-    public CompletionStage<InputStream> readEntity(
-            Publisher<DataChunk> publisher, Class<? super InputStream> type,
-            InBoundScope scope) {
+    public boolean accept(GenericType<?> type, ReaderContext context) {
+        return InputStream.class.isAssignableFrom(type.rawType());
+    }
 
-        return CompletableFuture.completedFuture(
-                new PublisherInputStream(publisher));
+    @Override
+    @SuppressWarnings("unchecked")
+    public <U extends InputStream> Publisher<U> read(
+            Publisher<DataChunk> publisher, GenericType<U> type,
+            ReaderContext context) {
+
+        return new SingleItemPublisher<>((U) new PublisherInputStream(publisher));
+    }
+
+    public static InputStreamReader create() {
+        return new InputStreamReader();
     }
 }

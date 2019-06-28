@@ -1,44 +1,66 @@
 package io.helidon.media.common;
 
+import io.helidon.common.reactive.SingleInputDelegatingProcessor;
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityWriter;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.OutBoundScope;
+import io.helidon.common.http.MessageBody.Writer;
+import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.RetrySchema;
 import java.nio.channels.ReadableByteChannel;
 
 /**
- * EntityWriter for {@link ReadableByteChannel}.
+ * Writer for {@link ReadableByteChannel}.
  */
-public final class ByteChannelWriter
-        implements EntityWriter<ReadableByteChannel> {
+public final class ByteChannelWriter implements Writer<ReadableByteChannel> {
 
     static final RetrySchema DEFAULT_RETRY_SCHEMA =
             RetrySchema.linear(0, 10, 250);
 
     private final RetrySchema schema;
 
-    public ByteChannelWriter() {
-        this.schema = DEFAULT_RETRY_SCHEMA;
-    }
-
-    public ByteChannelWriter(RetrySchema schema) {
+    private ByteChannelWriter(RetrySchema schema) {
         this.schema = schema;
     }
 
     @Override
-    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
-        if (ReadableByteChannel.class.isAssignableFrom(type)) {
-            return new Ack(MediaType.APPLICATION_OCTET_STREAM);
-        }
-        return null;
+    public boolean accept(GenericType<?> type, WriterContext context) {
+        return ReadableByteChannel.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(ReadableByteChannel channel,
-            OutBoundScope scope) {
+    public <U extends ReadableByteChannel> Publisher<DataChunk> write(
+            Publisher<U> content, GenericType<U> type, WriterContext context) {
 
-        return new ReadableByteChannelPublisher(channel, schema);
+        Processor processor = new Processor(schema, context);
+        content.subscribe(processor);
+        return processor;
+    }
+
+    public static ByteChannelWriter create(RetrySchema schema) {
+        return new ByteChannelWriter(schema);
+    }
+
+    public static ByteChannelWriter create() {
+        return new ByteChannelWriter(DEFAULT_RETRY_SCHEMA);
+    }
+
+    private static final class Processor
+            extends SingleInputDelegatingProcessor<ReadableByteChannel, DataChunk> {
+
+        private final RetrySchema schema;
+        private final WriterContext context;
+
+        Processor(RetrySchema schema, WriterContext context) {
+            this.schema = schema;
+            this.context = context;
+        }
+
+        @Override
+        protected Publisher<DataChunk> delegate(ReadableByteChannel channel) {
+            context.contentType(MediaType.APPLICATION_OCTET_STREAM);
+            return new ReadableByteChannelPublisher(channel, schema);
+        }
     }
 }

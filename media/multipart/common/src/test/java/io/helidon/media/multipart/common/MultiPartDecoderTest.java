@@ -33,8 +33,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.multipart.common.BodyPartTest.DEFAULT_CHARSET;
-import static io.helidon.media.multipart.common.BodyPartTest.DEFAULT_READERS;
+import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -42,6 +41,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.fail;
+
 /**
  * Tests {@link MultiPartDecoder}.
  */
@@ -425,8 +425,8 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testUpstreamError() {
-        MultiPartDecoder decoder = new MultiPartDecoder("boundary",
-                DEFAULT_CHARSET, DEFAULT_READERS);
+        MultiPartDecoder decoder = MultiPartDecoder
+                .create("boundary", MEDIA_SUPPORT.readerContext());
         new Publisher<DataChunk>(){
             @Override
             public void subscribe(Subscriber<? super DataChunk> subscriber) {
@@ -443,8 +443,8 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartDecoder decoder = new MultiPartDecoder("boundary",
-                DEFAULT_CHARSET, DEFAULT_READERS);
+        MultiPartDecoder decoder = MultiPartDecoder
+                .create("boundary", MEDIA_SUPPORT.readerContext());
         new DataChunkPublisher("foo".getBytes()).subscribe(decoder);
         try {
             new DataChunkPublisher("bar".getBytes()).subscribe(decoder);
@@ -526,8 +526,8 @@ public class MultiPartDecoderTest {
     static Publisher<? extends BodyPart> partsPublisher(String boundary,
             byte[]... chunks) {
 
-        MultiPartDecoder decoder = new MultiPartDecoder(boundary,
-                DEFAULT_CHARSET, DEFAULT_READERS);
+        MultiPartDecoder decoder = MultiPartDecoder
+                .create(boundary, MEDIA_SUPPORT.readerContext());
         new DataChunkPublisher(chunks).subscribe(decoder);
         return decoder;
     }

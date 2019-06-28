@@ -17,19 +17,23 @@ package io.helidon.media.multipart.common;
 
 import io.helidon.common.CollectionsHelper;
 import static io.helidon.common.CollectionsHelper.listOf;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import io.helidon.common.http.MediaType;
-import io.helidon.media.common.ByteArrayReader;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkSubscriber;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.FixedItemsPublisher;
+import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import static io.helidon.media.multipart.common.BodyPartTest.DEFAULT_WRITERS;
+import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.media.common.StringReader;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
-
 import java.util.List;
+import java.util.NoSuchElementException;
+
+import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -41,8 +45,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MultiPartEncoderTest {
 
-    private static final List<OutBoundBodyPart> EMPTY_OUTBOUND_PARTS =
-            CollectionsHelper.<OutBoundBodyPart>listOf();
+    private static final List<OutboundBodyPart> EMPTY_OUTBOUND_PARTS =
+            CollectionsHelper.<OutboundBodyPart>listOf();
 
     // TODO test throttling
 
@@ -50,7 +54,7 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePart() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutBoundBodyPart.builder()
+                OutboundBodyPart.builder()
                         .entity("part1")
                         .build());
         assertThat(message, is(equalTo(
@@ -64,8 +68,8 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePartWithHeaders() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutBoundBodyPart.builder()
-                        .headers(OutBoundBodyPartHeaders.builder()
+                OutboundBodyPart.builder()
+                        .headers(OutboundBodyPartHeaders.builder()
                                 .contentType(MediaType.TEXT_PLAIN)
                                 .build())
                         .entity("part1")
@@ -82,10 +86,10 @@ public class MultiPartEncoderTest {
     public void testEncodeTwoParts() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutBoundBodyPart.builder()
+                OutboundBodyPart.builder()
                         .entity("part1")
                         .build(),
-                OutBoundBodyPart.builder()
+                OutboundBodyPart.builder()
                         .entity("part2")
                         .build());
         assertThat(message, is(equalTo(
@@ -100,11 +104,11 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartEncoder encoder = new MultiPartEncoder("boundary",
-                DEFAULT_WRITERS);
-        new BodyPartPublisher<>(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
+        MultiPartEncoder encoder = MultiPartEncoder
+                .create("boundary", MEDIA_SUPPORT.writerContext());
+        new FixedItemsPublisher<>(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
         try {
-            new BodyPartPublisher<>(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
+            new FixedItemsPublisher<>(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
             fail("exception should be thrown");
         } catch(IllegalStateException ex) {
             assertThat(ex.getMessage(),
@@ -114,11 +118,11 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testUpstreamError() {
-        MultiPartEncoder decoder = new MultiPartEncoder("boundary",
-                DEFAULT_WRITERS);
-        new Publisher<OutBoundBodyPart>(){
+        MultiPartEncoder decoder = MultiPartEncoder
+                .create("boundary", MEDIA_SUPPORT.writerContext());
+        new Publisher<OutboundBodyPart>(){
             @Override
-            public void subscribe(Subscriber<? super OutBoundBodyPart> sub) {
+            public void subscribe(Subscriber<? super OutboundBodyPart> sub) {
                 sub.onError(new IllegalStateException("oops"));
             }
         }.subscribe(decoder);
@@ -138,9 +142,9 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testPartContentPublisherError() {
-        MultiPartEncoder decoder = new MultiPartEncoder("boundary",
-                DEFAULT_WRITERS);
-        new BodyPartPublisher<>(listOf(OutBoundBodyPart.builder()
+        MultiPartEncoder decoder = MultiPartEncoder
+                .create("boundary", MEDIA_SUPPORT.writerContext());
+        new FixedItemsPublisher<>(listOf(OutboundBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
                 })
@@ -161,21 +165,62 @@ public class MultiPartEncoderTest {
     }
 
     private static String encodeParts(String boundary,
-            OutBoundBodyPart... parts) {
+            OutboundBodyPart... parts) {
 
-        BodyPartPublisher<OutBoundBodyPart> publisher =
-                new BodyPartPublisher<>(listOf(parts));
-        MultiPartEncoder encoder = new MultiPartEncoder(boundary,
-                DEFAULT_WRITERS);
+        FixedItemsPublisher<OutboundBodyPart> publisher =
+                new FixedItemsPublisher<>(listOf(parts));
+        MultiPartEncoder encoder = MultiPartEncoder
+                .create(boundary, MEDIA_SUPPORT.writerContext());
         publisher.subscribe(encoder);
+        SingleItemSubscriber<String> subscriber = new SingleItemSubscriber<>();
+        StringReader.read(encoder, StandardCharsets.UTF_8)
+                .subscribe(subscriber);
         try {
-            return new String(ByteArrayReader.read(encoder)
-                    .toCompletableFuture()
-                    .get());
-        } catch (InterruptedException ex) {
-            return null;
-        } catch (ExecutionException ex) {
+            return subscriber.get();
+        } catch(IllegalStateException ex) {
             throw new TestException(ex.getCause());
+        } catch (NoSuchElementException ex) {
+            throw new TestException(ex);
+        }
+    }
+
+    private static final class SingleItemSubscriber<T>
+            implements Subscriber<T> {
+
+        private Subscription subscription;
+        private T item;
+        private Throwable error;
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            this.subscription = subscription;
+            subscription.request(1);
+        }
+
+        @Override
+        public void onNext(T item) {
+            this.item = item;
+            subscription.cancel();
+            onComplete();
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            this.error = error;
+        }
+
+        @Override
+        public void onComplete() {
+        }
+
+        public T get() {
+            if (item != null) {
+                return item;
+            }
+            if (error != null) {
+                throw new IllegalStateException(error);
+            }
+            throw new NoSuchElementException("no item received");
         }
     }
 

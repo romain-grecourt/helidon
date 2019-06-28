@@ -27,11 +27,9 @@ import java.util.Collections;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.FormParam;
 import io.helidon.common.reactive.Flow;
-import io.helidon.media.jsonp.common.JsonArrayEntityStreamWriter;
-import io.helidon.media.jsonp.common.JsonLineDelimitedEntityStreamWriter;
+import io.helidon.media.jsonp.common.JsonpArrayStreamWriter;
+import io.helidon.media.jsonp.common.JsonpLineDelimitedStreamWriter;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -54,11 +52,11 @@ public class StreamingService implements Service {
     private static final JsonWriterFactory JSON_WRITER_FACTORY =
             Json.createWriterFactory(Collections.emptyMap());
 
-    private static final JsonArrayEntityStreamWriter ARRAY_WRITER =
-            new JsonArrayEntityStreamWriter(JSON_WRITER_FACTORY);
+    private static final JsonpArrayStreamWriter ARRAY_WRITER =
+            new JsonpArrayStreamWriter(JSON_WRITER_FACTORY);
 
-    private static final JsonLineDelimitedEntityStreamWriter LINE_WRITER =
-            new JsonLineDelimitedEntityStreamWriter(JSON_WRITER_FACTORY);
+    private static final JsonpLineDelimitedStreamWriter LINE_WRITER =
+            new JsonpLineDelimitedStreamWriter(JSON_WRITER_FACTORY);
 
     private final Path filePath;
 
@@ -134,42 +132,4 @@ public class StreamingService implements Service {
                     }
                 }), JsonObject.class);
     }
-
-    private void processForm(ServerRequest request, ServerResponse response) {
-        request.content()
-                .asStream(new GenericType<FormParam<String>>(){})
-                .subscribe(new Flow.Subscriber<FormParam<String>>() {
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                    }
-
-                    @Override
-                    public void onNext(FormParam<String> item) {
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                    }
-
-                    @Override
-                    public void onComplete() {
-                    }
-                });
-
-        response.send(subscriber -> subscriber.onSubscribe(
-                new Flow.Subscription() {
-                    @Override
-                    public void request(long n) {
-                        for (int i = 0; i < 10; i++) {
-                            subscriber.onNext(new FormParam("param" + i, "value" + i));
-                        }
-                        subscriber.onComplete();
-                    }
-
-                    @Override
-                    public void cancel() {
-                    }
-                }), FormParam.class);
-    }
-
 }

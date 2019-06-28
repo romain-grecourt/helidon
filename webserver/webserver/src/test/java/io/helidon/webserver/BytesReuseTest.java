@@ -32,7 +32,6 @@ import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import io.helidon.common.InputStreamHelper;
-import io.helidon.common.http.ContentFilter;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Flow.Publisher;

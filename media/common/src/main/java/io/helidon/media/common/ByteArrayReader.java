@@ -1,51 +1,52 @@
 package io.helidon.media.common;
 
+import io.helidon.common.reactive.SingleOutputProcessor;
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityReader;
-import io.helidon.common.http.InBoundScope;
 import io.helidon.common.http.Utils;
-import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Flow.Subscriber;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import io.helidon.common.http.MessageBody.Reader;
+import io.helidon.common.http.MessageBody.ReaderContext;
 
 /**
- * Entity reader for {@code byte[]}.
+ * Reader for {@code ByteArrayOutputStream}.
  */
-public final class ByteArrayReader implements EntityReader<byte[]> {
+public final class ByteArrayReader implements Reader<ByteArrayOutputStream> {
 
-    @Override
-    public boolean accept(Class<?> type, InBoundScope scope) {
-        return byte[].class.isAssignableFrom(type);
-    }
-
-    public static CompletionStage<byte[]> read(Publisher<DataChunk> publisher) {
-        ContentSubscriber subscriber = new ContentSubscriber();
-        publisher.subscribe(subscriber);
-        return subscriber.future;
+    private ByteArrayReader() {
     }
 
     @Override
-    public CompletionStage<byte[]> readEntity(Publisher<DataChunk> publisher,
-            Class<? super byte[]> type, InBoundScope scope) {
+    public boolean accept(GenericType<?> type, ReaderContext context) {
+        return byte[].class.isAssignableFrom(type.rawType());
+    }
+
+    @Override
+    public <U extends ByteArrayOutputStream> Publisher<U> read(
+            Publisher<DataChunk> publisher, GenericType<U> type,
+            ReaderContext context) {
 
         return read(publisher);
     }
 
-    private static final class ContentSubscriber
-            implements Subscriber<DataChunk> {
+    public static ByteArrayReader create() {
+        return new ByteArrayReader();
+    }
+
+    public static <U extends ByteArrayOutputStream> Publisher<U> read(
+            Publisher<DataChunk> publisher) {
+
+        Processor processor = new Processor();
+        publisher.subscribe(processor);
+        return processor;
+    }
+
+    private static final class Processor<U extends ByteArrayOutputStream>
+            extends SingleOutputProcessor<ByteArrayOutputStream, DataChunk> {
 
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        private final CompletableFuture<byte[]> future =
-                new CompletableFuture<>();
-
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-        }
 
         @Override
         public void onNext(DataChunk item) {
@@ -60,13 +61,8 @@ public final class ByteArrayReader implements EntityReader<byte[]> {
         }
 
         @Override
-        public void onError(Throwable throwable) {
-            future.completeExceptionally(throwable);
-        }
-
-        @Override
         public void onComplete() {
-            future.complete(bytes.toByteArray());
+            submit(bytes);
         }
     }
 }

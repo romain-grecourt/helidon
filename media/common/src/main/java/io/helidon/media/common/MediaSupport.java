@@ -1,50 +1,107 @@
 package io.helidon.media.common;
 
-import io.helidon.common.http.EntityReaders;
-import io.helidon.common.http.EntityWriters;
+import io.helidon.common.http.MessageBody.Filter;
+import io.helidon.common.http.MessageBody.Reader;
+import io.helidon.common.http.MessageBody.Writer;
+import io.helidon.common.http.MessageBodyReaderContext;
+import io.helidon.common.http.MessageBodyWriterContext;
 
 /**
  * Media support.
  */
 public final class MediaSupport {
 
-    final EntityReaders readers;
-    final EntityWriters writers;
+    private final MessageBodyReaderContext readerContext;
+    private final MessageBodyWriterContext writerContext;
 
-    public MediaSupport() {
-        readers = new EntityReaders();
-        writers = new EntityWriters();
+    private MediaSupport(MessageBodyReaderContext readerContext,
+            MessageBodyWriterContext writerContext) {
+
+        this.readerContext = readerContext;
+        this.writerContext = writerContext;
     }
 
-    public MediaSupport(MediaSupport delegate) {
-        readers = new EntityReaders(delegate.readers);
-        writers = new EntityWriters(delegate.writers);
+    public MessageBodyReaderContext readerContext() {
+        return readerContext;
     }
 
-    private MediaSupport registerDefaults() {
-        // default readers
-        readers.registerReader(new StringReader());
-        readers.registerReader(new ByteArrayReader());
-        readers.registerReader(new InputStreamReader());
-
-        // default writers
-        writers.registerWriter(new ByteArrayCopyWriter());
-        writers.registerWriter(new CharSequenceWriter());
-        writers.registerWriter(new ByteChannelWriter());
-        writers.registerWriter(new PathEntityWriter());
-        writers.registerWriter(new FileWriter());
-        return this;
+    public MessageBodyWriterContext writerContext() {
+        return writerContext;
     }
 
-    public EntityReaders readers() {
-        return readers;
-    }
-
-    public EntityWriters writers() {
-        return writers;
+    public static MediaSupport create() {
+        return builder().build();
     }
 
     public static MediaSupport createWithDefaults() {
-        return new MediaSupport().registerDefaults();
+        return builder().registerDefaults().build();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder
+            implements io.helidon.common.Builder<MediaSupport> {
+
+        private final MessageBodyReaderContext readerContext;
+        private final MessageBodyWriterContext writerContext;
+
+        Builder() {
+            readerContext = MessageBodyReaderContext.create();
+            writerContext = MessageBodyWriterContext.create();
+        }
+
+        public Builder registerDefaults() {
+            // default readers
+            readerContext
+                    .registerReader(StringReader.create())
+                    .registerReader(ByteArrayReader.create())
+                    .registerReader(InputStreamReader.create());
+
+            // default writers
+            writerContext
+                    .registerWriter(ByteArrayWriter.create(/* copy */ true))
+                    .registerWriter(CharSequenceWriter.create())
+                    .registerWriter(ByteChannelWriter.create())
+                    .registerWriter(PathWriter.create())
+                    .registerWriter(FileWriter.create());
+            return this;
+        }
+
+        public Builder registerReader(Reader<?> reader) {
+            readerContext.registerReader(reader);
+            return this;
+        }
+
+        public Builder registerStreamReader(Reader<?> reader) {
+            readerContext.registerStreamReader(reader);
+            return this;
+        }
+
+        public Builder registerInboundFilter(Filter filter) {
+            writerContext.registerFilter(filter);
+            return this;
+        }
+
+        public Builder registerWriter(Writer<?> writer) {
+            writerContext.registerWriter(writer);
+            return this;
+        }
+
+        public Builder registerStreamWriter(Writer<?> writer) {
+            writerContext.registerStreamWriter(writer);
+            return this;
+        }
+
+        public Builder registerOutboundFilter(Filter filter) {
+            writerContext.registerFilter(filter);
+            return this;
+        }
+
+        @Override
+        public MediaSupport build() {
+            return new MediaSupport(readerContext, writerContext);
+        }
     }
 }

@@ -1,42 +1,62 @@
 package io.helidon.media.common;
 
+import io.helidon.common.reactive.SingleInputProcessor;
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityReader;
-import io.helidon.common.http.InBoundScope;
+import io.helidon.common.http.MessageBody.Reader;
+import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import java.nio.charset.Charset;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 /**
- * String entity reader.
+ * Reader for String.
  */
-public final class StringReader implements EntityReader<String> {
+public final class StringReader implements Reader<String> {
 
-    @Override
-    public boolean accept(Class<?> type, InBoundScope scope) {
-        return String.class.isAssignableFrom(type);
+    private StringReader() {
     }
 
     @Override
-    public CompletionStage<? extends String> readEntity(
-            Publisher<DataChunk> publisher, Class<? super String> type,
-            InBoundScope scope) {
-
-        return read(publisher, scope.charset());
+    public boolean accept(GenericType<?> type, ReaderContext context) {
+        return String.class.isAssignableFrom(type.rawType());
     }
 
-    public static CompletionStage<String> read(Publisher<DataChunk> publisher,
-            Charset charset) {
+    @Override
+    public <U extends String> Publisher<U> read(Publisher<DataChunk> publisher,
+            GenericType<U> type, ReaderContext context) {
 
-        try {
-            return ByteArrayReader.read(publisher)
-                    .thenApply(bytes -> new String(bytes, charset));
-        } catch (IllegalStateException ex) {
-            CompletableFuture<String> result = new CompletableFuture<>();
-            result.completeExceptionally(new IllegalArgumentException(
-                    "Cannot produce a string with the expected charset.", ex));
-            return result;
+        return read(publisher, context.charset());
+    }
+
+    public static <U extends String> Publisher<U> read(
+            Publisher<DataChunk> publisher, Charset charset) {
+
+        Processor processor = new Processor(charset);
+        ByteArrayReader.read(publisher).subscribe(processor);
+        return processor;
+    }
+
+    public static StringReader create() {
+        return new StringReader();
+    }
+
+    private static final class Processor <U extends String>
+            extends SingleInputProcessor<byte[], U> {
+
+        private final Charset charset;
+
+        Processor(Charset charset) {
+            this.charset = charset;
+        }
+
+        @Override
+        protected U wrap(byte[] data) {
+            return (U) new String(data, charset);
+        }
+
+        @Override
+        public void onComplete() {
+            complete();
         }
     }
 }

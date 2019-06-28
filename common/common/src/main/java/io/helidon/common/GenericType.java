@@ -82,6 +82,10 @@ public class GenericType<T> implements Type {
         return new GenericType<>(genericType, GenericTypeUtil.rawClass(genericType));
     }
 
+    public static <N> GenericType<N> create(Class<N> clazz) throws IllegalArgumentException {
+        return GenericType.<N>create((Type)clazz);
+    }
+
     private GenericType(Type type, Class<?> rawType) {
         this.type = type;
         this.rawType = rawType;

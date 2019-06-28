@@ -24,23 +24,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import io.helidon.common.http.ContextualRegistry;
-import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.http.InBoundContent;
-import io.helidon.common.http.ContentInterceptor;
-import io.helidon.common.http.EntityReaders;
 import io.opentracing.Span;
 
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import io.helidon.common.http.InBoundScope;
+
+import io.helidon.common.GenericType;
 
 import static io.helidon.common.CollectionsHelper.mapOf;
+import io.helidon.common.http.MessageBody.ReadableContent;
+import io.helidon.common.http.MessageBodyContextBase;
+import io.helidon.common.http.MessageBodyReadableContent;
+import io.helidon.common.http.MessageBodyReaderContext;
 
 /**
  * The basic abstract implementation of {@link ServerRequest}.
@@ -58,7 +58,8 @@ abstract class Request implements ServerRequest {
     private final ContextualRegistry context;
     private final Parameters queryParams;
     private final HashRequestHeaders headers;
-    private final InBoundContent content;
+    private final ReadableContent content;
+    private final MessageBodyEventListener eventListener;
 
     /**
      * Creates new instance.
@@ -66,19 +67,19 @@ abstract class Request implements ServerRequest {
      * @param req bare request from HTTP SPI implementation.
      * @param webServer relevant server.
      */
-    Request(BareRequest req, WebServer webServer, HashRequestHeaders headers,
-            EntityReaders readers) {
-
+    Request(BareRequest req, WebServer webServer, HashRequestHeaders headers) {
         this.bareRequest = req;
         this.webServer = webServer;
         this.headers = headers;
         this.context = ContextualRegistry.create(webServer.context());
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
                 /* decode */ true);
-        InBoundScope scope = new InBoundScope(headers, DEFAULT_CHARSET,
-                headers.contentType().orElse(null), readers);
-        this.content = new InBoundContent(req.bodyPublisher(),
-                scope, new ContentReadInterceptorFactory());
+        this.eventListener = new MessageBodyEventListener();
+        MessageBodyReaderContext readerContext = MessageBodyReaderContext
+                .create(webServer.mediaSupport().readerContext(),
+                        eventListener, headers, headers.contentType());
+        this.content = MessageBodyReadableContent.create(req.bodyPublisher(),
+                readerContext);
     }
 
     /**
@@ -92,7 +93,8 @@ abstract class Request implements ServerRequest {
         this.context = request.context;
         this.queryParams = request.queryParams;
         this.headers = request.headers;
-        this.content = new InBoundContent(request.content);
+        this.content = request.content;
+        this.eventListener = request.eventListener;
     }
 
     /**
@@ -182,7 +184,7 @@ abstract class Request implements ServerRequest {
     }
 
     @Override
-    public InBoundContent content() {
+    public ReadableContent content() {
         return this.content;
     }
 
@@ -191,64 +193,46 @@ abstract class Request implements ServerRequest {
         return bareRequest.requestId();
     }
 
-    /**
-     * Server request {@link InBoundScope} implementation.
-     */
-    private final class ContentReadInterceptorFactory
-            implements ContentInterceptor.Factory {
-
-        @Override
-        public ContentInterceptor create(
-                Subscriber<? super DataChunk> subscriber) {
-
-            return new ContentReadInterceptor(subscriber);
-        }
-    }
-
-    /**
-     * Subscriber interceptor used to trace content read events.
-     */
-    private final class ContentReadInterceptor extends ContentInterceptor {
+    private final class MessageBodyEventListener
+            implements MessageBodyContextBase.EventListener {
 
         private Span readSpan;
 
-        /**
-         * Create a new content read interceptor.
-         * @param subscriber delegate subscriber
-         * @param type type requested for conversion
-         */
-        ContentReadInterceptor(Subscriber<? super DataChunk> subscriber) {
-            super(subscriber);
-        }
-
         @Override
-        public void beforeOnSubscribe(String type) {
-            Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-read");
-            if (span() != null) {
-                spanBuilder.asChildOf(span());
-            }
-            if (type != null) {
-                spanBuilder.withTag("requested.type", type);
-            }
-            readSpan = spanBuilder.start();
-        }
+        public void onEvent(MessageBodyContextBase.Event event) {
+            switch(event.eventType()) {
+                case BEFORE_ONSUBSCRIBE:
+                    Tracer.SpanBuilder spanBuilder = tracer()
+                            .buildSpan("content-read");
+                    Span span = span();
+                    if (span != null) {
+                        spanBuilder.asChildOf(span);
+                    }
+                    GenericType<?> type = event.entityType().orElse(null);
+                    if (type != null) {
+                        spanBuilder.withTag("requested.type",
+                                type.getTypeName());
+                    }
+                    readSpan = spanBuilder.start();
+                    break;
 
-        @Override
-        public void afterOnError(Throwable ex, String type) {
-            if (readSpan != null) {
-                Tags.ERROR.set(readSpan, Boolean.TRUE);
-                readSpan.log(mapOf("event", "error",
-                        "error.kind", "Exception",
-                        "error.object", ex,
-                        "message", ex.toString()));
-                readSpan.finish();
-            }
-        }
-
-        @Override
-        public void afterOnComplete(String type) {
-            if (readSpan != null) {
-                readSpan.finish();
+                case AFTER_ONERROR:
+                    if (readSpan != null) {
+                        Tags.ERROR.set(readSpan, Boolean.TRUE);
+                        Throwable ex = event.asErrorEvent().error();
+                        readSpan.log(mapOf("event", "error",
+                                "error.kind", "Exception",
+                                "error.object", ex,
+                                "message", ex.toString()));
+                        readSpan.finish();
+                    }
+                    break;
+                case AFTER_ONCOMPLETE:
+                    if (readSpan != null) {
+                        readSpan.finish();
+                    }
+                default:
+                    // do nothing
             }
         }
     }

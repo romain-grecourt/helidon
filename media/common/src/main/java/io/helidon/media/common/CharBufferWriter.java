@@ -1,49 +1,64 @@
 package io.helidon.media.common;
 
+import io.helidon.common.reactive.SingleInputProcessor;
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityWriter;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.OutBoundScope;
-import io.helidon.common.reactive.EmptyPublisher;
-import io.helidon.common.reactive.FailedPublisher;
+import io.helidon.common.http.MessageBody.Writer;
+import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.SingleItemPublisher;
 import java.nio.charset.Charset;
 
 /**
- * Entity writer for {@link CharBuffer}.
+ * Writer for {@link CharBuffer}.
  */
-public final class CharBufferWriter implements EntityWriter<CharBuffer> {
+public final class CharBufferWriter implements Writer<CharBuffer> {
 
-    @Override
-    public Ack accept(Object entity, Class<?> type, OutBoundScope scope) {
-        if (CharBuffer.class.isAssignableFrom(type)){
-            return new Ack(MediaType.TEXT_PLAIN);
-        }
-        return null;
+    private CharBufferWriter() {
     }
 
     @Override
-    public Publisher<DataChunk> writeEntity(CharBuffer buffer,
-            OutBoundScope scope) {
-
-        if (buffer == null || buffer.size() == 0) {
-            return new EmptyPublisher<>();
-        }
-        try {
-            return write(buffer, scope.charset());
-        } catch (IllegalStateException ex) {
-            return new FailedPublisher<>(ex);
-        }
+    public boolean accept(GenericType<?> type, WriterContext context) {
+        return CharBuffer.class.isAssignableFrom(type.rawType());
     }
 
-    public static Publisher<DataChunk> write(CharBuffer buffer,
-            Charset charset) {
+    @Override
+    public <U extends CharBuffer> Publisher<DataChunk> write(
+            Publisher<U> content, GenericType<U> type, WriterContext context) {
 
-        if (buffer == null || buffer.size() == 0) {
-            return new EmptyPublisher<>();
+        context.contentType(MediaType.TEXT_PLAIN);
+        return write(content, context.charset());
+    }
+
+    public static Publisher<DataChunk> write(Publisher<? extends CharBuffer>
+            content, Charset charset) {
+
+        Processor processor = new Processor(charset);
+        content.subscribe(processor);
+        return processor;
+    }
+
+    public static CharBufferWriter create() {
+        return new CharBufferWriter();
+    }
+
+    private static final class Processor
+            extends SingleInputProcessor<CharBuffer, DataChunk> {
+
+        private final Charset charset;
+
+        Processor(Charset charset) {
+            this.charset = charset;
         }
-        DataChunk chunk = DataChunk.create(false,buffer.encode(charset));
-        return new SingleItemPublisher<>(chunk);
+
+        @Override
+        protected DataChunk wrap(CharBuffer buffer) {
+            return DataChunk.create(false, buffer.encode(charset));
+        }
+
+        @Override
+        public void onComplete() {
+            complete();
+        }
     }
 }

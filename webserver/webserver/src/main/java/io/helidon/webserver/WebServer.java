@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.helidon.common.http.ContextualRegistry;
+import io.helidon.media.common.MediaSupport;
 
 /**
  * Represents a immutably configured WEB server.
@@ -81,6 +82,8 @@ public interface WebServer {
      * @return a server context
      */
     ContextualRegistry context();
+
+    MediaSupport mediaSupport();
 
     /**
      * Returns a port number the default server socket is bound to and is listening on;
@@ -219,8 +222,8 @@ public interface WebServer {
 
         private final Map<String, Routing> routings = new HashMap<>();
         private final Routing defaultRouting;
-
         private ServerConfiguration configuration;
+        private MediaSupport mediaSupport;
 
         private Builder(Routing defaultRouting) {
             Objects.requireNonNull(defaultRouting, "Parameter 'default routing' must not be null!");
@@ -291,6 +294,11 @@ public interface WebServer {
             return addNamedRouting(name, routingBuilder.get());
         }
 
+        public Builder mediaSupport(MediaSupport mediaSupport) {
+            this.mediaSupport = mediaSupport;
+            return this;
+        }
+
         /**
          * Builds the {@link WebServer} instance as configured by this builder and its parameters.
          *
@@ -310,10 +318,13 @@ public interface WebServer {
                 throw new IllegalStateException("No server socket configuration found for named routings: " + unpairedRoutings);
             }
 
+            if (mediaSupport == null) {
+                mediaSupport = MediaSupport.createWithDefaults();
+            }
             WebServer result = new NettyWebServer(configuration == null
                                                           ? ServerBasicConfig.DEFAULT_CONFIGURATION
                                                           : configuration,
-                                                  defaultRouting, routings);
+                                                  defaultRouting, routings, mediaSupport);
             if (defaultRouting instanceof RequestRouting) {
                 ((RequestRouting) defaultRouting).fireNewWebServer(result);
             }

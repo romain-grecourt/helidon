@@ -35,6 +35,7 @@ import java.util.logging.Logger;
 
 import io.helidon.common.Version;
 import io.helidon.common.http.ContextualRegistry;
+import io.helidon.media.common.MediaSupport;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -69,6 +70,7 @@ class NettyWebServer implements WebServer {
     private final ContextualRegistry contextualRegistry;
     private final ConcurrentMap<String, Channel> channels = new ConcurrentHashMap<>();
     private final List<HttpInitializer> initializers = new LinkedList<>();
+    private final MediaSupport mediaSupport;
 
     private volatile boolean started;
     private final AtomicBoolean shutdownThreadGroupsInitiated = new AtomicBoolean(false);
@@ -84,7 +86,7 @@ class NettyWebServer implements WebServer {
      */
     NettyWebServer(ServerConfiguration config,
                    Routing routing,
-                   Map<String, Routing> namedRoutings) {
+                   Map<String, Routing> namedRoutings, MediaSupport mediaSupport) {
         Set<Map.Entry<String, SocketConfiguration>> sockets = config.sockets().entrySet();
 
         LOGGER.info(() -> "Version: " + Version.VERSION);
@@ -92,6 +94,7 @@ class NettyWebServer implements WebServer {
         this.workerGroup = config.workersCount() <= 0 ? new NioEventLoopGroup() : new NioEventLoopGroup(config.workersCount());
         this.contextualRegistry = ContextualRegistry.create(config.context());
         this.configuration = config;
+        this.mediaSupport = mediaSupport;
 
         for (Map.Entry<String, SocketConfiguration> entry : sockets) {
             String name = entry.getKey();
@@ -138,6 +141,11 @@ class NettyWebServer implements WebServer {
     @Override
     public ServerConfiguration configuration() {
         return configuration;
+    }
+
+    @Override
+    public MediaSupport mediaSupport() {
+        return mediaSupport;
     }
 
     @Override

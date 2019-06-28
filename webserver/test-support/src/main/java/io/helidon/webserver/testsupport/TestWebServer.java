@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import io.helidon.common.http.ContextualRegistry;
+import io.helidon.media.common.MediaSupport;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 
@@ -32,10 +33,16 @@ class TestWebServer implements WebServer {
     private final CompletableFuture<WebServer> shutdownFuture = new CompletableFuture<>();
     private final ServerConfiguration configuration = ServerConfiguration.builder().build();
     private final ContextualRegistry context = ContextualRegistry.create();
+    private final MediaSupport mediaSupport = MediaSupport.createWithDefaults();
 
     @Override
     public ServerConfiguration configuration() {
         return configuration;
+    }
+
+    @Override
+    public MediaSupport mediaSupport() {
+        return mediaSupport;
     }
 
     @Override

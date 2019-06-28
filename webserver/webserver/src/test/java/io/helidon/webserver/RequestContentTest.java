@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.MessageBody.Filter;
 import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.ReactiveStreamsAdapter;
 import io.helidon.webserver.utils.TestUtils;
@@ -266,7 +267,7 @@ public class RequestContentTest {
         Request request = requestTestStub(Mono.never());
 
         assertThrows(NullPointerException.class, () -> {
-            request.content().registerFilter(null);
+            request.content().registerFilter((Filter)null);
         });
     }
 

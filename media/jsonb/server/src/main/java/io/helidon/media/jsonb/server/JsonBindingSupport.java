@@ -26,8 +26,8 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
-import io.helidon.media.jsonb.common.JsonBindingEntityReader;
-import io.helidon.media.jsonb.common.JsonBindingEntityWriter;
+import io.helidon.media.jsonb.common.JsonbReader;
+import io.helidon.media.jsonb.common.JsonbWriter;
 import io.helidon.webserver.Routing;
 
 /**
@@ -36,12 +36,12 @@ import io.helidon.webserver.Routing;
  */
 public final class JsonBindingSupport implements Service, Handler {
 
-    private final JsonBindingEntityReader reader;
-    private final JsonBindingEntityWriter writer;
+    private final JsonbReader reader;
+    private final JsonbWriter writer;
 
     private JsonBindingSupport(final Jsonb jsonb) {
-        this.reader = new JsonBindingEntityReader(jsonb);
-        this.writer = new JsonBindingEntityWriter(jsonb);
+        this.reader = new JsonbReader(jsonb);
+        this.writer = new JsonbWriter(jsonb);
     }
 
     @Override

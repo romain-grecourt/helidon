@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Multipart entity.
+ * Multipart model.
  * @param <T> BodyPart type
  */
 public interface MultiPart <T extends BodyPart> {

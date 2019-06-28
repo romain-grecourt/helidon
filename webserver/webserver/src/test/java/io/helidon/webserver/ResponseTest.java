@@ -16,32 +16,24 @@
 
 package io.helidon.webserver;
 
-import static io.helidon.common.CollectionsHelper.listOf;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityWriters;
 import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
 
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 
+import static io.helidon.common.CollectionsHelper.listOf;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 
-import static io.helidon.common.reactive.ReactiveStreamsAdapter.publisherToFlow;
 
 /**
  * Tests {@link Response}.
@@ -235,7 +227,7 @@ public class ResponseTest {
     static class ResponseImpl extends Response {
 
         public ResponseImpl(WebServer webServer, BareResponse bareResponse) {
-            super(webServer, bareResponse, listOf(), new EntityWriters());
+            super(webServer, bareResponse, listOf());
         }
 
         @Override

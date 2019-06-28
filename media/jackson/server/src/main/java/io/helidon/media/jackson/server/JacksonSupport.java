@@ -16,8 +16,8 @@
 package io.helidon.media.jackson.server;
 
 import java.util.Objects;
-import io.helidon.media.jackson.common.JacksonEntityReader;
-import io.helidon.media.jackson.common.JacksonEntityWriter;
+import io.helidon.media.jackson.common.JacksonReader;
+import io.helidon.media.jackson.common.JacksonWriter;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -36,8 +36,8 @@ import io.helidon.webserver.Routing;
  */
 public final class JacksonSupport implements Service, Handler {
 
-    private final JacksonEntityReader reader;
-    private final JacksonEntityWriter writer;
+    private final JacksonReader reader;
+    private final JacksonWriter writer;
 
     /**
      * Creates a new {@link JacksonSupport}.
@@ -47,8 +47,8 @@ public final class JacksonSupport implements Service, Handler {
      * @exception NullPointerException if {@code objectMapper} is {@code null}
      */
     private JacksonSupport(final ObjectMapper objectMapper) {
-        this.reader = new JacksonEntityReader(objectMapper);
-        this.writer = new JacksonEntityWriter(objectMapper);
+        this.reader = new JacksonReader(objectMapper);
+        this.writer = new JacksonWriter(objectMapper);
     }
 
     @Override

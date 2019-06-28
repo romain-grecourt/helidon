@@ -17,11 +17,14 @@
 package io.helidon.media.jsonp.server;
 
 
-import javax.json.JsonReader;
+import io.helidon.common.http.MessageBody.Content;
+import io.helidon.media.jsonp.common.JsonpArrayStreamWriter;
+import io.helidon.media.jsonp.common.JsonpReader;
+import io.helidon.media.jsonp.common.JsonpStreamReader;
+import io.helidon.media.jsonp.common.JsonpWriter;
+import io.helidon.media.jsonp.common.JsonpLineDelimitedStreamWriter;
 import javax.json.JsonStructure;
-import javax.json.JsonWriter;
 
-import io.helidon.common.http.Content;
 import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
@@ -29,11 +32,6 @@ import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.WebServer;
 
-import io.helidon.media.jsonp.common.JsonArrayEntityStreamWriter;
-import io.helidon.media.jsonp.common.JsonEntityReader;
-import io.helidon.media.jsonp.common.JsonEntityStreamReader;
-import io.helidon.media.jsonp.common.JsonEntityWriter;
-import io.helidon.media.jsonp.common.JsonLineDelimitedEntityStreamWriter;
 import io.helidon.webserver.Service;
 
 /**
@@ -72,19 +70,19 @@ import io.helidon.webserver.Service;
  *
  * @see Routing
  * @see JsonStructure
- * @see JsonReader
- * @see JsonWriter
+ * @see JsonpReader
+ * @see JsonpWriter
  */
 public final class JsonSupport implements Service, Handler {
 
     private static final JsonSupport INSTANCE =
             new JsonSupport(JsonProcessing.create());
 
-    private final JsonEntityReader reader;
-    private final JsonEntityStreamReader streamReader;
-    private final JsonEntityWriter writer;
-    private final JsonLineDelimitedEntityStreamWriter lineStreamWriter;
-    private final JsonArrayEntityStreamWriter arrayStreamWriter;
+    private final JsonpReader reader;
+    private final JsonpStreamReader streamReader;
+    private final JsonpWriter writer;
+    private final JsonpLineDelimitedStreamWriter lineStreamWriter;
+    private final JsonpArrayStreamWriter arrayStreamWriter;
 
     private JsonSupport(JsonProcessing processing) {
         reader = processing.newReader();

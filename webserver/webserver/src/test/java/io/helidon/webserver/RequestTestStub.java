@@ -16,10 +16,8 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.EntityReaders;
 import io.helidon.media.common.MediaSupport;
 import java.net.URI;
-
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -51,8 +49,7 @@ public class RequestTestStub extends Request {
     }
 
     RequestTestStub(BareRequest req, WebServer webServer, Span span) {
-        super(req, webServer, new HashRequestHeaders(req.headers()),
-                MediaSupport.createWithDefaults().readers());
+        super(req, webServer, new HashRequestHeaders(req.headers()));
         this.span = span == null ? mock(Span.class) : span;
     }
 

@@ -16,8 +16,7 @@
 package io.helidon.media.multipart.common;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityReaders;
-import io.helidon.common.http.InBoundContent;
+import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
@@ -25,9 +24,10 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.logging.Logger;
-import io.helidon.common.http.InBoundScope;
-import java.nio.charset.Charset;
 import java.util.Objects;
+import java.util.Optional;
+import io.helidon.common.http.MessageBodyReadableContent;
+import io.helidon.common.http.MessageBodyReaderContext;
 
 /**
  * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
@@ -35,8 +35,8 @@ import java.util.Objects;
  * it is not resumable.
  */
 public final class MultiPartDecoder
-        extends OriginThreadPublisher<InBoundBodyPart, InBoundBodyPart>
-        implements Processor<DataChunk, InBoundBodyPart> {
+        extends OriginThreadPublisher<InboundBodyPart, InboundBodyPart>
+        implements Processor<DataChunk, InboundBodyPart> {
 
     /**
      * Logger.
@@ -57,12 +57,12 @@ public final class MultiPartDecoder
     /**
      * The builder for the current {@link BodyPart}.
      */
-    private InBoundBodyPart.Builder bodyPartBuilder;
+    private InboundBodyPart.Builder bodyPartBuilder;
 
     /**
-     * The builder for the current {@link InBoundBodyPartHeaders}.
+     * The builder for the current {@link InboundBodyPartHeaders}.
      */
-    private InBoundBodyPartHeaders.Builder bodyPartHeaderBuilder;
+    private InboundBodyPartHeaders.Builder bodyPartHeaderBuilder;
 
     /**
      * The publisher for the current part.
@@ -82,32 +82,23 @@ public final class MultiPartDecoder
     /**
      * The bodyParts processed during each {@code onNext}.
      */
-    private final Queue<InBoundBodyPart> bodyParts;
+    private final Queue<InboundBodyPart> bodyParts;
 
     /**
-     * The entity readers used to read the body part contents.
+     * The reader context.
      */
-    private final EntityReaders readers;
-
-    /**
-     * The default charset.
-     */
-    private final Charset defaultCharset;
+    private final MessageBodyReaderContext context;
 
     /**
      * Create a new instance.
      *
      * @param boundary mime message boundary
-     * @param defaultCharset default charset
-     * @param readers entity readers, may be {@code null}
+     * @param context inbound scope
      */
-    public MultiPartDecoder(String boundary, Charset defaultCharset,
-            EntityReaders readers) {
-
+    private MultiPartDecoder(String boundary, MessageBodyReaderContext context) {
         Objects.requireNonNull(boundary, "boundary cannot be null!");
-        Objects.requireNonNull(defaultCharset, "defaultCharset cannot be null!");
-        this.defaultCharset = defaultCharset;
-        this.readers = readers;
+        Objects.requireNonNull(context, "context cannot be null!");
+        this.context = context;
         parserEventProcessor = new ParserEventProcessor();
         parser = new MIMEParser(boundary, parserEventProcessor);
         bodyParts = new LinkedList<>();
@@ -144,7 +135,7 @@ public final class MultiPartDecoder
 
         // submit parsed parts
         while (!bodyParts.isEmpty()) {
-            InBoundBodyPart bodyPart = bodyParts.poll();
+            InboundBodyPart bodyPart = bodyParts.poll();
             submit(bodyPart);
         }
 
@@ -181,8 +172,21 @@ public final class MultiPartDecoder
     }
 
     @Override
-    protected InBoundBodyPart wrap(InBoundBodyPart data) {
+    protected InboundBodyPart wrap(InboundBodyPart data) {
         return data;
+    }
+
+    /**
+     * Create a new multipart decoder.
+     * @param boundary boundary string
+     * @param context reader context
+     * @return MultiPartDecoder
+     */
+    public static MultiPartDecoder create(String boundary,
+            ReaderContext context) {
+
+        return new MultiPartDecoder(boundary,
+                MessageBodyReaderContext.of(context));
     }
 
     /**
@@ -200,8 +204,8 @@ public final class MultiPartDecoder
             switch (eventType) {
                 case START_PART:
                     contentPublisher = new BodyPartContentPublisher();
-                    bodyPartHeaderBuilder = InBoundBodyPartHeaders.builder();
-                    bodyPartBuilder = InBoundBodyPart.builder();
+                    bodyPartHeaderBuilder = InboundBodyPartHeaders.builder();
+                    bodyPartBuilder = InboundBodyPart.builder();
                     break;
                 case HEADER:
                     MIMEParser.HeaderEvent headerEvent
@@ -210,13 +214,20 @@ public final class MultiPartDecoder
                             headerEvent.value());
                     break;
                 case END_HEADERS:
-                    InBoundBodyPartHeaders headers = bodyPartHeaderBuilder
+                    InboundBodyPartHeaders headers = bodyPartHeaderBuilder
                             .build();
-                    InBoundContent partContent = new InBoundContent(
-                            contentPublisher,
-                            new InBoundScope(headers,
-                                    defaultCharset, headers.contentType(),
-                                    readers));
+
+                    // create a reader context for the part
+                    MessageBodyReaderContext partContext =
+                            MessageBodyReaderContext.create(context,
+                                    /* eventListener */ null, headers,
+                                    Optional.of(headers.contentType()));
+
+                    // create a readable content for the part
+                    MessageBodyReadableContent partContent =
+                            MessageBodyReadableContent.create(contentPublisher,
+                                    partContext);
+       
                     bodyParts.add(bodyPartBuilder
                             .headers(headers)
                             .content(partContent)

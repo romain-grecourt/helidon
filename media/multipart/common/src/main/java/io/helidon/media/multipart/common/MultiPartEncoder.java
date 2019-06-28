@@ -16,7 +16,9 @@
 package io.helidon.media.multipart.common;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.EntityWriters;
+import io.helidon.common.http.MessageBody.WriterContext;
+import io.helidon.common.http.MessageBodyWriteableContent;
+import io.helidon.common.http.MessageBodyWriterContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -24,6 +26,7 @@ import io.helidon.common.reactive.OriginThreadPublisher;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Reactive processor that encodes a stream of {@link BodyPart} into an HTTP
@@ -32,15 +35,15 @@ import java.util.Map;
  */
 public final class MultiPartEncoder
         extends OriginThreadPublisher<DataChunk, DataChunk>
-        implements Processor<OutBoundBodyPart, DataChunk> {
+        implements Processor<OutboundBodyPart, DataChunk> {
 
     private Subscription partsSubscription;
     private BodyPartContentSubscriber contentSubscriber;
 
     /**
-     * The out-bound media support used to marshall the body part contents.
+     * The writer context.
      */
-    private final EntityWriters writers;
+    private final MessageBodyWriterContext context;
 
     /**
      * The boundary used for the generated multi-part message.
@@ -55,12 +58,12 @@ public final class MultiPartEncoder
     /**
      * Create a new multipart encoder.
      * @param boundary boundary string
-     * @param writers entity writers support
+     * @param context writer context
      */
-    public MultiPartEncoder(String boundary,
-            EntityWriters writers) {
-
-        this.writers = writers;
+    private MultiPartEncoder(String boundary, MessageBodyWriterContext context) {
+        Objects.requireNonNull(boundary, "boundary cannot be null!");
+        Objects.requireNonNull(context, "context cannot be null!");
+        this.context = context;
         this.boundary = boundary;
         this.complete = false;
     }
@@ -85,7 +88,7 @@ public final class MultiPartEncoder
     }
 
     @Override
-    public void onNext(OutBoundBodyPart bodyPart) {
+    public void onNext(OutboundBodyPart bodyPart) {
         Map<String, List<String>> headers = bodyPart.headers().toMap();
         StringBuilder sb = new StringBuilder();
 
@@ -109,8 +112,8 @@ public final class MultiPartEncoder
         sb.append("\r\n");
         submit(sb.toString());
         contentSubscriber = new BodyPartContentSubscriber(this);
-        bodyPart.content()
-                .toPublisher(writers, bodyPart.headers())
+        MessageBodyWriteableContent.of(bodyPart.content())
+                .toPublisher(context)
                 .subscribe(contentSubscriber);
     }
 
@@ -196,5 +199,12 @@ public final class MultiPartEncoder
                 subscription.request(n);
             }
         }
+    }
+
+    public static MultiPartEncoder create(String boundary,
+            WriterContext context) {
+
+        return new MultiPartEncoder(boundary,
+                MessageBodyWriterContext.of(context));
     }
 }

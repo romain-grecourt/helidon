@@ -15,36 +15,35 @@
  */
 package io.helidon.media.multipart.server;
 
-import io.helidon.media.multipart.common.BodyPartEntityStreamReader;
-import io.helidon.media.multipart.common.BodyPartEntityStreamWriter;
-import io.helidon.media.multipart.common.MultiPartEntityReader;
-import io.helidon.media.multipart.common.MultiPartEntityWriter;
+import io.helidon.media.multipart.common.BodyPartStreamReader;
+import io.helidon.media.multipart.common.BodyPartStreamWriter;
+import io.helidon.media.multipart.common.MultiPartReader;
+import io.helidon.media.multipart.common.MultiPartWriter;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
 
-import static io.helidon.media.multipart.common.MultiPartEntityWriter.DEFAULT_BOUNDARY;
 
 /**
  * Multi part support service.
  */
 public final class MultiPartSupport implements Service, Handler {
 
-    private final MultiPartEntityWriter multiPartWriter;
-    private final MultiPartEntityReader multiPartReader;
-    private final BodyPartEntityStreamWriter bodyPartWriter;
-    private final BodyPartEntityStreamReader bodyPartReader;
+    private final MultiPartWriter multiPartWriter;
+    private final MultiPartReader multiPartReader;
+    private final BodyPartStreamWriter bodyPartWriter;
+    private final BodyPartStreamReader bodyPartReader;
 
     /**
      * Forces the use of {@link #create()}.
      */
     private MultiPartSupport(){
-        multiPartReader = new MultiPartEntityReader();
-        multiPartWriter = new MultiPartEntityWriter(DEFAULT_BOUNDARY);
-        bodyPartReader = new BodyPartEntityStreamReader();
-        bodyPartWriter = new BodyPartEntityStreamWriter(DEFAULT_BOUNDARY);
+        multiPartReader = MultiPartReader.create();
+        multiPartWriter = MultiPartWriter.create();
+        bodyPartReader = BodyPartStreamReader.create();
+        bodyPartWriter = BodyPartStreamWriter.create();
     }
 
     /**
