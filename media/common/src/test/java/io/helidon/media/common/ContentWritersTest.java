@@ -20,10 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow;
-//import io.helidon.media.common.ContentWriters;
-//import io.helidon.media.common.ContentWriters;
-//import io.helidon.webserver.utils.CollectingSubscriber;
+import io.helidon.common.reactive.Flow.Publisher;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,52 +28,46 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * A test for {@link io.helidon.media.common.ContentWriters}
+ * A test for {@link io.helidon.media.common.ContentWriters}.
  */
 public class ContentWritersTest {
 
-//    @Test
-//    public void byteWriter() throws Exception {
-//        Function<byte[], Flow.Publisher<DataChunk>> f = ContentWriters.byteArrayWriter(false);
-//        byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
-//        Flow.Publisher<DataChunk> publisher = f.apply(bytes);
-//        CollectingSubscriber subscriber = new CollectingSubscriber();
-//        subscriber.subscribeOn(publisher);
-//        byte[] result = subscriber.result().get();
-//        assertThat(bytes, is(result));
-//    }
-//
-//    @Test
-//    public void copyByteWriter() throws Exception {
-//        Function<byte[], Flow.Publisher<DataChunk>> f = ContentWriters.byteArrayWriter(true);
-//        byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
-//        Flow.Publisher<DataChunk> publisher = f.apply(bytes);
-//        System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes, 0, bytes.length);
-//        CollectingSubscriber subscriber = new CollectingSubscriber();
-//        subscriber.subscribeOn(publisher);
-//        byte[] result = subscriber.result().get();
-//        assertThat("abc".getBytes(StandardCharsets.ISO_8859_1), is(result));
-//    }
-//
-//    @Test
-//    public void byteWriterEmpty() throws Exception {
-//        Function<byte[], Flow.Publisher<DataChunk>> f = ContentWriters.byteArrayWriter(false);
-//        byte[] bytes = new byte[0];
-//        Flow.Publisher<DataChunk> publisher = f.apply(bytes);
-//        CollectingSubscriber subscriber = new CollectingSubscriber();
-//        subscriber.subscribeOn(publisher);
-//        byte[] result = subscriber.result().get();
-//        assertThat(result.length, is(0));
-//    }
-//
-//    @Test
-//    public void charSequenceWriter() throws Exception {
-//        Function<CharSequence, Flow.Publisher<DataChunk>> f = ContentWriters.charSequenceWriter(StandardCharsets.UTF_8);
-//        String data = "abc";
-//        Flow.Publisher<DataChunk> publisher = f.apply(data);
-//        CollectingSubscriber subscriber = new CollectingSubscriber();
-//        subscriber.subscribeOn(publisher);
-//        byte[] result = subscriber.result().get();
-//        assertThat(new String(result, StandardCharsets.UTF_8), is(data));
-//    }
+    @Test
+    public void byteWriter() throws Exception {
+        byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
+        Publisher<DataChunk> publisher = ContentWriters.byteArrayWriter(false)
+                .apply(bytes);
+        ByteArrayReader.read(publisher).block().toByteArray();
+        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        assertThat(bytes, is(result));
+    }
+
+    @Test
+    public void copyByteWriter() throws Exception {
+        byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
+        Publisher<DataChunk> publisher = ContentWriters.byteArrayWriter(true)
+                .apply(bytes);
+        System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes,
+                0, bytes.length);
+        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        assertThat("abc".getBytes(StandardCharsets.ISO_8859_1), is(result));
+    }
+
+    @Test
+    public void byteWriterEmpty() throws Exception {
+        byte[] bytes = new byte[0];
+        Publisher<DataChunk> publisher = ContentWriters.byteArrayWriter(false)
+                .apply(bytes);
+        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        assertThat(result.length, is(0));
+    }
+
+    @Test
+    public void charSequenceWriter() throws Exception {
+        String data = "abc";
+        Publisher<DataChunk> publisher = ContentWriters
+                .charSequenceWriter(StandardCharsets.UTF_8).apply(data);
+        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        assertThat(new String(result, StandardCharsets.UTF_8), is(data));
+    }
 }

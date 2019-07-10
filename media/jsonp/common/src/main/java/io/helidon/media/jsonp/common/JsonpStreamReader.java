@@ -4,6 +4,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.http.MessageBody.ReaderContext;
+import io.helidon.common.http.MessageBody.StreamReader;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
@@ -15,7 +16,7 @@ import javax.json.JsonStructure;
 /**
  * JSON-P content stream reader.
  */
-public class JsonpStreamReader implements Reader<JsonStructure> {
+public class JsonpStreamReader implements StreamReader<JsonStructure> {
 
     private final JsonReaderFactory jsonFactory;
 

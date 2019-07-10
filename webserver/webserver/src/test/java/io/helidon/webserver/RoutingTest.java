@@ -21,13 +21,17 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.Http;
-import io.helidon.common.reactive.EmptyPublisher;
+import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.MediaSupport;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link Routing#route(BareRequest, BareResponse)}.
@@ -114,13 +118,14 @@ public class RoutingTest {
     }
 
     static BareRequest mockRequest(String path, Http.Method method) {
-        BareRequest bareRequestMock = Mockito.mock(BareRequest.class);
-        Mockito.doReturn(URI.create("http://0.0.0.0:1234/" + path)).when(bareRequestMock).uri();
-        Mockito.doReturn(method).when(bareRequestMock).method();
-        Mockito.doReturn(new EmptyPublisher<>()).when(bareRequestMock).bodyPublisher();
-        WebServer webServerMock = Mockito.mock(WebServer.class);
-        Mockito.when(webServerMock.context()).thenReturn(ContextualRegistry.create());
-        Mockito.doReturn(webServerMock).when(bareRequestMock).webServer();
+        BareRequest bareRequestMock = mock(BareRequest.class);
+        doReturn(URI.create("http://0.0.0.0:1234/" + path)).when(bareRequestMock).uri();
+        doReturn(method).when(bareRequestMock).method();
+        doReturn(Mono.empty()).when(bareRequestMock).bodyPublisher();
+        WebServer webServerMock = mock(WebServer.class);
+        doReturn(MediaSupport.createWithDefaults()).when(webServerMock).mediaSupport();
+        when(webServerMock.context()).thenReturn(ContextualRegistry.create());
+        doReturn(webServerMock).when(bareRequestMock).webServer();
         return bareRequestMock;
     }
 

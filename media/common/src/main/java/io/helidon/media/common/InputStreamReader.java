@@ -6,10 +6,10 @@ import io.helidon.common.reactive.Flow.Publisher;
 import java.io.InputStream;
 import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.http.MessageBody.ReaderContext;
-import io.helidon.common.reactive.SingleItemPublisher;
+import io.helidon.common.reactive.Mono;
 
 /**
- * Entity reader for {@code InputStream}.
+ * InputStream message body reader.
  */
 public class InputStreamReader implements Reader<InputStream> {
 
@@ -23,11 +23,15 @@ public class InputStreamReader implements Reader<InputStream> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends InputStream> Publisher<U> read(
+    public <U extends InputStream> Mono<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
             ReaderContext context) {
 
-        return new SingleItemPublisher<>((U) new PublisherInputStream(publisher));
+        return (Mono<U>) read(publisher);
+    }
+
+    public static Mono<InputStream> read(Publisher<DataChunk> publisher) {
+        return Mono.just(new PublisherInputStream(publisher));
     }
 
     public static InputStreamReader create() {

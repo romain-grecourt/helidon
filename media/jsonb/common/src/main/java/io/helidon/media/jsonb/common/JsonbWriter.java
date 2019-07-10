@@ -3,7 +3,6 @@ package io.helidon.media.jsonb.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.CharBufferWriter;
@@ -12,9 +11,9 @@ import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbException;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriterContext;
-import io.helidon.common.reactive.SingleItemPublisher;
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
+import io.helidon.common.reactive.Mono;
 import java.nio.charset.Charset;
+import java.util.function.Function;
 
 /**
  * JSON-B writer.
@@ -34,39 +33,36 @@ public class JsonbWriter implements Writer<Object> {
     }
 
     @Override
-    public <U> Publisher<DataChunk> write(Publisher<U> content,
-            GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Mono<Object> content,
+            GenericType<? extends Object> type, WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        Processor processor = new Processor(jsonb, context.charset());
-        content.subscribe(processor);
-        return processor;
+        return content.flatMapMany(new Mapper(jsonb, context.charset()));
     }
 
-    private static final class Processor
-            extends SingleInputDelegatingProcessor<Object, DataChunk> {
+    private static final class Mapper
+            implements Function<Object, Publisher<DataChunk>> {
 
         private final Jsonb jsonb;
         private final Charset charset;
 
-        Processor(Jsonb jsonb, Charset charset) {
+        Mapper(Jsonb jsonb, Charset charset) {
             this.jsonb = jsonb;
             this.charset = charset;
         }
 
         @Override
-        protected Publisher<DataChunk> delegate(Object item) {
+        public Publisher<DataChunk> apply(Object item) {
             CharBuffer buffer = new CharBuffer();
             try {
                 jsonb.toJson(item, buffer);
                 return CharBufferWriter
-                        .write(new SingleItemPublisher<>(buffer), charset);
+                        .write(Mono.just(buffer), charset);
             } catch (IllegalStateException | JsonbException ex) {
-                return new FailedPublisher<>(ex);
+                return Mono.<DataChunk>error(ex);
             }
         }
-
     }
 }

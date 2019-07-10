@@ -13,14 +13,20 @@ import io.helidon.common.http.MessageBody.Operator;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Mono;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Base message body context implementation.
  */
 public abstract class MessageBodyContextBase implements Filters {
+
+    private static final Logger LOGGER =
+            Logger.getLogger(MessageBodyContextBase.class.getName());
 
     /**
      * Subscription event listener.
@@ -172,6 +178,7 @@ public abstract class MessageBodyContextBase implements Filters {
 
     @Override
     public MessageBodyContextBase registerFilter(Filter filter) {
+        Objects.requireNonNull(filter, "filter is null!");
         filters.registerLast(new FilterOperator(filter));
         return this;
     }
@@ -181,6 +188,7 @@ public abstract class MessageBodyContextBase implements Filters {
     public void registerFilter(
             Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
 
+        Objects.requireNonNull(function, "filter function is null!");
         filters.registerLast(new FilterOperator(new FunctionFilter(function)));
     }
 
@@ -193,7 +201,9 @@ public abstract class MessageBodyContextBase implements Filters {
     private Publisher<DataChunk> doApplyFilters(Publisher<DataChunk> publisher,
             EventListener listener) {
 
-        Objects.requireNonNull(publisher, "publisher cannot be null!");
+        if (publisher == null) {
+            publisher = Mono.<DataChunk>empty();
+        }
         try {
             Publisher<DataChunk> last = publisher;
             for (Filter filter : filters) {
@@ -272,49 +282,55 @@ public abstract class MessageBodyContextBase implements Filters {
             this.listener = listener;
         }
 
+        private void fireEvent(Event event) {
+            if (listener != null) {
+                try {
+                    listener.onEvent(event);
+                } catch (Throwable ex) {
+                    LOGGER.log(Level.WARNING,
+                            "An exception occurred in EventListener.onEvent",
+                            ex);
+                }
+            }
+        }
+
         @Override
         public void onSubscribe(Subscription subscription) {
-            if (listener != null) {
-                listener.onEvent(BEFORE_ONSUBSCRIBE);
-            }
-            delegate.onSubscribe(subscription);
-            if (listener != null) {
-                listener.onEvent(AFTER_ONSUBSCRIBE);
+            fireEvent(BEFORE_ONSUBSCRIBE);
+            try {
+                delegate.onSubscribe(subscription);
+            } finally {
+                fireEvent(AFTER_ONSUBSCRIBE);
             }
         }
 
         @Override
         public void onNext(DataChunk item) {
-            if (listener != null) {
-                listener.onEvent(BEFORE_ONNEXT);
-            }
-            delegate.onNext(item);
-            if (listener != null) {
-                listener.onEvent(AFTER_ONNEXT);
+            fireEvent(BEFORE_ONNEXT);
+            try {
+                delegate.onNext(item);
+            } finally {
+                fireEvent(AFTER_ONNEXT);
             }
         }
 
         @Override
         public void onError(Throwable error) {
-            if (listener != null) {
-                listener.onEvent(new ErrorEventImpl(error,
-                        EVENT_TYPE.BEFORE_ONERROR));
-            }
-            delegate.onError(error);
-            if (listener != null) {
-                listener.onEvent(new ErrorEventImpl(error,
-                        EVENT_TYPE.AFTER_ONERROR));
+            fireEvent(new ErrorEventImpl(error, EVENT_TYPE.BEFORE_ONERROR));
+            try {
+                delegate.onError(error);
+            } finally {
+                fireEvent(new ErrorEventImpl(error, EVENT_TYPE.AFTER_ONERROR));
             }
         }
 
         @Override
         public void onComplete() {
-            if (listener != null) {
-                listener.onEvent(BEFORE_ONCOMPLETE);
-            }
-            delegate.onComplete();
-            if (listener != null) {
-                listener.onEvent(AFTER_ONCOMPLETE);
+            fireEvent(BEFORE_ONCOMPLETE);
+            try {
+                delegate.onComplete();
+            } finally {
+                fireEvent(AFTER_ONCOMPLETE);
             }
         }
     }
@@ -391,7 +407,7 @@ public abstract class MessageBodyContextBase implements Filters {
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            filter.subscribe(filter);
+            filter.onSubscribe(subscription);
         }
 
         @Override
@@ -426,6 +442,7 @@ public abstract class MessageBodyContextBase implements Filters {
 
         TypedEventListener(EventListener delegate,
                 GenericType<?> entityType) {
+
             this.delegate = delegate;
             this.entityType = Optional.of(entityType);
         }

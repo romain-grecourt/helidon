@@ -2,14 +2,13 @@ package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.MessageBody.Filter;
+import io.helidon.common.http.MessageBody.StreamWriter;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriteableContent;
-import io.helidon.common.reactive.FixedItemsPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Mono;
 import java.util.Objects;
-
-import static io.helidon.common.CollectionsHelper.listOf;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -87,18 +86,23 @@ public final class MessageBodyWriteableContent implements WriteableContent {
         toPublisher(null).subscribe(subscriber);
     }
 
+    /**
+     * Convert this writeable content to a raw publisher.
+     * @param fallback fallback context to use, may be {@code null}
+     * @return publisher, never {@code null}
+     */
     public Publisher<DataChunk> toPublisher(MessageBodyWriterContext fallback) {
         if (publisher != null) {
-            return fallback.applyFilters(publisher);
+            Publisher<DataChunk> pub = context.applyFilters(publisher);
+            if (fallback != null) {
+                pub = fallback.applyFilters(pub);
+            }
+            return pub;
         }
-        Publisher<Object> content;
         if (entity != null) {
-            content = new FixedItemsPublisher<>(listOf(entity));
-        } else {
-            content = stream;
+            return context.marshall(Mono.just(entity), type, fallback);
         }
-        Publisher<DataChunk> pub = fallback.marshall(content, type);
-        return fallback.applyFilters(pub, type);
+        return context.marshallStream(stream, type, fallback);
     }
 
     @Override
@@ -114,7 +118,7 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Override
-    public MessageBodyWriteableContent registerStreamWriter(Writer<?> writer) {
+    public MessageBodyWriteableContent registerWriter(StreamWriter<?> writer) {
         context.registerWriter(writer);
         return this;
     }
@@ -124,7 +128,8 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
             Function<T, Publisher<DataChunk>> function) {
 
-        return null;
+        context.registerWriter(type, function);
+        return this;
     }
 
     @Deprecated
@@ -133,7 +138,8 @@ public final class MessageBodyWriteableContent implements WriteableContent {
             MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
-        return null;
+        context.registerWriter(type, contentType, function);
+        return this;
     }
 
     @Deprecated
@@ -141,7 +147,8 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     public <T> MessageBodyWriteableContent registerWriter(
             Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
 
-        return null;
+        context.registerWriter(accept, function);
+        return this;
     }
 
     @Deprecated
@@ -149,7 +156,8 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
 
-        return null;
+        context.registerWriter(accept, contentType, function);
+        return this;
     }
 
     @Deprecated

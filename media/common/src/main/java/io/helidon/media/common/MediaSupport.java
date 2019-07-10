@@ -2,6 +2,8 @@ package io.helidon.media.common;
 
 import io.helidon.common.http.MessageBody.Filter;
 import io.helidon.common.http.MessageBody.Reader;
+import io.helidon.common.http.MessageBody.StreamReader;
+import io.helidon.common.http.MessageBody.StreamWriter;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBodyReaderContext;
 import io.helidon.common.http.MessageBodyWriterContext;
@@ -74,8 +76,8 @@ public final class MediaSupport {
             return this;
         }
 
-        public Builder registerStreamReader(Reader<?> reader) {
-            readerContext.registerStreamReader(reader);
+        public Builder registerStreamReader(StreamReader<?> reader) {
+            readerContext.registerReader(reader);
             return this;
         }
 
@@ -89,8 +91,8 @@ public final class MediaSupport {
             return this;
         }
 
-        public Builder registerStreamWriter(Writer<?> writer) {
-            writerContext.registerStreamWriter(writer);
+        public Builder registerStreamWriter(StreamWriter<?> writer) {
+            writerContext.registerWriter(writer);
             return this;
         }
 

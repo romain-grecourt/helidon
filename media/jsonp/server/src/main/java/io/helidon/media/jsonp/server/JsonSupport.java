@@ -100,10 +100,10 @@ public final class JsonSupport implements Service, Handler {
     @Override
     public void accept(final ServerRequest request, final ServerResponse response) {
         request.content().registerReader(reader)
-                .registerStreamReader(streamReader);
+                .registerReader(streamReader);
         response.registerWriter(writer)
-                .registerStreamWriter(lineStreamWriter)
-                .registerStreamWriter(arrayStreamWriter);
+                .registerWriter(lineStreamWriter)
+                .registerWriter(arrayStreamWriter);
         request.next();
     }
 

@@ -89,8 +89,8 @@ public class StreamingService implements Service {
 
     private void downloadJson(ServerRequest request, ServerResponse response) {
         // Register stream writers -- should be moved to JsonSupport
-        response.registerStreamWriter(ARRAY_WRITER);
-        response.registerStreamWriter(LINE_WRITER);
+        response.registerWriter(ARRAY_WRITER);
+        response.registerWriter(LINE_WRITER);
 
         request.content().asStream(JsonObject.class).subscribe(
                 new Flow.Subscriber<JsonObject>() {

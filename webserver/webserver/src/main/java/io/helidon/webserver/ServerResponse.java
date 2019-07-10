@@ -156,10 +156,11 @@ public interface ServerResponse extends MessageBody.Filters, MessageBody.Writers
     long requestId();
 
     @Override
-    public ServerResponse registerFilter(MessageBody.Filter filter);
+    ServerResponse registerFilter(MessageBody.Filter filter);
 
     @Override
-    public ServerResponse registerWriter(MessageBody.Writer<?> writer);
+    ServerResponse registerWriter(MessageBody.Writer<?> writer);
 
-    ServerResponse registerStreamWriter(MessageBody.Writer<?> writer);
+    @Override
+    ServerResponse registerWriter(MessageBody.StreamWriter<?> writer);
 }

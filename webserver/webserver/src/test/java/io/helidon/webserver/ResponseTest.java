@@ -29,10 +29,13 @@ import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
+import io.helidon.media.common.MediaSupport;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 
 /**
@@ -49,12 +52,12 @@ public class ResponseTest {
         StringBuffer sb = new StringBuffer();
         NoOpBareResponse br = new NoOpBareResponse(sb);
         // Close all
-        Response response = new ResponseImpl(null, br);
+        Response response = new ResponseImpl(br);
         close(response);
         assertThat(sb.toString(), is("h200c"));
         // Close first headers and then al
         sb.setLength(0);
-        response = new ResponseImpl(null, br);
+        response = new ResponseImpl(br);
         response.status(300);
         response.headers().send().toCompletableFuture().get();
         assertThat(sb.toString(), is("h300"));
@@ -66,7 +69,7 @@ public class ResponseTest {
     public void headersAreCaseInsensitive() throws Exception {
         StringBuffer sb = new StringBuffer();
         NoOpBareResponse br = new NoOpBareResponse(sb);
-        Response response = new ResponseImpl(null, br);
+        Response response = new ResponseImpl(br);
 
         ResponseHeaders headers = response.headers();
         headers.addCookie("cookie1", "cookie-value-1");
@@ -226,13 +229,19 @@ public class ResponseTest {
 
     static class ResponseImpl extends Response {
 
-        public ResponseImpl(WebServer webServer, BareResponse bareResponse) {
-            super(webServer, bareResponse, listOf());
+        public ResponseImpl(BareResponse bareResponse) {
+            super(mockWebServer(), bareResponse, listOf());
         }
 
         @Override
         SpanContext spanContext() {
             return null;
+        }
+
+        private static WebServer mockWebServer() {
+            WebServer webServer = mock(WebServer.class);
+            doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
+            return webServer;
         }
     }
 

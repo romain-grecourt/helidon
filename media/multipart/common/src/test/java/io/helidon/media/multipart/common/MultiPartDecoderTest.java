@@ -15,25 +15,23 @@
  */
 package io.helidon.media.multipart.common;
 
-import java.util.LinkedList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Multi;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -445,9 +443,9 @@ public class MultiPartDecoderTest {
     public void testSubcribingMoreThanOnce() {
         MultiPartDecoder decoder = MultiPartDecoder
                 .create("boundary", MEDIA_SUPPORT.readerContext());
-        new DataChunkPublisher("foo".getBytes()).subscribe(decoder);
+        chunksPublisher("foo".getBytes()).subscribe(decoder);
         try {
-            new DataChunkPublisher("bar".getBytes()).subscribe(decoder);
+            chunksPublisher("bar".getBytes()).subscribe(decoder);
             fail("exception should be thrown");
         } catch(IllegalStateException ex) {
             assertThat(ex.getMessage(),
@@ -528,7 +526,7 @@ public class MultiPartDecoderTest {
 
         MultiPartDecoder decoder = MultiPartDecoder
                 .create(boundary, MEDIA_SUPPORT.readerContext());
-        new DataChunkPublisher(chunks).subscribe(decoder);
+        chunksPublisher(chunks).subscribe(decoder);
         return decoder;
     }
 
@@ -568,11 +566,19 @@ public class MultiPartDecoderTest {
     /**
      * A subscriber of data chunk that accumulates bytes to a single String.
      */
+    static Publisher<DataChunk> chunksPublisher(byte[]... bytes) {
+        DataChunk[] chunks = new DataChunk[bytes.length];
+        for (int i=0 ; i < bytes.length ; i++) {
+            chunks[i] = DataChunk.create(bytes[i]);
+        }
+        return Multi.just(chunks);
+    }
+
     static final class DataChunkSubscriber implements Subscriber<DataChunk> {
 
         private final StringBuilder sb = new StringBuilder();
-        private final CompletableFuture<String> future =
-                new CompletableFuture<>();
+        private final CompletableFuture<String> future
+                = new CompletableFuture<>();
 
         @Override
         public void onSubscribe(Subscription subscription) {
@@ -581,7 +587,7 @@ public class MultiPartDecoderTest {
 
         @Override
         public void onNext(DataChunk item) {
-            sb.append(new String(item.bytes()));
+            sb.append(item.bytes());
         }
 
         @Override
@@ -596,63 +602,6 @@ public class MultiPartDecoderTest {
 
         CompletionStage<String> content() {
             return future;
-        }
-    }
-
-    /**
-     * A publisher that publishes data chunks from a predefined set of byte
-     * arrays.
-     */
-    static class DataChunkPublisher implements Publisher<DataChunk> {
-
-        private final Queue<DataChunk> queue = new LinkedList<>();
-        private long requested;
-        private boolean delivering;
-        private boolean canceled;
-        private boolean complete;
-
-        public DataChunkPublisher(byte[]... chunksData) {
-            canceled = false;
-            requested = 0;
-            for (byte[] chunkData : chunksData) {
-                queue.add(DataChunk.create(chunkData));
-            }
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super DataChunk> subscriber) {
-            subscriber.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {
-                    if (n <= 0 || canceled || complete) {
-                        return;
-                    }
-                    requested += n;
-                    if (delivering) {
-                        return;
-                    }
-                    delivering = true;
-                    while (!complete && requested > 0) {
-                        DataChunk chunk = queue.poll();
-                        if (chunk != null) {
-                            requested--;
-                            if (queue.isEmpty()) {
-                                complete = true;
-                            }
-                            subscriber.onNext(chunk);
-                        }
-                    }
-                    delivering = false;
-                    if (complete) {
-                        subscriber.onComplete();
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                    canceled = true;
-                }
-            });
         }
     }
 }

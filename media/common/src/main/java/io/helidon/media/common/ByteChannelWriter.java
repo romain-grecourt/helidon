@@ -1,14 +1,15 @@
 package io.helidon.media.common;
 
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.RetrySchema;
 import java.nio.channels.ReadableByteChannel;
+import java.util.function.Function;
 
 /**
  * Writer for {@link ReadableByteChannel}.
@@ -30,12 +31,11 @@ public final class ByteChannelWriter implements Writer<ReadableByteChannel> {
     }
 
     @Override
-    public <U extends ReadableByteChannel> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Mono<ReadableByteChannel> content,
+            GenericType<? extends ReadableByteChannel> type,
+            WriterContext context) {
 
-        Processor processor = new Processor(schema, context);
-        content.subscribe(processor);
-        return processor;
+        return content.flatMapMany(new Mapper(schema, context));
     }
 
     public static ByteChannelWriter create(RetrySchema schema) {
@@ -46,19 +46,19 @@ public final class ByteChannelWriter implements Writer<ReadableByteChannel> {
         return new ByteChannelWriter(DEFAULT_RETRY_SCHEMA);
     }
 
-    private static final class Processor
-            extends SingleInputDelegatingProcessor<ReadableByteChannel, DataChunk> {
+    private static final class Mapper
+            implements Function<ReadableByteChannel, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
         private final WriterContext context;
 
-        Processor(RetrySchema schema, WriterContext context) {
+        Mapper(RetrySchema schema, WriterContext context) {
             this.schema = schema;
             this.context = context;
         }
 
         @Override
-        protected Publisher<DataChunk> delegate(ReadableByteChannel channel) {
+        public Publisher<DataChunk> apply(ReadableByteChannel channel) {
             context.contentType(MediaType.APPLICATION_OCTET_STREAM);
             return new ReadableByteChannelPublisher(channel, schema);
         }

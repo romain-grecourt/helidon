@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Optional;
@@ -27,11 +27,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * Provides APIs to convert HTTP payload ({@link ReadableContent}) to
- * objects or generate HTTP payload ({@link WriteableContent}) from objects.
+ * Provides APIs to convert HTTP payload ({@link ReadableContent}) to objects or
+ * generate HTTP payload ({@link WriteableContent}) from objects.
  *
  * <ul>
- * <li> {@link Content} defines a reactive model for raw HTTP payload.</li>
+ * <li> {@link Content} defines a reactive model for HTTP payload.</li>
  * <li> {@link ReadableContent} models inbound payload, it extends
  * {@link Content} with methods to be consumed as objects, (see
  * {@link ReadableContent#as(io.helidon.common.GenericType)}).</li>
@@ -79,13 +79,14 @@ import java.util.function.Predicate;
 public interface MessageBody {
 
     /**
-     * Base context contract for {@link Reader} and {@link Writer}, provides
-     * an abstraction over server or client headers.
+     * Base context contract for {@link Reader} and {@link Writer}, provides an
+     * abstraction over server or client headers.
      */
     interface Context {
 
         /**
          * Get the underlying headers.
+         *
          * @return Parameters, never {@code null}
          */
         Parameters headers();
@@ -102,6 +103,7 @@ public interface MessageBody {
 
         /**
          * Get the {@code Content-Type} header.
+         *
          * @return Optional, never {@code null}
          */
         Optional<MediaType> contentType();
@@ -124,6 +126,7 @@ public interface MessageBody {
 
         /**
          * Get the inbound {@code Accept} header.
+         *
          * @return List never {@code null}
          */
         public List<MediaType> acceptedTypes();
@@ -170,6 +173,7 @@ public interface MessageBody {
 
         /**
          * Find the given media type in the inbound {@code Accept} header.
+         *
          * @param mediaType media type to search for
          * @return MediaType, never {@code null}
          * @throws IllegalStateException if the media type is not found
@@ -182,7 +186,8 @@ public interface MessageBody {
      * Reactive contract for processing inbound payload (before conversion) or
      * outbound payload (after conversion).
      */
-    interface Filter extends Processor<DataChunk, DataChunk> { }
+    interface Filter extends Processor<DataChunk, DataChunk> {
+    }
 
     /**
      * Registry of {@link Filter} allowing to register filter instances in the
@@ -197,6 +202,7 @@ public interface MessageBody {
 
         /**
          * Register a filter.
+         *
          * @param filter filter to register
          * @return Filters
          */
@@ -205,6 +211,7 @@ public interface MessageBody {
 
     /**
      * Conversion operator that can convert from or to object of a given type.
+     *
      * @param <T> Type supported by the operator
      */
     interface Operator<T extends Context> {
@@ -221,20 +228,50 @@ public interface MessageBody {
     }
 
     /**
-     * Conversion operator that can convert raw HTTP payload into objects.
+     * Conversion operator that can convert HTTP payload into object(s).
+     *
      * @param <T> type or base type supported by the operator
      */
-    interface Reader<T> extends Operator<ReaderContext> {
+    interface ReadOperator<T> extends Operator<ReaderContext> {
+    }
+
+    /**
+     * Conversion operator that can convert HTTP payload into many objects.
+     *
+     * @param <T> type or base type supported by the operator
+     */
+    interface StreamReader<T> extends ReadOperator<T> {
 
         /**
-         * Convert a raw HTTP payload into objects of the given type.
+         * Convert a HTTP payload into objects of the given type.
+         *
          * @param <U> actual requested type parameter
-         * @param publisher raw HTTP payload
+         * @param publisher HTTP payload
          * @param type requested type
          * @param context the context providing the headers abstraction
          * @return Publisher of objects
          */
         <U extends T> Publisher<U> read(Publisher<DataChunk> publisher,
+                GenericType<U> type, ReaderContext context);
+    }
+
+    /**
+     * Conversion operator that can convert HTTP payload into one object.
+     *
+     * @param <T> type or base type supported by the operator
+     */
+    interface Reader<T> extends ReadOperator<T> {
+
+        /**
+         * Convert a HTTP payload into a Mono publisher of the given type.
+         *
+         * @param <U> actual requested type parameter
+         * @param publisher HTTP payload
+         * @param type requested type
+         * @param context the context providing the headers abstraction
+         * @return Mono publisher
+         */
+        <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
                 GenericType<U> type, ReaderContext context);
     }
 
@@ -246,6 +283,7 @@ public interface MessageBody {
 
         /**
          * Register a reader.
+         *
          * @param <T> reader type
          * @param type class supported by the reader
          * @param reader reader to register
@@ -258,6 +296,7 @@ public interface MessageBody {
 
         /**
          * Register a reader.
+         *
          * @param <T> reader type
          * @param predicate class predicate
          * @param reader reader to register
@@ -270,6 +309,7 @@ public interface MessageBody {
 
         /**
          * Register a reader.
+         *
          * @param reader reader to register
          * @return Readers
          */
@@ -277,28 +317,57 @@ public interface MessageBody {
 
         /**
          * Register a stream reader.
+         *
          * @param reader reader to register
          * @return Readers
          */
-        Readers registerStreamReader(Reader<?> reader);
+        Readers registerReader(StreamReader<?> reader);
     }
 
     /**
-     * Conversion operator that generate raw HTTP payload from objects.
+     * Conversion operator that generate HTTP payload from objects.
+     *
      * @param <T> type or base type supported by the operator
      */
-    interface Writer<T> extends Operator<WriterContext> {
+    interface WriteOperator<T> extends Operator<WriterContext> {
+    }
+
+    /**
+     * Conversion operator that generate HTTP payload from objects.
+     *
+     * @param <T> type or base type supported by the operator
+     */
+    interface StreamWriter<T> extends WriteOperator<T> {
 
         /**
          * Generate HTTP payload from the objects of the given type.
-         * @param <U> actual requested type parameter
-         * @param content objects to convert to payload
+         *
+         * @param publisher objects to convert to payload
          * @param type requested type
          * @param context the context providing the headers abstraction
          * @return Publisher of objects
          */
-         <U extends T> Publisher<DataChunk> write(Publisher<U> content,
-                 GenericType<U> type, WriterContext context);
+        Publisher<DataChunk> write(Publisher<T> publisher,
+                GenericType<? extends T> type, WriterContext context);
+    }
+
+    /**
+     * Conversion operator that generate HTTP payload from objects.
+     *
+     * @param <T> type or base type supported by the operator
+     */
+    interface Writer<T> extends WriteOperator<T> {
+
+        /**
+         * Generate HTTP payload from the objects of the given type.
+         *
+         * @param mono object mono publisher to convert to payload
+         * @param type requested type
+         * @param context the context providing the headers abstraction
+         * @return Publisher of objects
+         */
+        Publisher<DataChunk> write(Mono<T> mono, GenericType<? extends T> type,
+                WriterContext context);
     }
 
     /**
@@ -325,6 +394,7 @@ public interface MessageBody {
 
         /**
          * Register a writer.
+         *
          * @param writer writer to register
          * @return Writers
          */
@@ -332,19 +402,21 @@ public interface MessageBody {
 
         /**
          * Register a stream writer.
+         *
          * @param writer writer to register
          * @return Writers
          */
-        Writers registerStreamWriter(Writer<?> writer);
+        Writers registerWriter(StreamWriter<?> writer);
     }
 
     /**
-     * Reactive contract for HTTP payload.
+     * Reactive HTTP payload.
      */
-    interface Content extends Publisher<DataChunk> { }
+    interface Content extends Publisher<DataChunk> {
+    }
 
     /**
-     * Inbound HTTP content that can be converted into objects.
+     * Reactive HTTP payload that can be converted into objects.
      */
     interface ReadableContent extends Content, Readers, Filters {
 
@@ -355,10 +427,11 @@ public interface MessageBody {
         ReadableContent registerReader(Reader<?> reader);
 
         @Override
-        ReadableContent registerStreamReader(Reader<?> reader);
+        ReadableContent registerReader(StreamReader<?> reader);
 
         /**
          * Convert the content as a future of the given type.
+         *
          * @param <T> the requested type
          * @param type class representing the type to convert to
          * @return CompletionStage, never {@code null}
@@ -395,8 +468,7 @@ public interface MessageBody {
     }
 
     /**
-     * Outbound HTTP content that represents objects that can be converted
-     * to HTTP payload.
+     * Reactive HTTP content that can be generated from objects.
      */
     interface WriteableContent extends Content, Writers, Filters {
 
@@ -407,7 +479,7 @@ public interface MessageBody {
         WriteableContent registerWriter(Writer<?> writer);
 
         @Override
-        WriteableContent registerStreamWriter(Writer<?> writer);
+        WriteableContent registerWriter(StreamWriter<?> writer);
 
         @Deprecated
         @Override

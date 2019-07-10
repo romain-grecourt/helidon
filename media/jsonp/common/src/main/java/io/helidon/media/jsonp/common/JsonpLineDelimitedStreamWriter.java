@@ -12,16 +12,15 @@ import javax.json.JsonWriterFactory;
  *
  * JSON-P line delimited stream writer.
  */
-public class JsonpLineDelimitedStreamWriter
-        extends JsonpStreamWriter {
+public final class JsonpLineDelimitedStreamWriter extends JsonpStreamWriter {
 
     public JsonpLineDelimitedStreamWriter(JsonWriterFactory factory) {
         super(factory, /* begin */ null, "\r\n", /* end */ null);
     }
 
     @Override
-    public <U extends JsonStructure> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Publisher<JsonStructure> content,
+            GenericType<? extends JsonStructure> type, WriterContext context) {
 
          MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_STREAM_JSON);

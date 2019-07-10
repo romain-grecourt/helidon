@@ -5,7 +5,7 @@ import javax.json.JsonWriterFactory;
 /**
  * JSON-P array stream writer.
  */
-public class JsonpArrayStreamWriter extends JsonpStreamWriter {
+public final class JsonpArrayStreamWriter extends JsonpStreamWriter {
 
     public JsonpArrayStreamWriter(JsonWriterFactory writerFactory) {
         super(writerFactory, "[", ",", "]");

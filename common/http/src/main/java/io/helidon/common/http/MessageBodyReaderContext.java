@@ -2,20 +2,19 @@ package io.helidon.common.http;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.MessageBody.Filters;
+import io.helidon.common.http.MessageBody.ReadOperator;
 import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.http.MessageBody.Readers;
-import io.helidon.common.reactive.EmptyPublisher;
-import io.helidon.common.reactive.FailedPublisher;
+import io.helidon.common.http.MessageBody.StreamReader;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Multi;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
 /**
@@ -28,8 +27,8 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
 
     private final ReadOnlyParameters headers;
     private final Optional<MediaType> contentType;
-    private final MessageBodyOperators<MessageBody.Reader<?>, ReaderContext> readers;
-    private final MessageBodyOperators<MessageBody.Reader<?>, ReaderContext> sreaders;
+    private final MessageBodyOperators<ReadOperator<?>, ReaderContext> readers;
+    private final MessageBodyOperators<ReadOperator<?>, ReaderContext> sreaders;
 
     /**
      * Create a new parented context.
@@ -73,10 +72,8 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
     }
 
     @Override
-    public MessageBodyReaderContext registerStreamReader(
-            MessageBody.Reader<?> reader) {
-
-        readers.registerFirst(reader);
+    public MessageBodyReaderContext registerReader(StreamReader<?> reader) {
+        sreaders.registerFirst(reader);
         return this;
     }
 
@@ -95,148 +92,132 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
     }
 
     /**
-     * Convert a given inbound payload into a publisher using the specified
-     * message body reader.
-     *
-     * @param <T> entity type parameter
-     * @param reader message body reader
-     * @param publisher inbound payload
-     * @param type actual representation of the entity type
-     * @param ctx reader context
-     * @return publisher, never {@code null}
-     */
-    private static <T> Publisher<T> doUnmarshall(MessageBody.Reader<T> reader,
-            Publisher<DataChunk> publisher, GenericType<T> type,
-            MessageBodyReaderContext ctx) {
-
-        try {
-            if (publisher == null) {
-                publisher = new EmptyPublisher<>();
-            }
-            return reader.read(ctx.applyFilters(publisher, type), type, ctx);
-        } catch (Throwable ex) {
-            if (ex instanceof IllegalArgumentException) {
-                return new FailedPublisher<>(ex);
-            } else {
-                return new FailedPublisher<>(
-                        new IllegalStateException("Transformation failed!", ex));
-            }
-        }
-    }
-
-    /**
-     * Select a reader with the specified class from the given operators.
-     *
-     * @param <T> entity type parameter
-     * @param writers operators to lookup the reader from
-     * @param writerCls the requested reader class
-     * @return Reader, never {@code null}
-     * @throws IllegalArgumentException if no reaDer is found
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> MessageBody.Reader<T> selectReader(
-            MessageBodyOperators<MessageBody.Reader<?>, ReaderContext> readers,
-            Class<? extends MessageBody.Reader<T>> readerCls) {
-
-        MessageBody.Reader<?> reader = readers.get(readerCls);
-        if (reader == null) {
-            throw new IllegalArgumentException("No reader found of type: "
-                    + readerCls.getTypeName());
-        }
-        return (MessageBody.Reader<T>) reader;
-    }
-
-    /**
-     * Select a reader that accepts the specified entity type and reader context
-     * from the given operators.
-     *
-     * @param <T> entity type parameter
-     * @param writers operators to lookup the reader from
-     * @param type actual representation of the entity type
-     * @param ctx reader context
-     * @return Reader, never {@code null}
-     * @throws IllegalArgumentException if no reader is found
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> MessageBody.Reader<T> selectReader(
-            MessageBodyOperators<MessageBody.Reader<?>, ReaderContext> readers,
-            GenericType<T> type, MessageBodyReaderContext context) {
-
-        MessageBody.Reader<?> reader = readers.select(type, context);
-        if (reader == null) {
-            throw new IllegalArgumentException("No reader found of type: "
-                    + type.getTypeName());
-        }
-        return (MessageBody.Reader<T>) reader;
-    }
-
-    /**
      * Convert a given HTTP payload into a publisher by selecting a reader that
      * accepts the specified type and current context.
      *
-     * @param <T> entity type parameter
+     * @param <T> entity type
      * @param publisher inbound payload
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
-    public <T> Publisher<T> unmarshall(Publisher<DataChunk> publisher,
+    @SuppressWarnings("unchecked")
+    public <T> Mono<T> unmarshall(Publisher<DataChunk> publisher,
             GenericType<T> type) {
 
-        return doUnmarshall(selectReader(readers, type, this), publisher,
-                type, this);
+        try {
+            if (publisher == null) {
+                return Mono.<T>empty();
+            }
+            MessageBody.Reader<T> reader = (MessageBody.Reader<T>)
+                    readers.select(type, this);
+            if (reader == null) {
+                return Mono.<T>error(new IllegalStateException(
+                        "No reader found for type: "
+                                + type.getTypeName()));
+            }
+            return reader.read(applyFilters(publisher, type), type, this);
+        } catch (Throwable ex) {
+            return Mono.<T>error(new IllegalStateException(
+                    "Transformation failed!", ex));
+        }
     }
 
     /**
      * Convert a given HTTP payload into a publisher by selecting a reader with
      * the specified class.
      *
-     * @param <T> entity type parameter
+     * @param <T> entity type
      * @param publisher inbound payload
-     * @param readerCls the requested reader class
+     * @param readerType the requested reader class
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
-    public <T> Publisher<T> unmarshall(Publisher<DataChunk> publisher,
-            Class<? extends MessageBody.Reader<T>> readerCls,
+    @SuppressWarnings("unchecked")
+    public <T> Mono<T> unmarshall(Publisher<DataChunk> publisher,
+            Class<? extends MessageBody.Reader<T>> readerType,
             GenericType<T> type) {
 
-        return doUnmarshall(selectReader(readers, readerCls), publisher,
-                type, this);
+        try {
+            if (publisher == null) {
+                return Mono.<T>empty();
+            }
+            MessageBody.Reader<T> reader = (MessageBody.Reader<T>)
+                    readers.get(readerType);
+            if (reader == null) {
+                return Mono.<T>error(new IllegalStateException(
+                        "No reader found of type: "
+                                + readerType.getTypeName()));
+            }
+            return reader.read(applyFilters(publisher, type), type, this);
+        } catch (Throwable ex) {
+            return Mono.<T>error(new IllegalStateException(
+                    "Transformation failed!", ex));
+        }
     }
 
     /**
      * Convert a given HTTP payload into a publisher by selecting a
      * stream reader that accepts the specified type and current context.
      *
-     * @param <T> entity type parameter
+     * @param <T> entity type
      * @param publisher inbound payload
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<T> unmarshallStream(
             Publisher<DataChunk> publisher, GenericType<T> type) {
 
-        return doUnmarshall(selectReader(sreaders, type, this), publisher,
-                type, this);
+        try {
+            if (publisher == null) {
+                return Multi.<T>empty();
+            }
+            MessageBody.StreamReader<T> reader = (MessageBody.StreamReader<T>)
+                    sreaders.select(type, this);
+            if (reader == null) {
+                return Multi.<T>error(new IllegalStateException(
+                        "No stream reader found for type: "
+                                + type.getTypeName()));
+            }
+            return reader.read(applyFilters(publisher, type), type, this);
+        } catch (Throwable ex) {
+            return Multi.<T>error(new IllegalStateException(
+                    "Transformation failed!", ex));
+        }
     }
 
     /**
      * Convert a given HTTP payload into a publisher by selecting a stream
      * reader with the specified class.
      *
-     * @param <T> entity type parameter
+     * @param <T> entity type
      * @param publisher inbound payload
-     * @param readerCls the requested reader class
+     * @param readerType the requested reader class
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<? extends T> unmarshallStream(
             Publisher<DataChunk> publisher,
-            Class<? extends MessageBody.Reader<T>> readerCls,
+            Class<? extends MessageBody.Reader<T>> readerType,
             GenericType<T> type) {
 
-        return doUnmarshall(selectReader(sreaders, readerCls), publisher,
-                type, this);
+        try {
+            if (publisher == null) {
+                return Multi.<T>empty();
+            }
+            MessageBody.StreamReader<T> reader = (MessageBody.StreamReader<T>)
+                    sreaders.get(readerType);
+            if (reader == null) {
+                return Multi.<T>error(new IllegalStateException(
+                        "No stream reader found of type: "
+                                + readerType.getTypeName()));
+            }
+            return reader.read(applyFilters(publisher, type), type, this);
+        } catch (Throwable ex) {
+            return Multi.<T>error(new IllegalStateException(
+                    "Transformation failed!", ex));
+        }
     }
 
     @Override
@@ -335,10 +316,10 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
 
         @Override
         @SuppressWarnings("unchecked")
-        public <U extends T> Publisher<U> read(Publisher<DataChunk> publisher,
+        public <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
                 GenericType<U> type, ReaderContext context) {
 
-            return new FuturePublisher<>(reader.applyAndCast(publisher,
+            return Mono.fromFuture(reader.applyAndCast(publisher,
                     (Class<U>)type.rawType()));
         }
 
@@ -348,53 +329,6 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
                 return predicate.test(type.rawType());
             }
             return clazz.isAssignableFrom(type.rawType());
-        }
-    }
-
-    /**
-     * A publisher adapter to publisher an item from a future.
-     * @param <T> item type
-     */
-    private static final class FuturePublisher<T> implements Publisher<T> {
-
-        private final CompletionStage<? extends T> future;
-        private boolean requested;
-        private Subscriber<? super T> subscriber;
-
-        FuturePublisher(CompletionStage<? extends T> future) {
-            this.future = future;
-        }
-
-        private void submit(T item) {
-            subscriber.onNext(item);
-            subscriber.onComplete();
-        }
-
-        private <U extends T> U error(Throwable error) {
-            subscriber.onError(error);
-            return null;
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            if (this.subscriber != null) {
-                throw new IllegalStateException("Already subscribed to");
-            }
-            this.subscriber = subscriber;
-            subscriber.onSubscribe(new Subscription() {
-                @Override
-                public void request(long n) {
-                    if (n > 0 && !requested) {
-                        future.exceptionally(FuturePublisher.this::error);
-                        future.thenAccept(FuturePublisher.this::submit);
-                        requested = true;
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                }
-            });
         }
     }
 }

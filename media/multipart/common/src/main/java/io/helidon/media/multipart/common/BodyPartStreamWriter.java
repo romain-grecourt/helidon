@@ -8,14 +8,14 @@ package io.helidon.media.multipart.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
+import io.helidon.common.http.MessageBody.StreamWriter;
 import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 
 /**
  * {@link OutboundBodyPart} stream writer.
  */
-public final class BodyPartStreamWriter implements Writer<OutboundBodyPart> {
+public final class BodyPartStreamWriter implements StreamWriter<OutboundBodyPart> {
 
     private final String boundary;
 
@@ -29,8 +29,8 @@ public final class BodyPartStreamWriter implements Writer<OutboundBodyPart> {
     }
 
     @Override
-    public <U extends OutboundBodyPart> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Publisher<OutboundBodyPart> content,
+            GenericType<? extends OutboundBodyPart> type, WriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
         MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);

@@ -4,12 +4,12 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.MessageBody.Filter;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.atomic.AtomicReference;
 import io.helidon.common.http.MessageBody.ReadableContent;
+import io.helidon.common.http.MessageBody.StreamReader;
+import io.helidon.common.reactive.Mono;
+import java.io.ByteArrayOutputStream;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -17,6 +17,12 @@ import java.util.function.Predicate;
  * Implementation of {@link ReadableContent}.
  */
 public final class MessageBodyReadableContent implements ReadableContent {
+
+    private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
+        GenericType.create(ByteArrayOutputStream.class);
+
+    private static final Function<ByteArrayOutputStream, Mono<byte[]>> BYTE_ARRAY_MAPPER =
+            (baos) -> Mono.just(baos.toByteArray());
 
     private final Publisher<DataChunk> publisher;
     private final MessageBodyReaderContext context;
@@ -68,9 +74,7 @@ public final class MessageBodyReadableContent implements ReadableContent {
     }
 
     @Override
-    public MessageBodyReadableContent registerStreamReader(
-            MessageBody.Reader<?> reader) {
-
+    public MessageBodyReadableContent registerReader(StreamReader<?> reader) {
         context.registerReader(reader);
         return this;
     }
@@ -86,17 +90,27 @@ public final class MessageBodyReadableContent implements ReadableContent {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private <T> CompletionStage<T> asByteArray() {
+        return (CompletionStage<T>) context.unmarshall(publisher, BAOS_TYPE)
+                .flatMap(BYTE_ARRAY_MAPPER).toFuture();
+    }
+
     @Override
     public <T> CompletionStage<T> as(final Class<T> type) {
-        return as(GenericType.create(type));
+        if (byte[].class.equals(type)) {
+            return this.<T>asByteArray();
+        }
+        return context.unmarshall(publisher, GenericType.create(type))
+                .toFuture();
     }
 
     @Override
     public <T> CompletionStage<T> as(final GenericType<T> type) {
-        FutureConverter<T> converter = new FutureConverter<>();
-        Publisher<DataChunk> pub = context.applyFilters(publisher, type);
-        context.unmarshall(pub, type).subscribe(converter);
-        return converter.future();
+        if (byte[].class.equals(type.rawType())) {
+            this.<T>asByteArray();
+        }
+        return context.unmarshall(publisher, type).toFuture();
     }
 
     @Override
@@ -106,8 +120,7 @@ public final class MessageBodyReadableContent implements ReadableContent {
 
     @Override
     public <T> Publisher<T> asStream(GenericType<T> type) {
-        Publisher<DataChunk> pub = context.applyFilters(publisher);
-        return (Publisher<T>) context.unmarshallStream(pub, type);
+        return context.unmarshallStream(publisher, type);
     }
 
     /**
@@ -150,57 +163,14 @@ public final class MessageBodyReadableContent implements ReadableContent {
     @Deprecated
     @Override
     public <T> void registerReader(Class<T> type, Reader<T> reader) {
-        
+        context.registerReader(type, reader);
     }
 
     @Deprecated
     @Override
-    public <T> void registerReader(Predicate<Class<?>> predicate, Reader<T> reader) {
-    }
+    public <T> void registerReader(Predicate<Class<?>> predicate,
+            Reader<T> reader) {
 
-    /**
-     * A subscriber that exposes the first item of a subscription as a future.
-     * @param <T> item type parameter
-     */
-    private static final class FutureConverter<T> implements Subscriber<T> {
-
-        private final CompletableFuture<T> future;
-        private final AtomicReference<T> itemRef;
-        private Subscription subscription;
-
-        FutureConverter() {
-            future = new CompletableFuture<>();
-            itemRef = new AtomicReference<>();
-        }
-
-        @Override
-        public void onSubscribe(Subscription subscription) {
-            this.subscription = subscription;
-            subscription.request(1);
-        }
-
-        @Override
-        public void onNext(T item) {
-            itemRef.set(item);
-            subscription.cancel();
-            future.complete(item);
-        }
-
-        @Override
-        public void onError(Throwable error) {
-            future.completeExceptionally(error);
-        }
-
-        @Override
-        public void onComplete() {
-        }
-
-        /**
-         * Get the underlying future.
-         * @return CompletableFuture
-         */
-        CompletableFuture<T> future() {
-            return future;
-        }
+        context.registerReader(predicate, reader);
     }
 }

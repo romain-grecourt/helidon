@@ -27,12 +27,13 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
-import io.helidon.common.reactive.EmptyPublisher;
 import java.util.List;
 import io.helidon.common.http.MessageBody;
 import io.helidon.common.http.MessageBodyContextBase;
 import io.helidon.common.http.MessageBodyWriterContext;
-import io.helidon.common.reactive.SingleItemPublisher;
+import io.helidon.common.reactive.Mono;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -40,6 +41,9 @@ import java.util.function.Predicate;
  * The basic implementation of {@link ServerResponse}.
  */
 abstract class Response implements ServerResponse {
+
+    private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
+            GenericType.create(ByteArrayOutputStream.class);
 
     private final WebServer webServer;
     private final BareResponse bareResponse;
@@ -142,14 +146,31 @@ abstract class Response implements ServerResponse {
         return spanBuilder.start();
     }
 
+    private static Mono<ByteArrayOutputStream> byteArrayMono(byte[] bytes) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            baos.write((byte[]) bytes);
+            return Mono.<ByteArrayOutputStream>just(baos);
+        } catch (IOException ex) {
+            return Mono.<ByteArrayOutputStream>error(ex);
+        }
+    }
+
     @Override
     public <T> CompletionStage<ServerResponse> send(T content) {
         Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> sendPublisher = writerContext
-                        .marshall(new SingleItemPublisher<>(content),
-                                GenericType.create((Class<T>)content.getClass()));
+                Publisher<DataChunk> sendPublisher;
+                if (content instanceof byte[]) {
+                    sendPublisher = writerContext.marshall(
+                            byteArrayMono((byte[]) content), BAOS_TYPE,
+                            null);
+                } else {
+                    sendPublisher = writerContext.marshall(
+                            Mono.just(content), GenericType.create(content),
+                            null);
+                }
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);
@@ -164,9 +185,8 @@ abstract class Response implements ServerResponse {
     public CompletionStage<ServerResponse> send(Publisher<DataChunk> content) {
         Span writeSpan = createWriteSpan(content);
         try {
-            Publisher<DataChunk> sendPublisher = (content == null)
-                    ? new EmptyPublisher<>()
-                    : writerContext.applyFilters(content);
+            Publisher<DataChunk> sendPublisher = writerContext
+                    .applyFilters(content);
             sendLockSupport.execute(() -> {
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
@@ -192,7 +212,7 @@ abstract class Response implements ServerResponse {
             sendLockSupport.execute(() -> {
                 GenericType<T> type = GenericType.create(itemClass);
                 Publisher<DataChunk> sendPublisher = writerContext
-                        .marshallStream(content, type);
+                        .marshallStream(content, type, null);
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);
@@ -210,8 +230,8 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Response registerStreamWriter(MessageBody.Writer<?> writer) {
-        writerContext.registerStreamWriter(writer);
+    public Response registerWriter(MessageBody.StreamWriter<?> writer) {
+        writerContext.registerWriter(writer);
         return this;
     }
 
@@ -286,6 +306,18 @@ abstract class Response implements ServerResponse {
         private boolean sent;
         private volatile boolean sentVolatile;
 
+        private void sendHeadersIfNeeded() {
+            if (headers != null && !sent && !sentVolatile) {
+                synchronized (this) {
+                    if (!sent && !sentVolatile) {
+                        sent = true;
+                        sentVolatile = true;
+                        headers.send();
+                    }
+                }
+            }
+        }
+
         @Override
         public void onEvent(MessageBodyContextBase.Event event) {
             switch(event.eventType()) {
@@ -302,16 +334,7 @@ abstract class Response implements ServerResponse {
                     span = spanBuilder.start();
                     break;
                 case BEFORE_ONNEXT:
-                    // send headers if needed
-                    if (headers != null && !sent && !sentVolatile) {
-                        synchronized (this) {
-                            if (!sent && !sentVolatile) {
-                                sent = true;
-                                sentVolatile = true;
-                                headers.send();
-                            }
-                        }
-                    }
+                    sendHeadersIfNeeded();
                     break;
                 case AFTER_ONERROR:
                     if (span != null) {
@@ -319,9 +342,10 @@ abstract class Response implements ServerResponse {
                     }
                     break;
                 case BEFORE_ONCOMPLETE:
+                    sendHeadersIfNeeded();
+                    break;
                 case AFTER_ONCOMPLETE:
                     if (span != null) {
-                        // no-op if called more than once
                         span.finish();
                     }
                     break;

@@ -46,14 +46,6 @@ public final class MultiPartSupport implements Service, Handler {
         bodyPartWriter = BodyPartStreamWriter.create();
     }
 
-    /**
-     * Create a new instance of {@link MultiPartSupport}.
-     * @return MultiPartSupport
-     */
-    public static MultiPartSupport create(){
-        return new MultiPartSupport();
-    }
-
     @Override
     public void update(Routing.Rules rules) {
         rules.any(this);
@@ -62,9 +54,17 @@ public final class MultiPartSupport implements Service, Handler {
     @Override
     public void accept(ServerRequest req, ServerResponse res) {
         req.content().registerReader(multiPartReader)
-                .registerStreamReader(bodyPartReader);
+                .registerReader(bodyPartReader);
         res.registerWriter(multiPartWriter)
-                .registerStreamWriter(bodyPartWriter);
+                .registerWriter(bodyPartWriter);
         req.next();
+    }
+
+    /**
+     * Create a new instance of {@link MultiPartSupport}.
+     * @return MultiPartSupport
+     */
+    public static MultiPartSupport create(){
+        return new MultiPartSupport();
     }
 }

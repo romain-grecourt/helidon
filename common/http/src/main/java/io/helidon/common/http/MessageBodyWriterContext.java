@@ -3,6 +3,8 @@ package io.helidon.common.http;
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.MessageBody.Filters;
+import io.helidon.common.http.MessageBody.StreamWriter;
+import io.helidon.common.http.MessageBody.WriteOperator;
 import io.helidon.common.http.MessageBody.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -14,11 +16,9 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.http.MessageBody.Writers;
-import io.helidon.common.reactive.EmptyPublisher;
-import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
+import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Multi;
 import java.util.function.Function;
 
 /**
@@ -31,8 +31,8 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
 
     private final Parameters headers;
     private final List<MediaType> acceptedTypes;
-    private final MessageBodyOperators<Writer<?>, WriterContext> writers;
-    private final MessageBodyOperators<Writer<?>, WriterContext> swriters;
+    private final MessageBodyOperators<WriteOperator<?>, WriterContext> writers;
+    private final MessageBodyOperators<WriteOperator<?>, WriterContext> swriters;
     private boolean contentTypeCached;
     private Optional<MediaType> contentTypeCache;
     private boolean charsetCached;
@@ -96,91 +96,14 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
 
     @Override
     public MessageBodyWriterContext registerWriter(Writer<?> writer) {
-        swriters.registerFirst(writer);
+        writers.registerFirst(writer);
         return this;
     }
 
     @Override
-    public MessageBodyWriterContext registerStreamWriter(Writer<?> writer) {
+    public MessageBodyWriterContext registerWriter(StreamWriter<?> writer) {
         swriters.registerFirst(writer);
         return this;
-    }
-
-    /**
-     * Convert a given input publisher into HTTP payload using the specified
-     * message body writer.
-     *
-     * @param <T> entity type parameter
-     * @param writer message body writer
-     * @param content input publisher
-     * @param type actual representation of the entity type
-     * @param ctx writer context
-     * @return publisher, never {@code null}
-     */
-    private static <T> Publisher<DataChunk> doMarshall(Writer<T> writer,
-            Publisher<T> content, GenericType<T> type,
-            MessageBodyWriterContext ctx) {
-
-        try {
-            Publisher<DataChunk> publisher = writer.write(content, type, ctx);
-            if (publisher == null) {
-                publisher = new EmptyPublisher<>();
-            }
-            return ctx.applyFilters(publisher);
-        } catch (Throwable ex) {
-            if (ex instanceof IllegalArgumentException) {
-                return new FailedPublisher<>(ex);
-            } else {
-                return new FailedPublisher<>(
-                        new IllegalStateException("Transformation failed!", ex));
-            }
-        }
-    }
-
-    /**
-     * Select a writer with the specified class from the given operators.
-     *
-     * @param <T> entity type parameter
-     * @param writers operators to lookup the writer from
-     * @param writerCls the requested writer class
-     * @return Writer, never {@code null}
-     * @throws IllegalArgumentException if no writer is found
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> Writer<T> selectWriter(
-            MessageBodyOperators<Writer<?>, WriterContext> writers,
-            Class<? extends Writer<T>> writerCls) {
-
-        Writer<?> writer = writers.get(writerCls);
-        if (writers == null) {
-            throw new IllegalArgumentException("No writer found of type: "
-                    + writerCls.getTypeName());
-        }
-        return (Writer<T>) writer;
-    }
-
-    /**
-     * Select a writer that accepts the specified entity type and writer context
-     * from the given operators.
-     *
-     * @param <T> entity type parameter
-     * @param writers operators to lookup the writer from
-     * @param type actual representation of the entity type
-     * @param ctx writer context
-     * @return Writer, never {@code null}
-     * @throws IllegalArgumentException if no writer is found
-     */
-    @SuppressWarnings("unchecked")
-    private static <T> Writer<T> selectWriter(
-            MessageBodyOperators<Writer<?>, WriterContext> writers,
-            GenericType<? super T> type, MessageBodyWriterContext ctx) {
-
-        Writer<?> writer = writers.select(type, ctx);
-        if (writers == null) {
-            throw new IllegalArgumentException("No writer found of type: "
-                    + type.getTypeName());
-        }
-        return (Writer<T>) writer;
     }
 
     /**
@@ -190,13 +113,28 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
      * @param <T> entity type parameter
      * @param content input publisher
      * @param type actual representation of the entity type
+     * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshall(Publisher<T> content,
-            GenericType<T> type) {
+            GenericType<T> type, MessageBodyWriterContext fallback) {
 
-        return doMarshall(selectWriter(writers, type, this), content, type,
-                this);
+        try {
+            if (content == null) {
+                return applyFilters(Multi.<DataChunk>empty());
+            }
+            Writer<T> writer = (Writer<T>) writers.select(type, this,
+                    fallback != null ? fallback.writers : null);
+            if (writer == null) {
+                return Multi.<DataChunk>error(new IllegalStateException(
+                        "No writer found for type: "
+                        + type.getTypeName()));
+            }
+            return applyFilters(writer.write(Mono.from(content), type, this));
+        } catch (Throwable ex) {
+            throw new IllegalStateException("Transformation failed!", ex);
+        }
     }
 
     /**
@@ -205,15 +143,31 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
      *
      * @param <T> entity type parameter
      * @param content input publisher
-     * @param writerCls the requested writer class
+     * @param writerType the requested writer class
      * @param type actual representation of the entity type
+     * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshall(Publisher<T> content,
-            Class<? extends Writer<T>> writerCls, GenericType<T> type) {
+            Class<? extends Writer<T>> writerType, GenericType<T> type,
+            MessageBodyWriterContext fallback) {
 
-        return doMarshall(selectWriter(writers, writerCls), content, type,
-                this);
+        try {
+            if (content == null) {
+                return applyFilters(Multi.<DataChunk>empty());
+            }
+            Writer<T> writer = (Writer<T>) writers.get(writerType,
+                    fallback != null ? fallback.writers : null);
+            if (writer == null) {
+                return Multi.<DataChunk>error(new IllegalStateException(
+                        "No writer found of type: "
+                                + type.getTypeName()));
+            }
+            return applyFilters(writer.write(Mono.from(content), type, this));
+        } catch (Throwable ex) {
+            throw new IllegalStateException("Transformation failed!", ex);
+        }
     }
 
     /**
@@ -223,13 +177,28 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
      * @param <T> entity type parameter
      * @param content input publisher
      * @param type actual representation of the entity type
+     * @param fallback fallback context
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(Publisher<T> content,
-            GenericType<T> type) {
+            GenericType<T> type, MessageBodyWriterContext fallback) {
 
-        return doMarshall(selectWriter(swriters, type, this), content, type,
-                this);
+        try {
+            if (content == null) {
+                return applyFilters(Multi.<DataChunk>empty());
+            }
+            StreamWriter<T> writer = (StreamWriter<T>) swriters.select(type,
+                    this, fallback != null ? fallback.swriters : null);
+            if (writer == null) {
+                return Multi.<DataChunk>error(new IllegalStateException(
+                        "No stream writer found of type: "
+                        + type.getTypeName()));
+            }
+            return applyFilters(writer.write(content, type, this));
+        } catch (Throwable ex) {
+            throw new IllegalStateException("Transformation failed!", ex);
+        }
     }
 
     /**
@@ -238,15 +207,31 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
      *
      * @param <T> entity type parameter
      * @param content input publisher
-     * @param writerCls the requested writer class
+     * @param writerType the requested writer class
      * @param type actual representation of the entity type
+     * @param fallback fallback context
      * @return publisher, never {@code null}
      */
+    @SuppressWarnings("unchecked")
     public <T> Publisher<DataChunk> marshallStream(Publisher<T> content,
-            Class<? extends Writer<T>> writerCls, GenericType<T> type) {
+            Class<? extends Writer<T>> writerType, GenericType<T> type,
+            MessageBodyWriterContext fallback) {
 
-        return doMarshall(selectWriter(swriters, writerCls), content, type,
-                this);
+        try {
+            if (content == null) {
+                return applyFilters(Multi.<DataChunk>empty());
+            }
+            StreamWriter<T> writer = (StreamWriter<T>) swriters.get(writerType,
+                    fallback != null ? fallback.swriters : null);
+            if (writer == null) {
+                return Multi.<DataChunk>error(new IllegalStateException(
+                        "No stream writer found of type: "
+                        + type.getTypeName()));
+            }
+            return applyFilters(writer.write(content, type, this));
+        } catch (Throwable ex) {
+            throw new IllegalStateException("Transformation failed!", ex);
+        }
     }
 
     @Override
@@ -446,32 +431,32 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
      * Message body writer adapter for the old deprecated writer.
      * @param <T> writer type
      */
-    private static final class WriterAdapter<T>
-            implements MessageBody.Writer<T> {
+    private static final class WriterAdapter<T> implements Writer<T> {
 
-        private final WriterAdapterProcessor<? extends T> processor;
+        private final Function<T, Publisher<DataChunk>> function;
         private final Predicate predicate;
         private final Class<T> type;
         private final MediaType contentType;
 
         @SuppressWarnings("unchecked")
-        WriterAdapter(Function<? extends T, Publisher<DataChunk>> function,
+        WriterAdapter(Function<T, Publisher<DataChunk>> function,
                 Predicate<?> predicate, MediaType contentType) {
 
             Objects.requireNonNull(function, "function cannot be null!");
             Objects.requireNonNull(predicate, "predicate cannot be null!");
-            this.processor = new WriterAdapterProcessor<>(function);
+            this.function = function;
             this.predicate = predicate;
             this.contentType = contentType;
             this.type = null;
         }
 
+        @SuppressWarnings("unchecked")
         WriterAdapter(Function<? extends T, Publisher<DataChunk>> function,
                 Class<T> type, MediaType contentType) {
 
             Objects.requireNonNull(function, "function cannot be null!");
             Objects.requireNonNull(type, "type cannot be null!");
-            this.processor = new WriterAdapterProcessor<>(function);
+            this.function = (Function<T, Publisher<DataChunk>>) function;
             this.type = type;
             this.contentType = contentType;
             this.predicate = null;
@@ -496,34 +481,10 @@ public final class MessageBodyWriterContext extends MessageBodyContextBase
         }
 
         @Override
-        @SuppressWarnings("unchecked")
-        public <U extends T> Publisher<DataChunk> write(Publisher<U> content,
-                GenericType<U> type, WriterContext context) {
+        public Publisher<DataChunk> write(Mono<T> mono,
+                GenericType<? extends T> type, WriterContext context) {
 
-            content.subscribe((Subscriber<U>) processor);
-            return processor;
+            return mono.flatMapMany(function);
         }
     }
-
-    /**
-     * A processor that implements the new write function for the deprecated
-     * writer.
-     * @param <T> writer type
-     */
-    private static final class WriterAdapterProcessor<T>
-            extends SingleInputDelegatingProcessor<T, DataChunk> {
-
-        private final Function<T, Publisher<DataChunk>> function;
-
-        WriterAdapterProcessor(
-                Function<T, Publisher<DataChunk>> function) {
-            this.function = function;
-        }
-
-        @Override
-        protected Publisher<DataChunk> delegate(T item) {
-            return function.apply(item);
-        }
-    }
-
 }

@@ -19,13 +19,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.charset.Charset;
 import java.util.concurrent.atomic.AtomicBoolean;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.SingleItemPublisher;
 import io.helidon.media.common.CharSequenceWriter;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkPublisher;
+import io.helidon.common.http.MessageBodyReadableContent;
+import io.helidon.common.http.MessageBodyWriteableContent;
+import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.StringReader;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -34,7 +36,8 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import io.helidon.common.http.MessageBodyReadableContent;
+
+import static io.helidon.media.multipart.common.MultiPartDecoderTest.chunksPublisher;
 
 /**
  * Tests {@link BodyPart}.
@@ -48,7 +51,7 @@ public class BodyPartTest {
     public void testContentFromPublisher() {
         InboundBodyPart bodyPart = InboundBodyPart.builder()
                 .content(readableContent(CharSequenceWriter
-                        .write(new SingleItemPublisher<>("body part data"), DEFAULT_CHARSET)))
+                        .write(Mono.just("body part data"), DEFAULT_CHARSET)))
                 .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
@@ -61,28 +64,20 @@ public class BodyPartTest {
         assertThat(acceptCalled.get(), is(equalTo(true)));
     }
 
-//    @Test
-//    public void testContentFromEntity() {
-//        OutboundBodyPart bodyPart = OutboundBodyPart.create("body part data");
-//        Publisher<DataChunk> publisher = bodyPart.content()
-//                .toPublisher(DEFAULT_WRITERS, null);
-//        final AtomicBoolean acceptCalled = new AtomicBoolean(false);
-//        StringContentReader.read(publisher, DEFAULT_CHARSET)
-//                .thenAccept(str -> {
-//                    acceptCalled.set(true);
-//                    assertThat(str, is(equalTo("body part data")));
-//                }).exceptionally((Throwable ex) -> {
-//            fail(ex);
-//            return null;
-//        });
-//        assertThat(acceptCalled.get(), is(equalTo(true)));
-//    }
+    @Test
+    public void testContentFromEntity() {
+        Publisher<DataChunk> publisher = MessageBodyWriteableContent
+                .of(OutboundBodyPart.create("body part data").content())
+                .toPublisher(MEDIA_SUPPORT.writerContext());
+        String result = StringReader.read(publisher, DEFAULT_CHARSET).block();
+        assertThat(result, is(equalTo("body part data")));
+    }
 
     @Test
     public void testBufferedPart() {
         InboundBodyPart bodyPart = InboundBodyPart.builder()
                 .content(readableContent(
-                        new DataChunkPublisher("abc".getBytes())))
+                        chunksPublisher("abc".getBytes())))
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -93,7 +88,7 @@ public class BodyPartTest {
     public void testNonBufferedPart() {
         InboundBodyPart bodyPart = InboundBodyPart.builder()
                 .content(readableContent(
-                        new DataChunkPublisher("abc".getBytes())))
+                        chunksPublisher("abc".getBytes())))
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(false)));
         assertThrows(IllegalStateException.class, () -> {
@@ -153,7 +148,9 @@ public class BodyPartTest {
         assertThat(bodyPart.name(), is(nullValue()));
     }
 
-    static MessageBodyReadableContent readableContent(Publisher<DataChunk> chunks) {
+    static MessageBodyReadableContent readableContent(
+            Publisher<DataChunk> chunks) {
+
         return MessageBodyReadableContent.create(chunks,
                 MEDIA_SUPPORT.readerContext());
     }
@@ -161,17 +158,19 @@ public class BodyPartTest {
     /**
      * A publisher that never invokes {@link Subscriber#onComplete()}.
      */
-    static class UncompletablePublisher extends DataChunkPublisher {
+    static class UncompletablePublisher implements Publisher<DataChunk> {
+
+        private final Publisher<DataChunk> delegate;
 
         UncompletablePublisher(byte[]... chunksData) {
-            super(chunksData);
+            delegate = chunksPublisher(chunksData);
         }
 
         @Override
         public void subscribe(Subscriber<? super DataChunk> subscriber) {
-            super.subscribe(new Subscriber<DataChunk> () {
+            delegate.subscribe(new Subscriber<DataChunk> () {
                 @Override
-                public void onSubscribe(Flow.Subscription subscription) {
+                public void onSubscribe(Subscription subscription) {
                     subscriber.onSubscribe(subscription);
                 }
 

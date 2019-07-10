@@ -28,7 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
 import static io.helidon.common.CollectionsHelper.mapOf;
-import io.helidon.common.reactive.EmptyPublisher;
+import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.MediaSupport;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,8 +71,10 @@ public class ContentCharsetTest {
     private RequestTestStub charset(Map<String, List<String>> map) {
         BareRequest bareRequestMock = mock(BareRequest.class);
         doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
-        doReturn(new EmptyPublisher<>()).when(bareRequestMock).bodyPublisher();
+        doReturn(Mono.empty()).when(bareRequestMock).bodyPublisher();
         doReturn(map).when(bareRequestMock).headers();
-        return new RequestTestStub(bareRequestMock, mock(WebServer.class));
+        WebServer webServer = mock(WebServer.class);
+        doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
+        return new RequestTestStub(bareRequestMock, webServer);
     }
 }

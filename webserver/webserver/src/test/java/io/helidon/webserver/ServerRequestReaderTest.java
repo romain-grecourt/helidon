@@ -17,15 +17,13 @@
 package io.helidon.webserver;
 
 import io.helidon.common.http.Reader;
+import io.helidon.common.reactive.Multi;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import io.helidon.common.reactive.ReactiveStreamsAdapter;
-
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Flux;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -34,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * The ServerRequestReaderTest.
  */
 public class ServerRequestReaderTest {
+
     static class A {}
 
     static class B extends A {}
@@ -42,20 +41,20 @@ public class ServerRequestReaderTest {
 
     @Test
     public void test1() throws Exception {
-        Reader<B> reader = (publisher, clazz) -> ReactiveStreamsAdapter.publisherFromFlow(publisher)
-                                                                             .collectList()
-                                                                             .toFuture()
-                                                                             .thenApply(byteBuffers -> new B());
+        Reader<B> reader = (publisher, clazz) -> Multi.from(publisher)
+                .collectList()
+                .toFuture()
+                .thenApply(byteBuffers -> new B());
 
-        CompletionStage<? extends B> apply = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()));
+        CompletionStage<? extends B> apply = reader.apply(Multi.empty());
 
-        CompletionStage<? extends B> a = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), A.class);
-        CompletionStage<? extends B> b = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), B.class);
+        CompletionStage<? extends B> a = reader.apply(Multi.empty(), A.class);
+        CompletionStage<? extends B> b = reader.apply(Multi.empty(), B.class);
 
         // this should not be possible to compile:
         //CompletionStage<? extends B> apply2 = reader.apply(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
         // which is why we have the cast method
-        CompletionStage<? extends C> c = reader.applyAndCast(ReactiveStreamsAdapter.publisherToFlow(Flux.empty()), C.class);
+        CompletionStage<? extends C> c = reader.applyAndCast(Multi.empty(), C.class);
 
         assertThat(apply.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(B.class));
         assertThat(a.toCompletableFuture().get(10, TimeUnit.SECONDS), IsInstanceOf.instanceOf(A.class));

@@ -3,14 +3,14 @@ package io.helidon.media.multipart.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.http.MessageBody.ReaderContext;
+import io.helidon.common.http.MessageBody.StreamReader;
 import io.helidon.common.reactive.Flow.Publisher;
 
 /**
  * {@link InboundBodyPart} stream reader.
  */
-public final class BodyPartStreamReader implements Reader<InboundBodyPart> {
+public final class BodyPartStreamReader implements StreamReader<InboundBodyPart> {
 
     BodyPartStreamReader() {
     }

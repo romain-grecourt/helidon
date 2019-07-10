@@ -23,7 +23,6 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
-import org.mockito.Mockito;
 
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -36,7 +35,7 @@ public class RequestTestStub extends Request {
     private final Span span;
 
     RequestTestStub() {
-        this(bareRequestMock(), Mockito.mock(WebServer.class));
+        this(bareRequestMock(), webServerMock());
     }
 
     RequestTestStub(BareRequest req, WebServer webServer) {
@@ -51,6 +50,12 @@ public class RequestTestStub extends Request {
     RequestTestStub(BareRequest req, WebServer webServer, Span span) {
         super(req, webServer, new HashRequestHeaders(req.headers()));
         this.span = span == null ? mock(Span.class) : span;
+    }
+
+    private static WebServer webServerMock() {
+        WebServer webServer = mock(WebServer.class);
+        doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
+        return webServer;
     }
 
     private static BareRequest bareRequestMock() {

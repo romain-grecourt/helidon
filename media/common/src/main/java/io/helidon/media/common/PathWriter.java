@@ -1,22 +1,23 @@
 package io.helidon.media.common;
 
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.RetrySchema;
-import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Function;
 
 import static io.helidon.media.common.ByteChannelWriter.DEFAULT_RETRY_SCHEMA;
+
 /**
  * Writer for {@link Path}.
  */
@@ -31,31 +32,29 @@ public final class PathWriter implements Writer<Path> {
     }
 
     @Override
-    public <U extends Path> Publisher<DataChunk> write(Publisher<U> content,
-            GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Mono<Path> content,
+            GenericType<? extends Path> type, WriterContext context) {
 
-        Processor processor = new Processor(DEFAULT_RETRY_SCHEMA, context);
-        content.subscribe(processor);
-        return processor;
+        return content.flatMapMany(new Mapper(DEFAULT_RETRY_SCHEMA, context));
     }
 
     public static PathWriter create() {
         return new PathWriter();
     }
 
-    private static final class Processor
-            extends SingleInputDelegatingProcessor<Path, DataChunk> {
+    private static final class Mapper
+            implements Function<Path, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
         private final WriterContext context;
 
-        Processor(RetrySchema schema, WriterContext context) {
+        Mapper(RetrySchema schema, WriterContext context) {
             this.schema = schema;
             this.context = context;
         }
 
         @Override
-        protected Publisher<DataChunk> delegate(Path path) {
+        public Publisher<DataChunk> apply(Path path) {
             try {
                 context.contentType(MediaType.APPLICATION_OCTET_STREAM);
                 context.contentLength(Files.size(path));
@@ -63,7 +62,7 @@ public final class PathWriter implements Writer<Path> {
                         StandardOpenOption.READ);
                 return new ReadableByteChannelPublisher(fc, schema);
             } catch (IOException ex) {
-                return new FailedPublisher<>(ex);
+                return Mono.<DataChunk>error(ex);
             }
         }
     }

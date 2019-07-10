@@ -7,17 +7,25 @@ import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.ByteArrayReader;
 import io.helidon.media.common.ByteArrayWriter;
-import io.helidon.common.reactive.SingleOutputProcessor;
 import java.util.LinkedList;
 import io.helidon.common.http.MessageBody.ReadableContent;
 import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.http.MessageBodyReadableContent;
+import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Mono;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * {@link InboundMultiPart} reader.
  */
 public final class MultiPartReader implements Reader<MultiPart> {
 
+    /**
+     * No public constructor.
+     */
     MultiPartReader() {
     }
 
@@ -28,7 +36,9 @@ public final class MultiPartReader implements Reader<MultiPart> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends MultiPart> Publisher<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context) {
+    public <U extends MultiPart> Mono<U> read(Publisher<DataChunk> publisher,
+            GenericType<U> type, ReaderContext context) {
+
         String boundary = null;
         MediaType contentType = context.contentType().orElse(null);
         if (contentType != null) {
@@ -39,18 +49,37 @@ public final class MultiPartReader implements Reader<MultiPart> {
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
-        Processor processor = new Processor();
-        decoder.subscribe(processor);
-        return (Publisher<U>) processor;
+        return (Mono<U>) Multi.from(decoder)
+                .collect(LIST_SUPPLIER, new Collector())
+                .flatMap(new Mapper());
     }
 
-    private static final class Processor
-            extends SingleOutputProcessor<MultiPart, InboundBodyPart> {
-
-        private final LinkedList<InboundBodyPart> bodyParts = new LinkedList<>();
+    /**
+     * A mapper that creates that maps the list of buffered
+     * {@link InboundBodyPart} to a {@link Mono} of {@link InboundMultiPart}.
+     */
+    private static final class Mapper
+            implements Function<List<InboundBodyPart>, Mono<InboundMultiPart>> {
 
         @Override
-        public void onNext(InboundBodyPart bodyPart){
+        public Mono<InboundMultiPart> apply(List<InboundBodyPart> bodyParts) {
+            return Mono.just(new InboundMultiPart(bodyParts));
+        }
+    }
+
+    private static final Supplier<List<InboundBodyPart>> LIST_SUPPLIER =
+            LinkedList<InboundBodyPart>::new;
+
+    /**
+     * A collector that accumulates and buffers body parts.
+     */
+    private static final class Collector
+            implements BiConsumer<List<InboundBodyPart>, InboundBodyPart> {
+
+        @Override
+        public void accept(List<InboundBodyPart> bodyParts,
+                InboundBodyPart bodyPart) {
+
             MessageBodyReadableContent content = MessageBodyReadableContent
                     .of(bodyPart.content());
 
@@ -71,13 +100,12 @@ public final class MultiPartReader implements Reader<MultiPart> {
                     .build();
             bodyParts.add(bufferedBodyPart);
         }
-
-        @Override
-        public void onComplete() {
-            submit(new InboundMultiPart(bodyParts));
-        }
     }
 
+    /**
+     * Create a new {@link MultiPartReader} instance.
+     * @return MultiPartReader
+     */
     public static MultiPartReader create() {
         return new MultiPartReader();
     }

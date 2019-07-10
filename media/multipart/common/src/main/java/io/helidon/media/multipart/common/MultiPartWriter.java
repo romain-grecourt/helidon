@@ -5,9 +5,10 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriterContext;
-import io.helidon.common.reactive.FixedItemsPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
+import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Mono;
+import java.util.function.Function;
 
 /**
  * {@link OutboundMultiPart} writer.
@@ -31,13 +32,11 @@ public final class MultiPartWriter implements Writer<OutboundMultiPart> {
     }
 
     @Override
-    public <U extends OutboundMultiPart> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Mono<OutboundMultiPart> content,
+            GenericType<? extends OutboundMultiPart> type, WriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
-        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
-        Processor processor = new Processor(encoder);
-        return processor;
+        return content.flatMapMany(new Mapper(boundary, context));
     }
 
     public static MultiPartWriter create(String boundary) {
@@ -48,18 +47,18 @@ public final class MultiPartWriter implements Writer<OutboundMultiPart> {
         return new MultiPartWriter(DEFAULT_BOUNDARY);
     }
 
-    private static final class Processor
-            extends SingleInputDelegatingProcessor<OutboundMultiPart, DataChunk> {
+    private static final class Mapper
+            implements Function<OutboundMultiPart, Publisher<DataChunk>> {
 
         private final MultiPartEncoder encoder;
 
-        Processor(MultiPartEncoder encoder) {
-            this.encoder = encoder;
+        Mapper(String boundary, WriterContext context) {
+            this.encoder = MultiPartEncoder.create(boundary, context);
         }
 
         @Override
-        protected Publisher<DataChunk> delegate(OutboundMultiPart multiPart) {
-            new FixedItemsPublisher<>(multiPart.bodyParts()).subscribe(encoder);
+        public Publisher<DataChunk> apply(OutboundMultiPart multiPart) {
+            Multi.just(multiPart.bodyParts()).subscribe(encoder);
             return encoder;
         }
     }

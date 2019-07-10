@@ -5,15 +5,14 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.MessageBody.Writer;
 import io.helidon.common.http.MessageBody.WriterContext;
-import io.helidon.common.reactive.FailedPublisher;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.SingleItemPublisher;
+import io.helidon.common.reactive.Mono;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.CharBufferWriter;
-import io.helidon.common.reactive.SingleInputDelegatingProcessor;
 import java.nio.charset.Charset;
-import javax.json.JsonException;
+import java.util.function.Function;
 import javax.json.JsonStructure;
+import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 
 /**
@@ -33,43 +32,39 @@ public class JsonpWriter implements Writer<JsonStructure> {
     }
 
     @Override
-    public <U extends JsonStructure> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Mono<JsonStructure> content,
+            GenericType<? extends JsonStructure> type, WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        Processor processor = new Processor(jsonWriterFactory, context.charset());
-        content.subscribe(processor);
-        return processor;
+        return content.flatMapMany(new Mapper(jsonWriterFactory,
+                context.charset()));
     }
 
     static Publisher<DataChunk> write(JsonWriterFactory factory,
             JsonStructure entity, Charset charset) {
 
         CharBuffer buffer = new CharBuffer();
-        try (javax.json.JsonWriter writer = factory.createWriter(buffer)) {
+        try (JsonWriter writer = factory.createWriter(buffer)) {
             writer.write(entity);
-            return CharBufferWriter
-                    .write(new SingleItemPublisher<>(buffer), charset);
-        } catch (IllegalStateException | JsonException ex) {
-            return new FailedPublisher<>(ex);
+            return CharBufferWriter.write(Mono.just(buffer), charset);
         }
     }
 
-    private static final class Processor
-            extends SingleInputDelegatingProcessor<JsonStructure, DataChunk> {
+    private static final class Mapper
+            implements Function<JsonStructure, Publisher<DataChunk>> {
 
         private final JsonWriterFactory jsonWriterFactory;
         private final Charset charset;
 
-        Processor(JsonWriterFactory jsonWriterFactory, Charset charset) {
+        Mapper(JsonWriterFactory jsonWriterFactory, Charset charset) {
             this.jsonWriterFactory = jsonWriterFactory;
             this.charset = charset;
         }
 
         @Override
-        protected Publisher<DataChunk> delegate(JsonStructure item) {
+        public Publisher<DataChunk> apply(JsonStructure item) {
             return write(jsonWriterFactory, item, charset);
         }
     }

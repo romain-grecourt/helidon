@@ -3,7 +3,7 @@ package io.helidon.media.jsonp.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
+import io.helidon.common.http.MessageBody.StreamWriter;
 import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
@@ -17,14 +17,14 @@ import javax.json.JsonWriterFactory;
 /**
  * JSON-P entity stream writer.
  */
-public abstract class JsonpStreamWriter implements Writer<JsonStructure> {
+public abstract class JsonpStreamWriter implements StreamWriter<JsonStructure> {
 
     private final JsonWriterFactory jsonFactory;
     private final String begin;
     private final String separator;
     private final String end;
 
-    public JsonpStreamWriter(JsonWriterFactory jsonFactory,
+    protected JsonpStreamWriter(JsonWriterFactory jsonFactory,
             String begin, String separator, String end) {
 
         Objects.requireNonNull(jsonFactory);
@@ -41,8 +41,8 @@ public abstract class JsonpStreamWriter implements Writer<JsonStructure> {
     }
 
     @Override
-    public <U extends JsonStructure> Publisher<DataChunk> write(
-            Publisher<U> content, GenericType<U> type, WriterContext context) {
+    public Publisher<DataChunk> write(Publisher<JsonStructure> content,
+            GenericType<? extends JsonStructure> type, WriterContext context) {
 
          MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);

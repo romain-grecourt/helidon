@@ -1,12 +1,14 @@
 package io.helidon.media.common;
 
-import io.helidon.common.reactive.SingleInputProcessor;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
+import java.util.function.Function;
 
 /**
  * Reader for String.
@@ -22,41 +24,35 @@ public final class StringReader implements Reader<String> {
     }
 
     @Override
-    public <U extends String> Publisher<U> read(Publisher<DataChunk> publisher,
+    @SuppressWarnings("unchecked")
+    public <U extends String> Mono<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, ReaderContext context) {
 
-        return read(publisher, context.charset());
+        return (Mono<U>) read(publisher, context.charset());
     }
 
-    public static <U extends String> Publisher<U> read(
+    public static Mono<String> read(
             Publisher<DataChunk> publisher, Charset charset) {
 
-        Processor processor = new Processor(charset);
-        ByteArrayReader.read(publisher).subscribe(processor);
-        return processor;
+        return ByteArrayReader.read(publisher).flatMap(new Mapper(charset));
     }
 
     public static StringReader create() {
         return new StringReader();
     }
 
-    private static final class Processor <U extends String>
-            extends SingleInputProcessor<byte[], U> {
+    private static final class Mapper
+            implements Function<ByteArrayOutputStream, Mono<String>> {
 
         private final Charset charset;
 
-        Processor(Charset charset) {
+        Mapper(Charset charset) {
             this.charset = charset;
         }
 
         @Override
-        protected U wrap(byte[] data) {
-            return (U) new String(data, charset);
-        }
-
-        @Override
-        public void onComplete() {
-            complete();
+        public Mono<String> apply(ByteArrayOutputStream baos) {
+            return Mono.just(new String(baos.toByteArray(), charset));
         }
     }
 }
