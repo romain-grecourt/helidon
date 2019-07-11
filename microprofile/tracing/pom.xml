@@ -21,7 +21,7 @@
     <parent>
         <artifactId>helidon-microprofile-project</artifactId>
         <groupId>io.helidon.microprofile</groupId>
-        <version>1.1.2-SNAPSHOT</version>
+        <version>1.1.3-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -36,12 +36,6 @@
     </description>
 
     <dependencies>
-        <!--<dependency>-->
-        <!--<groupId>org.eclipse.microprofile.opentracing</groupId>-->
-        <!--<artifactId>microprofile-opentracing-api</artifactId>-->
-        <!--&lt;!&ndash; TODO move to parent &ndash;&gt;-->
-        <!--<version>1.2.1</version>-->
-        <!--</dependency>-->
         <dependency>
             <groupId>io.helidon.tracing</groupId>
             <artifactId>helidon-tracing-jersey</artifactId>

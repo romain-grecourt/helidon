@@ -24,13 +24,14 @@
     <parent>
         <groupId>io.helidon.webserver</groupId>
         <artifactId>helidon-webserver-project</artifactId>
-        <version>1.1.2-SNAPSHOT</version>
+        <version>1.1.3-SNAPSHOT</version>
     </parent>
     <artifactId>helidon-webserver</artifactId>
     <name>Helidon WebServer</name>
 
     <properties>
         <surefire.argLine>-Xmx128m -Dfile.encoding=UTF-8</surefire.argLine>
+        <spotbugs.exclude>etc/spotbugs/exclude.xml</spotbugs.exclude>
     </properties>
 
     <build>
@@ -91,6 +92,11 @@
             <artifactId>opentracing-noop</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.helidon.tracing</groupId>
+            <artifactId>helidon-tracing-config</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
         </dependency>
@@ -118,8 +124,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>javax.json</groupId>
-            <artifactId>javax.json-api</artifactId>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -142,6 +148,11 @@
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

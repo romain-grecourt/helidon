@@ -322,7 +322,10 @@ public interface WebServer {
                 mediaSupport = MediaSupport.createWithDefaults();
             }
             WebServer result = new NettyWebServer(configuration == null
-                                                          ? ServerBasicConfig.DEFAULT_CONFIGURATION
+                                                          // this is happening once per microservice, no need to store in
+                                                          // a constant; also the configuration creates instances of context etc.
+                                                          // that should not be initialized unless needed
+                                                          ? ServerConfiguration.builder().build()
                                                           : configuration,
                                                   defaultRouting, routings, mediaSupport);
             if (defaultRouting instanceof RequestRouting) {

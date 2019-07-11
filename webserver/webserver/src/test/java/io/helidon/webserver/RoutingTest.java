@@ -16,10 +16,10 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.ContextualRegistry;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 
+import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Mono;
 import io.helidon.media.common.MediaSupport;

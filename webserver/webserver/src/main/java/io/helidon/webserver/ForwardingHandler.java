@@ -16,24 +16,29 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.DataChunk;
+import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLEngine;
 
+import io.helidon.common.http.DataChunk;
+
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.LastHttpContent;
 
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
@@ -98,28 +103,35 @@ public class ForwardingHandler extends SimpleChannelInboundHandler<Object> {
             HttpRequestScopedPublisher publisherRef = requestContext.publisher();
             long requestId = REQUEST_ID_GENERATOR.incrementAndGet();
 
-            BareRequestImpl bareRequest =
-                new BareRequestImpl((HttpRequest) msg, requestContext.publisher(), webServer, ctx, sslEngine, requestId);
-            BareResponseImpl bareResponse =
-                new BareResponseImpl(ctx, request, publisherRef::isCompleted, Thread.currentThread(), requestId);
+            // If a problem with the request URI, return 400 response
+            BareRequestImpl bareRequest;
+            try {
+                bareRequest = new BareRequestImpl((HttpRequest) msg, requestContext.publisher(),
+                        webServer, ctx, sslEngine, requestId);
+            } catch (IllegalArgumentException e) {
+                send400BadRequest(ctx, e.getMessage());
+                return;
+            }
 
+            BareResponseImpl bareResponse =
+                    new BareResponseImpl(ctx, request, publisherRef::isCompleted, Thread.currentThread(), requestId);
             bareResponse.whenCompleted()
                         .thenRun(() -> {
                             RequestContext requestContext = this.requestContext;
                             if (requestContext != null) {
                                 requestContext.responseCompleted(true);
                             }
-                            /*
-                             * Cleanup for these queues is done in HttpInitializer. However,
-                             * it may take a while for the event loop on the channel to
-                             * execute that code. If the handler has already consumed
-                             * all the data when this code is executed, we can cleanup
-                             * here and reduce the number of queues we track. This is
-                             * especially useful when keep-alive is enabled.
-                             */
+
+                            // Cleanup for these queues is done in HttpInitializer, but
+                            // we try to do it here if possible to reduce memory usage,
+                            // especially for keep-alive connections
                             if (queue.release()) {
                                 queues.remove(queue);
                             }
+
+                            // Enable auto-read only after response has been completed
+                            // to avoid a race condition with the next response
+                            ctx.channel().config().setAutoRead(true);
                         });
             if (HttpUtil.is100ContinueExpected(request)) {
                 send100Continue(ctx);
@@ -161,10 +173,6 @@ public class ForwardingHandler extends SimpleChannelInboundHandler<Object> {
             if (msg instanceof LastHttpContent) {
                 requestContext.publisher().complete();
                 requestContext = null; // just to be sure that current http req/res session doesn't interfere with other ones
-
-                // with the last http request content, the tcp connection has to become 'autoReadable'
-                // so that next http request can be obtained
-                ctx.channel().config().setAutoRead(true);
             } else if (!content.isReadable()) {
                 // this is here to handle the case when the content is not readable but we didn't
                 // exceptionally complete the publisher and close the connection
@@ -175,6 +183,20 @@ public class ForwardingHandler extends SimpleChannelInboundHandler<Object> {
 
     private static void send100Continue(ChannelHandlerContext ctx) {
         FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, CONTINUE);
+        ctx.write(response);
+    }
+
+    /**
+     * Returns a 400 (Bad Request) response with a message as content.
+     *
+     * @param ctx Channel context.
+     * @param message The message.
+     */
+    private static void send400BadRequest(ChannelHandlerContext ctx, String message) {
+        byte[] entity = message.getBytes(StandardCharsets.UTF_8);
+        FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, BAD_REQUEST, Unpooled.wrappedBuffer(entity));
+        response.headers().add(HttpHeaderNames.CONTENT_TYPE, "text/plain");
+        response.headers().add(HttpHeaderNames.CONTENT_LENGTH, entity.length);
         ctx.write(response);
     }
 

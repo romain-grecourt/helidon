@@ -118,5 +118,4 @@ public final class ContentWriters {
     public static Function<ReadableByteChannel, Publisher<DataChunk>> byteChannelWriter() {
         return byteChannelWriter(null);
     }
-
 }

@@ -34,6 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.helidon.common.Version;
+import io.helidon.common.context.Context;
 import io.helidon.common.http.ContextualRegistry;
 import io.helidon.media.common.MediaSupport;
 
@@ -46,6 +47,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
@@ -55,6 +58,7 @@ import io.netty.util.concurrent.Future;
  * The Netty based WebServer implementation.
  */
 class NettyWebServer implements WebServer {
+    static final String TRACING_COMPONENT = "web-server";
 
     private static final Logger LOGGER = Logger.getLogger(NettyWebServer.class.getName());
 
@@ -92,7 +96,14 @@ class NettyWebServer implements WebServer {
         LOGGER.info(() -> "Version: " + Version.VERSION);
         this.bossGroup = new NioEventLoopGroup(sockets.size());
         this.workerGroup = config.workersCount() <= 0 ? new NioEventLoopGroup() : new NioEventLoopGroup(config.workersCount());
-        this.contextualRegistry = ContextualRegistry.create(config.context());
+        // the contextual registry needs to be created as a different type is expected. Once we remove ContextualRegistry
+        // we can simply use the one from config
+        Context context = config.context();
+        if (context instanceof ContextualRegistry) {
+            this.contextualRegistry = (ContextualRegistry) context;
+        } else {
+            this.contextualRegistry = ContextualRegistry.create(config.context());
+        }
         this.configuration = config;
         this.mediaSupport = mediaSupport;
 
@@ -111,9 +122,22 @@ class NettyWebServer implements WebServer {
                 } else {
                     protocols = soConfig.enabledSslProtocols().toArray(new String[0]);
                 }
+
+                // Enable ALPN for application protocol negotiation with HTTP/2
+                // Needs JDK >= 9 or Jetty’s ALPN boot library
+                ApplicationProtocolConfig appProtocolConfig = null;
+                if (configuration.isHttp2Enabled()) {
+                    appProtocolConfig = new ApplicationProtocolConfig(
+                            ApplicationProtocolConfig.Protocol.ALPN,
+                            ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+                            ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+                            ApplicationProtocolNames.HTTP_2,
+                            ApplicationProtocolNames.HTTP_1_1);
+                }
+
                 sslContext = new JdkSslContext(
                         soConfig.ssl(), false, null,
-                        IdentityCipherSuiteFilter.INSTANCE, null,
+                        IdentityCipherSuiteFilter.INSTANCE, appProtocolConfig,
                         ClientAuth.NONE, protocols, false);
             }
 

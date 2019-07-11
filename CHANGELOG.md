@@ -5,13 +5,51 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased] 
 
 ### Notes
 
 ### Improvements
 
+- WebServer: Access log support [800](https://github.com/oracle/helidon/pull/800)
+- WebServer: Support for HTTP/2 negotiation with TLS/APLN [807](https://github.com/oracle/helidon/pull/807)
+- Config: credentials support added to git config [810](https://github.com/oracle/helidon/pull/801)
+- Early Access: support for the Oracle Universal Connection Pool [777](https://github.com/oracle/helidon/pull/777)
+
 ### Fixes
+
+- WebServer: Return a 400 response for a request with an invalid URL [796](https://github.com/oracle/helidon/pull/796)
+- WebServer: Changes to content length optimization to handle flushes [783](https://github.com/oracle/helidon/pull/783)
+- WebServer: Refine content length support [795](https://github.com/oracle/helidon/pull/795)
+- Update jackson databind to 2.9.9 [797](https://github.com/oracle/helidon/pull/797)
+- Enable Netty autoread only after completing a response [823](https://github.com/oracle/helidon/pull/823)
+- Tracing: add Tracing configuration module [809](https://github.com/oracle/helidon/pull/809)
+- Tracing: Fix constant sampler name for Jaeger [828](https://github.com/oracle/helidon/pull/828)
+
+## [1.1.2] - 2019-06-14
+
+### Notes
+
+This is a bug fix release. It includes improved support for setting Content-Length on server responses, and
+MicroProfile Fault Tolerance now passes all TCKs.
+
+### Improvements
+
+- MicroProfile: Create Helidon MP 2.2 bundle: [765](https://github.com/oracle/helidon/pull/765)
+- Fault Tolerance: Completed support for async bulkheads [755](https://github.com/oracle/helidon/pull/755)
+
+### Fixes
+
+- WebServer: Content-length optimization [773](https://github.com/oracle/helidon/pull/773) [783](https://github.com/oracle/helidon/pull/783)
+- WebServer: JAX-RS: Fixes support for application calls to flush() when using StreamingOutput. [758](https://github.com/oracle/helidon/pull/758)
+- Security: Encryption changed to GCM method
+- CDI Extension: JPA: disable DTDs and external entities [774](https://github.com/oracle/helidon/pull/774)
+- OpenAPI: Expand openapi mediatypes [766](https://github.com/oracle/helidon/pull/766)
+- Security: Remove unneeded dependency on JAXB [779](https://github.com/oracle/helidon/pull/779)
+- Security: Make IdcsMtRoleMapperProvider more flexible [761](https://github.com/oracle/helidon/pull/761)
+- gRPC Server: propagate context [769](https://github.com/oracle/helidon/pull/769)
+- Examples: Add employee-app example [747](https://github.com/oracle/helidon/pull/747)
+- Testing: Added Unit Tests to increase code coverage [660](https://github.com/oracle/helidon/pull/660)
 
 ## [1.1.1] - 2019-05-23
 
@@ -332,7 +370,8 @@ for details.
 ### Notes
 - Initial source drop on Github
 
-[Unreleased]: https://github.com/oracle/helidon/compare/1.1.1...HEAD
+[Unreleased]: https://github.com/oracle/helidon/compare/1.1.2...HEAD
+[1.1.2]: https://github.com/oracle/helidon/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/oracle/helidon/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/oracle/helidon/compare/1.0.3...1.1.0
 [1.0.3]: https://github.com/oracle/helidon/compare/1.0.2...1.0.3

@@ -75,7 +75,7 @@ public class EncodingTest {
     @Test
     public void testEncodedUrl() throws Exception {
         String s = SocketHttpClient.sendAndReceive("/f%6F%6F", Http.Method.GET, null, webServer);
-        assertThat(cutPayloadAndCheckHeadersFormat(s), is("9\nIt works!\n0\n\n"));
+        assertThat(cutPayloadAndCheckHeadersFormat(s), is("It works!"));
         Map<String, String> headers = cutHeaders(s);
         assertThat(headers, hasEntry("connection", "keep-alive"));
     }
@@ -88,7 +88,7 @@ public class EncodingTest {
     @Test
     public void testEncodedUrlParams() throws Exception {
         String s = SocketHttpClient.sendAndReceive("/f%6F%6F/b%61%72", Http.Method.GET, null, webServer);
-        assertThat(cutPayloadAndCheckHeadersFormat(s), is("3\nbar\n0\n\n"));
+        assertThat(cutPayloadAndCheckHeadersFormat(s), is("bar"));
         Map<String, String> headers = cutHeaders(s);
         assertThat(headers, hasEntry("connection", "keep-alive"));
     }

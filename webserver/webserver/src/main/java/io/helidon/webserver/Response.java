@@ -22,25 +22,33 @@ import java.util.concurrent.CompletionStage;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.opentracing.Span;
-import io.opentracing.SpanContext;
-import io.opentracing.Tracer;
-import io.opentracing.util.GlobalTracer;
-import java.util.List;
 import io.helidon.common.http.MessageBody;
 import io.helidon.common.http.MessageBodyContextBase;
 import io.helidon.common.http.MessageBodyWriterContext;
+import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.tracing.config.SpanTracingConfig;
+import io.helidon.tracing.config.TracingConfigUtil;
+
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.AFTER_ONCOMPLETE;
+import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.BEFORE_ONSUBSCRIBE;
+import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.AFTER_ONERROR;
 
 /**
  * The basic implementation of {@link ServerResponse}.
  */
 abstract class Response implements ServerResponse {
+    private static final String TRACING_CONTENT_WRITE = "content-write";
 
     private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
             GenericType.create(ByteArrayOutputStream.class);
@@ -98,9 +106,9 @@ abstract class Response implements ServerResponse {
      * <a href="http://opentracing.io">opentracing.io</a> standard.
      * </p>
      *
-     * @return the related span context
+     * @return the related span context or empty if not enabled
      */
-    abstract SpanContext spanContext();
+    abstract Optional<SpanContext> spanContext();
 
     @Override
     public WebServer webServer() {
@@ -124,26 +132,29 @@ abstract class Response implements ServerResponse {
         return headers;
     }
 
-    private Tracer tracer() {
-        Tracer result = null;
-        if (webServer != null) {
-            ServerConfiguration configuration = webServer.configuration();
-            if (configuration != null) {
-                result = configuration.tracer();
-            }
+    private Span createWriteSpan(GenericType<?> type) {
+        Optional<SpanContext> parentSpan = spanContext();
+        if (!parentSpan.isPresent()) {
+            // we only trace write span if there is a parent
+            // (parent is either webserver HTTP Request span, or inherited span
+            // from request
+            return null;
         }
-        return result == null ? GlobalTracer.get() : result;
-    }
 
-    private <T> Span createWriteSpan(T obj) {
-        Tracer.SpanBuilder spanBuilder = tracer().buildSpan("content-write");
-        if (spanContext() != null) {
-            spanBuilder.asChildOf(spanContext());
+        SpanTracingConfig spanConfig = TracingConfigUtil.spanConfig(
+                NettyWebServer.TRACING_COMPONENT, TRACING_CONTENT_WRITE);
+
+        if (spanConfig.enabled()) {
+            String spanName = spanConfig.newName().orElse(TRACING_CONTENT_WRITE);
+            Tracer.SpanBuilder spanBuilder = WebTracingConfig.tracer(webServer())
+                    .buildSpan(spanName)
+                    .asChildOf(parentSpan.get());
+            if (type != null) {
+                spanBuilder.withTag("response.type", type.getTypeName());
+            }
+            return spanBuilder.start();
         }
-        if (obj != null) {
-            spanBuilder.withTag("response.type", obj.getClass().getName());
-        }
-        return spanBuilder.start();
+        return null;
     }
 
     private static Mono<ByteArrayOutputStream> byteArrayMono(byte[] bytes) {
@@ -158,7 +169,6 @@ abstract class Response implements ServerResponse {
 
     @Override
     public <T> CompletionStage<ServerResponse> send(T content) {
-        Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
                 Publisher<DataChunk> sendPublisher;
@@ -176,14 +186,13 @@ abstract class Response implements ServerResponse {
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
-            writeSpan.finish();
+            eventListener.finish();
             throw e;
         }
     }
 
     @Override
     public CompletionStage<ServerResponse> send(Publisher<DataChunk> content) {
-        Span writeSpan = createWriteSpan(content);
         try {
             Publisher<DataChunk> sendPublisher = writerContext
                     .applyFilters(content);
@@ -193,7 +202,7 @@ abstract class Response implements ServerResponse {
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
-            writeSpan.finish();
+            eventListener.finish();
             throw e;
         }
     }
@@ -207,7 +216,6 @@ abstract class Response implements ServerResponse {
     public <T> CompletionStage<ServerResponse> send(Publisher<T> content,
             Class<T> itemClass) {
 
-        Span writeSpan = createWriteSpan(content);
         try {
             sendLockSupport.execute(() -> {
                 GenericType<T> type = GenericType.create(itemClass);
@@ -218,7 +226,7 @@ abstract class Response implements ServerResponse {
             }, content == null);
             return whenSent();
         } catch (RuntimeException | Error e) {
-            writeSpan.finish();
+            eventListener.finish();
             throw e;
         }
     }
@@ -318,20 +326,18 @@ abstract class Response implements ServerResponse {
             }
         }
 
+        void finish() {
+            if (span != null) {
+                span.finish();
+            }
+        }
+
         @Override
         public void onEvent(MessageBodyContextBase.Event event) {
             switch(event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
-                    Tracer.SpanBuilder spanBuilder = tracer()
-                            .buildSpan("content-write");
-                    if (spanContext() != null) {
-                        spanBuilder.asChildOf(spanContext());
-                    }
                     GenericType<?> type = event.entityType().orElse(null);
-                    if (type != null) {
-                        spanBuilder.withTag("response.type", type.getTypeName());
-                    }
-                    span = spanBuilder.start();
+                    span = createWriteSpan(type);
                     break;
                 case BEFORE_ONNEXT:
                     sendHeadersIfNeeded();
@@ -345,9 +351,7 @@ abstract class Response implements ServerResponse {
                     sendHeadersIfNeeded();
                     break;
                 case AFTER_ONCOMPLETE:
-                    if (span != null) {
-                        span.finish();
-                    }
+                    finish();
                     break;
                 default:
                     // do nothing

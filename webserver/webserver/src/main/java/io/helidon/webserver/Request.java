@@ -27,8 +27,14 @@ import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.opentracing.Span;
+import io.helidon.common.http.Reader;
+import io.helidon.common.reactive.Flow;
+import io.helidon.media.common.ContentReaders;
+import io.helidon.tracing.config.SpanTracingConfig;
+import io.helidon.tracing.config.TracingConfigUtil;
 
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import java.nio.charset.Charset;
@@ -36,16 +42,18 @@ import java.nio.charset.StandardCharsets;
 
 import io.helidon.common.GenericType;
 
-import static io.helidon.common.CollectionsHelper.mapOf;
 import io.helidon.common.http.MessageBody.ReadableContent;
 import io.helidon.common.http.MessageBodyContextBase;
 import io.helidon.common.http.MessageBodyReadableContent;
 import io.helidon.common.http.MessageBodyReaderContext;
 
+import static io.helidon.common.CollectionsHelper.mapOf;
+
 /**
  * The basic abstract implementation of {@link ServerRequest}.
  */
 abstract class Request implements ServerRequest {
+    private static final String TRACING_CONTENT_READ_NAME = "content-read";
 
     /**
      * The default charset to use in case that no charset or no mime-type is
@@ -110,8 +118,6 @@ abstract class Request implements ServerRequest {
                       .map(Charset::forName)
                       .orElse(DEFAULT_CHARSET);
     }
-
-    protected abstract Tracer tracer();
 
     @Override
     public WebServer webServer() {
@@ -231,6 +237,7 @@ abstract class Request implements ServerRequest {
                     if (readSpan != null) {
                         readSpan.finish();
                     }
+                    break;
                 default:
                     // do nothing
             }
