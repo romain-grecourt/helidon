@@ -1,11 +1,10 @@
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.MessageBody.Filters;
-import io.helidon.common.http.MessageBody.ReadOperator;
-import io.helidon.common.http.MessageBody.ReaderContext;
-import io.helidon.common.http.MessageBody.Readers;
-import io.helidon.common.http.MessageBody.StreamReader;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
@@ -20,22 +19,18 @@ import java.util.function.Predicate;
 /**
  * Implementation of {@link ReaderContext}.
  */
-public final class MessageBodyReaderContext extends MessageBodyContextBase
-        implements ReaderContext, Readers, Filters {
+public final class MessageBodyReaderContext extends MessageBodyContext
+        implements MessageBodyReaders, MessageBodyFilters {
 
-    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+    static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     private final ReadOnlyParameters headers;
     private final Optional<MediaType> contentType;
-    private final MessageBodyOperators<ReadOperator<?>, ReaderContext> readers;
-    private final MessageBodyOperators<ReadOperator<?>, ReaderContext> sreaders;
+    private final MessageBodyOperators<MessageBodyReader<?>> readers;
+    private final MessageBodyOperators<MessageBodyStreamReader<?>> sreaders;
 
     /**
-     * Create a new parented context.
-     * @param parent parent context, must not be {@code null}
-     * @param eventListener subscription event listener, may be {@code null}
-     * @param headers backing headers, must not be {@code null}
-     * @param contentType content type, must not be {@code null}
+     * Private to enforce the use of the static factory methods.
      */
     private MessageBodyReaderContext(MessageBodyReaderContext parent,
             EventListener eventListener, ReadOnlyParameters headers,
@@ -43,12 +38,16 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
 
         super(parent, eventListener);
         Objects.requireNonNull(headers, "headers cannot be null!");
-        Objects.requireNonNull(parent, "parent cannot be null!");
         Objects.requireNonNull(contentType, "contentType cannot be null!");
         this.headers = headers;
         this.contentType = contentType;
-        this.readers = new MessageBodyOperators<>(parent.readers);
-        this.sreaders = new MessageBodyOperators<>(parent.sreaders);
+        if (parent != null) {
+            this.readers = new MessageBodyOperators<>(parent.readers);
+            this.sreaders = new MessageBodyOperators<>(parent.sreaders);
+        } else {
+            this.readers = new MessageBodyOperators<>();
+            this.sreaders = new MessageBodyOperators<>();
+        }
     }
 
     /**
@@ -56,35 +55,46 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
      * headers.
      */
     private MessageBodyReaderContext() {
-        super(/* eventListener */ null);
+        super(null, null);
         this.headers = ReadOnlyParameters.empty();
         this.contentType = Optional.empty();
         this.readers = new MessageBodyOperators<>();
         this.sreaders = new MessageBodyOperators<>();
     }
 
+    /**
+     * Create a new empty reader context backed by empty read-only headers. Such
+     * reader context is typically the parent context that is used to hold
+     * application wide readers and inbound filters.
+     *
+     * @return MessageBodyWriterContext
+     */
+    public static MessageBodyReaderContext create() {
+        return new MessageBodyReaderContext();
+    }
+
     @Override
     public MessageBodyReaderContext registerReader(
-            MessageBody.Reader<?> reader) {
+            MessageBodyReader<?> reader) {
 
         readers.registerFirst(reader);
         return this;
     }
 
     @Override
-    public MessageBodyReaderContext registerReader(StreamReader<?> reader) {
+    public MessageBodyReaderContext registerReader(
+            MessageBodyStreamReader<?> reader) {
+
         sreaders.registerFirst(reader);
         return this;
     }
 
     @Deprecated
-    @Override
     public <T> void registerReader(Class<T> type, Reader<T> reader) {
         readers.registerFirst(new ReaderAdapter<>(type, reader));
     }
 
     @Deprecated
-    @Override
     public <T> void registerReader(Predicate<Class<?>> predicate,
             Reader<T> reader) {
 
@@ -96,29 +106,33 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
      * accepts the specified type and current context.
      *
      * @param <T> entity type
-     * @param publisher inbound payload
+     * @param payload inbound payload
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Mono<T> unmarshall(Publisher<DataChunk> publisher,
+    public <T> Mono<T> unmarshall(Publisher<DataChunk> payload,
             GenericType<T> type) {
 
+        if (payload == null) {
+            return Mono.<T>empty();
+        }
         try {
-            if (publisher == null) {
-                return Mono.<T>empty();
+            Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
+            if (byte[].class.equals(type.rawType())) {
+                // TODO use ContentReaders instead of ByteArrayBodyReader.read
+                // readers
+                return (Mono<T>)ByteArrayBodyReader.read(filteredPayload)
+                    .flatMap((baos) -> Mono.just(baos.toByteArray()));
             }
-            MessageBody.Reader<T> reader = (MessageBody.Reader<T>)
+            MessageBodyReader<T> reader = (MessageBodyReader<T>)
                     readers.select(type, this);
             if (reader == null) {
-                return Mono.<T>error(new IllegalStateException(
-                        "No reader found for type: "
-                                + type.getTypeName()));
+                return readerNotFound(type.getTypeName());
             }
-            return reader.read(applyFilters(publisher, type), type, this);
+            return reader.read(filteredPayload, type, this);
         } catch (Throwable ex) {
-            return Mono.<T>error(new IllegalStateException(
-                    "Transformation failed!", ex));
+            return transformationFailed(ex);
         }
     }
 
@@ -127,31 +141,29 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
      * the specified class.
      *
      * @param <T> entity type
-     * @param publisher inbound payload
+     * @param payload inbound payload
      * @param readerType the requested reader class
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Mono<T> unmarshall(Publisher<DataChunk> publisher,
-            Class<? extends MessageBody.Reader<T>> readerType,
+    public <T> Mono<T> unmarshall(Publisher<DataChunk> payload,
+            Class<? extends MessageBodyReader<T>> readerType,
             GenericType<T> type) {
 
+        if (payload == null) {
+            return Mono.<T>empty();
+        }
         try {
-            if (publisher == null) {
-                return Mono.<T>empty();
-            }
-            MessageBody.Reader<T> reader = (MessageBody.Reader<T>)
+            Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
+            MessageBodyReader<T> reader = (MessageBodyReader<T>)
                     readers.get(readerType);
             if (reader == null) {
-                return Mono.<T>error(new IllegalStateException(
-                        "No reader found of type: "
-                                + readerType.getTypeName()));
+                return readerNotFound(readerType.getTypeName());
             }
-            return reader.read(applyFilters(publisher, type), type, this);
+            return reader.read(filteredPayload, type, this);
         } catch (Throwable ex) {
-            return Mono.<T>error(new IllegalStateException(
-                    "Transformation failed!", ex));
+            return transformationFailed(ex);
         }
     }
 
@@ -160,78 +172,81 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
      * stream reader that accepts the specified type and current context.
      *
      * @param <T> entity type
-     * @param publisher inbound payload
+     * @param payload inbound payload
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<T> unmarshallStream(
-            Publisher<DataChunk> publisher, GenericType<T> type) {
+    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> payload,
+            GenericType<T> type) {
 
+        if (payload == null) {
+            return Multi.<T>empty();
+        }
         try {
-            if (publisher == null) {
-                return Multi.<T>empty();
-            }
-            MessageBody.StreamReader<T> reader = (MessageBody.StreamReader<T>)
+            Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
+            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>)
                     sreaders.select(type, this);
             if (reader == null) {
-                return Multi.<T>error(new IllegalStateException(
-                        "No stream reader found for type: "
-                                + type.getTypeName()));
+                return readerNotFound(type.getTypeName());
             }
-            return reader.read(applyFilters(publisher, type), type, this);
+            return reader.read(filteredPayload, type, this);
         } catch (Throwable ex) {
-            return Multi.<T>error(new IllegalStateException(
-                    "Transformation failed!", ex));
+            return transformationFailed(ex);
         }
     }
 
     /**
      * Convert a given HTTP payload into a publisher by selecting a stream
-     * reader with the specified class.
+     * reader with the payload class.
      *
      * @param <T> entity type
-     * @param publisher inbound payload
+     * @param payload inbound payload
      * @param readerType the requested reader class
      * @param type actual representation of the entity type
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<? extends T> unmarshallStream(
-            Publisher<DataChunk> publisher,
-            Class<? extends MessageBody.Reader<T>> readerType,
+    public <T> Publisher<T> unmarshallStream(Publisher<DataChunk> payload,
+            Class<? extends MessageBodyReader<T>> readerType,
             GenericType<T> type) {
 
+        if (payload == null) {
+            return Multi.<T>empty();
+        }
         try {
-            if (publisher == null) {
-                return Multi.<T>empty();
-            }
-            MessageBody.StreamReader<T> reader = (MessageBody.StreamReader<T>)
+            Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
+            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>)
                     sreaders.get(readerType);
             if (reader == null) {
-                return Multi.<T>error(new IllegalStateException(
-                        "No stream reader found of type: "
-                                + readerType.getTypeName()));
+                return readerNotFound(readerType.getTypeName());
             }
-            return reader.read(applyFilters(publisher, type), type, this);
+            return reader.read(filteredPayload, type, this);
         } catch (Throwable ex) {
-            return Multi.<T>error(new IllegalStateException(
-                    "Transformation failed!", ex));
+            return transformationFailed(ex);
         }
     }
 
-    @Override
+    /**
+     * Get the underlying headers.
+     *
+     * @return Parameters, never {@code null}
+     */
     public ReadOnlyParameters headers() {
         return headers;
     }
 
-    @Override
+    /**
+     * Get the {@code Content-Type} header.
+     *
+     * @return Optional, never {@code null}
+     */
     public Optional<MediaType> contentType() {
         return contentType;
     }
 
     @Override
-    public final Charset charset() {
+    public Charset charset() throws IllegalStateException {
         if (contentType.isPresent()) {
             try {
                 return contentType.get().charset().map(Charset::forName)
@@ -246,6 +261,29 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
 
     /**
      * Create a new empty writer context backed by the specified headers.
+     *
+     * @param mediaSupport mediaSupport instance used to derived the parent
+     * context, may be {@code null}
+     * @param eventListener subscription event listener, may be {@code null}
+     * @param headers backing headers, must not be {@code null}
+     * @param contentType content type, must not be {@code null}
+     * @return MessageBodyReaderContext
+     */
+    public static MessageBodyReaderContext create(
+            MediaSupport mediaSupport, EventListener eventListener,
+            ReadOnlyParameters headers, Optional<MediaType> contentType) {
+
+        if (mediaSupport == null) {
+            return new MessageBodyReaderContext(null, eventListener, headers,
+                contentType);
+        }
+        return new MessageBodyReaderContext(mediaSupport.readerContext(),
+                eventListener, headers, contentType);
+    }
+
+    /**
+     * Create a new empty writer context backed by the specified headers.
+     *
      * @param parent parent context, must not be {@code null}
      * @param eventListener subscription event listener, may be {@code null}
      * @param headers backing headers, must not be {@code null}
@@ -261,38 +299,35 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
     }
 
     /**
-     * Create a new empty reader context backed by empty read-only headers.
-     * Such reader context is typically the parent context that is used to hold
-     * application wide readers and inbound filters.
-     * @return MessageBodyWriterContext
+     * Create a mono that will emit a reader not found error to its subscriber.
+     *
+     * @param <T> publisher item type
+     * @param type reader type that is not found
+     * @return Mono
      */
-    public static MessageBodyReaderContext create() {
-        return new MessageBodyReaderContext();
+    private static <T> Mono<T> readerNotFound(String type) {
+        return Mono.<T>error(new IllegalStateException(
+                "No reader found for type: " + type));
     }
 
     /**
-     * Safely cast a {@link ReaderContext} into MessageBodyReaderContext.
-     * @param context context to cast
-     * @return MessageBodyReaderContext, never {@code null}
-     * @throws IllegalArgumentException if the specified content is not
-     * an instance of MessageBodyReaderContext
+     * Create a mono that will emit a transformation failed error to its
+     * subscriber
+     *
+     * @param <T> publisher item type
+     * @param ex exception cause
+     * @return Mono
      */
-    public static MessageBodyReaderContext of(ReaderContext context)
-        throws IllegalArgumentException {
-
-        Objects.requireNonNull(context, "context cannot be null!");
-        if (context instanceof MessageBodyReaderContext) {
-            return (MessageBodyReaderContext) context;
-        }
-        throw new IllegalArgumentException("Invalid content " + context);
+    private static <T> Mono<T> transformationFailed(Throwable ex) {
+        return Mono.<T>error(new IllegalStateException(
+                    "Transformation failed!", ex));
     }
 
     /**
      * Message body reader adapter for the old deprecated reader.
      * @param <T> reader type
      */
-    private static final class ReaderAdapter<T>
-            implements MessageBody.Reader<T> {
+    private static final class ReaderAdapter<T> implements MessageBodyReader<T> {
 
         private final Reader<T> reader;
         private final Predicate<Class<?>> predicate;
@@ -314,17 +349,19 @@ public final class MessageBodyReaderContext extends MessageBodyContextBase
             this.predicate = null;
         }
 
-        @Override
         @SuppressWarnings("unchecked")
+        @Override
         public <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
-                GenericType<U> type, ReaderContext context) {
+                GenericType<U> type, MessageBodyReaderContext context) {
 
             return Mono.fromFuture(reader.applyAndCast(publisher,
                     (Class<U>)type.rawType()));
         }
 
         @Override
-        public boolean accept(GenericType<?> type, ReaderContext scope) {
+        public boolean accept(GenericType<?> type,
+                MessageBodyReaderContext context) {
+
             if (predicate != null) {
                 return predicate.test(type.rawType());
             }

@@ -2,8 +2,6 @@ package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import java.io.ByteArrayOutputStream;
@@ -11,22 +9,35 @@ import java.nio.charset.Charset;
 import java.util.function.Function;
 
 /**
- * Reader for String.
+ * Message body reader for {@link String}.
  */
-public final class StringReader implements Reader<String> {
+public final class StringBodyReader implements MessageBodyReader<String> {
 
-    private StringReader() {
+    /**
+     * Create a new {@link StringBodyReader} instance.
+     * @return StringBodyReader
+     */
+    public static StringBodyReader create() {
+        return new StringBodyReader();
+    }
+
+    /**
+     * Private to enforce the use of {@link #create()}.
+     */
+    private StringBodyReader() {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyReaderContext context) {
+
         return String.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <U extends String> Mono<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, ReaderContext context) {
+            GenericType<U> type, MessageBodyReaderContext context) {
 
         return (Mono<U>) read(publisher, context.charset());
     }
@@ -34,11 +45,7 @@ public final class StringReader implements Reader<String> {
     public static Mono<String> read(
             Publisher<DataChunk> publisher, Charset charset) {
 
-        return ByteArrayReader.read(publisher).flatMap(new Mapper(charset));
-    }
-
-    public static StringReader create() {
-        return new StringReader();
+        return ByteArrayBodyReader.read(publisher).flatMap(new Mapper(charset));
     }
 
     private static final class Mapper

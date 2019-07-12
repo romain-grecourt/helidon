@@ -45,9 +45,15 @@ public abstract class Mono<T> implements Publisher<T> {
     }
 
     public final CompletableFuture<T> toFuture() {
-        MonoToCompletableFuture<T> subscriber = new MonoToCompletableFuture<>();
-        this.subscribe(subscriber);
-        return subscriber;
+        try {
+            MonoToCompletableFuture<T> subscriber = new MonoToCompletableFuture<>();
+            this.subscribe(subscriber);
+            return subscriber;
+        } catch (Throwable ex) {
+            CompletableFuture<T> future = new CompletableFuture<>();
+            future.completeExceptionally(ex);
+            return future;
+        }
     }
 
     public static <T> Mono<T> fromFuture(CompletionStage<? extends T> future) {

@@ -15,7 +15,7 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.MessageBody.Content;
+import io.helidon.media.common.MessageBodyContent;
 
 /**
  * Body part model.
@@ -26,7 +26,7 @@ public interface BodyPart {
      * Get the reactive representation of the part content.
      * @return {@link Content}, never {@code null}
      */
-    Content content();
+    MessageBodyContent content();
 
     /**
      * Returns http part headers.

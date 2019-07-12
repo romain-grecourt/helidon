@@ -16,9 +16,7 @@
 package io.helidon.media.multipart.common;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.WriterContext;
-import io.helidon.common.http.MessageBodyWriteableContent;
-import io.helidon.common.http.MessageBodyWriterContext;
+import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -112,7 +110,7 @@ public final class MultiPartEncoder
         sb.append("\r\n");
         submit(sb.toString());
         contentSubscriber = new BodyPartContentSubscriber(this);
-        MessageBodyWriteableContent.of(bodyPart.content())
+        bodyPart.content()
                 .toPublisher(context)
                 .subscribe(contentSubscriber);
     }
@@ -202,9 +200,8 @@ public final class MultiPartEncoder
     }
 
     public static MultiPartEncoder create(String boundary,
-            WriterContext context) {
+            MessageBodyWriterContext context) {
 
-        return new MultiPartEncoder(boundary,
-                MessageBodyWriterContext.of(context));
+        return new MultiPartEncoder(boundary, context);
     }
 }

@@ -27,25 +27,20 @@ import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.http.Reader;
-import io.helidon.common.reactive.Flow;
-import io.helidon.media.common.ContentReaders;
+import io.helidon.common.GenericType;
+import io.helidon.media.common.MessageBodyContext;
+import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
 import io.opentracing.Span;
-import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
-import io.helidon.common.GenericType;
-
-import io.helidon.common.http.MessageBody.ReadableContent;
-import io.helidon.common.http.MessageBodyContextBase;
-import io.helidon.common.http.MessageBodyReadableContent;
-import io.helidon.common.http.MessageBodyReaderContext;
+import io.opentracing.SpanContext;
 
 import static io.helidon.common.CollectionsHelper.mapOf;
 
@@ -53,6 +48,7 @@ import static io.helidon.common.CollectionsHelper.mapOf;
  * The basic abstract implementation of {@link ServerRequest}.
  */
 abstract class Request implements ServerRequest {
+
     private static final String TRACING_CONTENT_READ_NAME = "content-read";
 
     /**
@@ -66,7 +62,7 @@ abstract class Request implements ServerRequest {
     private final ContextualRegistry context;
     private final Parameters queryParams;
     private final HashRequestHeaders headers;
-    private final ReadableContent content;
+    private final MessageBodyReadableContent content;
     private final MessageBodyEventListener eventListener;
 
     /**
@@ -84,8 +80,8 @@ abstract class Request implements ServerRequest {
                 /* decode */ true);
         this.eventListener = new MessageBodyEventListener();
         MessageBodyReaderContext readerContext = MessageBodyReaderContext
-                .create(webServer.mediaSupport().readerContext(),
-                        eventListener, headers, headers.contentType());
+                .create(webServer.mediaSupport(), eventListener, headers,
+                        headers.contentType());
         this.content = MessageBodyReadableContent.create(req.bodyPublisher(),
                 readerContext);
     }
@@ -190,7 +186,7 @@ abstract class Request implements ServerRequest {
     }
 
     @Override
-    public ReadableContent content() {
+    public MessageBodyReadableContent content() {
         return this.content;
     }
 
@@ -200,26 +196,44 @@ abstract class Request implements ServerRequest {
     }
 
     private final class MessageBodyEventListener
-            implements MessageBodyContextBase.EventListener {
+            implements MessageBodyContext.EventListener {
 
         private Span readSpan;
 
+        private <T> Span createReadSpan(GenericType<?> type) {
+            // only create this span if we have a parent span
+            SpanContext parentSpan = spanContext();
+            if (null == parentSpan) {
+                return null;
+            }
+
+            SpanTracingConfig spanConfig = TracingConfigUtil
+                    .spanConfig(NettyWebServer.TRACING_COMPONENT,
+                            TRACING_CONTENT_READ_NAME);
+
+            String spanName = spanConfig.newName()
+                    .orElse(TRACING_CONTENT_READ_NAME);
+
+            if (spanConfig.enabled()) {
+                // only create a real span if enabled
+                Tracer.SpanBuilder spanBuilder = tracer().buildSpan(spanName);
+                spanBuilder.asChildOf(parentSpan);
+
+                if (type != null) {
+                    spanBuilder.withTag("requested.type", type.getTypeName());
+                }
+                return spanBuilder.start();
+            } else {
+                return null;
+            }
+        }
+
         @Override
-        public void onEvent(MessageBodyContextBase.Event event) {
+        public void onEvent(MessageBodyContext.Event event) {
             switch(event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
-                    Tracer.SpanBuilder spanBuilder = tracer()
-                            .buildSpan("content-read");
-                    Span span = span();
-                    if (span != null) {
-                        spanBuilder.asChildOf(span);
-                    }
                     GenericType<?> type = event.entityType().orElse(null);
-                    if (type != null) {
-                        spanBuilder.withTag("requested.type",
-                                type.getTypeName());
-                    }
-                    readSpan = spanBuilder.start();
+                    readSpan = createReadSpan(type);
                     break;
 
                 case AFTER_ONERROR:

@@ -1,10 +1,10 @@
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.MessageBody.Filter;
-import io.helidon.common.http.MessageBody.StreamWriter;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriteableContent;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.HashParameters;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Mono;
@@ -15,7 +15,8 @@ import java.util.function.Predicate;
 /**
  * Implementation of {@link WriteableContent}.
  */
-public final class MessageBodyWriteableContent implements WriteableContent {
+public final class MessageBodyWriteableContent implements MessageBodyContent,
+        MessageBodyWriters, MessageBodyFilters {
 
     private final Object entity;
     private final Publisher<Object> stream;
@@ -106,25 +107,30 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Override
-    public MessageBodyWriteableContent registerFilter(Filter filter) {
+    public MessageBodyWriteableContent registerFilter(
+            MessageBodyFilter filter) {
+
         context.registerFilter(filter);
         return this;
     }
 
     @Override
-    public MessageBodyWriteableContent registerWriter(Writer<?> writer) {
+    public MessageBodyWriteableContent registerWriter(
+            MessageBodyWriter<?> writer) {
+
         context.registerWriter(writer);
         return this;
     }
 
     @Override
-    public MessageBodyWriteableContent registerWriter(StreamWriter<?> writer) {
+    public MessageBodyWriteableContent registerWriter(
+            MessageBodyStreamWriter<?> writer) {
+
         context.registerWriter(writer);
         return this;
     }
 
     @Deprecated
-    @Override
     public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
             Function<T, Publisher<DataChunk>> function) {
 
@@ -133,7 +139,6 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Deprecated
-    @Override
     public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
             MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
@@ -143,7 +148,6 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Deprecated
-    @Override
     public <T> MessageBodyWriteableContent registerWriter(
             Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
 
@@ -152,7 +156,6 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Deprecated
-    @Override
     public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
 
@@ -161,7 +164,6 @@ public final class MessageBodyWriteableContent implements WriteableContent {
     }
 
     @Deprecated
-    @Override
     public void registerFilter(
             Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
 
@@ -206,22 +208,5 @@ public final class MessageBodyWriteableContent implements WriteableContent {
             Publisher<DataChunk> publisher, Parameters headers) {
 
         return new MessageBodyWriteableContent(publisher, headers);
-    }
-
-    /**
-     * Safely cast a {@link WriteableContent} into MessageBodyWriteableContent.
-     * @param content content to cast
-     * @return MessageBodyWriteableContent, never {@code null}
-     * @throws IllegalArgumentException if the specified content is not
-     * an instance of MessageBodyWriteableContent
-     */
-    public static MessageBodyWriteableContent of(WriteableContent content)
-        throws IllegalArgumentException {
-
-        Objects.requireNonNull(content, "content cannot be null!");
-        if (content instanceof MessageBodyWriteableContent) {
-            return (MessageBodyWriteableContent) content;
-        }
-        throw new IllegalArgumentException("Invalid content " + content);
     }
 }

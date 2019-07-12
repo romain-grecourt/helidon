@@ -15,10 +15,10 @@
  */
 package io.helidon.media.multipart.server;
 
-import io.helidon.media.multipart.common.BodyPartStreamReader;
-import io.helidon.media.multipart.common.BodyPartStreamWriter;
-import io.helidon.media.multipart.common.MultiPartReader;
-import io.helidon.media.multipart.common.MultiPartWriter;
+import io.helidon.media.multipart.common.BodyPartBodyStreamReader;
+import io.helidon.media.multipart.common.BodyPartBodyStreamWriter;
+import io.helidon.media.multipart.common.MultiPartBodyReader;
+import io.helidon.media.multipart.common.MultiPartBodyWriter;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -31,19 +31,19 @@ import io.helidon.webserver.Service;
  */
 public final class MultiPartSupport implements Service, Handler {
 
-    private final MultiPartWriter multiPartWriter;
-    private final MultiPartReader multiPartReader;
-    private final BodyPartStreamWriter bodyPartWriter;
-    private final BodyPartStreamReader bodyPartReader;
+    private final MultiPartBodyWriter multiPartWriter;
+    private final MultiPartBodyReader multiPartReader;
+    private final BodyPartBodyStreamWriter bodyPartWriter;
+    private final BodyPartBodyStreamReader bodyPartReader;
 
     /**
      * Forces the use of {@link #create()}.
      */
     private MultiPartSupport(){
-        multiPartReader = MultiPartReader.create();
-        multiPartWriter = MultiPartWriter.create();
-        bodyPartReader = BodyPartStreamReader.create();
-        bodyPartWriter = BodyPartStreamWriter.create();
+        multiPartReader = MultiPartBodyReader.create();
+        multiPartWriter = MultiPartBodyWriter.create();
+        bodyPartReader = BodyPartBodyStreamReader.create();
+        bodyPartWriter = BodyPartBodyStreamWriter.create();
     }
 
     @Override

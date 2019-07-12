@@ -25,15 +25,14 @@ import io.helidon.common.reactive.Mono;
 import java.nio.charset.Charset;
 
 /**
- * The ContentReaders.
- *
- * @deprecated
+ * Utility class that provides standalone mechanisms for reading message body
+ * content.
  */
 public final class ContentReaders {
 
     private static final Reader<byte[]> BYTE_ARRAY_READER =
             (publisher, clazz) -> {
-                return ByteArrayReader.read(publisher)
+                return ByteArrayBodyReader.read(publisher)
                         .flatMap((baos) -> Mono.just(baos.toByteArray()))
                         .toFuture();
             };
@@ -43,7 +42,7 @@ public final class ContentReaders {
                     .completedFuture(new PublisherInputStream(publisher));
 
     /**
-     * For basic charsets, returns a cached {@link StringReader} instance or
+     * For basic charsets, returns a cached {@link StringBodyReader} instance or
      * create a new instance otherwise.
      *
      * @param charset the charset to use with the returned string content reader
@@ -52,7 +51,7 @@ public final class ContentReaders {
      * instead
      */
     public static Reader<String> stringReader(Charset charset) {
-        return (chunks, type) -> StringReader.read(chunks, charset).toFuture();
+        return (chunks, type) -> StringBodyReader.read(chunks, charset).toFuture();
     }
 
     /**

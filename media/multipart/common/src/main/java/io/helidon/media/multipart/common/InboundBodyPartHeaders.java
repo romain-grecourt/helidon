@@ -64,6 +64,10 @@ public final class InboundBodyPartHeaders extends ReadOnlyParameters
         return new Builder();
     }
 
+    /**
+     * Create a new instance of {@link InboundBodyPartHeaders}.
+     * @return InboundBodyPartHeaders
+     */
     public static InboundBodyPartHeaders create() {
         return new InboundBodyPartHeaders(null);
     }

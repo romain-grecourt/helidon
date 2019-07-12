@@ -6,17 +6,16 @@ import io.helidon.common.http.Utils;
 import io.helidon.common.reactive.Flow.Publisher;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 /**
- * Reader for {@code ByteArrayOutputStream}.
+ * Message body reader for {@code ByteArrayOutputStream}.
  */
-public final class ByteArrayReader implements Reader<ByteArrayOutputStream> {
+public final class ByteArrayBodyReader
+        implements MessageBodyReader<ByteArrayOutputStream> {
 
     private static final Supplier<ByteArrayOutputStream> BAOS_SUPPLIER =
             ByteArrayOutputStream::new;
@@ -24,11 +23,13 @@ public final class ByteArrayReader implements Reader<ByteArrayOutputStream> {
     private static final BiConsumer<ByteArrayOutputStream, DataChunk> COLLECTOR =
             new Collector();
 
-    private ByteArrayReader() {
+    private ByteArrayBodyReader() {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyReaderContext context) {
+
         return ByteArrayOutputStream.class.isAssignableFrom(type.rawType());
     }
 
@@ -36,13 +37,13 @@ public final class ByteArrayReader implements Reader<ByteArrayOutputStream> {
     @SuppressWarnings("unchecked")
     public <U extends ByteArrayOutputStream> Mono<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
-            ReaderContext context) {
+            MessageBodyReaderContext context) {
 
         return (Mono<U>) read(publisher);
     }
 
-    public static ByteArrayReader create() {
-        return new ByteArrayReader();
+    public static ByteArrayBodyReader create() {
+        return new ByteArrayBodyReader();
     }
 
     public static Mono<ByteArrayOutputStream> read(Publisher<DataChunk> chunks) {

@@ -16,7 +16,6 @@
 package io.helidon.media.multipart.common;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
@@ -26,8 +25,8 @@ import java.util.Queue;
 import java.util.logging.Logger;
 import java.util.Objects;
 import java.util.Optional;
-import io.helidon.common.http.MessageBodyReadableContent;
-import io.helidon.common.http.MessageBodyReaderContext;
+import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.MessageBodyReaderContext;
 
 /**
  * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
@@ -183,10 +182,9 @@ public final class MultiPartDecoder
      * @return MultiPartDecoder
      */
     public static MultiPartDecoder create(String boundary,
-            ReaderContext context) {
+            MessageBodyReaderContext context) {
 
-        return new MultiPartDecoder(boundary,
-                MessageBodyReaderContext.of(context));
+        return new MultiPartDecoder(boundary, context);
     }
 
     /**

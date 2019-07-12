@@ -17,12 +17,11 @@
 package io.helidon.media.jsonp.server;
 
 
-import io.helidon.common.http.MessageBody.Content;
-import io.helidon.media.jsonp.common.JsonpArrayStreamWriter;
-import io.helidon.media.jsonp.common.JsonpReader;
-import io.helidon.media.jsonp.common.JsonpStreamReader;
-import io.helidon.media.jsonp.common.JsonpWriter;
-import io.helidon.media.jsonp.common.JsonpLineDelimitedStreamWriter;
+import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
+import io.helidon.media.jsonp.common.JsonpBodyReader;
+import io.helidon.media.jsonp.common.JsonpBodyStreamReader;
+import io.helidon.media.jsonp.common.JsonpBodyWriter;
+import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;
 import javax.json.JsonStructure;
 
 import io.helidon.media.jsonp.common.JsonProcessing;
@@ -78,11 +77,11 @@ public final class JsonSupport implements Service, Handler {
     private static final JsonSupport INSTANCE =
             new JsonSupport(JsonProcessing.create());
 
-    private final JsonpReader reader;
-    private final JsonpStreamReader streamReader;
-    private final JsonpWriter writer;
-    private final JsonpLineDelimitedStreamWriter lineStreamWriter;
-    private final JsonpArrayStreamWriter arrayStreamWriter;
+    private final JsonpBodyReader reader;
+    private final JsonpBodyStreamReader streamReader;
+    private final JsonpBodyWriter writer;
+    private final JsonpLineBodyStreamWriter lineStreamWriter;
+    private final JsonpArrayBodyStreamWriter arrayStreamWriter;
 
     private JsonSupport(JsonProcessing processing) {
         reader = processing.newReader();

@@ -30,12 +30,10 @@ import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
-import io.helidon.media.common.MediaSupport;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 
@@ -231,18 +229,12 @@ public class ResponseTest {
     static class ResponseImpl extends Response {
 
         public ResponseImpl(BareResponse bareResponse) {
-            super(mockWebServer(), bareResponse, listOf());
+            super(mock(WebServer.class), bareResponse, listOf());
         }
 
         @Override
         Optional<SpanContext> spanContext() {
             return Optional.empty();
-        }
-
-        private static WebServer mockWebServer() {
-            WebServer webServer = mock(WebServer.class);
-            doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
-            return webServer;
         }
     }
 

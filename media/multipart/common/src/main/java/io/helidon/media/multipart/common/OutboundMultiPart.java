@@ -27,8 +27,8 @@ public final class OutboundMultiPart implements MultiPart<OutboundBodyPart>{
     private final List<OutboundBodyPart> parts;
 
     /**
-     * Create a new out-bound multipart message.
-     * @param parts body parts
+     * Private to enforce the use of {@link #create(java.util.Collection)}
+     * or {@link #builder()}.
      */
     private OutboundMultiPart(List<OutboundBodyPart> parts) {
         this.parts = parts;

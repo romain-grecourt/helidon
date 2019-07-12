@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.MessageBody.Operator;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
@@ -25,17 +24,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import io.helidon.common.http.MessageBody.Context;
 
 /**
  * Thread-safe hierarchical registry of message body operators.
  * @param <T> operator type
  * @param <U> context type
  */
-final class MessageBodyOperators<T extends Operator<U>, U extends Context>
+final class MessageBodyOperators<T extends MessageBodyOperator<?>>
         implements Iterable<T>, AutoCloseable {
 
-    private final MessageBodyOperators<T, U> parent;
+    private final MessageBodyOperators<T> parent;
     private final LinkedList<T> operators;
     private final ReadWriteLock lock;
     private final AtomicBoolean readLocked;
@@ -44,7 +42,7 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * Create a new parented registry.
      * @param parent parent registry
      */
-    MessageBodyOperators(MessageBodyOperators<T, U> parent) {
+    MessageBodyOperators(MessageBodyOperators<T> parent) {
         this.parent = parent;
         this.operators = new LinkedList<>();
         this.lock = new ReentrantReadWriteLock();
@@ -100,7 +98,9 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * @param context the message body context
      * @return operator found, or {@code null} or no operator was found
      */
-    T select(GenericType<?> type, U context) {
+    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(
+            GenericType<?> type, V context) {
+
         return select(type, context, /* fallback */ null);
     }
 
@@ -112,15 +112,16 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * found in this registry hierarchy
      * @return operator, or {@code null} or no operator was found
      */
-    T select(GenericType<?> type, U context,
-            MessageBodyOperators<T, U> fallback) {
+    @SuppressWarnings("unchecked")
+    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(
+            GenericType<?> type, V context, MessageBodyOperators<T> fallback) {
 
         Objects.requireNonNull(type, "type is null!");
         Objects.requireNonNull(context, "context is null!");
         try {
             lock.readLock().lock();
             for (T operator : operators) {
-                if (operator.accept(type, context)) {
+                if (((U) operator).accept(type, context)) {
                     return operator;
                 }
             }
@@ -141,7 +142,7 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * @param operatorClass required operator class
      * @return operator, or {@code null} or no operator was found
      */
-    T get(Class<? extends Operator> operatorClass) {
+    T get(Class<? extends MessageBodyOperator> operatorClass) {
         return get(operatorClass, null);
     }
 
@@ -152,8 +153,8 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * found in this registry hierarchy
      * @return operator, or {@code null} or no operator was found
      */
-    T get(Class<? extends Operator> operatorClass,
-            MessageBodyOperators<T, U> fallback) {
+    T get(Class<? extends MessageBodyOperator> operatorClass,
+            MessageBodyOperators<T> fallback) {
 
         Objects.requireNonNull(operatorClass, "operatorClass is null!");
         try {
@@ -193,8 +194,7 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
      * @param <T> Operator type
      * @param <U> Context type
      */
-    private static final class ParentedIterator
-            <T extends Operator<U>,U extends Context>
+    private static final class ParentedIterator<T extends MessageBodyOperator<?>>
             implements Iterator<T> {
 
         private final Iterator<T> iterator;
@@ -203,7 +203,7 @@ final class MessageBodyOperators<T extends Operator<U>, U extends Context>
         private final AtomicBoolean locked;
         private final AtomicBoolean hasNext;
 
-        ParentedIterator(MessageBodyOperators<T, U> registry) {
+        ParentedIterator(MessageBodyOperators<T> registry) {
             iterator = registry.operators.iterator();
             readLock = registry.lock.readLock();
             if (registry.parent != null) {

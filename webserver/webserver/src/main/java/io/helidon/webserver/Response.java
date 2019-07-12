@@ -16,42 +16,41 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.GenericType;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody;
-import io.helidon.common.http.MessageBodyContextBase;
-import io.helidon.common.http.MessageBodyWriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.MessageBodyContext;
+import io.helidon.media.common.MessageBodyFilter;
+import io.helidon.media.common.MessageBodyStreamWriter;
+import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.AFTER_ONCOMPLETE;
-import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.BEFORE_ONSUBSCRIBE;
-import static io.helidon.common.http.MessageBodyContextBase.EVENT_TYPE.AFTER_ONERROR;
+
+import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.AFTER_ONCOMPLETE;
+import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.BEFORE_ONSUBSCRIBE;
+import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.AFTER_ONERROR;
 
 /**
  * The basic implementation of {@link ServerResponse}.
  */
 abstract class Response implements ServerResponse {
-    private static final String TRACING_CONTENT_WRITE = "content-write";
 
-    private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
-            GenericType.create(ByteArrayOutputStream.class);
+    private static final String TRACING_CONTENT_WRITE = "content-write";
 
     private final WebServer webServer;
     private final BareResponse bareResponse;
@@ -80,7 +79,7 @@ abstract class Response implements ServerResponse {
         this.sendLockSupport = new SendLockSupport();
         this.eventListener = new MessageBodyEventListener();
         this.writerContext = MessageBodyWriterContext.create(
-                webServer.mediaSupport().writerContext(), eventListener,
+                webServer.mediaSupport(), eventListener,
                 headers, acceptedTypes);
     }
 
@@ -157,30 +156,12 @@ abstract class Response implements ServerResponse {
         return null;
     }
 
-    private static Mono<ByteArrayOutputStream> byteArrayMono(byte[] bytes) {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            baos.write((byte[]) bytes);
-            return Mono.<ByteArrayOutputStream>just(baos);
-        } catch (IOException ex) {
-            return Mono.<ByteArrayOutputStream>error(ex);
-        }
-    }
-
     @Override
     public <T> CompletionStage<ServerResponse> send(T content) {
         try {
             sendLockSupport.execute(() -> {
-                Publisher<DataChunk> sendPublisher;
-                if (content instanceof byte[]) {
-                    sendPublisher = writerContext.marshall(
-                            byteArrayMono((byte[]) content), BAOS_TYPE,
-                            null);
-                } else {
-                    sendPublisher = writerContext.marshall(
-                            Mono.just(content), GenericType.create(content),
-                            null);
-                }
+                Publisher<DataChunk> sendPublisher = writerContext.marshall(
+                        Mono.just(content), GenericType.create(content), null);
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);
@@ -232,52 +213,49 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Response registerWriter(MessageBody.Writer<?> writer) {
+    public Response registerWriter(MessageBodyWriter<?> writer) {
         writerContext.registerWriter(writer);
         return this;
     }
 
     @Override
-    public Response registerWriter(MessageBody.StreamWriter<?> writer) {
+    public Response registerWriter(MessageBodyStreamWriter<?> writer) {
         writerContext.registerWriter(writer);
         return this;
     }
 
     @Override
-    public Response registerFilter(MessageBody.Filter filter) {
+    public Response registerFilter(MessageBodyFilter filter) {
         writerContext.registerFilter(filter);
         return this;
     }
 
-    @Deprecated
     @Override
-    public void registerFilter(
+    public Response registerFilter(
             Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
 
         writerContext.registerFilter(function);
+        return this;
     }
 
-    @Deprecated
     @Override
-    public <T> MessageBody.Writers registerWriter(Class<T> type,
+    public <T> Response registerWriter(Class<T> type,
             Function<T, Publisher<DataChunk>> function) {
 
         writerContext.registerWriter(type, function);
         return this;
     }
 
-    @Deprecated
     @Override
-    public <T> MessageBody.Writers registerWriter(Predicate<?> accept,
+    public <T> Response registerWriter(Predicate<?> accept,
             Function<T, Publisher<DataChunk>> function) {
 
         writerContext.registerWriter(accept, function);
         return this;
     }
 
-    @Deprecated
     @Override
-    public <T> MessageBody.Writers registerWriter(Class<T> type,
+    public <T> Response registerWriter(Class<T> type,
             MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
@@ -285,9 +263,8 @@ abstract class Response implements ServerResponse {
         return this;
     }
 
-    @Deprecated
     @Override
-    public <T> MessageBody.Writers registerWriter(Predicate<?> accept,
+    public <T> Response registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
 
         writerContext.registerWriter(accept, contentType, function);
@@ -305,7 +282,7 @@ abstract class Response implements ServerResponse {
     }
 
     private final class MessageBodyEventListener
-            implements MessageBodyContextBase.EventListener {
+            implements MessageBodyContext.EventListener {
 
         private Span span;
 
@@ -333,7 +310,7 @@ abstract class Response implements ServerResponse {
         }
 
         @Override
-        public void onEvent(MessageBodyContextBase.Event event) {
+        public void onEvent(MessageBodyContext.Event event) {
             switch(event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
                     GenericType<?> type = event.entityType().orElse(null);

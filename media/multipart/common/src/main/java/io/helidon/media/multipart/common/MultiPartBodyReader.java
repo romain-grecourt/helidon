@@ -1,18 +1,32 @@
+/*
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.helidon.media.multipart.common;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.ByteArrayReader;
-import io.helidon.media.common.ByteArrayWriter;
+import io.helidon.media.common.ByteArrayBodyReader;
+import io.helidon.media.common.ByteArrayBodyWriter;
 import java.util.LinkedList;
-import io.helidon.common.http.MessageBody.ReadableContent;
-import io.helidon.common.http.MessageBody.ReaderContext;
-import io.helidon.common.http.MessageBodyReadableContent;
+import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.MessageBodyReader;
+import io.helidon.media.common.MessageBodyReaderContext;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -21,23 +35,39 @@ import java.util.function.Supplier;
 /**
  * {@link InboundMultiPart} reader.
  */
-public final class MultiPartReader implements Reader<MultiPart> {
+public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
     /**
-     * No public constructor.
+     * Mapper singleton to map a list of body parts to a single multipart.
      */
-    MultiPartReader() {
+    private static final Mapper MAPPER = new Mapper();
+
+    /**
+     * Collector singleton to collect body parts from a publisher as a list.
+     */
+    private static final Collector COLLECTOR = new Collector();
+
+    /**
+     * A supplier of list part for the collector.
+     */
+    private static final Supplier<List<InboundBodyPart>> LIST_SUPPLIER =
+            LinkedList<InboundBodyPart>::new;
+
+    /**
+     * Private to enforce the use of {@link #create()}.
+     */
+    private MultiPartBodyReader() {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext ctx) {
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext ctx) {
         return MultiPart.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <U extends MultiPart> Mono<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, ReaderContext context) {
+            GenericType<U> type, MessageBodyReaderContext context) {
 
         String boundary = null;
         MediaType contentType = context.contentType().orElse(null);
@@ -50,8 +80,16 @@ public final class MultiPartReader implements Reader<MultiPart> {
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
         return (Mono<U>) Multi.from(decoder)
-                .collect(LIST_SUPPLIER, new Collector())
-                .flatMap(new Mapper());
+                .collect(LIST_SUPPLIER, COLLECTOR)
+                .flatMap(MAPPER);
+    }
+
+    /**
+     * Create a new instance of {@link MultiPartBodyReader}.
+     * @return MultiPartReader
+     */
+    public static MultiPartBodyReader create() {
+        return new MultiPartBodyReader();
     }
 
     /**
@@ -67,9 +105,6 @@ public final class MultiPartReader implements Reader<MultiPart> {
         }
     }
 
-    private static final Supplier<List<InboundBodyPart>> LIST_SUPPLIER =
-            LinkedList<InboundBodyPart>::new;
-
     /**
      * A collector that accumulates and buffers body parts.
      */
@@ -80,16 +115,15 @@ public final class MultiPartReader implements Reader<MultiPart> {
         public void accept(List<InboundBodyPart> bodyParts,
                 InboundBodyPart bodyPart) {
 
-            MessageBodyReadableContent content = MessageBodyReadableContent
-                    .of(bodyPart.content());
+            MessageBodyReadableContent content = bodyPart.content();
 
             // buffer the data
-            Publisher<DataChunk> bufferedData = ByteArrayWriter
-                    .write(ByteArrayReader.read(content),
+            Publisher<DataChunk> bufferedData = ByteArrayBodyWriter
+                    .write(ByteArrayBodyReader.read(content),
                             /* copy */ true);
 
             // create a content copy with the buffered data
-            ReadableContent contentCopy = MessageBodyReadableContent
+            MessageBodyReadableContent contentCopy = MessageBodyReadableContent
                     .create(bufferedData, content.context());
 
             // create a new body part with the buffered content
@@ -100,13 +134,5 @@ public final class MultiPartReader implements Reader<MultiPart> {
                     .build();
             bodyParts.add(bufferedBodyPart);
         }
-    }
-
-    /**
-     * Create a new {@link MultiPartReader} instance.
-     * @return MultiPartReader
-     */
-    public static MultiPartReader create() {
-        return new MultiPartReader();
     }
 }

@@ -39,40 +39,40 @@ public final class JsonProcessing {
      * Create a new JSON-P entity reader.
      * @return JsonEntityReader
      */
-    public JsonpReader newReader() {
-        return new JsonpReader(jsonReaderFactory);
+    public JsonpBodyReader newReader() {
+        return new JsonpBodyReader(jsonReaderFactory);
     }
 
     /**
      * Create a new JSON-P entity stream reader.
      * @return JsonEntityStreamReader
      */
-    public JsonpStreamReader newStreamReader() {
-        return new JsonpStreamReader(jsonReaderFactory);
+    public JsonpBodyStreamReader newStreamReader() {
+        return new JsonpBodyStreamReader(jsonReaderFactory);
     }
 
     /**
      * Create a new JSON-P entity writer.
      * @return JsonEntityWriter
      */
-    public JsonpWriter newWriter() {
-        return new JsonpWriter(jsonWriterFactory);
+    public JsonpBodyWriter newWriter() {
+        return new JsonpBodyWriter(jsonWriterFactory);
     }
 
     /**
      * Create a new line delimited JSON-P stream writer.
      * @return JsonLineDelimitedEntityStreamWriter
      */
-    public JsonpLineDelimitedStreamWriter newLineDelimitedStreamWriter() {
-        return new JsonpLineDelimitedStreamWriter(jsonWriterFactory);
+    public JsonpLineBodyStreamWriter newLineDelimitedStreamWriter() {
+        return new JsonpLineBodyStreamWriter(jsonWriterFactory);
     }
 
     /**
      * Create a new JSON-P array stream writer.
      * @return JsonArrayEntityStreamWriter
      */
-    public JsonpArrayStreamWriter newArrayStreamWriter() {
-        return new JsonpArrayStreamWriter(jsonWriterFactory);
+    public JsonpArrayBodyStreamWriter newArrayStreamWriter() {
+        return new JsonpArrayBodyStreamWriter(jsonWriterFactory);
     }
 
     /**

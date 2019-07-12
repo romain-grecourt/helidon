@@ -55,7 +55,7 @@ public class ReadableByteChannelPublisherTest {
                 new CountingOnNextDelegatingPublisher(
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(5)));
         // assert
-        byte[] bytes = ByteArrayReader.read(publisher)
+        byte[] bytes = ByteArrayBodyReader.read(publisher)
                 .block(Duration.ofSeconds(5))
                 .toByteArray();
         assertThat(bytes.length, is(TEST_DATA_SIZE));
@@ -74,7 +74,7 @@ public class ReadableByteChannelPublisherTest {
         ReadableByteChannelPublisher publisher =
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(2));
         // assert
-        byte[] bytes = ByteArrayReader.read(publisher)
+        byte[] bytes = ByteArrayBodyReader.read(publisher)
                 .block(Duration.ofSeconds(5))
                 .toByteArray();
         assertThat(bytes.length, is(TEST_DATA_SIZE));
@@ -89,7 +89,7 @@ public class ReadableByteChannelPublisherTest {
         ReadableByteChannelPublisher publisher =
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(0));
         // assert
-        byte[] bytes = ByteArrayReader.read(publisher)
+        byte[] bytes = ByteArrayBodyReader.read(publisher)
                 .block(Duration.ofSeconds(5))
                 .toByteArray();
         assertThat(bytes.length, is(TEST_DATA_SIZE));
@@ -106,7 +106,7 @@ public class ReadableByteChannelPublisherTest {
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(0));
         // assert
         try {
-            ByteArrayReader.read(publisher)
+            ByteArrayBodyReader.read(publisher)
                 .block(Duration.ofSeconds(5))
                 .toByteArray();
             fail("Did not throw expected ExecutionException!");
@@ -123,7 +123,7 @@ public class ReadableByteChannelPublisherTest {
                         (i, delay) -> i >= 3 ? -10 : 0);
         // assert
         try {
-            ByteArrayReader.read(publisher)
+            ByteArrayBodyReader.read(publisher)
                 .block(Duration.ofSeconds(5))
                 .toByteArray();
             throw new AssertionError(

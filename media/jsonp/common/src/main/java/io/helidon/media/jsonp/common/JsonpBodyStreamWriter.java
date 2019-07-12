@@ -3,28 +3,29 @@ package io.helidon.media.jsonp.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.StreamWriter;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.media.common.MessageBodyStreamWriter;
+import io.helidon.media.common.MessageBodyWriterContext;
 import java.nio.charset.Charset;
 import java.util.Objects;
 import javax.json.JsonStructure;
 import javax.json.JsonWriterFactory;
 
 /**
- * JSON-P entity stream writer.
+ * Message body writer reader for {@link JsonStructure} sub-classes (JSON-P).
  */
-public abstract class JsonpStreamWriter implements StreamWriter<JsonStructure> {
+public abstract class JsonpBodyStreamWriter
+        implements MessageBodyStreamWriter<JsonStructure> {
 
     private final JsonWriterFactory jsonFactory;
     private final String begin;
     private final String separator;
     private final String end;
 
-    protected JsonpStreamWriter(JsonWriterFactory jsonFactory,
+    protected JsonpBodyStreamWriter(JsonWriterFactory jsonFactory,
             String begin, String separator, String end) {
 
         Objects.requireNonNull(jsonFactory);
@@ -36,13 +37,16 @@ public abstract class JsonpStreamWriter implements StreamWriter<JsonStructure> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Publisher<JsonStructure> content,
-            GenericType<? extends JsonStructure> type, WriterContext context) {
+            GenericType<? extends JsonStructure> type,
+            MessageBodyWriterContext context) {
 
          MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
@@ -63,10 +67,10 @@ public abstract class JsonpStreamWriter implements StreamWriter<JsonStructure> {
         private final DataChunk endChunk;
         private final Charset charset;
 
-        JsonArrayStreamProcessor(Publisher<? extends JsonStructure> itemPublisher,
+        JsonArrayStreamProcessor(Publisher<? extends JsonStructure> publisher,
                 Charset charset) {
 
-            this.itemPublisher = itemPublisher;
+            this.itemPublisher = publisher;
             if (begin != null) {
                 this.beginChunk = DataChunk.create(begin.getBytes(charset));
             } else {
@@ -119,7 +123,7 @@ public abstract class JsonpStreamWriter implements StreamWriter<JsonStructure> {
                 first = false;
             }
 
-            Publisher<DataChunk> itemChunkPublisher = JsonpWriter
+            Publisher<DataChunk> itemChunkPublisher = JsonpBodyWriter
                     .write(jsonFactory, item, charset);
 
             itemChunkPublisher.subscribe(new Subscriber<DataChunk>() {

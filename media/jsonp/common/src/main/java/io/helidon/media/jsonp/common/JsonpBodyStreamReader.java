@@ -2,38 +2,40 @@ package io.helidon.media.jsonp.common;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.ReaderContext;
-import io.helidon.common.http.MessageBody.StreamReader;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.MessageBodyStreamReader;
 import java.util.Objects;
 import javax.json.JsonReaderFactory;
 import javax.json.JsonStructure;
 
 /**
- * JSON-P content stream reader.
+ * Message body stream reader for {@link JsonStructure} sub-classes (JSON-P).
  */
-public class JsonpStreamReader implements StreamReader<JsonStructure> {
+public class JsonpBodyStreamReader
+        implements MessageBodyStreamReader<JsonStructure> {
 
     private final JsonReaderFactory jsonFactory;
 
-    public JsonpStreamReader(JsonReaderFactory jsonFactory) {
+    public JsonpBodyStreamReader(JsonReaderFactory jsonFactory) {
         Objects.requireNonNull(jsonFactory);
         this.jsonFactory = jsonFactory;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyReaderContext context) {
+
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public <U extends JsonStructure> Publisher<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
-            ReaderContext context) {
+            MessageBodyReaderContext context) {
 
         return new JsonArrayStreamProcessor<>(publisher);
     }

@@ -25,8 +25,16 @@ import io.helidon.common.http.Parameters;
 
 /**
  * Accessor for the {@link Charset} specified by a content-type header.
+ * @deprecated use {@link MessageBodyContext#charset()} instead
  */
+@Deprecated
 public class ContentTypeCharset {
+
+    /**
+     * Cannot be instanciated.
+     */
+    private ContentTypeCharset() {
+    }
 
     /**
      * Returns the {@link Charset} specified in the content-type header, using {@link StandardCharsets#UTF_8}
@@ -59,8 +67,5 @@ public class ContentTypeCharset {
                           }
                       })
                       .orElse(defaultCharset);
-    }
-
-    private ContentTypeCharset() {
     }
 }

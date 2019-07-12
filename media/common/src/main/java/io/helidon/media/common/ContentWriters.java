@@ -25,11 +25,9 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.RetrySchema;
 
 /**
- * A utility class for various handy response content writers.
- * <p>
- * Some of these writers are by default registered on the response.
+ * Utility class that provides standalone mechanisms for writing message body
+ * content.
  */
-@Deprecated
 public final class ContentWriters {
 
     /**
@@ -52,7 +50,7 @@ public final class ContentWriters {
     public static Function<byte[], Publisher<DataChunk>> byteArrayWriter(
             boolean copy) {
 
-        return (bytes) -> ByteArrayWriter.write(bytes, copy);
+        return (bytes) -> ByteArrayBodyWriter.write(bytes, copy);
     }
 
     /**
@@ -70,7 +68,7 @@ public final class ContentWriters {
     public static Function<CharSequence, Publisher<DataChunk>> charSequenceWriter(
             Charset charset) {
 
-        return (cs) -> CharSequenceWriter.write(cs, charset);
+        return (cs) -> CharSequenceBodyWriter.write(cs, charset);
     }
 
     /**
@@ -88,7 +86,7 @@ public final class ContentWriters {
     public static Function<CharBuffer, Publisher<DataChunk>> charBufferWriter(
             Charset charset) {
 
-        return (buffer) -> CharBufferWriter.write(buffer, charset);
+        return (buffer) -> CharBufferBodyWriter.write(buffer, charset);
     }
 
     /**

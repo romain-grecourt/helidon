@@ -23,7 +23,7 @@ import javax.json.JsonException;
 import javax.json.JsonObject;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBodyReaderContext;
+import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.common.reactive.Mono;
 
 import org.junit.jupiter.api.Test;
@@ -43,7 +43,7 @@ public class JsonpReaderTest {
     private final static MessageBodyReaderContext CONTEXT =
             MessageBodyReaderContext.create();
 
-    private final static JsonpReader READER = JsonProcessing.create()
+    private final static JsonpBodyReader READER = JsonProcessing.create()
             .newReader();
 
     @Test

@@ -16,7 +16,6 @@
 
 package io.helidon.webserver;
 
-import io.helidon.media.common.MediaSupport;
 import java.net.URI;
 
 import io.opentracing.Span;
@@ -35,7 +34,7 @@ public class RequestTestStub extends Request {
     private final Span span;
 
     RequestTestStub() {
-        this(bareRequestMock(), webServerMock());
+        this(bareRequestMock(), mock(WebServer.class));
     }
 
     RequestTestStub(BareRequest req, WebServer webServer) {
@@ -50,12 +49,6 @@ public class RequestTestStub extends Request {
     RequestTestStub(BareRequest req, WebServer webServer, Span span) {
         super(req, webServer, new HashRequestHeaders(req.headers()));
         this.span = span == null ? mock(Span.class) : span;
-    }
-
-    private static WebServer webServerMock() {
-        WebServer webServer = mock(WebServer.class);
-        doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
-        return webServer;
     }
 
     private static BareRequest bareRequestMock() {

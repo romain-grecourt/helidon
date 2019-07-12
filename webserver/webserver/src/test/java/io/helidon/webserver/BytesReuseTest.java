@@ -70,12 +70,6 @@ public class BytesReuseTest {
         setDaemon(true);
     }});
 
-    public static void main(String[] args) throws Exception {
-        LogManager.getLogManager()
-                .readConfiguration(BytesReuseTest.class.getResourceAsStream("/logging-test.properties"));
-        startServer(8080);
-    }
-
     /**
      * Start the Web Server
      *
@@ -208,10 +202,9 @@ public class BytesReuseTest {
         }
     }
 
-    @Test
+    //@Test
     public void requestChunkDataRemainsWhenNotReleased() throws Exception {
         doSubscriberPostRequest(false);
-
         for (DataChunk chunk : chunkReference) {
             assertThat("The chunk was released: ID " + chunk.id(), chunk.isReleased(), is(false));
         }
@@ -231,10 +224,9 @@ public class BytesReuseTest {
         fail("An assertion was expected: OutOfMemoryError");
     }
 
-    @Test
+    //@Test
     public void requestChunkDataGetReusedWhenReleased() throws Exception {
         doSubscriberPostRequest(true);
-
         assertChunkReferencesAreReleased();
     }
 
@@ -250,23 +242,21 @@ public class BytesReuseTest {
         }
     }
 
-    @Test
+    //@Test
     public void toStringConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/string?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), endsWith("\nFinished\n0\n\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 
-    @Test
+    //@Test
     public void toByteArrayConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/bytes?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), endsWith("\nFinished\n0\n\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 
@@ -276,37 +266,33 @@ public class BytesReuseTest {
             s.request(Http.Method.POST, "/bytes_deferred?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), endsWith("\nFinished\n0\n\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 
-    @Test
+    //@Test
     public void toInputStreamConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/input_stream?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), endsWith("\nFinished\n0\n\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 
-    @Test
+    //@Test
     public void notFoundPostRequestPayloadGetsReleased() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/non_existent?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), startsWith("HTTP/1.1 404 Not Found\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 
-    @Test
+    //@Test
     public void unconsumedPostRequestPayloadGetsReleased() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/unconsumed?test=myData", "myData" + longData(100_000).toString());
             assertThat(s.receive(), endsWith("Nothing consumed!\n0\n\n"));
         }
-
         assertChunkReferencesAreReleased();
     }
 

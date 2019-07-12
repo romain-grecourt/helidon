@@ -5,36 +5,39 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferWriter;
+import io.helidon.media.common.CharBufferBodyWriter;
 import java.util.Objects;
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbException;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Mono;
+import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.MessageBodyWriterContext;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 
 /**
- * JSON-B writer.
+ * Message body writer supporting object binding with JSON-B.
  */
-public class JsonbWriter implements Writer<Object> {
+public class JsonbBodyWriter implements MessageBodyWriter<Object> {
 
     private final Jsonb jsonb;
 
-    public JsonbWriter(Jsonb jsonb) {
+    public JsonbBodyWriter(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         this.jsonb = jsonb;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return !CharSequence.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Mono<Object> content,
-            GenericType<? extends Object> type, WriterContext context) {
+            GenericType<? extends Object> type,
+            MessageBodyWriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
@@ -58,7 +61,7 @@ public class JsonbWriter implements Writer<Object> {
             CharBuffer buffer = new CharBuffer();
             try {
                 jsonb.toJson(item, buffer);
-                return CharBufferWriter
+                return CharBufferBodyWriter
                         .write(Mono.just(buffer), charset);
             } catch (IllegalStateException | JsonbException ex) {
                 return Mono.<DataChunk>error(ex);

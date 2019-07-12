@@ -28,8 +28,8 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 
 import io.helidon.common.reactive.Flow;
-import io.helidon.media.jsonp.common.JsonpArrayStreamWriter;
-import io.helidon.media.jsonp.common.JsonpLineDelimitedStreamWriter;
+import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
+import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -52,11 +52,11 @@ public class StreamingService implements Service {
     private static final JsonWriterFactory JSON_WRITER_FACTORY =
             Json.createWriterFactory(Collections.emptyMap());
 
-    private static final JsonpArrayStreamWriter ARRAY_WRITER =
-            new JsonpArrayStreamWriter(JSON_WRITER_FACTORY);
+    private static final JsonpArrayBodyStreamWriter ARRAY_WRITER =
+            new JsonpArrayBodyStreamWriter(JSON_WRITER_FACTORY);
 
-    private static final JsonpLineDelimitedStreamWriter LINE_WRITER =
-            new JsonpLineDelimitedStreamWriter(JSON_WRITER_FACTORY);
+    private static final JsonpLineBodyStreamWriter LINE_WRITER =
+            new JsonpLineBodyStreamWriter(JSON_WRITER_FACTORY);
 
     private final Path filePath;
 

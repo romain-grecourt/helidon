@@ -1,13 +1,5 @@
 package io.helidon.media.common;
 
-import io.helidon.common.http.MessageBody.Filter;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.StreamReader;
-import io.helidon.common.http.MessageBody.StreamWriter;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBodyReaderContext;
-import io.helidon.common.http.MessageBodyWriterContext;
-
 /**
  * Media support.
  */
@@ -57,46 +49,46 @@ public final class MediaSupport {
         public Builder registerDefaults() {
             // default readers
             readerContext
-                    .registerReader(StringReader.create())
-                    .registerReader(ByteArrayReader.create())
-                    .registerReader(InputStreamReader.create());
+                    .registerReader(StringBodyReader.create())
+                    .registerReader(ByteArrayBodyReader.create())
+                    .registerReader(InputStreamBodyReader.create());
 
             // default writers
             writerContext
-                    .registerWriter(ByteArrayWriter.create(/* copy */ true))
-                    .registerWriter(CharSequenceWriter.create())
+                    .registerWriter(ByteArrayBodyWriter.create(/* copy */ true))
+                    .registerWriter(CharSequenceBodyWriter.create())
                     .registerWriter(ByteChannelWriter.create())
-                    .registerWriter(PathWriter.create())
-                    .registerWriter(FileWriter.create());
+                    .registerWriter(PathBodyWriter.create())
+                    .registerWriter(FileBodyWriter.create());
             return this;
         }
 
-        public Builder registerReader(Reader<?> reader) {
+        public Builder registerReader(MessageBodyReader<?> reader) {
             readerContext.registerReader(reader);
             return this;
         }
 
-        public Builder registerStreamReader(StreamReader<?> reader) {
+        public Builder registerStreamReader(MessageBodyStreamReader<?> reader) {
             readerContext.registerReader(reader);
             return this;
         }
 
-        public Builder registerInboundFilter(Filter filter) {
+        public Builder registerInboundFilter(MessageBodyFilter filter) {
             writerContext.registerFilter(filter);
             return this;
         }
 
-        public Builder registerWriter(Writer<?> writer) {
+        public Builder registerWriter(MessageBodyWriter<?> writer) {
             writerContext.registerWriter(writer);
             return this;
         }
 
-        public Builder registerStreamWriter(StreamWriter<?> writer) {
+        public Builder registerStreamWriter(MessageBodyStreamWriter<?> writer) {
             writerContext.registerWriter(writer);
             return this;
         }
 
-        public Builder registerOutboundFilter(Filter filter) {
+        public Builder registerOutboundFilter(MessageBodyFilter filter) {
             writerContext.registerFilter(filter);
             return this;
         }

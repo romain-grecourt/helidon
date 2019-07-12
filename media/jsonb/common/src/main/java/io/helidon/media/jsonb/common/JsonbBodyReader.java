@@ -2,43 +2,44 @@ package io.helidon.media.jsonb.common;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
-import io.helidon.media.common.ByteArrayReader;
+import io.helidon.media.common.ByteArrayBodyReader;
+import io.helidon.media.common.MessageBodyReader;
+import io.helidon.media.common.MessageBodyReaderContext;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Function;
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbException;
 
 /**
- * JSON-B reader.
+ * Message body writer supporting object binding with JSON-B.
  */
-public class JsonbReader implements Reader<Object> {
+public class JsonbBodyReader implements MessageBodyReader<Object> {
 
     private final Jsonb jsonb;
 
-    public JsonbReader(Jsonb jsonb) {
+    public JsonbBodyReader(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         this.jsonb = jsonb;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext scope) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyReaderContext context) {
+
         return !CharSequence.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, ReaderContext context) {
+            GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ByteArrayReader.read(publisher)
+        return ByteArrayBodyReader.read(publisher)
                 .flatMap(new Mapper<>(type, jsonb));
     }
 

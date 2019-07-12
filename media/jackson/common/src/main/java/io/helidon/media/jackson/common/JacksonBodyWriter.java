@@ -4,38 +4,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferWriter;
+import io.helidon.media.common.CharBufferBodyWriter;
+import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.MessageBodyWriterContext;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * Jackson content writer.
+ * Message body writer supporting object binding with Jackson.
  */
-public final class JacksonWriter implements Writer<Object> {
+public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
 
     private final ObjectMapper objectMapper;
 
-    public JacksonWriter(ObjectMapper objectMapper) {
+    public JacksonBodyWriter(ObjectMapper objectMapper) {
         Objects.requireNonNull(objectMapper);
         this.objectMapper = objectMapper;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return ! CharSequence.class.isAssignableFrom(type.rawType())
                 && objectMapper.canSerialize(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Mono<Object> content,
-            GenericType<? extends Object> type, WriterContext context) {
+            GenericType<? extends Object> type,
+            MessageBodyWriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
@@ -59,7 +62,7 @@ public final class JacksonWriter implements Writer<Object> {
             try {
                 CharBuffer buffer = new CharBuffer();
                 objectMapper.writeValue(buffer, content);
-                return CharBufferWriter.write(Mono.just(buffer), charset);
+                return CharBufferBodyWriter.write(Mono.just(buffer), charset);
             } catch (IOException wrapMe) {
                 throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
             }

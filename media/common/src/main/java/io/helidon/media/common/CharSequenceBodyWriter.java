@@ -3,29 +3,31 @@ package io.helidon.media.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 
 /**
- * Writer for {@code CharSequence}.
+ * Message body writer for {@code CharSequence}.
  */
-public final class CharSequenceWriter implements Writer<CharSequence> {
+public final class CharSequenceBodyWriter
+        implements MessageBodyWriter<CharSequence> {
 
-    private CharSequenceWriter() {
+    private CharSequenceBodyWriter() {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return CharSequence.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Mono<CharSequence> content,
-            GenericType<? extends CharSequence> type, WriterContext context) {
+            GenericType<? extends CharSequence> type,
+            MessageBodyWriterContext context) {
 
         context.contentType(MediaType.TEXT_PLAIN);
         return write(content, context.charset());
@@ -43,8 +45,8 @@ public final class CharSequenceWriter implements Writer<CharSequence> {
         return content.flatMapMany(new Mapper(charset));
     }
 
-    public static CharSequenceWriter create() {
-        return new CharSequenceWriter();
+    public static CharSequenceBodyWriter create() {
+        return new CharSequenceBodyWriter();
     }
 
     private static final class Mapper

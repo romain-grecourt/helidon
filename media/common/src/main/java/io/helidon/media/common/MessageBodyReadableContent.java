@@ -1,28 +1,22 @@
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.MessageBody.Filter;
+import io.helidon.common.http.Content;
+import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
-import io.helidon.common.http.MessageBody.ReadableContent;
-import io.helidon.common.http.MessageBody.StreamReader;
-import io.helidon.common.reactive.Mono;
-import java.io.ByteArrayOutputStream;
+import io.helidon.common.http.Reader;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
  * Implementation of {@link ReadableContent}.
  */
-public final class MessageBodyReadableContent implements ReadableContent {
-
-    private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
-        GenericType.create(ByteArrayOutputStream.class);
-
-    private static final Function<ByteArrayOutputStream, Mono<byte[]>> BYTE_ARRAY_MAPPER =
-            (baos) -> Mono.just(baos.toByteArray());
+public final class MessageBodyReadableContent
+        implements MessageBodyReaders, MessageBodyFilters, MessageBodyContent, Content {
 
     private final Publisher<DataChunk> publisher;
     private final MessageBodyReaderContext context;
@@ -36,7 +30,7 @@ public final class MessageBodyReadableContent implements ReadableContent {
             MessageBodyReaderContext context) {
 
         Objects.requireNonNull(publisher, "publisher is null!");
-        Objects.requireNonNull(context, "scope is null!");
+        Objects.requireNonNull(context, "context is null!");
         this.publisher = publisher;
         this.context = context;
     }
@@ -60,96 +54,25 @@ public final class MessageBodyReadableContent implements ReadableContent {
     }
 
     @Override
-    public MessageBodyReadableContent registerFilter(Filter filter) {
+    public MessageBodyReadableContent registerFilter(MessageBodyFilter filter) {
         context.registerFilter(filter);
         return this;
     }
 
     @Override
     public MessageBodyReadableContent registerReader(
-            MessageBody.Reader<?> reader) {
+            MessageBodyReader<?> reader) {
 
         context.registerReader(reader);
         return this;
     }
 
     @Override
-    public MessageBodyReadableContent registerReader(StreamReader<?> reader) {
+    public MessageBodyReadableContent registerReader(
+            MessageBodyStreamReader<?> reader) {
+
         context.registerReader(reader);
         return this;
-    }
-
-    @Override
-    public void subscribe(Subscriber<? super DataChunk> subscriber) {
-        try {
-            context.applyFilters(publisher).subscribe(subscriber);
-        } catch (Exception e) {
-            subscriber.onError(new IllegalArgumentException(
-                    "Unexpected exception occurred during publishers chaining",
-                    e));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> CompletionStage<T> asByteArray() {
-        return (CompletionStage<T>) context.unmarshall(publisher, BAOS_TYPE)
-                .flatMap(BYTE_ARRAY_MAPPER).toFuture();
-    }
-
-    @Override
-    public <T> CompletionStage<T> as(final Class<T> type) {
-        if (byte[].class.equals(type)) {
-            return this.<T>asByteArray();
-        }
-        return context.unmarshall(publisher, GenericType.create(type))
-                .toFuture();
-    }
-
-    @Override
-    public <T> CompletionStage<T> as(final GenericType<T> type) {
-        if (byte[].class.equals(type.rawType())) {
-            this.<T>asByteArray();
-        }
-        return context.unmarshall(publisher, type).toFuture();
-    }
-
-    @Override
-    public <T> Publisher<T> asStream(Class<T> type) {
-        return asStream(GenericType.create(type));
-    }
-
-    @Override
-    public <T> Publisher<T> asStream(GenericType<T> type) {
-        return context.unmarshallStream(publisher, type);
-    }
-
-    /**
-     * Safely cast a {@link ReadableContent} into MessageBodyReadableContent.
-     * @param content content to cast
-     * @return MessageBodyReadableContent, never {@code null}
-     * @throws IllegalArgumentException if the specified content is not
-     * an instance of MessageBodyReadableContent
-     */
-    public static MessageBodyReadableContent of(ReadableContent content)
-        throws IllegalArgumentException {
-
-        Objects.requireNonNull(content, "content cannot be null!");
-        if (content instanceof MessageBodyReadableContent) {
-            return (MessageBodyReadableContent) content;
-        }
-        throw new IllegalArgumentException("Invalid content " + content);
-    }
-
-    /**
-     * Create a new readable content backed by the given publisher and context.
-     * @param publisher inbound publisher
-     * @param context reader context
-     * @return MessageBodyReadableContent
-     */
-    public static MessageBodyReadableContent create(
-            Publisher<DataChunk> publisher, MessageBodyReaderContext context) {
-
-        return new MessageBodyReadableContent(publisher, context);
     }
 
     @Deprecated
@@ -172,5 +95,54 @@ public final class MessageBodyReadableContent implements ReadableContent {
             Reader<T> reader) {
 
         context.registerReader(predicate, reader);
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super DataChunk> subscriber) {
+        try {
+            context.applyFilters(publisher).subscribe(subscriber);
+        } catch (Exception e) {
+            subscriber.onError(new IllegalArgumentException(
+                    "Unexpected exception occurred during publishers chaining",
+                    e));
+        }
+    }
+
+    @Override
+    public <T> CompletionStage<T> as(final Class<T> type) {
+            return context.unmarshall(publisher, GenericType.create(type))
+                .toFuture();
+    }
+
+    /**
+     * Consumes and converts the inbound payload into a completion stage of the
+     * requested type.
+     *
+     * @param type the requested type class
+     * @param <T> the requested type
+     * @return a completion stage of the requested type
+     */
+    public <T> CompletionStage<T> as(final GenericType<T> type) {
+        return context.unmarshall(publisher, type).toFuture();
+    }
+
+    public <T> Publisher<T> asStream(Class<T> type) {
+        return asStream(GenericType.create(type));
+    }
+
+    public <T> Publisher<T> asStream(GenericType<T> type) {
+        return context.unmarshallStream(publisher, type);
+    }
+
+    /**
+     * Create a new readable content backed by the given publisher and context.
+     * @param publisher inbound publisher
+     * @param context reader context
+     * @return MessageBodyReadableContent
+     */
+    public static MessageBodyReadableContent create(
+            Publisher<DataChunk> publisher, MessageBodyReaderContext context) {
+
+        return new MessageBodyReadableContent(publisher, context);
     }
 }

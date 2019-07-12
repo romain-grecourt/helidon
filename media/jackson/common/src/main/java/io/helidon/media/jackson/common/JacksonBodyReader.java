@@ -3,30 +3,32 @@ package io.helidon.media.jackson.common;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.Reader;
-import io.helidon.common.http.MessageBody.ReaderContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
-import io.helidon.media.common.ByteArrayReader;
+import io.helidon.media.common.ByteArrayBodyReader;
+import io.helidon.media.common.MessageBodyReader;
+import io.helidon.media.common.MessageBodyReaderContext;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.function.Function;
 
 /**
- * Jackson content reader.
+ * Message body reader supporting object binding with Jackson.
  */
-public final class JacksonReader implements Reader<Object> {
+public final class JacksonBodyReader implements MessageBodyReader<Object> {
 
     private final ObjectMapper objectMapper;
 
-    public JacksonReader(ObjectMapper objectMapper) {
+    public JacksonBodyReader(ObjectMapper objectMapper) {
         Objects.requireNonNull(objectMapper);
         this.objectMapper = objectMapper;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, ReaderContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyReaderContext context) {
+
         Class<?> clazz = type.rawType();
         return !CharSequence.class.isAssignableFrom(clazz)
                 && objectMapper.canDeserialize(
@@ -35,9 +37,9 @@ public final class JacksonReader implements Reader<Object> {
 
     @Override
     public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, ReaderContext context) {
+            GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ByteArrayReader.read(publisher)
+        return ByteArrayBodyReader.read(publisher)
                 .flatMap(new Mapper<>(type, objectMapper));
     }
 
@@ -57,6 +59,7 @@ public final class JacksonReader implements Reader<Object> {
             try {
                 return Mono.just(objectMapper.readValue(baos.toByteArray(),
                         (Class<T>) type.rawType()));
+                
             } catch (final IOException wrapMe) {
                 return Mono.<T>error(
                         new JacksonRuntimeException(wrapMe.getMessage(),

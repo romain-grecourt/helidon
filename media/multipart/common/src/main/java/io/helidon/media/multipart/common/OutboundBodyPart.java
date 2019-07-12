@@ -17,23 +17,21 @@ package io.helidon.media.multipart.common;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.http.MessageBody.WriteableContent;
-import io.helidon.common.http.MessageBodyWriteableContent;
+import io.helidon.media.common.MessageBodyWriteableContent;
 
 /**
  * Outbound body part.
  */
 public final class OutboundBodyPart implements BodyPart {
 
-    private final WriteableContent content;
+    private final MessageBodyWriteableContent content;
     private final OutboundBodyPartHeaders headers;
 
     /**
-     * Create a new out-bound body part.
-     * @param content http content
-     * @param headers part headers
+     * Private to enforce the use of {@link #builder()} or
+     * {@link #create(java.lang.Object)}.
      */
-    private OutboundBodyPart(WriteableContent content,
+    private OutboundBodyPart(MessageBodyWriteableContent content,
             OutboundBodyPartHeaders headers) {
 
         this.content = content;
@@ -41,7 +39,7 @@ public final class OutboundBodyPart implements BodyPart {
     }
 
     @Override
-    public WriteableContent content() {
+    public MessageBodyWriteableContent content() {
         return content;
     }
 

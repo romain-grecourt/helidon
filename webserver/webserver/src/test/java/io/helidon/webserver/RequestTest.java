@@ -20,7 +20,6 @@ import java.net.URI;
 
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.reactive.Mono;
-import io.helidon.media.common.MediaSupport;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +30,6 @@ import static org.hamcrest.collection.IsMapContaining.hasEntry;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
 import static org.hamcrest.core.IsCollectionContaining.hasItems;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -84,7 +82,6 @@ public class RequestTest {
         when(mock.uri()).thenReturn(new URI("http://localhost:123/one/two?a=b%26c=d&e=f&e=g&h=x%63%23e%3c#a%20frag%23ment"));
         when(mock.bodyPublisher()).thenReturn(Mono.empty());
         WebServer webServer = mock(WebServer.class);
-        doReturn(MediaSupport.createWithDefaults()).when(webServer).mediaSupport();
         Request request = new RequestTestStub(mock, webServer);
 
         assertThat("The query string must remain encoded otherwise no-one could tell whether a '&' was really a '&' or '%26'",

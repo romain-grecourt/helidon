@@ -37,8 +37,8 @@ public class ContentWritersTest {
         byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
         Publisher<DataChunk> publisher = ContentWriters.byteArrayWriter(false)
                 .apply(bytes);
-        ByteArrayReader.read(publisher).block().toByteArray();
-        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        ByteArrayBodyReader.read(publisher).block().toByteArray();
+        byte[] result = ByteArrayBodyReader.read(publisher).block().toByteArray();
         assertThat(bytes, is(result));
     }
 
@@ -49,7 +49,7 @@ public class ContentWritersTest {
                 .apply(bytes);
         System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes,
                 0, bytes.length);
-        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        byte[] result = ByteArrayBodyReader.read(publisher).block().toByteArray();
         assertThat("abc".getBytes(StandardCharsets.ISO_8859_1), is(result));
     }
 
@@ -58,7 +58,7 @@ public class ContentWritersTest {
         byte[] bytes = new byte[0];
         Publisher<DataChunk> publisher = ContentWriters.byteArrayWriter(false)
                 .apply(bytes);
-        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        byte[] result = ByteArrayBodyReader.read(publisher).block().toByteArray();
         assertThat(result.length, is(0));
     }
 
@@ -67,7 +67,7 @@ public class ContentWritersTest {
         String data = "abc";
         Publisher<DataChunk> publisher = ContentWriters
                 .charSequenceWriter(StandardCharsets.UTF_8).apply(data);
-        byte[] result = ByteArrayReader.read(publisher).block().toByteArray();
+        byte[] result = ByteArrayBodyReader.read(publisher).block().toByteArray();
         assertThat(new String(result, StandardCharsets.UTF_8), is(data));
     }
 }

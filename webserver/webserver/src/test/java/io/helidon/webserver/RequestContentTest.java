@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MessageBody.Filter;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -39,7 +38,8 @@ import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.SubmissionPublisher;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.StringReader;
+import io.helidon.media.common.MessageBodyFilter;
+import io.helidon.media.common.StringBodyReader;
 import io.helidon.webserver.utils.TestUtils;
 
 import org.junit.jupiter.api.Test;
@@ -278,7 +278,7 @@ public class RequestContentTest {
     public void nullFilter() throws Exception {
         Request request = requestTestStub(Mono.never());
         assertThrows(NullPointerException.class, () -> {
-            request.content().registerFilter((Filter)null);
+            request.content().registerFilter((MessageBodyFilter)null);
         });
     }
 
@@ -312,7 +312,7 @@ public class RequestContentTest {
                 Multi.just(DataChunk.create("2010-01-02".getBytes())));
 
         request.content().registerReader(LocalDate.class,
-                (publisher, clazz) -> StringReader
+                (publisher, clazz) -> StringBodyReader
                         .read(publisher, Request.contentCharset(request))
                         .toFuture()
                         .thenApply(LocalDate::parse));

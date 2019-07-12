@@ -1,19 +1,12 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.MessageBody.Context;
-import io.helidon.common.http.MessageBody.Filter;
-import io.helidon.common.http.MessageBody.Filters;
-import io.helidon.common.http.MessageBody.Operator;
+import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.Mono;
+import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -23,25 +16,28 @@ import java.util.logging.Logger;
 /**
  * Base message body context implementation.
  */
-public abstract class MessageBodyContextBase implements Filters {
-
-    private static final Logger LOGGER =
-            Logger.getLogger(MessageBodyContextBase.class.getName());
+public abstract class MessageBodyContext implements MessageBodyFilters {
 
     /**
-     * Subscription event listener.
+     * Logger.
+     */
+    private static final Logger LOGGER =
+            Logger.getLogger(MessageBodyContext.class.getName());
+
+    /**
+     * Message body content subscription event listener.
      */
     public static interface EventListener {
 
         /**
-         * Response to an emitted subscription event.
+         * Handle a subscription event.
          * @param event subscription event
          */
         void onEvent(Event event);
     }
 
     /**
-     * Subscription event types.
+     * Message body content subscription event types.
      */
     public static enum EVENT_TYPE {
 
@@ -87,7 +83,7 @@ public abstract class MessageBodyContextBase implements Filters {
     }
 
     /**
-     * Subscription event contract.
+     * Message body content subscription event contract.
      */
     public static interface Event {
 
@@ -133,87 +129,98 @@ public abstract class MessageBodyContextBase implements Filters {
         Throwable error();
     }
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#BEFORE_ONSUBSCRIBE}.
+     */
     private static final Event BEFORE_ONSUBSCRIBE = new EventImpl(
             EVENT_TYPE.BEFORE_ONSUBSCRIBE, Optional.empty());
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#BEFORE_ONNEXT}.
+     */
     private static final Event BEFORE_ONNEXT = new EventImpl(
             EVENT_TYPE.BEFORE_ONNEXT, Optional.empty());
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#BEFORE_ONCOMPLETE}.
+     */
     private static final Event BEFORE_ONCOMPLETE = new EventImpl(
             EVENT_TYPE.BEFORE_ONCOMPLETE, Optional.empty());
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#AFTER_ONSUBSCRIBE}.
+     */
     private static final Event AFTER_ONSUBSCRIBE = new EventImpl(
             EVENT_TYPE.AFTER_ONSUBSCRIBE, Optional.empty());
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#AFTER_ONNEXT}.
+     */
     private static final Event AFTER_ONNEXT = new EventImpl(
             EVENT_TYPE.AFTER_ONNEXT, Optional.empty());
 
+    /**
+     * Singleton event for {@link EVENT_TYPE#AFTER_ONCOMPLETE}.
+     */
     private static final Event AFTER_ONCOMPLETE = new EventImpl(
             EVENT_TYPE.AFTER_ONCOMPLETE, Optional.empty());
 
-    private final MessageBodyOperators<FilterOperator, Context> filters;
-    private final EventListener eventListener;
+    /**
+     * The filters registry.
+     */
+    private final MessageBodyOperators<FilterOperator> filters;
 
     /**
-     * Create a non parented context.
-     * @param eventListener subscription event listener
+     * Message body content subscription event listener.
      */
-    protected MessageBodyContextBase(EventListener eventListener) {
-        this.filters = new MessageBodyOperators<>();
-        this.eventListener = eventListener;
-    }
+    private final EventListener eventListener;
 
     /**
      * Create a new parented content support instance.
      * @param parent content filters parent
      * @param eventListener event listener
      */
-    protected MessageBodyContextBase(MessageBodyContextBase parent,
+    protected MessageBodyContext(MessageBodyContext parent,
             EventListener eventListener) {
 
-        Objects.requireNonNull(parent, "parent cannot be null!");
-        this.filters = new MessageBodyOperators<>(parent.filters);
-        this.eventListener = eventListener;
+        if (parent != null) {
+            this.filters = new MessageBodyOperators<>(parent.filters);
+            this.eventListener = eventListener;
+        } else {
+            this.filters = new MessageBodyOperators<>();
+            this.eventListener = eventListener;
+        }
     }
 
+    /**
+     * Derive the charset to use from the {@code Content-Type} header value or
+     * using a default charset as fallback.
+     *
+     * @return Charset, never {@code null}
+     * @throws IllegalStateException if an error occurs loading the charset
+     * specified by the {@code Content-Type} header value
+     */
+    public abstract Charset charset() throws IllegalStateException;
+
     @Override
-    public MessageBodyContextBase registerFilter(Filter filter) {
+    public MessageBodyContext registerFilter(MessageBodyFilter filter) {
         Objects.requireNonNull(filter, "filter is null!");
         filters.registerLast(new FilterOperator(filter));
         return this;
     }
 
+    /**
+     * Register a function filter.
+     *
+     * @param function filter function
+     * @deprecated use {@link #registerFilter(MessageBodyFilter)} instead
+     */
     @Deprecated
-    @Override
     public void registerFilter(
             Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
 
         Objects.requireNonNull(function, "filter function is null!");
         filters.registerLast(new FilterOperator(new FunctionFilter(function)));
-    }
-
-    /**
-     * Perform the filter chaining.
-     * @param publisher input publisher
-     * @param listener subscription listener
-     * @return tail of the publisher chain
-     */
-    private Publisher<DataChunk> doApplyFilters(Publisher<DataChunk> publisher,
-            EventListener listener) {
-
-        if (publisher == null) {
-            publisher = Mono.<DataChunk>empty();
-        }
-        try {
-            Publisher<DataChunk> last = publisher;
-            for (Filter filter : filters) {
-                last.subscribe(filter);
-                last = filter;
-            }
-            return new EventingPublisher(last, listener);
-        } finally {
-            filters.close();
-        }
     }
 
     /**
@@ -240,6 +247,30 @@ public abstract class MessageBodyContextBase implements Filters {
                     new TypedEventListener(eventListener, type));
         } else {
             return doApplyFilters(publisher, eventListener);
+        }
+    }
+
+    /**
+     * Perform the filter chaining.
+     * @param publisher input publisher
+     * @param listener subscription listener
+     * @return tail of the publisher chain
+     */
+    private Publisher<DataChunk> doApplyFilters(Publisher<DataChunk> publisher,
+            EventListener listener) {
+
+        if (publisher == null) {
+            publisher = Mono.<DataChunk>empty();
+        }
+        try {
+            Publisher<DataChunk> last = publisher;
+            for (MessageBodyFilter filter : filters) {
+                last.subscribe(filter);
+                last = filter;
+            }
+            return new EventingPublisher(last, listener);
+        } finally {
+            filters.close();
         }
     }
 
@@ -338,7 +369,7 @@ public abstract class MessageBodyContextBase implements Filters {
     /**
      * A filter adapter to support the old deprecated filter as function.
      */
-    private static final class FunctionFilter implements Filter {
+    private static final class FunctionFilter implements MessageBodyFilter {
 
         private final Function<Publisher<DataChunk>, Publisher<DataChunk>> function;
         private Subscriber<? super DataChunk> subscriber;
@@ -392,16 +423,18 @@ public abstract class MessageBodyContextBase implements Filters {
      * {@link Operator} adapter for {@link Filter}.
      */
     private static final class FilterOperator
-            implements Operator<Context>, Filter {
+            implements MessageBodyOperator<MessageBodyContext>, MessageBodyFilter {
 
-        private final Filter filter;
+        private final MessageBodyFilter filter;
 
-        FilterOperator(Filter filter) {
+        FilterOperator(MessageBodyFilter filter) {
             this.filter = filter;
         }
 
         @Override
-        public boolean accept(GenericType<?> type, Context scope) {
+        public boolean accept(GenericType<?> type,
+                MessageBodyContext context) {
+
             return this.getClass().equals(type.rawType());
         }
 
@@ -497,8 +530,8 @@ public abstract class MessageBodyContextBase implements Filters {
 
         private final Throwable error;
 
-        ErrorEventImpl(ErrorEventImpl event, Optional<GenericType<?>> entityType) {
-            super(event.eventType, event.entityType);
+        ErrorEventImpl(ErrorEventImpl event, Optional<GenericType<?>> type) {
+            super(event.eventType, type);
             error = event.error;
         }
 

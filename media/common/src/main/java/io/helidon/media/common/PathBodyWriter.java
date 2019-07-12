@@ -3,8 +3,6 @@ package io.helidon.media.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.RetrySchema;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
@@ -19,36 +17,39 @@ import java.util.function.Function;
 import static io.helidon.media.common.ByteChannelWriter.DEFAULT_RETRY_SCHEMA;
 
 /**
- * Writer for {@link Path}.
+ * Message body writer for {@link Path}.
  */
-public final class PathWriter implements Writer<Path> {
+public final class PathBodyWriter implements MessageBodyWriter<Path> {
 
-    private PathWriter() {
+    private PathBodyWriter() {
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return Path.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Mono<Path> content,
-            GenericType<? extends Path> type, WriterContext context) {
+            GenericType<? extends Path> type,
+            MessageBodyWriterContext context) {
 
         return content.flatMapMany(new Mapper(DEFAULT_RETRY_SCHEMA, context));
     }
 
-    public static PathWriter create() {
-        return new PathWriter();
+    public static PathBodyWriter create() {
+        return new PathBodyWriter();
     }
 
     private static final class Mapper
             implements Function<Path, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
-        private final WriterContext context;
+        private final MessageBodyWriterContext context;
 
-        Mapper(RetrySchema schema, WriterContext context) {
+        Mapper(RetrySchema schema, MessageBodyWriterContext context) {
             this.schema = schema;
             this.context = context;
         }

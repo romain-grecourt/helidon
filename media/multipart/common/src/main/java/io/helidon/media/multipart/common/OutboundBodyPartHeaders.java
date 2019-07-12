@@ -86,6 +86,11 @@ public final class OutboundBodyPartHeaders extends HashParameters
         return new Builder();
     }
 
+    /**
+     * Create a new instance of {@link OutboundBodyPartHeaders} with empty
+     * headers.
+     * @return OutboundBodyPartHeaders
+     */
     public static OutboundBodyPartHeaders create() {
         return new OutboundBodyPartHeaders(null);
     }

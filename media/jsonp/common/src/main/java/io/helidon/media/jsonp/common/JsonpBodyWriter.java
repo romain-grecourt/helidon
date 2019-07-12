@@ -3,12 +3,12 @@ package io.helidon.media.jsonp.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.MessageBody.Writer;
-import io.helidon.common.http.MessageBody.WriterContext;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferWriter;
+import io.helidon.media.common.CharBufferBodyWriter;
+import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.MessageBodyWriterContext;
 import java.nio.charset.Charset;
 import java.util.function.Function;
 import javax.json.JsonStructure;
@@ -16,24 +16,27 @@ import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 
 /**
- * JSON-P entity writer.
+ * Message body writer for {@link JsonStructure} sub-classes (JSON-P).
  */
-public class JsonpWriter implements Writer<JsonStructure> {
+public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
 
     private final JsonWriterFactory jsonWriterFactory;
 
-    public JsonpWriter(JsonWriterFactory jsonWriterFactory) {
+    public JsonpBodyWriter(JsonWriterFactory jsonWriterFactory) {
         this.jsonWriterFactory = jsonWriterFactory;
     }
 
     @Override
-    public boolean accept(GenericType<?> type, WriterContext context) {
+    public boolean accept(GenericType<?> type,
+            MessageBodyWriterContext context) {
+
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     public Publisher<DataChunk> write(Mono<JsonStructure> content,
-            GenericType<? extends JsonStructure> type, WriterContext context) {
+            GenericType<? extends JsonStructure> type,
+            MessageBodyWriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
@@ -48,7 +51,7 @@ public class JsonpWriter implements Writer<JsonStructure> {
         CharBuffer buffer = new CharBuffer();
         try (JsonWriter writer = factory.createWriter(buffer)) {
             writer.write(entity);
-            return CharBufferWriter.write(Mono.just(buffer), charset);
+            return CharBufferBodyWriter.write(Mono.just(buffer), charset);
         }
     }
 

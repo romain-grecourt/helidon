@@ -15,28 +15,24 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.MessageBody.Content;
+import io.helidon.media.common.MessageBodyReadableContent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import io.helidon.common.http.MessageBody.ReadableContent;
 
 /**
  * Inbound body part.
  */
 public final class InboundBodyPart implements BodyPart {
 
-    private final ReadableContent content;
+    private final MessageBodyReadableContent content;
     private final InboundBodyPartHeaders headers;
     private final boolean buffered;
 
     /**
-     * Create a new inbound body part.
-     * @param content http content
-     * @param headers part headers
-     * @param buffered buffered flag
+     * Private to enforce the use of {@link #builder()}.
      */
-    private InboundBodyPart(ReadableContent content,
+    private InboundBodyPart(MessageBodyReadableContent content,
             InboundBodyPartHeaders headers, boolean buffered) {
 
         this.content = content;
@@ -45,7 +41,7 @@ public final class InboundBodyPart implements BodyPart {
     }
 
     @Override
-    public ReadableContent content() {
+    public MessageBodyReadableContent content() {
         return content;
     }
 
@@ -111,7 +107,7 @@ public final class InboundBodyPart implements BodyPart {
             implements io.helidon.common.Builder<InboundBodyPart> {
 
         private InboundBodyPartHeaders headers;
-        private ReadableContent content;
+        private MessageBodyReadableContent content;
         private boolean buffered;
 
         /**
@@ -127,7 +123,7 @@ public final class InboundBodyPart implements BodyPart {
          * @param content inbound content
          * @return this builder instance
          */
-        public Builder content(ReadableContent content) {
+        public Builder content(MessageBodyReadableContent content) {
             this.content = content;
             return this;
         }
