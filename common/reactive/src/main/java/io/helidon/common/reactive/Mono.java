@@ -1,52 +1,90 @@
+/*
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 /**
- * Single item publisher.
+ * Single item publisher facility.
  * @param <T> item type
  */
 public abstract class Mono<T> implements Publisher<T> {
 
-    public T block() {
-        BlockingMonoSubscriber<T> subscriber = new BlockingMonoSubscriber<>();
+    /**
+     * Retrieve the value of this {@link Mono} instance in a blocking manner.
+     * @return value
+     */
+    public final T block() {
+        MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
         this.subscribe(subscriber);
         return subscriber.blockingGet();
     }
 
-    public T block(Duration timeout) {
-        BlockingMonoSubscriber<T> subscriber = new BlockingMonoSubscriber<>();
+    /**
+     * Retrieve the value of this {@link Mono} instance in a blocking manner.
+     * @param timeout timeout value
+     * @return value
+     */
+    public final T block(Duration timeout) {
+        MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
         this.subscribe(subscriber);
-        return subscriber.blockingGet(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        return subscriber.blockingGet(timeout.toMillis(),
+                TimeUnit.MILLISECONDS);
     }
 
-    public final <R> Mono<R> flatMap(Function<T, ? extends Mono<R>> mapper) {
-        return new MonoFlatMap<>(this, mapper);
+    /**
+     * Map this {@link Mono} instance to a new {@link Mono} of another type
+     * using the given {@link Mapper}.
+     * @param <U> mapped item type
+     * @param mapper mapper function
+     * @return Mono
+     */
+    public final <U> Mono<U> map(Mapper<T, U> mapper) {
+        return new MonoMap<>(this, mapper);
     }
 
-    public final <R> Publisher<R> flatMapMany(
-            Function<T, ? extends Publisher<R>> mapper) {
-
-        ToManyProcessor<T, R> processor = new ToManyProcessor<>(mapper);
+    /**
+     * Map this {@link Mono} instance to a multiple items using the given
+     * {@link MultiMapper}.
+     *
+     * @param <U> mapped items type
+     * @param mapper mapper function
+     * @return Publisher
+     */
+    public final <U> Publisher<U> mapMany(MultiMapper<T, U> mapper) {
+        MonoToMultiProcessor<T, U> processor
+                = new MonoToMultiProcessor<>(mapper);
         this.subscribe(processor);
         return processor;
     }
 
+    /**
+     * Exposes this {@link Mono} instance as a {@link CompletableFuture}.
+     * @return CompletableFuture
+     */
     public final CompletableFuture<T> toFuture() {
         try {
-            MonoToCompletableFuture<T> subscriber = new MonoToCompletableFuture<>();
+            MonoToCompletableFuture<T> subscriber =
+                    new MonoToCompletableFuture<>();
             this.subscribe(subscriber);
             return subscriber;
         } catch (Throwable ex) {
@@ -56,10 +94,23 @@ public abstract class Mono<T> implements Publisher<T> {
         }
     }
 
+    /**
+     * Create a {@link Mono} instance from a {@link CompletionStage}.
+     * @param <T> item type
+     * @param future source future
+     * @return Mono
+     */
     public static <T> Mono<T> fromFuture(CompletionStage<? extends T> future) {
-        return new MonoCompletionStage<>(future);
+        return new MonoFromCompletionStage<>(future);
     }
 
+    /**
+     * Create a {@link Mono} instance that publishes the first item received
+     * from the given publisher.
+     * @param <T> item type
+     * @param source source publisher
+     * @return Mono
+     */
     @SuppressWarnings("unchecked")
     public static <T> Mono<T> from(Publisher<? extends T> source) {
         if (source instanceof Mono) {
@@ -68,25 +119,58 @@ public abstract class Mono<T> implements Publisher<T> {
         return new MonoNext<>(source);
     }
 
-    public static <T> Mono<T> just(T data) {
-        return new MonoJust<>(data);
+    /**
+     * Create a {@link Mono} instance that publishes the given item to its
+     * subscriber(s).
+     *
+     * @param <T> item type
+     * @param item item to publish
+     * @return Mono
+     */
+    public static <T> Mono<T> just(T item) {
+        return new MonoJust<>(item);
     }
 
+    /**
+     * Create a {@link Mono} instance that reports the given given exception to
+     * its subscriber(s). The exception is reported by invoking
+     * {@link Subscriber#onError(java.lang.Throwable)} when
+     * {@link Publisher#subscribe(Subscriber)} is called.
+     *
+     * @param <T> item type
+     * @param error exception to hold
+     * @return Mono
+     */
     public static <T> Mono<T> error(Throwable error) {
         return new MonoError<>(error);
     }
 
+    /**
+     * Get a {@link Mono} instance that completes immediately.
+     *
+     * @param <T> item type
+     * @return Mono
+     */
     public static <T> Mono<T> empty() {
         return MonoEmpty.<T>instance();
     }
 
+    /**
+     * Get a {@link Mono} instance that never completes.
+     * @param <T> item type
+     * @return Mono
+     */
     public static <T> Mono<T> never() {
         return MonoNever.<T>instance();
     }
 
-    private static final class MonoJust<T>  extends Mono<T> {
+    /**
+     * Implementation of {@link Mono} that represents a non {@code null} value.
+     * @param <T> item type
+     */
+    private static final class MonoJust<T> extends Mono<T> {
 
-        final T value;
+        private final T value;
 
         MonoJust(T value) {
             this.value = Objects.requireNonNull(value, "value");
@@ -97,41 +181,20 @@ public abstract class Mono<T> implements Publisher<T> {
             subscriber.onSubscribe(new MonoSubscription<>(value, subscriber));
         }
     }
-    private static final class MonoSubscription<T> implements Subscription {
 
-        private final T value;
-        private final Subscriber<? super T> subscriber;
-        private final AtomicBoolean delivered;
-        private final AtomicBoolean canceled;
-
-        MonoSubscription(T value, Subscriber<? super T> subscriber) {
-            this.value = value;
-            this.subscriber = subscriber;
-            this.delivered = new AtomicBoolean(false);
-            this.canceled = new AtomicBoolean(false);
-        }
-
-        @Override
-        public void request(long n) {
-            if (n >= 0 && !canceled.get()) {
-                if (delivered.compareAndSet(false, true)) {
-                    subscriber.onNext(value);
-                    subscriber.onComplete();
-                }
-            }
-        }
-
-        @Override
-        public void cancel() {
-            canceled.set(true);
-        }
-    }
-
+    /**
+     * Implementation of {@link Mono} that represents the absence of a value by
+     * invoking {@link Subscriber#onComplete() } during
+     * {@link Publisher#subscribe(Subscriber)}.
+     */
     private static final class MonoEmpty extends Mono<Object> {
 
-        private static final Publisher<Object> INSTANCE = new MonoEmpty();
+        /**
+         * Singleton instance.
+         */
+        private static final MonoEmpty INSTANCE = new MonoEmpty();
 
-        MonoEmpty() {
+        private MonoEmpty() {
         }
 
         @Override
@@ -146,6 +209,13 @@ public abstract class Mono<T> implements Publisher<T> {
         }
     }
 
+    /**
+     * Implementation of {@link Mono} that represents an error, raised during
+     * {@link Publisher#subscribe(Subscriber)} by invoking
+     * {@link Subscriber#onError(java.lang.Throwable)}.
+     *
+     * @param <T> item type
+     */
     private static final class MonoError<T> extends Mono<T> {
 
         private final Throwable error;
@@ -161,490 +231,70 @@ public abstract class Mono<T> implements Publisher<T> {
         }
     }
 
-    private static final class MonoToCompletableFuture<T>
-            extends CompletableFuture<T> 
-            implements Subscriber<T> {
-
-        private final AtomicReference<Subscription> ref = new AtomicReference<>();
-
-        @Override
-        public boolean cancel(boolean mayInterruptIfRunning) {
-            boolean cancelled = super.cancel(mayInterruptIfRunning);
-            if (cancelled) {
-                Subscription s = ref.getAndSet(null);
-                if (s != null) {
-                    s.cancel();
-                }
-            }
-            return cancelled;
-        }
-
-        @Override
-        public void onSubscribe(Subscription next) {
-            Subscription current = ref.getAndSet(next);
-            Objects.requireNonNull(next, "Subscription cannot be null");
-            if (current != null) {
-                next.cancel();
-                current.cancel();
-            } else {
-                next.request(Long.MAX_VALUE);
-            }
-        }
-
-        @Override
-        public void onNext(T t) {
-            Subscription s = ref.getAndSet(null);
-            if (s != null) {
-                complete(t);
-                s.cancel();
-            }
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            if (ref.getAndSet(null) != null) {
-                completeExceptionally(t);
-            }
-        }
-
-        @Override
-        public void onComplete() {
-            if (ref.getAndSet(null) != null) {
-                complete(null);
-            }
-        }
-    }
-
-    private static final class ToManyProcessor<T, U>
-            implements Processor<T, U> {
-
-        private final Function<T, ? extends Publisher<U>> mapper;
-        private Throwable error;
-        private Publisher<U> delegate;
-        private Subscription subscription;
-        private Subscriber<? super U> subscriber;
-        private volatile boolean subcribed;
-
-        ToManyProcessor(Function<T, ? extends Publisher<U>> mapper) {
-            this.mapper = mapper;
-        }
-
-        @Override
-        public void onNext(T item) {
-            if (delegate == null) {
-                delegate = mapper.apply(item);
-                doSusbcribe();
-            }
-            subscription.cancel();
-        }
-
-        @Override
-        public void onError(Throwable ex) {
-            if (delegate == null) {
-                error = ex;
-                delegate = Mono.<U>error(error);
-                doSusbcribe();
-            }
-        }
-
-        @Override
-        public final void onSubscribe(Subscription s) {
-            this.subscription = s;
-            s.request(1);
-        }
-
-        @Override
-        public final void onComplete() {
-        }
-
-        private void doSusbcribe() {
-            if (!subcribed && subscriber != null) {
-                delegate.subscribe(subscriber);
-                subcribed = true;
-            }
-        }
-
-        @Override
-        public final void subscribe(Subscriber<? super U> subscriber) {
-            this.subscriber = subscriber;
-            if (delegate != null) {
-                doSusbcribe();
-            }
-        }
-    }
-
+    /**
+     * Implementation of {@link Mono} that exposed the first item of a
+     * {@link Publisher}.
+     *
+     * @param <T> item type
+     */
     private static final class MonoNext<T> extends Mono<T> {
 
         private final Publisher<? extends T> source;
 
         MonoNext(Publisher<? extends T> source) {
-            this.source = Objects.requireNonNull(source, "source cannot be null!");
+            this.source = Objects.requireNonNull(source,
+                    "source cannot be null!");
         }
 
         @Override
         public void subscribe(Subscriber<? super T> actual) {
-            source.subscribe(new NextSubscriber<>(actual));
+            source.subscribe(new MonoSubscriber<>(actual));
         }
     }
 
-    private static final class NextSubscriber<T>
-            implements Subscriber<T>, Subscription {
-
-        private final Subscriber<? super T> actual;
-        private final AtomicBoolean requested;
-        private Subscription s;
-        private boolean done;
-
-        NextSubscriber(Subscriber<? super T> s) {
-            requested = new AtomicBoolean(false);
-            actual = s;
-        }
-
-        @Override
-        public void onSubscribe(Subscription s) {
-            Objects.requireNonNull(s, "Subscription cannot be null");
-            if (this.s != null) {
-                s.cancel();
-                this.s.cancel();
-            } else {
-                this.s = s;
-                actual.onSubscribe(this);
-            }
-        }
-
-        @Override
-        public void onNext(T t) {
-            if (done) {
-                return;
-            }
-
-            s.cancel();
-            actual.onNext(t);
-            onComplete();
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            if (done) {
-                return;
-            }
-            done = true;
-            actual.onError(t);
-        }
-
-        @Override
-        public void onComplete() {
-            if (done) {
-                return;
-            }
-            done = true;
-            actual.onComplete();
-        }
-
-        @Override
-        public void request(long n) {
-            if (requested.compareAndSet(false, true)) {
-                s.request(Long.MAX_VALUE);
-            }
-        }
-
-        @Override
-        public void cancel() {
-            s.cancel();
-        }
-    }
-
-    private static final class MonoCompletionStage<T> extends Mono<T> {
-
-        private final CompletionStage<? extends T> future;
-        private Subscriber<? super T> subscriber;
-        private volatile boolean requested;
-
-        MonoCompletionStage(CompletionStage<? extends T> future) {
-            this.future = Objects.requireNonNull(future, "future");
-        }
-
-        private void submit(T item) {
-            subscriber.onNext(item);
-            subscriber.onComplete();
-        }
-
-        private <U extends T> U raiseError(Throwable error) {
-            subscriber.onError(error);
-            return null;
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            if (this.subscriber != null) {
-                throw new IllegalStateException("Already subscribed to");
-            }
-            this.subscriber = subscriber;
-            subscriber.onSubscribe(new Subscription() {
-                @Override
-                public void request(long n) {
-                    if (n > 0 && !requested) {
-                        future.exceptionally(MonoCompletionStage.this::raiseError);
-                        future.thenAccept(MonoCompletionStage.this::submit);
-                        requested = true;
-                    }
-                }
-
-                @Override
-                public void cancel() {
-                }
-            });
-        }
-    }
-
-    private final class MonoFlatMap<T, U> extends Mono<U> {
+    /**
+     * Implementation of {@link Mono} that maps a source {@link Mono} instance
+     * using a {@link Mapper}.
+     *
+     * @param <T> input type
+     * @param <U> output type
+     */
+    private final class MonoMap<T, U> extends Mono<U> {
 
         private final Mono<? extends T> source;
-        private final Function<? super T, ? extends Mono<? extends U>> mapper;
+        private final Mapper<? super T, ? extends U> mapper;
 
-        MonoFlatMap(Mono<? extends T> source,
-                Function<? super T, ? extends Mono<? extends U>> mapper) {
-            this.source = Objects.requireNonNull(source,"source cannot be null!");
-            this.mapper = Objects.requireNonNull(mapper, "mapper cannot be null!");
+        MonoMap(Mono<? extends T> source,
+                Mapper<? super T, ? extends U> mapper) {
+
+            this.source = Objects.requireNonNull(source,
+                    "source cannot be null!");
+            this.mapper = Objects.requireNonNull(mapper,
+                    "mapper cannot be null!");
         }
 
         @Override
         public void subscribe(Subscriber<? super U> actual) {
-            FlatMapMain<T, U> manager = new FlatMapMain<>(actual, mapper);
+            MonoMapSubscriber<T, U> manager =
+                    new MonoMapSubscriber<>(actual, mapper);
             actual.onSubscribe(manager);
             source.subscribe(manager);
         }
     }
 
-    private static final class FlatMapMain<T, U>
-            implements Subscriber<T>, Subscription {
-
-        private final Function<? super T, ? extends Mono<? extends U>> mapper;
-        private final Subscriber<? super U> subscriber;
-        private final FlatMapInner<U> second;
-        private final AtomicBoolean requested;
-        private boolean done;
-
-        FlatMapMain(Subscriber<? super U> subscriber,
-                Function<? super T, ? extends Mono<? extends U>> mapper) {
-
-            this.subscriber = subscriber;
-            this.mapper = mapper;
-            this.second = new FlatMapInner<>(this);
-            this.requested = new AtomicBoolean(false);
-        }
-
-        @Override
-        public void request(long n) {
-            if (n > 0) {
-                if (requested.compareAndSet(false, true)) {
-                    if (done) {
-                        // TODO
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void cancel() {
-            // not canceling the upstream subscription
-            // as this can mean closing the connection...
-            second.cancel();
-        }
-
-        @Override
-        public void onSubscribe(Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(T t) {
-            if (done) {
-                return;
-            }
-            done = true;
-
-            Mono<? extends U> m;
-
-            try {
-                m = Objects.requireNonNull(mapper.apply(t),
-                        "The mapper returned a null Mono");
-            } catch (Throwable ex) {
-                subscriber.onError(ex);
-                return;
-            }
-            try {
-                m.subscribe(second);
-            } catch (Throwable ex) {
-                subscriber.onError(ex);
-            }
-        }
-
-        @Override
-        public void onError(Throwable ex) {
-            if (!done) {
-                done = true;
-                subscriber.onError(ex);
-            }
-        }
-
-        @Override
-        public void onComplete() {
-            if (!done) {
-                done = true;
-                subscriber.onComplete();
-            }
-        }
-
-        void complete(U item) {
-            subscriber.onNext(item);
-            onComplete();
-        }
-
-        void secondError(Throwable ex) {
-            subscriber.onError(ex);
-        }
-
-        void secondComplete() {
-            subscriber.onComplete();
-        }
-    }
-
-    static final class FlatMapInner<T> implements Subscriber<T> {
-
-        private final FlatMapMain<?, T> parent;
-        private Subscription subscription;
-        private boolean done;
-
-        FlatMapInner(FlatMapMain<?, T> parent) {
-            this.parent = parent;
-        }
-
-        @Override
-        public void onSubscribe(Subscription subscription) {
-            if (this.subscription == null) {
-                this.subscription = subscription;
-                subscription.request(Long.MAX_VALUE);
-            }
-        }
-
-        @Override
-        public void onNext(T item) {
-            if (!done) {
-                done = true;
-                this.parent.complete(item);
-            }
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            if (!done) {
-                done = true;
-                this.parent.secondError(t);
-            }
-        }
-
-        @Override
-        public void onComplete() {
-            if (done) {
-                return;
-            }
-            done = true;
-            this.parent.secondComplete();
-        }
-
-        void cancel() {
-            this.subscription.cancel();
-        }
-    }
-
-    private static final class BlockingMonoSubscriber<T>
-            extends CountDownLatch
-            implements Subscriber<T> {
-
-        private T value;
-        private Throwable error;
-        private Subscription s;
-        private volatile boolean cancelled;
-
-        BlockingMonoSubscriber() {
-            super(1);
-        }
-
-        @Override
-        public final void onSubscribe(Subscription s) {
-            this.s = s;
-            if (!cancelled) {
-                s.request(Long.MAX_VALUE);
-            }
-        }
-
-        @Override
-        public final void onComplete() {
-            countDown();
-        }
-
-        @Override
-        public void onNext(T t) {
-            if (value == null) {
-                value = t;
-                countDown();
-            }
-        }
-
-        @Override
-        public void onError(Throwable t) {
-            if (value == null) {
-                error = t;
-            }
-            countDown();
-        }
-
-        final T blockingGet() {
-            if (getCount() != 0) {
-                try {
-                    await();
-                } catch (InterruptedException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-
-            Throwable ex = error;
-            if (ex != null) {
-                throw new IllegalStateException(
-                        "#block terminated with an error", ex);
-            }
-            return value;
-        }
-
-        final T blockingGet(long timeout, TimeUnit unit) {
-            if (getCount() != 0) {
-                try {
-                    if (!await(timeout, unit)) {
-                        throw new IllegalStateException(
-                                "Timeout on blocking read for "
-                                        + timeout + " " + unit);
-                    }
-                } catch (InterruptedException ex) {
-                    throw new IllegalStateException(
-                            "#block has been interrupted", ex);
-                }
-            }
-
-            Throwable ex = error;
-            if (ex != null) {
-                throw new IllegalStateException(
-                        "#block terminated with an error", ex);
-            }
-            return value;
-        }
-    }
-
+    /**
+     * Implementation of {@link Mono} that never invokes
+     * {@link Subscriber#onComplete()} or
+     * {@link Subscriber#onError(java.lang.Throwable)}.
+     */
     private static final class MonoNever extends Mono<Object> {
 
-        private static final Mono<Object> INSTANCE = new MonoNever();
+        /**
+         * Singleton instance.
+         */
+        private static final MonoNever INSTANCE = new MonoNever();
 
-        MonoNever() {
+        private MonoNever() {
         }
 
         @Override

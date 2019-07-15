@@ -37,9 +37,9 @@ import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.SubmissionPublisher;
+import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MediaSupport;
 import io.helidon.media.common.MessageBodyFilter;
-import io.helidon.media.common.StringBodyReader;
 import io.helidon.webserver.utils.TestUtils;
 
 import org.junit.jupiter.api.Test;
@@ -312,8 +312,8 @@ public class RequestContentTest {
                 Multi.just(DataChunk.create("2010-01-02".getBytes())));
 
         request.content().registerReader(LocalDate.class,
-                (publisher, clazz) -> StringBodyReader
-                        .read(publisher, Request.contentCharset(request))
+                (publisher, clazz) -> ContentReaders
+                        .readString(publisher, Request.contentCharset(request))
                         .toFuture()
                         .thenApply(LocalDate::parse));
 
@@ -363,8 +363,7 @@ public class RequestContentTest {
                     return Multi.from(publisher)
                             .map(TestUtils::requestChunkAsString)
                             .map(String::toUpperCase)
-                            .collect(StringBuilder::new, (sb, s) -> sb.append(s))
-                            .flatMap((sb) -> Mono.just(sb.toString()))
+                            .collectString()
                             .toFuture();
                });
 

@@ -15,23 +15,19 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscription;
-
 /**
- * Empty subscription singleton.
+ * Function to map single items.
+ *
+ * @param <T> input type
+ * @param <U> output type
  */
-final class EmptySubscription implements Subscription {
+public interface Mapper<T, U> {
 
-    static final EmptySubscription INSTANCE = new EmptySubscription();
-
-    EmptySubscription() {
-    }
-
-    @Override
-    public void request(long n) {
-    }
-
-    @Override
-    public void cancel() {
-    }
+    /**
+     * Map an item.
+     *
+     * @param item input item to map
+     * @return mapped item
+     */
+    U map(T item);
 }

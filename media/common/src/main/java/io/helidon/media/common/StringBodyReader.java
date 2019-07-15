@@ -4,9 +4,6 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
-import java.util.function.Function;
 
 /**
  * Message body reader for {@link String}.
@@ -14,15 +11,12 @@ import java.util.function.Function;
 public final class StringBodyReader implements MessageBodyReader<String> {
 
     /**
-     * Create a new {@link StringBodyReader} instance.
-     * @return StringBodyReader
+     * Singleton instance.
      */
-    public static StringBodyReader create() {
-        return new StringBodyReader();
-    }
+    private static final StringBodyReader INSTANCE = new StringBodyReader();
 
     /**
-     * Private to enforce the use of {@link #create()}.
+     * Private to enforce the use of {@link #get()}.
      */
     private StringBodyReader() {
     }
@@ -39,27 +33,15 @@ public final class StringBodyReader implements MessageBodyReader<String> {
     public <U extends String> Mono<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return (Mono<U>) read(publisher, context.charset());
+        return (Mono<U>) ContentReaders.readString(publisher,
+                context.charset());
     }
 
-    public static Mono<String> read(
-            Publisher<DataChunk> publisher, Charset charset) {
-
-        return ByteArrayBodyReader.read(publisher).flatMap(new Mapper(charset));
-    }
-
-    private static final class Mapper
-            implements Function<ByteArrayOutputStream, Mono<String>> {
-
-        private final Charset charset;
-
-        Mapper(Charset charset) {
-            this.charset = charset;
-        }
-
-        @Override
-        public Mono<String> apply(ByteArrayOutputStream baos) {
-            return Mono.just(new String(baos.toByteArray(), charset));
-        }
+    /**
+     * Create a new {@link StringBodyReader} instance.
+     * @return StringBodyReader
+     */
+    public static StringBodyReader get() {
+        return INSTANCE;
     }
 }

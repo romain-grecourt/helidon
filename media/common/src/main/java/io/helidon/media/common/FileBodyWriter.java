@@ -6,21 +6,29 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.function.Function;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
 import io.helidon.common.reactive.RetrySchema;
 
-import static io.helidon.media.common.ByteChannelWriter.DEFAULT_RETRY_SCHEMA;
+import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA;
 
 /**
  * Message body writer for {@link File}.
  */
 public final class FileBodyWriter implements MessageBodyWriter<File> {
 
+    /**
+     * Singleton instance.
+     */
+    private static final FileBodyWriter INSTANCE = new FileBodyWriter();
+
+    /**
+     * Enforces the use of {@link #get()}.
+     */
     private FileBodyWriter() {
     }
 
@@ -36,26 +44,37 @@ public final class FileBodyWriter implements MessageBodyWriter<File> {
             GenericType<? extends File> type,
             MessageBodyWriterContext context) {
 
-        return content.flatMapMany(new Mapper(DEFAULT_RETRY_SCHEMA, context));
+        return content.mapMany(new FileToChunks(DEFAULT_RETRY_SCHEMA,
+                context));
     }
 
-    public static FileBodyWriter create() {
-        return new FileBodyWriter();
+    /**
+     * Get the {@link FileBodyWriter} singleton.
+     * @return FileBodyWriter
+     */
+    public static FileBodyWriter get() {
+        return INSTANCE;
     }
 
-    private static final class Mapper
-            implements Function<File, Publisher<DataChunk>> {
+    /**
+     * Implementation of {@link MultiMapper} that converts {@link File} to a
+     * publisher of {@link DataChunk}.
+     */
+    private static final class FileToChunks
+            implements MultiMapper<File, DataChunk> {
 
         private final RetrySchema schema;
         private final MessageBodyWriterContext context;
 
-        Mapper(RetrySchema schema, MessageBodyWriterContext context) {
+        FileToChunks(RetrySchema schema,
+                MessageBodyWriterContext context) {
+
             this.schema = schema;
             this.context = context;
         }
 
         @Override
-        public Publisher<DataChunk> apply(File file) {
+        public Publisher<DataChunk> map(File file) {
             try {
                 Path path = file.toPath();
                 context.contentType(MediaType.APPLICATION_OCTET_STREAM);

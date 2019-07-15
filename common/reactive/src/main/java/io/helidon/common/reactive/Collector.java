@@ -15,23 +15,22 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscription;
-
 /**
- * Empty subscription singleton.
+ * Collector function that collects items in a container object.
+ * @param <T> container type
+ * @param <U> collected item type
  */
-final class EmptySubscription implements Subscription {
+public interface Collector<T, U> {
 
-    static final EmptySubscription INSTANCE = new EmptySubscription();
+    /**
+     * Collect the given item.
+     * @param item item to collect
+     */
+    void collect(U item);
 
-    EmptySubscription() {
-    }
-
-    @Override
-    public void request(long n) {
-    }
-
-    @Override
-    public void cancel() {
-    }
+    /**
+     * Get the items container.
+     * @return T
+     */
+    T value();
 }

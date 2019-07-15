@@ -20,7 +20,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.StringBodyReader;
+import io.helidon.media.common.ContentReaders;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import java.util.concurrent.CompletionException;
@@ -162,7 +162,7 @@ public class MultiPartEncoderTest {
         MultiPartEncoder encoder = MultiPartEncoder.create(boundary,
                 MEDIA_SUPPORT.writerContext());
         Multi.just(parts).subscribe(encoder);
-        return StringBodyReader.read(encoder, StandardCharsets.UTF_8)
+        return ContentReaders.readString(encoder, StandardCharsets.UTF_8)
                 .block(Duration.ofSeconds(10));
     }
 }

@@ -21,13 +21,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.media.common.CharSequenceBodyWriter;
 import io.helidon.media.common.MediaSupport;
 import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.media.common.MessageBodyWriteableContent;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.common.reactive.Mono;
-import io.helidon.media.common.StringBodyReader;
+import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.ContentWriters;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -50,8 +48,8 @@ public class BodyPartTest {
     @Test
     public void testContentFromPublisher() {
         InboundBodyPart bodyPart = InboundBodyPart.builder()
-                .content(readableContent(CharSequenceBodyWriter
-                        .write(Mono.just("body part data"), DEFAULT_CHARSET)))
+                .content(readableContent(ContentWriters
+                        .writeCharSequence("body part data", DEFAULT_CHARSET)))
                 .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
@@ -70,7 +68,8 @@ public class BodyPartTest {
                 .create("body part data")
                 .content()
                 .toPublisher(MEDIA_SUPPORT.writerContext());
-        String result = StringBodyReader.read(publisher, DEFAULT_CHARSET).block();
+        String result = ContentReaders.readString(publisher, DEFAULT_CHARSET)
+                .block();
         assertThat(result, is(equalTo("body part data")));
     }
 

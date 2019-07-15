@@ -6,14 +6,14 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferBodyWriter;
+import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Objects;
-import java.util.function.Function;
 
 /**
  * Message body writer supporting object binding with Jackson.
@@ -43,26 +43,27 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.flatMapMany(new Mapper(objectMapper, context.charset()));
+        return content.mapMany(new ObjectToChunks(objectMapper,
+                context.charset()));
     }
 
-    private static final class Mapper
-            implements Function<Object, Publisher<DataChunk>> {
+    private static final class ObjectToChunks
+            implements MultiMapper<Object, DataChunk> {
 
         private final ObjectMapper objectMapper;
         private final Charset charset;
 
-        Mapper(ObjectMapper objectMapper, Charset charset) {
+        ObjectToChunks(ObjectMapper objectMapper, Charset charset) {
             this.objectMapper = objectMapper;
             this.charset = charset;
         }
 
         @Override
-        public Publisher<DataChunk> apply(Object content) {
+        public Publisher<DataChunk> map(Object content) {
             try {
                 CharBuffer buffer = new CharBuffer();
                 objectMapper.writeValue(buffer, content);
-                return CharBufferBodyWriter.write(Mono.just(buffer), charset);
+                return ContentWriters.writeCharBuffer(buffer, charset);
             } catch (IOException wrapMe) {
                 throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
             }

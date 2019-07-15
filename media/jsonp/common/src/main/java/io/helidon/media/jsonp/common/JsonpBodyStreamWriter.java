@@ -9,6 +9,7 @@ import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.media.common.MessageBodyStreamWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.jsonp.common.JsonpBodyWriter.JsonStructureToChunks;
 import java.nio.charset.Charset;
 import java.util.Objects;
 import javax.json.JsonStructure;
@@ -66,6 +67,7 @@ public abstract class JsonpBodyStreamWriter
         private final DataChunk separatorChunk;
         private final DataChunk endChunk;
         private final Charset charset;
+        private final JsonStructureToChunks mapper;
 
         JsonArrayStreamProcessor(Publisher<? extends JsonStructure> publisher,
                 Charset charset) {
@@ -84,6 +86,7 @@ public abstract class JsonpBodyStreamWriter
             }
             Objects.requireNonNull(charset);
             this.charset = charset;
+            this.mapper = new JsonStructureToChunks(jsonFactory, charset);
         }
 
         @Override
@@ -123,10 +126,7 @@ public abstract class JsonpBodyStreamWriter
                 first = false;
             }
 
-            Publisher<DataChunk> itemChunkPublisher = JsonpBodyWriter
-                    .write(jsonFactory, item, charset);
-
-            itemChunkPublisher.subscribe(new Subscriber<DataChunk>() {
+            mapper.map(item).subscribe(new Subscriber<DataChunk>() {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     subscription.request(Long.MAX_VALUE);

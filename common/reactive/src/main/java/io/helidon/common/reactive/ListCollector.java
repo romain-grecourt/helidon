@@ -15,23 +15,28 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscription;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Empty subscription singleton.
+ * {@link Collector} implementation that collects items in a {@link List}.
+ * @param <U> collected item type
  */
-final class EmptySubscription implements Subscription {
+final class ListCollector<U> implements Collector<List<U>, U> {
 
-    static final EmptySubscription INSTANCE = new EmptySubscription();
+    private final ArrayList<U> list;
 
-    EmptySubscription() {
+    ListCollector() {
+        this.list = new ArrayList<>();
     }
 
     @Override
-    public void request(long n) {
+    public void collect(U item) {
+        list.add(item);
     }
 
     @Override
-    public void cancel() {
+    public List<U> value() {
+        return list;
     }
 }

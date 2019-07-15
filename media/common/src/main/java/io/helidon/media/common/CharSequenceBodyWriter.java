@@ -5,15 +5,24 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
 import java.nio.charset.Charset;
-import java.util.function.Function;
 
 /**
- * Message body writer for {@code CharSequence}.
+ * Writer for {@code CharSequence}.
  */
 public final class CharSequenceBodyWriter
         implements MessageBodyWriter<CharSequence> {
 
+    /**
+     * Singleton instance.
+     */
+    private static final CharSequenceBodyWriter INSTANCE =
+            new CharSequenceBodyWriter();
+
+    /**
+     * Enforce the use of {@link #get()}.
+     */
     private CharSequenceBodyWriter() {
     }
 
@@ -30,37 +39,35 @@ public final class CharSequenceBodyWriter
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.TEXT_PLAIN);
-        return write(content, context.charset());
+        // TODO cache per charset.
+        return content.mapMany(new CharSequenceToChunks(
+                context.charset()));
     }
 
-    static Publisher<DataChunk> write(CharSequence content, Charset charset) {
-
-        return Mono.just(DataChunk.create(false,
-                charset.encode(content.toString())));
+    /**
+     * Get the {@link CharSequenceBodyWriter} singleton.
+     * @return CharSequenceBodyWriter
+     */
+    public static CharSequenceBodyWriter get() {
+        return INSTANCE;
     }
 
-    public static Publisher<DataChunk> write(Mono<CharSequence> content,
-            Charset charset) {
-
-        return content.flatMapMany(new Mapper(charset));
-    }
-
-    public static CharSequenceBodyWriter create() {
-        return new CharSequenceBodyWriter();
-    }
-
-    private static final class Mapper
-            implements Function<CharSequence, Publisher<DataChunk>> {
+    /**
+     * Implementation of {@link MultiMapper} to convert {@link CharSequence} to
+     * a publisher of {@link DataChunk}.
+     */
+    private static final class CharSequenceToChunks
+            implements MultiMapper<CharSequence, DataChunk> {
 
         private final Charset charset;
 
-        Mapper(Charset charset) {
+        CharSequenceToChunks(Charset charset) {
             this.charset = charset;
         }
 
         @Override
-        public Publisher<DataChunk> apply(CharSequence cs) {
-            return write(cs, charset);
+        public Publisher<DataChunk> map(CharSequence cs) {
+            return ContentWriters.writeCharSequence(cs, charset);
         }
     }
 }

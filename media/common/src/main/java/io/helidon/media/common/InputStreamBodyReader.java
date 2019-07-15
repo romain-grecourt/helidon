@@ -11,6 +11,15 @@ import io.helidon.common.reactive.Mono;
  */
 public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
 
+    /**
+     * Singleton instance.
+     */
+    private static final InputStreamBodyReader INSTANCE =
+            new InputStreamBodyReader();
+
+    /**
+     * Enforce the use of {@link #get() }.
+     */
     private InputStreamBodyReader() {
     }
 
@@ -25,14 +34,14 @@ public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
             Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return (Mono<U>) read(publisher);
+        return (Mono<U>) Mono.just(new PublisherInputStream(publisher));
     }
 
-    public static Mono<InputStream> read(Publisher<DataChunk> publisher) {
-        return Mono.just(new PublisherInputStream(publisher));
-    }
-
-    public static InputStreamBodyReader create() {
-        return new InputStreamBodyReader();
+    /**
+     * Get the {@link InputStreamBodyReader} singleton.
+     * @return InputStreamBodyReader
+     */
+    public static InputStreamBodyReader get() {
+        return INSTANCE;
     }
 }

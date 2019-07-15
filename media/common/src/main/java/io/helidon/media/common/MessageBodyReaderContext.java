@@ -120,10 +120,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
             if (byte[].class.equals(type.rawType())) {
-                // TODO use ContentReaders instead of ByteArrayBodyReader.read
-                // readers
-                return (Mono<T>)ByteArrayBodyReader.read(filteredPayload)
-                    .flatMap((baos) -> Mono.just(baos.toByteArray()));
+                return (Mono<T>) ContentReaders.readBytes(filteredPayload);
             }
             MessageBodyReader<T> reader = (MessageBodyReader<T>)
                     readers.select(type, this);

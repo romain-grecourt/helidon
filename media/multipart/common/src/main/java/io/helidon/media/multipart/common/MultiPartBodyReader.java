@@ -18,19 +18,17 @@ package io.helidon.media.multipart.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.ByteArrayBodyReader;
-import io.helidon.media.common.ByteArrayBodyWriter;
-import java.util.LinkedList;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
+import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
-import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.LinkedList;
 
 /**
  * {@link InboundMultiPart} reader.
@@ -38,20 +36,14 @@ import java.util.function.Supplier;
 public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
     /**
-     * Mapper singleton to map a list of body parts to a single multipart.
+     * Bytes to chunk mapper singleton.
      */
-    private static final Mapper MAPPER = new Mapper();
+    private static final BytesToChunks BYTES_TO_CHUNKS = new BytesToChunks();
 
     /**
      * Collector singleton to collect body parts from a publisher as a list.
      */
-    private static final Collector COLLECTOR = new Collector();
-
-    /**
-     * A supplier of list part for the collector.
-     */
-    private static final Supplier<List<InboundBodyPart>> LIST_SUPPLIER =
-            LinkedList<InboundBodyPart>::new;
+    private static final PartsCollector COLLECTOR = new PartsCollector();
 
     /**
      * Private to enforce the use of {@link #create()}.
@@ -79,9 +71,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
-        return (Mono<U>) Multi.from(decoder)
-                .collect(LIST_SUPPLIER, COLLECTOR)
-                .flatMap(MAPPER);
+        return (Mono<U>) Multi.from(decoder).collect(COLLECTOR);
     }
 
     /**
@@ -93,34 +83,26 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
     }
 
     /**
-     * A mapper that creates that maps the list of buffered
-     * {@link InboundBodyPart} to a {@link Mono} of {@link InboundMultiPart}.
-     */
-    private static final class Mapper
-            implements Function<List<InboundBodyPart>, Mono<InboundMultiPart>> {
-
-        @Override
-        public Mono<InboundMultiPart> apply(List<InboundBodyPart> bodyParts) {
-            return Mono.just(new InboundMultiPart(bodyParts));
-        }
-    }
-
-    /**
      * A collector that accumulates and buffers body parts.
      */
-    private static final class Collector
-            implements BiConsumer<List<InboundBodyPart>, InboundBodyPart> {
+    private static final class PartsCollector
+            implements Collector<InboundMultiPart, InboundBodyPart> {
+
+        private final LinkedList<InboundBodyPart> bodyParts;
+
+        PartsCollector() {
+            this.bodyParts = new LinkedList<>();
+        }
 
         @Override
-        public void accept(List<InboundBodyPart> bodyParts,
-                InboundBodyPart bodyPart) {
+        public void collect(InboundBodyPart bodyPart) {
 
             MessageBodyReadableContent content = bodyPart.content();
 
             // buffer the data
-            Publisher<DataChunk> bufferedData = ByteArrayBodyWriter
-                    .write(ByteArrayBodyReader.read(content),
-                            /* copy */ true);
+            Publisher<DataChunk> bufferedData = ContentReaders
+                    .readBytes(content)
+                    .mapMany(BYTES_TO_CHUNKS);
 
             // create a content copy with the buffered data
             MessageBodyReadableContent contentCopy = MessageBodyReadableContent
@@ -133,6 +115,24 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
                     .buffered()
                     .build();
             bodyParts.add(bufferedBodyPart);
+        }
+
+        @Override
+        public InboundMultiPart value() {
+            return new InboundMultiPart(bodyParts);
+        }
+    }
+
+    /**
+     * Implementation of {@link MultiMapper} that converts {@code byte[]} to a
+     * publisher of {@link DataChunk} by copying the bytes.
+     */
+    private static final class BytesToChunks
+            implements MultiMapper<byte[], DataChunk> {
+
+        @Override
+        public Publisher<DataChunk> map(byte[] bytes) {
+            return ContentWriters.writeBytes(bytes, /* copy */ true);
         }
     }
 }

@@ -55,9 +55,8 @@ public class ReadableByteChannelPublisherTest {
                 new CountingOnNextDelegatingPublisher(
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(5)));
         // assert
-        byte[] bytes = ByteArrayBodyReader.read(publisher)
-                .block(Duration.ofSeconds(5))
-                .toByteArray();
+        byte[] bytes = ContentReaders.readBytes(publisher)
+                .block(Duration.ofSeconds(5));
         assertThat(bytes.length, is(TEST_DATA_SIZE));
         assertByteSequence(bytes);
         assertThat(pc.threads.size(), is(1));
@@ -74,9 +73,8 @@ public class ReadableByteChannelPublisherTest {
         ReadableByteChannelPublisher publisher =
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(2));
         // assert
-        byte[] bytes = ByteArrayBodyReader.read(publisher)
-                .block(Duration.ofSeconds(5))
-                .toByteArray();
+        byte[] bytes = ContentReaders.readBytes(publisher)
+                .block(Duration.ofSeconds(5));
         assertThat(bytes.length, is(TEST_DATA_SIZE));
         assertByteSequence(bytes);
         assertThat(pc.threads.size(), is(2));
@@ -89,9 +87,8 @@ public class ReadableByteChannelPublisherTest {
         ReadableByteChannelPublisher publisher =
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(0));
         // assert
-        byte[] bytes = ByteArrayBodyReader.read(publisher)
-                .block(Duration.ofSeconds(5))
-                .toByteArray();
+        byte[] bytes = ContentReaders.readBytes(publisher)
+                .block(Duration.ofSeconds(5));
         assertThat(bytes.length, is(TEST_DATA_SIZE));
         assertByteSequence(bytes);
         assertThat(pc.threads.size(), is(1));
@@ -106,9 +103,8 @@ public class ReadableByteChannelPublisherTest {
                 new ReadableByteChannelPublisher(pc, RetrySchema.constant(0));
         // assert
         try {
-            ByteArrayBodyReader.read(publisher)
-                .block(Duration.ofSeconds(5))
-                .toByteArray();
+            ContentReaders.readBytes(publisher)
+                .block(Duration.ofSeconds(5));
             fail("Did not throw expected ExecutionException!");
         } catch (RuntimeException e) {
             assertThat(e.getCause(), instanceOf(ClosedChannelException.class));
@@ -123,9 +119,8 @@ public class ReadableByteChannelPublisherTest {
                         (i, delay) -> i >= 3 ? -10 : 0);
         // assert
         try {
-            ByteArrayBodyReader.read(publisher)
-                .block(Duration.ofSeconds(5))
-                .toByteArray();
+            ContentReaders.readBytes(publisher)
+                .block(Duration.ofSeconds(5));
             throw new AssertionError(
                     "Did not throw expected ExecutionException!");
         } catch (RuntimeException e) {

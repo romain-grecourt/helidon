@@ -18,6 +18,7 @@ import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.MultiMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.function.Function;
@@ -28,8 +29,7 @@ import java.util.function.Function;
 public final class MessageBodyWriterContext extends MessageBodyContext
         implements MessageBodyWriters, MessageBodyFilters {
 
-    private static final GenericType<ByteArrayOutputStream> BAOS_TYPE =
-            GenericType.create(ByteArrayOutputStream.class);
+    private static final BytesMapper BYTES_MAPPER = new BytesMapper();
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     private final Parameters headers;
@@ -221,11 +221,8 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 return applyFilters(Multi.<DataChunk>empty());
             }
             if (byte[].class.equals(type.rawType())) {
-                // TODO use ContentWriters instead of ByteArrayBodyWriter.write
-                return applyFilters(ByteArrayBodyWriter
-                        .write(((Mono<byte[]>) content)
-                                .flatMap((bytes) -> byteArrayMono(bytes)),
-                                false));
+                return applyFilters(((Mono<byte[]>) content)
+                        .mapMany(BYTES_MAPPER));
             }
             MessageBodyWriter<T> writer;
             if (fallback != null) {
@@ -590,7 +587,20 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 GenericType<? extends T> type,
                 MessageBodyWriterContext context) {
 
-            return mono.flatMapMany(function);
+            return mono.mapMany(function::apply);
+        }
+    }
+
+    /**
+     * Implementation of {@link MultiMapper} to convert {@code byte[]} to
+     * a publisher of {@link DataChunk}.
+     */
+    private static final class BytesMapper
+            implements MultiMapper<byte[], DataChunk> {
+
+        @Override
+        public Publisher<DataChunk> map(byte[] item) {
+            return ContentWriters.writeBytes(item, false);
         }
     }
 }

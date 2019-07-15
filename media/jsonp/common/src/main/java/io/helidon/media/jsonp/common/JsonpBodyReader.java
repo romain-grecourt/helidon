@@ -3,8 +3,9 @@ package io.helidon.media.jsonp.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mapper;
 import io.helidon.common.reactive.Mono;
-import io.helidon.media.common.ByteArrayBodyReader;
+import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
 import java.io.ByteArrayInputStream;
@@ -41,27 +42,29 @@ public final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
             Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return ByteArrayBodyReader.read(publisher)
-                .flatMap(new Mapper<>(jsonFactory, context.charset()));
+        return ContentReaders.readBytes(publisher)
+                // TODO cache per charset / type
+                .map(new BytesToJsonStructure<>(jsonFactory,
+                        context.charset()));
     }
 
-    private static final class Mapper<T extends JsonStructure>
-            implements Function<ByteArrayOutputStream, Mono<T>> {
+    private static final class BytesToJsonStructure<T extends JsonStructure>
+            implements Mapper<byte[], T> {
 
         private final JsonReaderFactory jsonFactory;
         private final Charset charset;
 
-        Mapper(JsonReaderFactory jsonFactory, Charset charset) {
+        BytesToJsonStructure(JsonReaderFactory jsonFactory, Charset charset) {
             this.jsonFactory = jsonFactory;
             this.charset = charset;
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public Mono<T> apply(ByteArrayOutputStream baos) {
-            InputStream is = new ByteArrayInputStream(baos.toByteArray());
+        public T map(byte[] bytes) {
+            InputStream is = new ByteArrayInputStream(bytes);
             JsonReader reader = jsonFactory.createReader(is, charset);
-            return Mono.just((T) reader.read());
+            return (T) reader.read();
         }
     }
 }

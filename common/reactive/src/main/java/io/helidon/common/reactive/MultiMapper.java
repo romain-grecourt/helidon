@@ -15,23 +15,19 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Flow.Publisher;
 
 /**
- * Empty subscription singleton.
+ * Function to map one item to multiple items.
+ * @param <T> input item type
+ * @param <U> output items type
  */
-final class EmptySubscription implements Subscription {
+public interface MultiMapper<T, U> {
 
-    static final EmptySubscription INSTANCE = new EmptySubscription();
-
-    EmptySubscription() {
-    }
-
-    @Override
-    public void request(long n) {
-    }
-
-    @Override
-    public void cancel() {
-    }
+    /**
+     * Map a given item to multiple items.
+     * @param item input item to map
+     * @return Publisher of the mapped items
+     */
+    Publisher<U> map(T item);
 }

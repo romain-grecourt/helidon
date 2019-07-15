@@ -28,7 +28,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 import io.helidon.common.InputStreamHelper;
@@ -202,7 +201,7 @@ public class BytesReuseTest {
         }
     }
 
-    //@Test
+    @Test
     public void requestChunkDataRemainsWhenNotReleased() throws Exception {
         doSubscriberPostRequest(false);
         for (DataChunk chunk : chunkReference) {
@@ -242,7 +241,7 @@ public class BytesReuseTest {
         }
     }
 
-    //@Test
+    @Test
     public void toStringConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/string?test=myData", "myData" + longData(100_000).toString());
@@ -251,7 +250,7 @@ public class BytesReuseTest {
         assertChunkReferencesAreReleased();
     }
 
-    //@Test
+    @Test
     public void toByteArrayConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/bytes?test=myData", "myData" + longData(100_000).toString());
@@ -269,7 +268,7 @@ public class BytesReuseTest {
         assertChunkReferencesAreReleased();
     }
 
-    //@Test
+    @Test
     public void toInputStreamConverterFreesTheRequestChunks() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/input_stream?test=myData", "myData" + longData(100_000).toString());
@@ -278,7 +277,7 @@ public class BytesReuseTest {
         assertChunkReferencesAreReleased();
     }
 
-    //@Test
+    @Test
     public void notFoundPostRequestPayloadGetsReleased() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/non_existent?test=myData", "myData" + longData(100_000).toString());
@@ -287,7 +286,7 @@ public class BytesReuseTest {
         assertChunkReferencesAreReleased();
     }
 
-    //@Test
+    @Test
     public void unconsumedPostRequestPayloadGetsReleased() throws Exception {
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
             s.request(Http.Method.POST, "/unconsumed?test=myData", "myData" + longData(100_000).toString());

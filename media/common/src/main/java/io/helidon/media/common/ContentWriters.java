@@ -22,6 +22,7 @@ import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.RetrySchema;
 
 /**
@@ -37,6 +38,54 @@ public final class ContentWriters {
     }
 
     /**
+     * Create a {@link DataChunk} with the given byte array and return a
+     * {@link Mono}.
+     *
+     * @param bytes the byte array
+     * @param copy if {@code true} the byte array is copied
+     * @return Mono
+     */
+    public static Mono<DataChunk> writeBytes(byte[] bytes, boolean copy) {
+        byte[] data;
+        if (copy) {
+            data = new byte[bytes.length];
+            System.arraycopy(bytes, 0, data, 0, bytes.length);
+        } else {
+            data = bytes;
+        }
+        return Mono.just(DataChunk.create(false, data));
+    }
+
+    /**
+     * Create a publisher of {@link DataChunk} with the given
+     * {@link CharSequence} / {@link Charset} and return a {@link Mono}.
+     *
+     * @param cs the char sequence
+     * @param charset the charset to use to encode the char sequence
+     * @return Mono
+     */
+    public static Mono<DataChunk> writeCharSequence(CharSequence cs,
+            Charset charset) {
+
+        return Mono.just(DataChunk.create(false,
+                charset.encode(cs.toString())));
+    }
+
+    /**
+     * Create a a publisher {@link DataChunk} with the given
+     * {@link CharBuffer} / {@link Charset} and return a {@link Mono}.
+     *
+     * @param buffer the char buffer
+     * @param charset the charset to use to encode the char sequence
+     * @return Mono
+     */
+    public static Mono<DataChunk> writeCharBuffer(CharBuffer buffer,
+            Charset charset) {
+
+        return Mono.just(DataChunk.create(false, buffer.encode(charset)));
+    }
+
+    /**
      * Returns a writer function for {@code byte[]}.
      * <p>
      * The {@code copy} variant is by default registered in
@@ -45,12 +94,12 @@ public final class ContentWriters {
      * @param copy a signal if byte array should be copied - set it {@code true}
      * if {@code byte[]} will be immediately reused.
      * @return a {@code byte[]} writer
-     * @deprecated use {@link ByteArrayWriter#write(Mono, boolean)} instead
+     * @deprecated use {@link #bytesToChunks(byte[], boolean)} instead
      */
     public static Function<byte[], Publisher<DataChunk>> byteArrayWriter(
             boolean copy) {
 
-        return (bytes) -> ByteArrayBodyWriter.write(bytes, copy);
+        return (bytes) -> writeBytes(bytes, copy);
     }
 
     /**
@@ -63,12 +112,13 @@ public final class ContentWriters {
      * @param charset a standard charset to use
      * @return a {@link String} writer
      * @throws NullPointerException if parameter {@code charset} is {@code null}
-     * @deprecated use {@link CharSequenceWriter#write(Mono, Charset) } instead
+     * @deprecated use {@link #charSequenceToChunks(CharSequence, Charset) }
+     * instead
      */
     public static Function<CharSequence, Publisher<DataChunk>> charSequenceWriter(
             Charset charset) {
 
-        return (cs) -> CharSequenceBodyWriter.write(cs, charset);
+        return (cs) -> writeCharSequence(cs, charset);
     }
 
     /**
@@ -81,12 +131,12 @@ public final class ContentWriters {
      * @param charset a standard charset to use
      * @return a {@link String} writer
      * @throws NullPointerException if parameter {@code charset} is {@code null}
-     * @deprecated use {@link CharBufferWriter#write(Mono, Charset) } instead
+     * @deprecated use {@link #writeCharBuffer(CharBuffer, Charset)} instead
      */
     public static Function<CharBuffer, Publisher<DataChunk>> charBufferWriter(
             Charset charset) {
 
-        return (buffer) -> CharBufferBodyWriter.write(buffer, charset);
+        return (buffer) -> writeCharBuffer(buffer, charset);
     }
 
     /**

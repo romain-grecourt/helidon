@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package io.helidon.common.reactive.valve;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -39,9 +38,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  * The ValvePublisherTest.
  */
 class ValvePublisherTest {
-
-    private static final BiConsumer<StringBuilder, String> JOINING_COLLECTOR =
-                (sb, str) -> sb.append(str);
 
     @Test
     void simpleTest() {
@@ -177,13 +173,11 @@ class ValvePublisherTest {
         stringTank.close();
 
         Multi<String> multi = Multi.from(stringTank.toPublisher());
-        String joined = multi.collect(StringBuilder::new, JOINING_COLLECTOR)
-                .block()
-                .toString();
+        String joined = multi.collectString().block();
         assertThat(joined, is(equalTo("123")));
 
         try {
-            multi.collect(StringBuilder::new, JOINING_COLLECTOR).block();
+            multi.collectString().block();
             fail("Should have thrown an exception!");
         } catch (IllegalStateException e) {
             assertThat(e.getCause(), is(notNullValue()));
@@ -200,14 +194,12 @@ class ValvePublisherTest {
         stringTank.close();
 
         String joined = Multi.from(stringTank.toPublisher())
-                .collect(StringBuilder::new, JOINING_COLLECTOR)
-                .block()
-                .toString();
+                .collectString().block();
         assertThat(joined, is(equalTo("123")));
 
         try {
             Multi.from(stringTank.toPublisher())
-                .collect(StringBuilder::new, JOINING_COLLECTOR)
+                .collectString()
                 .block();
             fail("Should have thrown an exception!");
         } catch (IllegalStateException e) {

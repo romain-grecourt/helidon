@@ -5,12 +5,12 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.CharBufferBodyWriter;
+import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 import java.nio.charset.Charset;
-import java.util.function.Function;
 import javax.json.JsonStructure;
 import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
@@ -41,34 +41,28 @@ public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.flatMapMany(new Mapper(jsonWriterFactory,
+        return content.mapMany(new JsonStructureToChunks(jsonWriterFactory,
                 context.charset()));
     }
 
-    static Publisher<DataChunk> write(JsonWriterFactory factory,
-            JsonStructure entity, Charset charset) {
+    static final class JsonStructureToChunks
+            implements MultiMapper<JsonStructure, DataChunk> {
 
-        CharBuffer buffer = new CharBuffer();
-        try (JsonWriter writer = factory.createWriter(buffer)) {
-            writer.write(entity);
-            return CharBufferBodyWriter.write(Mono.just(buffer), charset);
-        }
-    }
-
-    private static final class Mapper
-            implements Function<JsonStructure, Publisher<DataChunk>> {
-
-        private final JsonWriterFactory jsonWriterFactory;
+        private final JsonWriterFactory factory;
         private final Charset charset;
 
-        Mapper(JsonWriterFactory jsonWriterFactory, Charset charset) {
-            this.jsonWriterFactory = jsonWriterFactory;
+        JsonStructureToChunks(JsonWriterFactory factory, Charset charset) {
+            this.factory = factory;
             this.charset = charset;
         }
 
         @Override
-        public Publisher<DataChunk> apply(JsonStructure item) {
-            return write(jsonWriterFactory, item, charset);
+        public Publisher<DataChunk> map(JsonStructure item) {
+            CharBuffer buffer = new CharBuffer();
+            try (JsonWriter writer = factory.createWriter(buffer)) {
+                writer.write(item);
+                return ContentWriters.writeCharBuffer(buffer, charset);
+            }
         }
     }
 }

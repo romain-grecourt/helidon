@@ -21,9 +21,9 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
-import java.util.function.Function;
 
 /**
  * {@link OutboundMultiPart} writer.
@@ -62,7 +62,7 @@ public final class MultiPartBodyWriter implements
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
-        return content.flatMapMany(new Mapper(boundary, context));
+        return content.mapMany(new MultiPartToChunks(boundary, context));
     }
 
     /**
@@ -86,17 +86,17 @@ public final class MultiPartBodyWriter implements
         return new MultiPartBodyWriter(DEFAULT_BOUNDARY);
     }
 
-    private static final class Mapper
-            implements Function<OutboundMultiPart, Publisher<DataChunk>> {
+    private static final class MultiPartToChunks
+            implements MultiMapper<OutboundMultiPart, DataChunk> {
 
         private final MultiPartEncoder encoder;
 
-        Mapper(String boundary, MessageBodyWriterContext context) {
+        MultiPartToChunks(String boundary, MessageBodyWriterContext context) {
             this.encoder = MultiPartEncoder.create(boundary, context);
         }
 
         @Override
-        public Publisher<DataChunk> apply(OutboundMultiPart multiPart) {
+        public Publisher<DataChunk> map(OutboundMultiPart multiPart) {
             Multi.just(multiPart.bodyParts()).subscribe(encoder);
             return encoder;
         }

@@ -49,17 +49,15 @@ public final class MediaSupport {
         public Builder registerDefaults() {
             // default readers
             readerContext
-                    .registerReader(StringBodyReader.create())
-                    .registerReader(ByteArrayBodyReader.create())
-                    .registerReader(InputStreamBodyReader.create());
+                    .registerReader(StringBodyReader.get())
+                    .registerReader(InputStreamBodyReader.get());
 
             // default writers
             writerContext
-                    .registerWriter(ByteArrayBodyWriter.create(/* copy */ true))
-                    .registerWriter(CharSequenceBodyWriter.create())
-                    .registerWriter(ByteChannelWriter.create())
-                    .registerWriter(PathBodyWriter.create())
-                    .registerWriter(FileBodyWriter.create());
+                    .registerWriter(CharSequenceBodyWriter.get())
+                    .registerWriter(ByteChannelBodyWriter.get())
+                    .registerWriter(PathBodyWriter.get())
+                    .registerWriter(FileBodyWriter.get());
             return this;
         }
 
