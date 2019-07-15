@@ -15,19 +15,19 @@
  */
 package io.helidon.media.multipart.common;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.CompletionException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Multi;
 import io.helidon.media.common.ContentReaders;
-import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.Test;
-import java.util.concurrent.CompletionException;
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkSubscriber;
+import org.junit.jupiter.api.Test;
 
 import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -41,8 +41,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MultiPartEncoderTest {
 
-    private static final List<OutboundBodyPart> EMPTY_OUTBOUND_PARTS =
-            CollectionsHelper.<OutboundBodyPart>listOf();
+    private static final List<WriteableBodyPart> EMPTY_PARTS =
+            CollectionsHelper.<WriteableBodyPart>listOf();
 
     // TODO test throttling
 
@@ -50,7 +50,7 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePart() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutboundBodyPart.builder()
+                WriteableBodyPart.builder()
                         .entity("part1")
                         .build());
         assertThat(message, is(equalTo(
@@ -64,8 +64,8 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePartWithHeaders() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutboundBodyPart.builder()
-                        .headers(OutboundBodyPartHeaders.builder()
+                WriteableBodyPart.builder()
+                        .headers(WriteableBodyPartHeaders.builder()
                                 .contentType(MediaType.TEXT_PLAIN)
                                 .build())
                         .entity("part1")
@@ -82,10 +82,10 @@ public class MultiPartEncoderTest {
     public void testEncodeTwoParts() {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                OutboundBodyPart.builder()
+                WriteableBodyPart.builder()
                         .entity("part1")
                         .build(),
-                OutboundBodyPart.builder()
+                WriteableBodyPart.builder()
                         .entity("part2")
                         .build());
         assertThat(message, is(equalTo(
@@ -102,9 +102,9 @@ public class MultiPartEncoderTest {
     public void testSubcribingMoreThanOnce() {
         MultiPartEncoder encoder = MultiPartEncoder
                 .create("boundary", MEDIA_SUPPORT.writerContext());
-        Multi.just(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
+        Multi.just(EMPTY_PARTS).subscribe(encoder);
         try {
-            Multi.just(EMPTY_OUTBOUND_PARTS).subscribe(encoder);
+            Multi.just(EMPTY_PARTS).subscribe(encoder);
             fail("exception should be thrown");
         } catch(IllegalStateException ex) {
             assertThat(ex.getMessage(),
@@ -116,7 +116,7 @@ public class MultiPartEncoderTest {
     public void testUpstreamError() {
         MultiPartEncoder decoder = MultiPartEncoder
                 .create("boundary", MEDIA_SUPPORT.writerContext());
-        Multi.<OutboundBodyPart>error(new IllegalStateException("oops"))
+        Multi.<WriteableBodyPart>error(new IllegalStateException("oops"))
                 .subscribe(decoder);
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         decoder.subscribe(subscriber);
@@ -136,7 +136,7 @@ public class MultiPartEncoderTest {
     public void testPartContentPublisherError() {
         MultiPartEncoder decoder = MultiPartEncoder
                 .create("boundary", MEDIA_SUPPORT.writerContext());
-        Multi.just(OutboundBodyPart.builder()
+        Multi.just(WriteableBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
                 })
@@ -157,7 +157,7 @@ public class MultiPartEncoderTest {
     }
 
     private static String encodeParts(String boundary,
-            OutboundBodyPart... parts) {
+            WriteableBodyPart... parts) {
 
         MultiPartEncoder encoder = MultiPartEncoder.create(boundary,
                 MEDIA_SUPPORT.writerContext());

@@ -46,8 +46,8 @@ public final class JacksonSupport implements Service, Handler {
      * @exception NullPointerException if {@code objectMapper} is {@code null}
      */
     private JacksonSupport(final ObjectMapper objectMapper) {
-        this.reader = new JacksonBodyReader(objectMapper);
-        this.writer = new JacksonBodyWriter(objectMapper);
+        this.reader = JacksonBodyReader.create(objectMapper);
+        this.writer = JacksonBodyWriter.create(objectMapper);
     }
 
     @Override

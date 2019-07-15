@@ -31,9 +31,15 @@ import io.helidon.media.common.MessageBodyReaderContext;
 import java.util.LinkedList;
 
 /**
- * {@link InboundMultiPart} reader.
+ * {@link ReadableMultiPart} reader.
  */
 public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
+
+    /**
+     * Singleton instance.
+     */
+    private static final MultiPartBodyReader INSTANCE =
+            new MultiPartBodyReader();
 
     /**
      * Bytes to chunk mapper singleton.
@@ -46,7 +52,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
     private static final PartsCollector COLLECTOR = new PartsCollector();
 
     /**
-     * Private to enforce the use of {@link #create()}.
+     * Private to enforce the use of {@link #get()}.
      */
     private MultiPartBodyReader() {
     }
@@ -67,7 +73,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             boundary = contentType.parameters().get("boundary");
         }
         if (boundary == null) {
-            throw new IllegalStateException("boudary header is missing");
+            throw new IllegalStateException("boundary header is missing");
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
@@ -78,24 +84,24 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * Create a new instance of {@link MultiPartBodyReader}.
      * @return MultiPartReader
      */
-    public static MultiPartBodyReader create() {
-        return new MultiPartBodyReader();
+    public static MultiPartBodyReader get() {
+        return INSTANCE;
     }
 
     /**
      * A collector that accumulates and buffers body parts.
      */
     private static final class PartsCollector
-            implements Collector<InboundMultiPart, InboundBodyPart> {
+            implements Collector<ReadableMultiPart, ReadableBodyPart> {
 
-        private final LinkedList<InboundBodyPart> bodyParts;
+        private final LinkedList<ReadableBodyPart> bodyParts;
 
         PartsCollector() {
             this.bodyParts = new LinkedList<>();
         }
 
         @Override
-        public void collect(InboundBodyPart bodyPart) {
+        public void collect(ReadableBodyPart bodyPart) {
 
             MessageBodyReadableContent content = bodyPart.content();
 
@@ -106,10 +112,10 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
             // create a content copy with the buffered data
             MessageBodyReadableContent contentCopy = MessageBodyReadableContent
-                    .create(bufferedData, content.context());
+                    .create(bufferedData, content.readerContext());
 
             // create a new body part with the buffered content
-            InboundBodyPart bufferedBodyPart = InboundBodyPart.builder()
+            ReadableBodyPart bufferedBodyPart = ReadableBodyPart.builder()
                     .headers(bodyPart.headers())
                     .content(contentCopy)
                     .buffered()
@@ -118,8 +124,8 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
         }
 
         @Override
-        public InboundMultiPart value() {
-            return new InboundMultiPart(bodyParts);
+        public ReadableMultiPart value() {
+            return new ReadableMultiPart(bodyParts);
         }
     }
 

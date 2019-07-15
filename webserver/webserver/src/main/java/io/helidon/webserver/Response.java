@@ -131,6 +131,11 @@ abstract class Response implements ServerResponse {
         return headers;
     }
 
+    @Override
+    public MessageBodyWriterContext writerContext() {
+        return writerContext;
+    }
+
     private Span createWriteSpan(GenericType<?> type) {
         Optional<SpanContext> parentSpan = spanContext();
         if (!parentSpan.isPresent()) {

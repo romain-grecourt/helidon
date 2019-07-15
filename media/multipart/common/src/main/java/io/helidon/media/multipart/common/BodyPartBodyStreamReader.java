@@ -23,13 +23,19 @@ import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.media.common.MessageBodyStreamReader;
 
 /**
- * {@link InboundBodyPart} stream reader.
+ * {@link ReadableBodyPart} stream reader.
  */
 public final class BodyPartBodyStreamReader
-        implements MessageBodyStreamReader<InboundBodyPart> {
+        implements MessageBodyStreamReader<ReadableBodyPart> {
 
     /**
-     * Private to enforce the use of {@link #create()}.
+     * Singleton instance.
+     */
+    private static final BodyPartBodyStreamReader INSTANCE =
+            new BodyPartBodyStreamReader();
+
+    /**
+     * Private to enforce the use of {@link #get()}.
      */
     private BodyPartBodyStreamReader() {
     }
@@ -43,7 +49,7 @@ public final class BodyPartBodyStreamReader
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends InboundBodyPart> Publisher<U> read(
+    public <U extends ReadableBodyPart> Publisher<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
@@ -65,7 +71,7 @@ public final class BodyPartBodyStreamReader
      *
      * @return
      */
-    public static BodyPartBodyStreamReader create() {
-        return new BodyPartBodyStreamReader();
+    public static BodyPartBodyStreamReader get() {
+        return INSTANCE;
     }
 }

@@ -47,7 +47,7 @@ public class BodyPartTest {
 
     @Test
     public void testContentFromPublisher() {
-        InboundBodyPart bodyPart = InboundBodyPart.builder()
+        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
                 .content(readableContent(ContentWriters
                         .writeCharSequence("body part data", DEFAULT_CHARSET)))
                 .build();
@@ -64,7 +64,7 @@ public class BodyPartTest {
 
     @Test
     public void testContentFromEntity() {
-        Publisher<DataChunk> publisher = OutboundBodyPart
+        Publisher<DataChunk> publisher = WriteableBodyPart
                 .create("body part data")
                 .content()
                 .toPublisher(MEDIA_SUPPORT.writerContext());
@@ -75,7 +75,7 @@ public class BodyPartTest {
 
     @Test
     public void testBufferedPart() {
-        InboundBodyPart bodyPart = InboundBodyPart.builder()
+        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
                 .content(readableContent(
                         chunksPublisher("abc".getBytes())))
                 .buffered()
@@ -86,7 +86,7 @@ public class BodyPartTest {
 
     @Test
     public void testNonBufferedPart() {
-        InboundBodyPart bodyPart = InboundBodyPart.builder()
+        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
                 .content(readableContent(
                         chunksPublisher("abc".getBytes())))
                 .build();
@@ -98,7 +98,7 @@ public class BodyPartTest {
 
     @Test
     public void testBadBufferedPart() {
-        InboundBodyPart bodyPart = InboundBodyPart.builder()
+        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
                 .content(readableContent(new UncompletablePublisher(
                         "abc".getBytes(), "def".getBytes())))
                 .buffered()
@@ -116,14 +116,14 @@ public class BodyPartTest {
     @Test
     public void testBuildingPartWithNoContent() {
         assertThrows(IllegalStateException.class, ()-> {
-            InboundBodyPart.builder().build();
+            ReadableBodyPart.builder().build();
         });
     }
 
     @Test
     public void testName() {
-        OutboundBodyPart bodyPart = OutboundBodyPart.builder()
-                .headers(OutboundBodyPartHeaders.builder()
+        WriteableBodyPart bodyPart = WriteableBodyPart.builder()
+                .headers(WriteableBodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .name("foo")
                                 .build())
@@ -136,8 +136,8 @@ public class BodyPartTest {
 
     @Test
     public void testFilename() {
-        OutboundBodyPart bodyPart = OutboundBodyPart.builder()
-                .headers(OutboundBodyPartHeaders.builder()
+        WriteableBodyPart bodyPart = WriteableBodyPart.builder()
+                .headers(WriteableBodyPartHeaders.builder()
                         .contentDisposition(ContentDisposition.builder()
                                 .filename("foo.txt")
                                 .build())

@@ -40,10 +40,10 @@ public final class MultiPartSupport implements Service, Handler {
      * Forces the use of {@link #create()}.
      */
     private MultiPartSupport(){
-        multiPartReader = MultiPartBodyReader.create();
-        multiPartWriter = MultiPartBodyWriter.create();
-        bodyPartReader = BodyPartBodyStreamReader.create();
-        bodyPartWriter = BodyPartBodyStreamWriter.create();
+        multiPartReader = MultiPartBodyReader.get();
+        multiPartWriter = MultiPartBodyWriter.get();
+        bodyPartReader = BodyPartBodyStreamReader.get();
+        bodyPartWriter = BodyPartBodyStreamWriter.get();
     }
 
     @Override

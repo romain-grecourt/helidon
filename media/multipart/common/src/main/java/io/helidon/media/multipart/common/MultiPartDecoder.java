@@ -34,8 +34,8 @@ import io.helidon.media.common.MessageBodyReaderContext;
  * it is not resumable.
  */
 public final class MultiPartDecoder
-        extends OriginThreadPublisher<InboundBodyPart, InboundBodyPart>
-        implements Processor<DataChunk, InboundBodyPart> {
+        extends OriginThreadPublisher<ReadableBodyPart, ReadableBodyPart>
+        implements Processor<DataChunk, ReadableBodyPart> {
 
     /**
      * Logger.
@@ -56,12 +56,12 @@ public final class MultiPartDecoder
     /**
      * The builder for the current {@link BodyPart}.
      */
-    private InboundBodyPart.Builder bodyPartBuilder;
+    private ReadableBodyPart.Builder bodyPartBuilder;
 
     /**
-     * The builder for the current {@link InboundBodyPartHeaders}.
+     * The builder for the current {@link ReadableBodyPartHeaders}.
      */
-    private InboundBodyPartHeaders.Builder bodyPartHeaderBuilder;
+    private ReadableBodyPartHeaders.Builder bodyPartHeaderBuilder;
 
     /**
      * The publisher for the current part.
@@ -81,7 +81,7 @@ public final class MultiPartDecoder
     /**
      * The bodyParts processed during each {@code onNext}.
      */
-    private final Queue<InboundBodyPart> bodyParts;
+    private final Queue<ReadableBodyPart> bodyParts;
 
     /**
      * The reader context.
@@ -92,7 +92,7 @@ public final class MultiPartDecoder
      * Create a new instance.
      *
      * @param boundary mime message boundary
-     * @param context inbound scope
+     * @param context reader context
      */
     private MultiPartDecoder(String boundary, MessageBodyReaderContext context) {
         Objects.requireNonNull(boundary, "boundary cannot be null!");
@@ -134,7 +134,7 @@ public final class MultiPartDecoder
 
         // submit parsed parts
         while (!bodyParts.isEmpty()) {
-            InboundBodyPart bodyPart = bodyParts.poll();
+            ReadableBodyPart bodyPart = bodyParts.poll();
             submit(bodyPart);
         }
 
@@ -171,7 +171,7 @@ public final class MultiPartDecoder
     }
 
     @Override
-    protected InboundBodyPart wrap(InboundBodyPart data) {
+    protected ReadableBodyPart wrap(ReadableBodyPart data) {
         return data;
     }
 
@@ -202,8 +202,8 @@ public final class MultiPartDecoder
             switch (eventType) {
                 case START_PART:
                     contentPublisher = new BodyPartContentPublisher();
-                    bodyPartHeaderBuilder = InboundBodyPartHeaders.builder();
-                    bodyPartBuilder = InboundBodyPart.builder();
+                    bodyPartHeaderBuilder = ReadableBodyPartHeaders.builder();
+                    bodyPartBuilder = ReadableBodyPart.builder();
                     break;
                 case HEADER:
                     MIMEParser.HeaderEvent headerEvent
@@ -212,7 +212,7 @@ public final class MultiPartDecoder
                             headerEvent.value());
                     break;
                 case END_HEADERS:
-                    InboundBodyPartHeaders headers = bodyPartHeaderBuilder
+                    ReadableBodyPartHeaders headers = bodyPartHeaderBuilder
                             .build();
 
                     // create a reader context for the part

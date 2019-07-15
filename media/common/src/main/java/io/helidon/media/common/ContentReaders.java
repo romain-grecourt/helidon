@@ -38,6 +38,18 @@ import java.nio.charset.Charset;
 public final class ContentReaders {
 
     /**
+     * Bytes to string mapper charset cache populator.
+     */
+    private static final CharsetCache.Populator<BytesToString> BTOS_POPULATOR =
+            BytesToString::new;
+
+    /**
+     * The bytes to string mapper charset cache.
+     */
+    private static final CharsetCache<BytesToString> BTOS_CACHE =
+            new CharsetCache(BTOS_POPULATOR);
+
+    /**
      * Collect the {@link DataChunk} of the given publisher into a single byte
      * array.
      *
@@ -57,8 +69,8 @@ public final class ContentReaders {
     public static Mono<String> readString(Publisher<DataChunk> chunks,
             Charset charset) {
 
-        // TODO cache per charset
-        return readBytes(chunks).map(new BytesToString(charset));
+        return readBytes(chunks).map(BTOS_CACHE.get(charset,
+                BTOS_POPULATOR));
     }
 
     /**

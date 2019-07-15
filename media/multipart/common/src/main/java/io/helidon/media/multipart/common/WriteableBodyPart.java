@@ -20,19 +20,19 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.MessageBodyWriteableContent;
 
 /**
- * Outbound body part.
+ * Writeable body part.
  */
-public final class OutboundBodyPart implements BodyPart {
+public final class WriteableBodyPart implements BodyPart {
 
     private final MessageBodyWriteableContent content;
-    private final OutboundBodyPartHeaders headers;
+    private final WriteableBodyPartHeaders headers;
 
     /**
      * Private to enforce the use of {@link #builder()} or
      * {@link #create(java.lang.Object)}.
      */
-    private OutboundBodyPart(MessageBodyWriteableContent content,
-            OutboundBodyPartHeaders headers) {
+    private WriteableBodyPart(MessageBodyWriteableContent content,
+            WriteableBodyPartHeaders headers) {
 
         this.content = content;
         this.headers = headers;
@@ -44,7 +44,7 @@ public final class OutboundBodyPart implements BodyPart {
     }
 
     @Override
-    public OutboundBodyPartHeaders headers() {
+    public WriteableBodyPartHeaders headers() {
         return headers;
     }
 
@@ -53,7 +53,7 @@ public final class OutboundBodyPart implements BodyPart {
      * @param entity entity for the created part content
      * @return BodyPart
      */
-    public static OutboundBodyPart create(Object entity){
+    public static WriteableBodyPart create(Object entity){
         return builder().entity(entity).build();
     }
 
@@ -70,15 +70,15 @@ public final class OutboundBodyPart implements BodyPart {
      * Builder class for creating {@link BodyPart} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<OutboundBodyPart> {
+            implements io.helidon.common.Builder<WriteableBodyPart> {
 
-        private OutboundBodyPartHeaders headers;
+        private WriteableBodyPartHeaders headers;
         private Object entity;
         private Publisher<DataChunk> publisher;
 
         /**
          * Private constructor to force the use of
-         * {@link InBoundBodyPart#builder() }.
+         * {@link WriteableBodyPart#builder() }.
          */
         private Builder() {
         }
@@ -108,15 +108,15 @@ public final class OutboundBodyPart implements BodyPart {
          * @param headers headers
          * @return this builder instance
          */
-        public Builder headers(OutboundBodyPartHeaders headers) {
+        public Builder headers(WriteableBodyPartHeaders headers) {
             this.headers = headers;
             return this;
         }
 
         @Override
-        public OutboundBodyPart build() {
+        public WriteableBodyPart build() {
             if (headers == null) {
-                headers = OutboundBodyPartHeaders.create();
+                headers = WriteableBodyPartHeaders.create();
             }
             MessageBodyWriteableContent content;
             if (entity != null) {
@@ -126,7 +126,7 @@ public final class OutboundBodyPart implements BodyPart {
             } else {
                 throw new IllegalStateException("Cannot create writeable content");
             }
-            return new OutboundBodyPart(content, headers);
+            return new WriteableBodyPart(content, headers);
         }
     }
 }

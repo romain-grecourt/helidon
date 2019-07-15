@@ -40,8 +40,8 @@ public final class JsonBindingSupport implements Service, Handler {
     private final JsonbBodyWriter writer;
 
     private JsonBindingSupport(final Jsonb jsonb) {
-        this.reader = new JsonbBodyReader(jsonb);
-        this.writer = new JsonbBodyWriter(jsonb);
+        this.reader = JsonbBodyReader.create(jsonb);
+        this.writer = JsonbBodyWriter.create(jsonb);
     }
 
     @Override
@@ -59,7 +59,7 @@ public final class JsonBindingSupport implements Service, Handler {
     /**
      * Creates a new {@link JsonBindingSupport}.
      *
-     * @param jsonb the Jsonb} to use; must not be {@code null}
+     * @param jsonb the JSON-B to use; must not be {@code null}
      *
      * @return a new {@link JsonBindingSupport}
      *

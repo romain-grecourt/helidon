@@ -24,15 +24,15 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Inbound body part headers.
+ * Readable body part headers.
  */
-public final class InboundBodyPartHeaders extends ReadOnlyParameters
+public final class ReadableBodyPartHeaders extends ReadOnlyParameters
         implements BodyPartHeaders {
 
     private final Object internalLock = new Object();
     private ContentDisposition contentDisposition;
 
-    private InboundBodyPartHeaders(Map<String, List<String>> params) {
+    private ReadableBodyPartHeaders(Map<String, List<String>> params) {
         super(params);
     }
 
@@ -65,18 +65,18 @@ public final class InboundBodyPartHeaders extends ReadOnlyParameters
     }
 
     /**
-     * Create a new instance of {@link InboundBodyPartHeaders}.
-     * @return InboundBodyPartHeaders
+     * Create a new instance of {@link ReadableBodyPartHeaders}.
+     * @return ReadableBodyPartHeaders
      */
-    public static InboundBodyPartHeaders create() {
-        return new InboundBodyPartHeaders(null);
+    public static ReadableBodyPartHeaders create() {
+        return new ReadableBodyPartHeaders(null);
     }
 
     /**
-     * Builder class to create {@link InboundBodyPartHeaders} instances.
+     * Builder class to create {@link ReadableBodyPartHeaders} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<InboundBodyPartHeaders> {
+            implements io.helidon.common.Builder<ReadableBodyPartHeaders> {
 
         /**
          * The headers map.
@@ -85,7 +85,7 @@ public final class InboundBodyPartHeaders extends ReadOnlyParameters
                 = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         /**
-         * Force the use of {@link InboundBodyPartHeaders#builder() }.
+         * Force the use of {@link ReadableBodyPartHeaders#builder() }.
          */
         private Builder() {
         }
@@ -108,8 +108,8 @@ public final class InboundBodyPartHeaders extends ReadOnlyParameters
         }
 
         @Override
-        public InboundBodyPartHeaders build() {
-            return new InboundBodyPartHeaders(headers);
+        public ReadableBodyPartHeaders build() {
+            return new ReadableBodyPartHeaders(headers);
         }
     }
 }

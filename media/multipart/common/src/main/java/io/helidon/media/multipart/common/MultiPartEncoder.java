@@ -33,7 +33,7 @@ import java.util.Objects;
  */
 public final class MultiPartEncoder
         extends OriginThreadPublisher<DataChunk, DataChunk>
-        implements Processor<OutboundBodyPart, DataChunk> {
+        implements Processor<WriteableBodyPart, DataChunk> {
 
     private Subscription partsSubscription;
     private BodyPartContentSubscriber contentSubscriber;
@@ -86,7 +86,7 @@ public final class MultiPartEncoder
     }
 
     @Override
-    public void onNext(OutboundBodyPart bodyPart) {
+    public void onNext(WriteableBodyPart bodyPart) {
         Map<String, List<String>> headers = bodyPart.headers().toMap();
         StringBuilder sb = new StringBuilder();
 

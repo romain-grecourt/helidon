@@ -23,10 +23,16 @@ import io.helidon.media.common.MessageBodyStreamWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 
 /**
- * {@link OutboundBodyPart} stream writer.
+ * {@link WriteableBodyPart} stream writer.
  */
 public final class BodyPartBodyStreamWriter
-        implements MessageBodyStreamWriter<OutboundBodyPart> {
+        implements MessageBodyStreamWriter<WriteableBodyPart> {
+
+    /**
+     * Singleton instance.
+     */
+    private static final BodyPartBodyStreamWriter INSTANCE =
+            new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
 
     private final String boundary;
 
@@ -39,12 +45,12 @@ public final class BodyPartBodyStreamWriter
 
     @Override
     public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
-        return OutboundBodyPart.class.isAssignableFrom(type.rawType());
+        return WriteableBodyPart.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Publisher<OutboundBodyPart> content,
-            GenericType<? extends OutboundBodyPart> type,
+    public Publisher<DataChunk> write(Publisher<WriteableBodyPart> content,
+            GenericType<? extends WriteableBodyPart> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
@@ -55,11 +61,11 @@ public final class BodyPartBodyStreamWriter
 
     /**
      * Create a new instance of {@link BodyPartBodyStreamWriter} with the default
-     * boundary delimiter.
+     * boundary delimiter ({@link MultiPartBodyWriter#DEFAULT_BOUNDARY}.
      * @return BodyPartStreamWriter
      */
-    public static BodyPartBodyStreamWriter create() {
-        return new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
+    public static BodyPartBodyStreamWriter get() {
+        return INSTANCE;
     }
 
     /**

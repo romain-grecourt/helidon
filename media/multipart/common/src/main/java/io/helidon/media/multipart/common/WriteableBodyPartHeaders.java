@@ -24,9 +24,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Outbound body part headers.
+ * Writeable body part headers.
  */
-public final class OutboundBodyPartHeaders extends HashParameters
+public final class WriteableBodyPartHeaders extends HashParameters
         implements BodyPartHeaders {
 
     /**
@@ -34,7 +34,7 @@ public final class OutboundBodyPartHeaders extends HashParameters
      *
      * @param params headers map
      */
-    private OutboundBodyPartHeaders(Map<String, List<String>> params) {
+    private WriteableBodyPartHeaders(Map<String, List<String>> params) {
         super(params);
     }
 
@@ -87,19 +87,19 @@ public final class OutboundBodyPartHeaders extends HashParameters
     }
 
     /**
-     * Create a new instance of {@link OutboundBodyPartHeaders} with empty
+     * Create a new instance of {@link WriteableBodyPartHeaders} with empty
      * headers.
-     * @return OutboundBodyPartHeaders
+     * @return WriteableBodyPartHeaders
      */
-    public static OutboundBodyPartHeaders create() {
-        return new OutboundBodyPartHeaders(null);
+    public static WriteableBodyPartHeaders create() {
+        return new WriteableBodyPartHeaders(null);
     }
 
     /**
-     * Builder class to create {@link InBoundBodyPartHeaders} instances.
+     * Builder class to create {@link WriteableBodyPartHeaders} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<OutboundBodyPartHeaders> {
+            implements io.helidon.common.Builder<WriteableBodyPartHeaders> {
 
         /**
          * The headers map.
@@ -108,7 +108,7 @@ public final class OutboundBodyPartHeaders extends HashParameters
                 = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         /**
-         * Force the use of {@link InBoundBodyPartHeaders#builder() }.
+         * Force the use of {@link WriteableBodyPartHeaders#builder() }.
          */
         private Builder() {
         }
@@ -150,8 +150,8 @@ public final class OutboundBodyPartHeaders extends HashParameters
         }
 
         @Override
-        public OutboundBodyPartHeaders build() {
-            return new OutboundBodyPartHeaders(headers);
+        public WriteableBodyPartHeaders build() {
+            return new WriteableBodyPartHeaders(headers);
         }
     }
 }

@@ -21,19 +21,19 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Inbound body part.
+ * Readable body part.
  */
-public final class InboundBodyPart implements BodyPart {
+public final class ReadableBodyPart implements BodyPart {
 
     private final MessageBodyReadableContent content;
-    private final InboundBodyPartHeaders headers;
+    private final ReadableBodyPartHeaders headers;
     private final boolean buffered;
 
     /**
      * Private to enforce the use of {@link #builder()}.
      */
-    private InboundBodyPart(MessageBodyReadableContent content,
-            InboundBodyPartHeaders headers, boolean buffered) {
+    private ReadableBodyPart(MessageBodyReadableContent content,
+            ReadableBodyPartHeaders headers, boolean buffered) {
 
         this.content = content;
         this.headers = headers;
@@ -46,7 +46,7 @@ public final class InboundBodyPart implements BodyPart {
     }
 
     @Override
-    public InboundBodyPartHeaders headers() {
+    public ReadableBodyPartHeaders headers() {
         return headers;
     }
 
@@ -104,23 +104,23 @@ public final class InboundBodyPart implements BodyPart {
      * Builder class for creating {@link BodyPart} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<InboundBodyPart> {
+            implements io.helidon.common.Builder<ReadableBodyPart> {
 
-        private InboundBodyPartHeaders headers;
+        private ReadableBodyPartHeaders headers;
         private MessageBodyReadableContent content;
         private boolean buffered;
 
         /**
          * Private constructor to force the use of
-         * {@link InboundBodyPart#builder() }.
+         * {@link ReadableBodyPart#builder() }.
          */
         private Builder() {
         }
 
         /**
-         * Sets the inbound content for this part.
+         * Sets the content for this part.
          *
-         * @param content inbound content
+         * @param content readable content
          * @return this builder instance
          */
         public Builder content(MessageBodyReadableContent content) {
@@ -143,20 +143,20 @@ public final class InboundBodyPart implements BodyPart {
          * @param headers headers
          * @return this builder instance
          */
-        public Builder headers(InboundBodyPartHeaders headers) {
+        public Builder headers(ReadableBodyPartHeaders headers) {
             this.headers = headers;
             return this;
         }
 
         @Override
-        public InboundBodyPart build() {
+        public ReadableBodyPart build() {
             if (headers == null) {
-                headers = InboundBodyPartHeaders.create();
+                headers = ReadableBodyPartHeaders.create();
             }
             if (content == null) {
                 throw new IllegalStateException("content is required");
             }
-            return new InboundBodyPart(content, headers, buffered);
+            return new ReadableBodyPart(content, headers, buffered);
         }
     }
 }

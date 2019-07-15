@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.helidon.media.common;
 
 import io.helidon.common.CollectionsHelper;
@@ -19,8 +34,6 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.MultiMapper;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.function.Function;
 
 /**
@@ -29,7 +42,14 @@ import java.util.function.Function;
 public final class MessageBodyWriterContext extends MessageBodyContext
         implements MessageBodyWriters, MessageBodyFilters {
 
+    /**
+     * {@link MultiMapper} used to map bytes chunks.
+     */
     private static final BytesMapper BYTES_MAPPER = new BytesMapper();
+
+    /**
+     * Default (fallback) charset.
+     */
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     private final Parameters headers;
@@ -501,21 +521,6 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     /**
-     * Create a mono publisher of ByteArrayOutputStream from a given byte array.
-     * @param bytes byte array
-     * @return Mono
-     */
-    private static Mono<ByteArrayOutputStream> byteArrayMono(byte[] bytes) {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            baos.write((byte[]) bytes);
-            return Mono.<ByteArrayOutputStream>just(baos);
-        } catch (IOException ex) {
-            return Mono.<ByteArrayOutputStream>error(ex);
-        }
-    }
-
-    /**
      * Create a mono that will emit a reader not found error to its subscriber.
      *
      * @param <T> publisher item type
@@ -531,7 +536,8 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * Message body writer adapter for the old deprecated writer.
      * @param <T> writer type
      */
-    private static final class WriterAdapter<T> implements MessageBodyWriter<T> {
+    private static final class WriterAdapter<T>
+            implements MessageBodyWriter<T> {
 
         private final Function<T, Publisher<DataChunk>> function;
         private final Predicate predicate;

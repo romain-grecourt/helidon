@@ -20,37 +20,37 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Outbound multipart message.
+ * Writeable multipart message.
  */
-public final class OutboundMultiPart implements MultiPart<OutboundBodyPart>{
+public final class WriteableMultiPart implements MultiPart<WriteableBodyPart>{
 
-    private final List<OutboundBodyPart> parts;
+    private final List<WriteableBodyPart> parts;
 
     /**
      * Private to enforce the use of {@link #create(java.util.Collection)}
      * or {@link #builder()}.
      */
-    private OutboundMultiPart(List<OutboundBodyPart> parts) {
+    private WriteableMultiPart(List<WriteableBodyPart> parts) {
         this.parts = parts;
     }
 
     @Override
-    public List<OutboundBodyPart> bodyParts() {
+    public List<WriteableBodyPart> bodyParts() {
         return parts;
     }
 
     /**
-     * Short-hand for creating an {@link OutboundMultiPart} instances with the
+     * Short-hand for creating an {@link WriteableMultiPart} instances with the
      * specified entities as body parts.
      *
      * @param <T> the type of the entities
      * @param entities the body part entities
      * @return created MultiPart
      */
-    public static <T> OutboundMultiPart create(Collection<T> entities) {
+    public static <T> WriteableMultiPart create(Collection<T> entities) {
         Builder builder = builder();
         for(T entity : entities){
-            builder.bodyPart(OutboundBodyPart.create(entity));
+            builder.bodyPart(WriteableBodyPart.create(entity));
         }
         return builder.build();
     }
@@ -64,32 +64,32 @@ public final class OutboundMultiPart implements MultiPart<OutboundBodyPart>{
     }
 
     /**
-     * Builder class for creating {@link OutboundMultiPart} instances.
+     * Builder class for creating {@link WriteableMultiPart} instances.
      */
     public static final class Builder
-            implements io.helidon.common.Builder<OutboundMultiPart> {
+            implements io.helidon.common.Builder<WriteableMultiPart> {
 
-        private final ArrayList<OutboundBodyPart> bodyParts = new ArrayList<>();
+        private final ArrayList<WriteableBodyPart> bodyParts = new ArrayList<>();
 
         /**
-         * Force the use of {@link OutboundMultiPart#builder()}.
+         * Force the use of {@link WriteableMultiPart#builder()}.
          */
         private Builder() {
         }
 
-        public Builder bodyPart(OutboundBodyPart bodyPart) {
+        public Builder bodyPart(WriteableBodyPart bodyPart) {
             bodyParts.add(bodyPart);
             return this;
         }
 
-        public Builder bodyParts(Collection<OutboundBodyPart> bodyParts) {
+        public Builder bodyParts(Collection<WriteableBodyPart> bodyParts) {
             this.bodyParts.addAll(bodyParts);
             return this;
         }
 
         @Override
-        public OutboundMultiPart build() {
-            return new OutboundMultiPart(bodyParts);
+        public WriteableMultiPart build() {
+            return new WriteableMultiPart(bodyParts);
         }
     }
 }

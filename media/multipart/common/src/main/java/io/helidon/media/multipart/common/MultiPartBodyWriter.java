@@ -26,15 +26,21 @@ import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 
 /**
- * {@link OutboundMultiPart} writer.
+ * {@link WriteableMultiPart} writer.
  */
 public final class MultiPartBodyWriter implements
-        MessageBodyWriter<OutboundMultiPart> {
+        MessageBodyWriter<WriteableMultiPart> {
 
     /**
      * The default boundary used for encoding multipart messages.
      */
     public static final String DEFAULT_BOUNDARY = "[^._.^]==>boundary<==[^._.^]";
+
+    /**
+     * Singleton instance.
+     */
+    private static final MultiPartBodyWriter INSTANCE =
+            new MultiPartBodyWriter(DEFAULT_BOUNDARY);
 
     /**
      * The actual boundary string.
@@ -53,12 +59,12 @@ public final class MultiPartBodyWriter implements
     public boolean accept(GenericType<?> type,
             MessageBodyWriterContext context) {
 
-        return OutboundMultiPart.class.isAssignableFrom(type.rawType());
+        return WriteableMultiPart.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<OutboundMultiPart> content,
-            GenericType<? extends OutboundMultiPart> type,
+    public Publisher<DataChunk> write(Mono<WriteableMultiPart> content,
+            GenericType<? extends WriteableMultiPart> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
@@ -77,17 +83,17 @@ public final class MultiPartBodyWriter implements
     }
 
     /**
-     * Create a new instance of {@link MultiPartBodyWriter} with the default
-     * boundary delimiter.
+     * Get the singleton instance (uses the default boundary delimiter
+     * {@link #DEFAULT_BOUNDARY}).
      *
      * @return MultiPartWriter
      */
-    public static MultiPartBodyWriter create() {
-        return new MultiPartBodyWriter(DEFAULT_BOUNDARY);
+    public static MultiPartBodyWriter get() {
+        return INSTANCE;
     }
 
     private static final class MultiPartToChunks
-            implements MultiMapper<OutboundMultiPart, DataChunk> {
+            implements MultiMapper<WriteableMultiPart, DataChunk> {
 
         private final MultiPartEncoder encoder;
 
@@ -96,7 +102,7 @@ public final class MultiPartBodyWriter implements
         }
 
         @Override
-        public Publisher<DataChunk> map(OutboundMultiPart multiPart) {
+        public Publisher<DataChunk> map(WriteableMultiPart multiPart) {
             Multi.just(multiPart.bodyParts()).subscribe(encoder);
             return encoder;
         }

@@ -18,22 +18,22 @@ package io.helidon.media.multipart.common;
 import java.util.List;
 
 /**
- * Inbound multipart message.
+ * Readable multipart message.
  */
-public final class InboundMultiPart implements MultiPart<InboundBodyPart> {
+public final class ReadableMultiPart implements MultiPart<ReadableBodyPart> {
 
-    private final List<InboundBodyPart> parts;
+    private final List<ReadableBodyPart> parts;
 
     /**
-     * Create a new inbound multipart message.
+     * Create a new readable multipart instance.
      * @param parts body parts
      */
-    InboundMultiPart(List<InboundBodyPart> parts) {
+    ReadableMultiPart(List<ReadableBodyPart> parts) {
         this.parts = parts;
     }
 
     @Override
-    public List<InboundBodyPart> bodyParts() {
+    public List<ReadableBodyPart> bodyParts() {
         return parts;
     }
 }
