@@ -18,6 +18,7 @@ package io.helidon.media.jackson.server;
 import io.helidon.media.jackson.common.JacksonBodyReader;
 import io.helidon.media.jackson.common.JacksonBodyWriter;
 import io.helidon.webserver.Handler;
+import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
@@ -27,7 +28,6 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
-import io.helidon.webserver.Routing;
 
 /**
  * A {@link Service} and a {@link Handler} that provides Jackson
@@ -78,7 +78,7 @@ public final class JacksonSupport implements Service, Handler {
     /**
      * Creates a new {@link JacksonSupport}.
      *
-     * @param objectMapper, must not be {@code null}
+     * @param objectMapper must not be {@code null}
      * @return a new {@link JacksonSupport}
      *
      * @exception NullPointerException if {@code objectMapper}

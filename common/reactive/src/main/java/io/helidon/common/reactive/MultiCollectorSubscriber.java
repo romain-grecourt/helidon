@@ -15,10 +15,11 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 
 /**
  * A subscriber that wraps a given {@link Collector}.

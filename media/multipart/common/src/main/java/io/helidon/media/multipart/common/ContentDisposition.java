@@ -15,9 +15,6 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.CharMatcher;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.Tokenizer;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -29,6 +26,10 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
+
+import io.helidon.common.http.CharMatcher;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.Tokenizer;
 
 /**
  * A generic representation of the {@code Content-Disposition} header.
@@ -104,7 +105,7 @@ public final class ContentDisposition {
     /**
      * Empty content disposition.
      */
-    static ContentDisposition EMPTY = new ContentDisposition("",
+    static final ContentDisposition EMPTY = new ContentDisposition("",
             Collections.emptyMap());
 
     /**

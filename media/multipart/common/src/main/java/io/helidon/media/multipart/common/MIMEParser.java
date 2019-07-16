@@ -15,12 +15,13 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.Utils;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.logging.Logger;
 import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.helidon.common.http.Utils;
 
 /**
  * Parser for multipart MIME message.
@@ -30,7 +31,7 @@ final class MIMEParser {
     /**
      * The emitted parser event types.
      */
-    static enum EVENT_TYPE {
+    enum EventType {
 
         /**
          * This event is the first event issued by the parser.
@@ -93,13 +94,13 @@ final class MIMEParser {
     /**
      * Base class for the parser events.
      */
-    static abstract class ParserEvent {
+    abstract static class ParserEvent {
 
         /**
          * Get the event type.
          * @return EVENT_TYPE
          */
-        abstract EVENT_TYPE type();
+        abstract EventType type();
 
         /**
          * Get this event as a {@link HeaderEvent}.
@@ -129,7 +130,7 @@ final class MIMEParser {
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#START_MESSAGE}.
+     * The event class for {@link EventType#START_MESSAGE}.
      */
     static final class StartMessageEvent extends ParserEvent {
 
@@ -137,13 +138,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.START_MESSAGE;
+        EventType type() {
+            return EventType.START_MESSAGE;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#START_MESSAGE}.
+     * The event class for {@link EventType#START_MESSAGE}.
      */
     static final class StartPartEvent extends ParserEvent {
 
@@ -151,13 +152,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.START_PART;
+        EventType type() {
+            return EventType.START_PART;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#HEADER}.
+     * The event class for {@link EventType#HEADER}.
      */
     static final class HeaderEvent extends ParserEvent {
 
@@ -178,13 +179,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.HEADER;
+        EventType type() {
+            return EventType.HEADER;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#END_HEADERS}.
+     * The event class for {@link EventType#END_HEADERS}.
      */
     static final class EndHeadersEvent extends ParserEvent {
 
@@ -192,13 +193,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.END_HEADERS;
+        EventType type() {
+            return EventType.END_HEADERS;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#CONTENT}.
+     * The event class for {@link EventType#CONTENT}.
      */
     static final class ContentEvent extends ParserEvent {
 
@@ -213,13 +214,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.CONTENT;
+        EventType type() {
+            return EventType.CONTENT;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#END_PART}.
+     * The event class for {@link EventType#END_PART}.
      */
     static final class EndPartEvent extends ParserEvent {
 
@@ -227,13 +228,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.END_PART;
+        EventType type() {
+            return EventType.END_PART;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#END_MESSAGE}.
+     * The event class for {@link EventType#END_MESSAGE}.
      */
     static final class EndMessageEvent extends ParserEvent {
 
@@ -241,13 +242,13 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.END_MESSAGE;
+        EventType type() {
+            return EventType.END_MESSAGE;
         }
     }
 
     /**
-     * The event class for {@link EVENT_TYPE#DATA_REQUIRED}.
+     * The event class for {@link EventType#DATA_REQUIRED}.
      */
     static final class DataRequiredEvent extends ParserEvent {
 
@@ -266,8 +267,8 @@ final class MIMEParser {
         }
 
         @Override
-        EVENT_TYPE type() {
-            return EVENT_TYPE.DATA_REQUIRED;
+        EventType type() {
+            return EventType.DATA_REQUIRED;
         }
     }
 
@@ -311,7 +312,7 @@ final class MIMEParser {
     /**
      * All states.
      */
-    private static enum STATE {
+    private enum STATE {
         START_MESSAGE,
         SKIP_PREAMBLE,
         START_PART,
@@ -577,8 +578,8 @@ final class MIMEParser {
                     }
                     if (!headerLine.isEmpty()) {
                         Hdr header = new Hdr(headerLine);
-                        listener.process(new HeaderEvent(header.getName(),
-                                header.getValue()));
+                        listener.process(new HeaderEvent(header.name(),
+                                header.value()));
                         break;
                     }
                     state = STATE.BODY;
@@ -698,9 +699,8 @@ final class MIMEParser {
 
         // Consider all the linear whitespace in boundary+whitespace+"\r\n"
         int lwsp = 0;
-        for (int i = bndStart + bl
-                ; i < buf.length && (buf[i] == ' ' || buf[i] == '\t')
-                ; i++) {
+        for (int i = bndStart + bl; i < buf.length
+                && (buf[i] == ' ' || buf[i] == '\t'); i++) {
             ++lwsp;
         }
 
@@ -753,9 +753,8 @@ final class MIMEParser {
 
         // Consider all the whitespace boundary+whitespace+"\r\n"
         int lwsp = 0;
-        for (int i = bndStart + bl
-                ; i < buf.length && (buf[i] == ' ' || buf[i] == '\t')
-                ; i++) {
+        for (int i = bndStart + bl; i < buf.length
+                && (buf[i] == ' ' || buf[i] == '\t'); i++) {
             ++lwsp;
         }
 
@@ -827,7 +826,8 @@ final class MIMEParser {
      * shift.
      */
     private void compileBoundaryPattern() {
-        int i, j;
+        int i;
+        int j;
 
         // Precalculate part of the bad character shift
         // It is a table for where in the pattern each
@@ -902,12 +902,12 @@ final class MIMEParser {
         /**
          * The trimmed name of this header.
          */
-        String name;
+        private final String name;
 
         /**
          * The entire header "line".
          */
-        String line;
+        private final String line;
 
         /**
          * Constructor that takes a line and splits out the header name.
@@ -926,14 +926,14 @@ final class MIMEParser {
         /**
          * Return the "name" part of the header line.
          */
-        public String getName() {
+        String name() {
             return name;
         }
 
         /**
          * Return the "value" part of the header line.
          */
-        public String getValue() {
+        String value() {
             int i = line.indexOf(':');
             if (i < 0) {
                 return line;

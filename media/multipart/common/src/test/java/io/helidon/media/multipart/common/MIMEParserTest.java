@@ -112,7 +112,7 @@ public class MIMEParserTest {
         MIMEParser.ParserEvent lastEvent = parse(boundary, chunk1).lastEvent;
         assertThat(lastEvent, is(notNullValue()));
         assertThat(lastEvent.type(),
-                is(equalTo(MIMEParser.EVENT_TYPE.END_MESSAGE)));
+                is(equalTo(MIMEParser.EventType.END_MESSAGE)));
     }
 
     @Test
@@ -414,7 +414,7 @@ public class MIMEParserTest {
                 is(equalTo("this-is-the-body-of-")));
         assertThat(processor.lastEvent, is(notNullValue()));
         assertThat(processor.lastEvent.type(),
-                is(equalTo(MIMEParser.EVENT_TYPE.DATA_REQUIRED)));
+                is(equalTo(MIMEParser.EventType.DATA_REQUIRED)));
     }
 
     @Test

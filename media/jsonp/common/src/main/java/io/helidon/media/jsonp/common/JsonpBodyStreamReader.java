@@ -15,6 +15,11 @@
  */
 package io.helidon.media.jsonp.common;
 
+import java.util.Objects;
+
+import javax.json.JsonReaderFactory;
+import javax.json.JsonStructure;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Processor;
@@ -23,9 +28,6 @@ import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.media.common.MessageBodyStreamReader;
-import java.util.Objects;
-import javax.json.JsonReaderFactory;
-import javax.json.JsonStructure;
 
 /**
  * Message body stream reader for {@link JsonStructure} sub-classes (JSON-P).

@@ -15,9 +15,10 @@
  */
 package io.helidon.common.reactive;
 
+import java.util.function.Consumer;
+
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import java.util.function.Consumer;
 
 /**
  * A subscriber delegated java functions for each of the subscriber methods.
@@ -42,7 +43,7 @@ final class FunctionalSubscriber<T> implements Subscriber<T> {
     }
 
     @Override
-    public final void onSubscribe(Subscription subscription) {
+    public void onSubscribe(Subscription subscription) {
         if (this.subscription == null) {
             this.subscription = subscription;
             if (subscriptionConsumer != null) {
@@ -59,7 +60,7 @@ final class FunctionalSubscriber<T> implements Subscriber<T> {
     }
 
     @Override
-    public final void onComplete() {
+    public void onComplete() {
         if (completeConsumer != null) {
             try {
                 completeConsumer.run();
@@ -70,14 +71,14 @@ final class FunctionalSubscriber<T> implements Subscriber<T> {
     }
 
     @Override
-    public final void onError(Throwable ex) {
+    public void onError(Throwable ex) {
         if (errorConsumer != null) {
             errorConsumer.accept(ex);
         }
     }
 
     @Override
-    public final void onNext(T x) {
+    public void onNext(T x) {
         try {
             if (consumer != null) {
                 consumer.accept(x);

@@ -19,6 +19,7 @@ package io.helidon.webserver;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;
@@ -33,7 +34,6 @@ import io.helidon.media.common.MessageBodyStreamWriter;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.media.common.MessageBodyWriters;
-import java.util.function.Predicate;
 
 /**
  * Represents HTTP Response.

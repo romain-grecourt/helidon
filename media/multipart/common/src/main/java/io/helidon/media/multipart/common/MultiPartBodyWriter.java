@@ -19,8 +19,8 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
@@ -49,7 +49,7 @@ public final class MultiPartBodyWriter implements
 
     /**
      * Private to enforce the use of {@link #create(java.lang.String)}.
-     * @param boundary 
+     * @param boundary the multipart boundary delimiter
      */
     private MultiPartBodyWriter(String boundary) {
         this.boundary = boundary;

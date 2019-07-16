@@ -15,16 +15,17 @@
  */
 package io.helidon.media.multipart.common;
 
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.logging.Logger;
+
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.logging.Logger;
-import java.util.Objects;
-import java.util.Optional;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReaderContext;
 
@@ -106,7 +107,7 @@ public final class MultiPartDecoder
     @Override
     protected void hookOnRequested(long n, long result) {
         // require more raw chunks to decode if not the decoding has not
-        // yet started or if more data is required to make 
+        // yet started or if more data is required to make
         if (tryAcquire() > 0
                 && (!parserEventProcessor.isStarted()
                 || parserEventProcessor.isDataRequired())) {
@@ -193,11 +194,11 @@ public final class MultiPartDecoder
     private final class ParserEventProcessor
             implements MIMEParser.EventProcessor {
 
-        MIMEParser.ParserEvent lastEvent = null;
+        private MIMEParser.ParserEvent lastEvent = null;
 
         @Override
         public void process(MIMEParser.ParserEvent event) {
-            MIMEParser.EVENT_TYPE eventType = event.type();
+            MIMEParser.EventType eventType = event.type();
             LOGGER.fine(() -> "Parser event: " + eventType);
             switch (eventType) {
                 case START_PART:
@@ -225,7 +226,7 @@ public final class MultiPartDecoder
                     MessageBodyReadableContent partContent =
                             MessageBodyReadableContent.create(contentPublisher,
                                     partContext);
-       
+
                     bodyParts.add(bodyPartBuilder
                             .headers(headers)
                             .content(partContent)
@@ -263,7 +264,7 @@ public final class MultiPartDecoder
          * @return {@code true} if completed, {@code false} otherwise
          */
         boolean isCompleted() {
-            return lastEvent.type() == MIMEParser.EVENT_TYPE.END_MESSAGE;
+            return lastEvent.type() == MIMEParser.EventType.END_MESSAGE;
         }
 
         /**
@@ -273,7 +274,7 @@ public final class MultiPartDecoder
          * otherwise
          */
         boolean isDataRequired() {
-            return lastEvent.type() == MIMEParser.EVENT_TYPE.DATA_REQUIRED;
+            return lastEvent.type() == MIMEParser.EventType.DATA_REQUIRED;
         }
 
         /**

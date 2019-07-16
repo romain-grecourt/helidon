@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * Writeable multipart message.
  */
-public final class WriteableMultiPart implements MultiPart<WriteableBodyPart>{
+public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
 
     private final List<WriteableBodyPart> parts;
 
@@ -49,7 +49,7 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart>{
      */
     public static <T> WriteableMultiPart create(Collection<T> entities) {
         Builder builder = builder();
-        for(T entity : entities){
+        for (T entity : entities) {
             builder.bodyPart(WriteableBodyPart.create(entity));
         }
         return builder.build();
@@ -77,11 +77,21 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart>{
         private Builder() {
         }
 
+        /**
+         * Add a body part.
+         * @param bodyPart body part to add
+         * @return this builder instance
+         */
         public Builder bodyPart(WriteableBodyPart bodyPart) {
             bodyParts.add(bodyPart);
             return this;
         }
 
+        /**
+         * Add body parts.
+         * @param bodyParts body parts to add
+         * @return this builder instance
+         */
         public Builder bodyParts(Collection<WriteableBodyPart> bodyParts) {
             this.bodyParts.addAll(bodyParts);
             return this;

@@ -15,9 +15,10 @@
  */
 package io.helidon.common.reactive;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Subscriber that delegate the received item to another subscriber of a

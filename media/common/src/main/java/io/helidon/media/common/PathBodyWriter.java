@@ -15,19 +15,20 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.RetrySchema;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
-
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+
+import io.helidon.common.GenericType;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.RetrySchema;
+
 
 import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA;
 
@@ -65,7 +66,7 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
 
     /**
      * Get the {@link PathBodyWriter} singleton.
-     * @return 
+     * @return PathBodyWriter
      */
     public static PathBodyWriter get() {
         return INSTANCE;

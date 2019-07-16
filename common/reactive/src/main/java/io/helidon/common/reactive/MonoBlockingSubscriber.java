@@ -15,10 +15,11 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 
 /**
  * Blocking mono subscriber.
@@ -35,14 +36,14 @@ final class MonoBlockingSubscriber<T> extends CountDownLatch
     }
 
     @Override
-    public final void onSubscribe(Subscription subscription) {
+    public void onSubscribe(Subscription subscription) {
         if (!cancelled) {
             subscription.request(Long.MAX_VALUE);
         }
     }
 
     @Override
-    public final void onComplete() {
+    public void onComplete() {
         countDown();
     }
 
@@ -62,7 +63,7 @@ final class MonoBlockingSubscriber<T> extends CountDownLatch
         countDown();
     }
 
-    final T blockingGet() {
+    T blockingGet() {
         if (getCount() != 0) {
             try {
                 await();
@@ -79,7 +80,7 @@ final class MonoBlockingSubscriber<T> extends CountDownLatch
         return value;
     }
 
-    final T blockingGet(long timeout, TimeUnit unit) {
+    T blockingGet(long timeout, TimeUnit unit) {
         if (getCount() != 0) {
             try {
                 if (!await(timeout, unit)) {

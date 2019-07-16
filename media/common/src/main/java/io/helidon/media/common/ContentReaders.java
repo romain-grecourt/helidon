@@ -16,7 +16,10 @@
 
 package io.helidon.media.common;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.DataChunk;
@@ -27,9 +30,6 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mapper;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.Charset;
 
 /**
  * Utility class that provides standalone mechanisms for reading message body
@@ -48,6 +48,12 @@ public final class ContentReaders {
      */
     private static final CharsetCache<BytesToString> BTOS_CACHE =
             new CharsetCache(BTOS_POPULATOR);
+
+    /**
+     * A utility class constructor.
+     */
+    private ContentReaders() {
+    }
 
     /**
      * Collect the {@link DataChunk} of the given publisher into a single byte

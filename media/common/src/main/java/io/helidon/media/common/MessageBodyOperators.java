@@ -15,7 +15,6 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.common.GenericType;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
@@ -25,10 +24,11 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import io.helidon.common.GenericType;
+
 /**
  * Thread-safe hierarchical registry of message body operators.
  * @param <T> operator type
- * @param <U> context type
  */
 final class MessageBodyOperators<T extends MessageBodyOperator<?>>
         implements Iterable<T>, AutoCloseable {
@@ -160,7 +160,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
         try {
             lock.readLock().lock();
             for (T operator : operators) {
-                if(operator.getClass().equals(operatorClass)) {
+                if (operator.getClass().equals(operatorClass)) {
                     return operator;
                 }
             }
@@ -192,7 +192,6 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
      * A thread-safe iterator implementation to iterate over a registry
      * hierarchy.
      * @param <T> Operator type
-     * @param <U> Context type
      */
     private static final class ParentedIterator<T extends MessageBodyOperator<?>>
             implements Iterator<T> {

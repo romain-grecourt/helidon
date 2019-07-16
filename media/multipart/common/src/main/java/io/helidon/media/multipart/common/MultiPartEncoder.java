@@ -15,16 +15,17 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.media.common.MessageBodyWriterContext;
-import io.helidon.common.reactive.Flow.Processor;
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.common.reactive.OriginThreadPublisher;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.Flow.Processor;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.OriginThreadPublisher;
+import io.helidon.media.common.MessageBodyWriterContext;
 
 /**
  * Reactive processor that encodes a stream of {@link BodyPart} into an HTTP
@@ -177,7 +178,7 @@ public final class MultiPartEncoder
 
         @Override
         public void onNext(DataChunk item) {
-            // TODO: encode with a charset ?
+            // TODO encode with a charset ?
             encoder.submit(item);
         }
 
@@ -199,6 +200,12 @@ public final class MultiPartEncoder
         }
     }
 
+    /**
+     * Create a new encoder instance.
+     * @param boundary multipart boundary delimiter
+     * @param context writer context
+     * @return MultiPartEncoder
+     */
     public static MultiPartEncoder create(String boundary,
             MessageBodyWriterContext context) {
 

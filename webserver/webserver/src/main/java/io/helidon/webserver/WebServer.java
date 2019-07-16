@@ -83,6 +83,10 @@ public interface WebServer {
      */
     ContextualRegistry context();
 
+    /**
+     * Get the parent media support configuration.
+     * @return media support configuration
+     */
     MediaSupport mediaSupport();
 
     /**
@@ -294,8 +298,23 @@ public interface WebServer {
             return addNamedRouting(name, routingBuilder.get());
         }
 
+        /**
+         * Set the server wide media support configuration.
+         * @param mediaSupport media support configuration
+         * @return an updated builder
+         */
         public Builder mediaSupport(MediaSupport mediaSupport) {
             this.mediaSupport = mediaSupport;
+            return this;
+        }
+
+        /**
+         * Set the server wide media support configuration.
+         * @param mediaSupportBuilder media support builder
+         * @return an updated builder
+         */
+        public Builder mediaSupport(Supplier<MediaSupport> mediaSupportBuilder) {
+            this.mediaSupport = mediaSupportBuilder != null ? mediaSupportBuilder.get() : null;
             return this;
         }
 

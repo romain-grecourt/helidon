@@ -16,8 +16,13 @@
 
 package io.helidon.webserver;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
@@ -35,15 +40,11 @@ import io.helidon.tracing.config.TracingConfigUtil;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 
-import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.AFTER_ONCOMPLETE;
-import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.BEFORE_ONSUBSCRIBE;
-import static io.helidon.media.common.MessageBodyContext.EVENT_TYPE.AFTER_ONERROR;
+import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONCOMPLETE;
+import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONERROR;
+import static io.helidon.media.common.MessageBodyContext.EventType.BEFORE_ONSUBSCRIBE;
 
 /**
  * The basic implementation of {@link ServerResponse}.
@@ -195,7 +196,7 @@ abstract class Response implements ServerResponse {
 
     @Override
     public CompletionStage<ServerResponse> send() {
-        return send((Publisher<DataChunk>)null);
+        return send((Publisher<DataChunk>) null);
     }
 
     @Override
@@ -316,7 +317,7 @@ abstract class Response implements ServerResponse {
 
         @Override
         public void onEvent(MessageBodyContext.Event event) {
-            switch(event.eventType()) {
+            switch (event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
                     GenericType<?> type = event.entityType().orElse(null);
                     span = createWriteSpan(type);

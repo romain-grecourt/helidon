@@ -15,10 +15,11 @@
  */
 package io.helidon.media.common;
 
+import java.io.InputStream;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import java.io.InputStream;
 import io.helidon.common.reactive.Mono;
 
 /**

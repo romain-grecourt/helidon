@@ -16,7 +16,6 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.HashParameters;
 import java.net.URI;
 import java.time.ZonedDateTime;
 import java.util.Collections;
@@ -28,6 +27,7 @@ import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
 import io.helidon.common.CollectionsHelper;
+import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;

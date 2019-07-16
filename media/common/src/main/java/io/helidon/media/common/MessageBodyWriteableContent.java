@@ -15,6 +15,10 @@
  */
 package io.helidon.media.common;
 
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
@@ -23,9 +27,6 @@ import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Mono;
-import java.util.Objects;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * Implementation of {@link WriteableContent}.
@@ -154,6 +155,15 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
         return this;
     }
 
+    /**
+     * Registers a writer function with a given type.
+     *
+     * @param <T> entity type
+     * @param type class representing the type supported by this writer
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
             Function<T, Publisher<DataChunk>> function) {
@@ -162,6 +172,16 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
         return this;
     }
 
+    /**
+     * Registers a writer function with a given type and media type.
+     *
+     * @param <T> entity type
+     * @param type class representing the type supported by this writer
+     * @param contentType the media type
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
             MediaType contentType,
@@ -171,6 +191,15 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
         return this;
     }
 
+    /**
+     * Registers a writer function with a given predicate.
+     *
+     * @param <T> entity type
+     * @param accept the object predicate
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriteableContent registerWriter(
             Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
@@ -179,6 +208,16 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
         return this;
     }
 
+    /**
+     * Registers a writer function with a given predicate and media type.
+     *
+     * @param <T> entity type
+     * @param accept the object predicate
+     * @param contentType the media type
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
@@ -187,6 +226,11 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
         return this;
     }
 
+    /**
+     * Register a filter function.
+     * @param function filter function
+     * @deprecated use {@link #registerFilter(MessageBodyFilter)} instead
+     */
     @Deprecated
     public void registerFilter(
             Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {

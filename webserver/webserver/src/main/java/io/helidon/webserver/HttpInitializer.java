@@ -17,13 +17,13 @@
 package io.helidon.webserver;
 
 
-import io.helidon.common.http.DataChunk;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLEngine;
 
+import io.helidon.common.http.DataChunk;
 import io.helidon.webserver.HelidonConnectionHandler.HelidonHttp2ConnectionHandlerBuilder;
 
 import io.netty.channel.ChannelHandlerContext;

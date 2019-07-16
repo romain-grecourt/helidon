@@ -121,7 +121,7 @@ class ByteBufRequestChunk implements DataChunk {
 
         /**
          * Trigger initialization of this class and a consequent call of the
-         * static constructor that produces the log message. 
+         * static constructor that produces the log message.
          */
         static void logOnce() {
         }

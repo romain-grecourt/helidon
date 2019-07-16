@@ -15,7 +15,10 @@
  */
 package io.helidon.media.jackson.common;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Objects;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
@@ -26,9 +29,8 @@ import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Objects;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Message body writer supporting object binding with Jackson.
@@ -46,7 +48,7 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
     public boolean accept(GenericType<?> type,
             MessageBodyWriterContext context) {
 
-        return ! CharSequence.class.isAssignableFrom(type.rawType())
+        return !CharSequence.class.isAssignableFrom(type.rawType())
                 && objectMapper.canSerialize(type.rawType());
     }
 

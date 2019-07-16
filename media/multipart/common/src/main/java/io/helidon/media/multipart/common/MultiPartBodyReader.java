@@ -15,20 +15,21 @@
  */
 package io.helidon.media.multipart.common;
 
+import java.util.LinkedList;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
-import java.util.LinkedList;
 
 /**
  * {@link ReadableMultiPart} reader.

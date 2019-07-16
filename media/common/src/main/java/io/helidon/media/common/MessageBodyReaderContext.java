@@ -15,6 +15,14 @@
  */
 package io.helidon.media.common;
 
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
@@ -23,13 +31,6 @@ import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
-import java.nio.charset.Charset;
-import java.nio.charset.IllegalCharsetNameException;
-import java.nio.charset.StandardCharsets;
-import java.nio.charset.UnsupportedCharsetException;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Predicate;
 
 /**
  * Implementation of {@link ReaderContext}.
@@ -107,11 +108,25 @@ public final class MessageBodyReaderContext extends MessageBodyContext
         return this;
     }
 
+    /**
+     * Register a reader function with the given type.
+     * @param <T> supported type
+     * @param type class representing the supported type
+     * @param reader reader function
+     * @deprecated use {@link #registerReader(MessageBodyReader) } instead
+     */
     @Deprecated
     public <T> void registerReader(Class<T> type, Reader<T> reader) {
         readers.registerFirst(new ReaderAdapter<>(type, reader));
     }
 
+    /**
+     * Register a reader function with the type predicate.
+     * @param <T> supported type
+     * @param predicate class predicate
+     * @param reader reader function
+     * @deprecated use {@link #registerReader(MessageBodyReader) } instead
+     */
     @Deprecated
     public <T> void registerReader(Predicate<Class<?>> predicate,
             Reader<T> reader) {
@@ -327,7 +342,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext
 
     /**
      * Create a mono that will emit a transformation failed error to its
-     * subscriber
+     * subscriber.
      *
      * @param <T> publisher item type
      * @param ex exception cause
@@ -370,7 +385,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext
                 GenericType<U> type, MessageBodyReaderContext context) {
 
             return Mono.fromFuture(reader.applyAndCast(publisher,
-                    (Class<U>)type.rawType()));
+                    (Class<U>) type.rawType()));
         }
 
         @Override

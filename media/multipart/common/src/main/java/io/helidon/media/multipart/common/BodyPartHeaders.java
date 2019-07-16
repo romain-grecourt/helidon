@@ -30,7 +30,7 @@ public interface BodyPartHeaders extends Headers {
      *
      * @return MediaType, never {@code null}
      */
-    public MediaType contentType();
+    MediaType contentType();
 
     /**
      * Get the {@code Content-Disposition} header.

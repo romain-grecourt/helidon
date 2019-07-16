@@ -15,16 +15,17 @@
  */
 package io.helidon.media.common;
 
+import java.util.Objects;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-import io.helidon.common.http.Reader;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * Implementation of {@link ReadableContent}.

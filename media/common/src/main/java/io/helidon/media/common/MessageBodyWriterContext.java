@@ -15,11 +15,6 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.common.CollectionsHelper;
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -27,14 +22,20 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
+
+import io.helidon.common.CollectionsHelper;
+import io.helidon.common.GenericType;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.MultiMapper;
-import java.util.function.Function;
 
 /**
  * Implementation of {@link WriterContext}.
@@ -114,7 +115,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     /**
-     * Create a new writer context
+     * Create a new writer context.
      *
      * @param mediaSupport media support used to derive the parent context, may
      * be {@code null}
@@ -137,7 +138,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     /**
-     * Create a new writer context
+     * Create a new writer context.
      *
      * @param parent parent context, {@code may be null}
      * @param eventListener message body subscription event listener, may be
@@ -188,7 +189,15 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         swriters.registerFirst(writer);
         return this;
     }
-
+    /**
+     * Registers a writer function with a given type.
+     *
+     * @param <T> entity type
+     * @param type class representing the type supported by this writer
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Class<T> type,
             Function<T, Publisher<DataChunk>> function) {
@@ -197,6 +206,16 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         return this;
     }
 
+    /**
+     * Registers a writer function with a given type and media type.
+     *
+     * @param <T> entity type
+     * @param type class representing the type supported by this writer
+     * @param contentType the media type
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Class<T> type,
             MediaType contentType,
@@ -206,6 +225,15 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         return this;
     }
 
+    /**
+     * Registers a writer function with a given predicate.
+     *
+     * @param <T> entity type
+     * @param accept the object predicate
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept,
             Function<T, Publisher<DataChunk>> function) {
@@ -214,6 +242,16 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         return this;
     }
 
+    /**
+     * Registers a writer function with a given predicate and media type.
+     *
+     * @param <T> entity type
+     * @param accept the object predicate
+     * @param contentType the media type
+     * @param function writer function
+     * @return this {@code MessageBodyWriteableContent} instance
+     * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
+     */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept,
             MediaType contentType, Function<T, Publisher<DataChunk>> function) {
@@ -578,7 +616,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                     return false;
                 }
             } else {
-                if (!predicate.test((Object)type.rawType())) {
+                if (!predicate.test((Object) type.rawType())) {
                     return false;
                 }
             }

@@ -26,13 +26,14 @@ import java.util.Optional;
  * Multipart model.
  * @param <T> BodyPart type
  */
-public interface MultiPart <T extends BodyPart> {
+public interface MultiPart<T extends BodyPart> {
 
     /**
      * Get all the nested body parts.
+     *
      * @return list of {@link BodyPart}
      */
-    public List<T> bodyParts();
+    List<T> bodyParts();
 
     /**
      * Get the first body part identified by the given control name. The control

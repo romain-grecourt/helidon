@@ -15,13 +15,14 @@
  */
 package io.helidon.media.common;
 
+import java.nio.charset.Charset;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.MultiMapper;
-import java.nio.charset.Charset;
 
 /**
  * Writer for {@code CharSequence}.

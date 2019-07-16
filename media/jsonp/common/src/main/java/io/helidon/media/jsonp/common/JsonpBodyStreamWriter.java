@@ -15,6 +15,12 @@
  */
 package io.helidon.media.jsonp.common;
 
+import java.nio.charset.Charset;
+import java.util.Objects;
+
+import javax.json.JsonStructure;
+import javax.json.JsonWriterFactory;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
@@ -25,10 +31,6 @@ import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.media.common.MessageBodyStreamWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.media.jsonp.common.JsonpBodyWriter.JsonStructureToChunks;
-import java.nio.charset.Charset;
-import java.util.Objects;
-import javax.json.JsonStructure;
-import javax.json.JsonWriterFactory;
 
 /**
  * Message body writer reader for {@link JsonStructure} sub-classes (JSON-P).
@@ -41,6 +43,13 @@ public abstract class JsonpBodyStreamWriter
     private final String separator;
     private final String end;
 
+    /**
+     * Create a new stream writer.
+     * @param jsonFactory JSON-P factory
+     * @param begin begin character
+     * @param separator separator character
+     * @param end end character
+     */
     protected JsonpBodyStreamWriter(JsonWriterFactory jsonFactory,
             String begin, String separator, String end) {
 

@@ -15,18 +15,19 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.common.reactive.Mono;
 import java.nio.charset.Charset;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import io.helidon.common.GenericType;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.common.reactive.Mono;
 
 /**
  * Base message body context implementation.
@@ -42,7 +43,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Message body content subscription event listener.
      */
-    public static interface EventListener {
+    public interface EventListener {
 
         /**
          * Handle a subscription event.
@@ -54,7 +55,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Message body content subscription event types.
      */
-    public static enum EVENT_TYPE {
+    public enum EventType {
 
         /**
          * Emitted before {@link Subscriber#onSubscribe() }.
@@ -100,13 +101,13 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Message body content subscription event contract.
      */
-    public static interface Event {
+    public interface Event {
 
         /**
          * Get the event type of this event.
          * @return EVENT_TYPE
          */
-        EVENT_TYPE eventType();
+        EventType eventType();
 
         /**
          * Get the type requested for conversion.
@@ -117,7 +118,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         /**
          * Fluent helper method to cast this event as a {@link ErrorEvent}. This
          * is safe to do when {@link #eventType()} returns
-         * {@link EVENT_TYPE#BEFORE_ONERROR} or {@link EVENT_TYPE#AFTER_ONERROR}
+         * {@link EventType#BEFORE_ONERROR} or {@link EventType#AFTER_ONERROR}
          *
          * @return ErrorEvent
          * @throws IllegalStateException if this event is not an instance of
@@ -132,10 +133,10 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     }
 
     /**
-     * A subscription event emitted for {@link EVENT_TYPE#BEFORE_ONERROR} or
-     * {@link EVENT_TYPE#AFTER_ONERROR} that carries the received error.
+     * A subscription event emitted for {@link EventType#BEFORE_ONERROR} or
+     * {@link EventType#AFTER_ONERROR} that carries the received error.
      */
-    public static interface ErrorEvent extends Event {
+    public interface ErrorEvent extends Event {
 
         /**
          * Get the subscription error of this event.
@@ -145,40 +146,40 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     }
 
     /**
-     * Singleton event for {@link EVENT_TYPE#BEFORE_ONSUBSCRIBE}.
+     * Singleton event for {@link EventType#BEFORE_ONSUBSCRIBE}.
      */
     private static final Event BEFORE_ONSUBSCRIBE = new EventImpl(
-            EVENT_TYPE.BEFORE_ONSUBSCRIBE, Optional.empty());
+            EventType.BEFORE_ONSUBSCRIBE, Optional.empty());
 
     /**
-     * Singleton event for {@link EVENT_TYPE#BEFORE_ONNEXT}.
+     * Singleton event for {@link EventType#BEFORE_ONNEXT}.
      */
     private static final Event BEFORE_ONNEXT = new EventImpl(
-            EVENT_TYPE.BEFORE_ONNEXT, Optional.empty());
+            EventType.BEFORE_ONNEXT, Optional.empty());
 
     /**
-     * Singleton event for {@link EVENT_TYPE#BEFORE_ONCOMPLETE}.
+     * Singleton event for {@link EventType#BEFORE_ONCOMPLETE}.
      */
     private static final Event BEFORE_ONCOMPLETE = new EventImpl(
-            EVENT_TYPE.BEFORE_ONCOMPLETE, Optional.empty());
+            EventType.BEFORE_ONCOMPLETE, Optional.empty());
 
     /**
-     * Singleton event for {@link EVENT_TYPE#AFTER_ONSUBSCRIBE}.
+     * Singleton event for {@link EventType#AFTER_ONSUBSCRIBE}.
      */
     private static final Event AFTER_ONSUBSCRIBE = new EventImpl(
-            EVENT_TYPE.AFTER_ONSUBSCRIBE, Optional.empty());
+            EventType.AFTER_ONSUBSCRIBE, Optional.empty());
 
     /**
-     * Singleton event for {@link EVENT_TYPE#AFTER_ONNEXT}.
+     * Singleton event for {@link EventType#AFTER_ONNEXT}.
      */
     private static final Event AFTER_ONNEXT = new EventImpl(
-            EVENT_TYPE.AFTER_ONNEXT, Optional.empty());
+            EventType.AFTER_ONNEXT, Optional.empty());
 
     /**
-     * Singleton event for {@link EVENT_TYPE#AFTER_ONCOMPLETE}.
+     * Singleton event for {@link EventType#AFTER_ONCOMPLETE}.
      */
     private static final Event AFTER_ONCOMPLETE = new EventImpl(
-            EVENT_TYPE.AFTER_ONCOMPLETE, Optional.empty());
+            EventType.AFTER_ONCOMPLETE, Optional.empty());
 
     /**
      * The filters registry.
@@ -362,11 +363,11 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
 
         @Override
         public void onError(Throwable error) {
-            fireEvent(new ErrorEventImpl(error, EVENT_TYPE.BEFORE_ONERROR));
+            fireEvent(new ErrorEventImpl(error, EventType.BEFORE_ONERROR));
             try {
                 delegate.onError(error);
             } finally {
-                fireEvent(new ErrorEventImpl(error, EVENT_TYPE.AFTER_ONERROR));
+                fireEvent(new ErrorEventImpl(error, EventType.AFTER_ONERROR));
             }
         }
 
@@ -514,14 +515,14 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      */
     private static class EventImpl implements Event {
 
-        protected final EVENT_TYPE eventType;
-        protected final Optional<GenericType<?>> entityType;
+        private final EventType eventType;
+        private final Optional<GenericType<?>> entityType;
 
         EventImpl(EventImpl event, Optional<GenericType<?>> entityType) {
             this(event.eventType, entityType);
         }
 
-        EventImpl(EVENT_TYPE eventType, Optional<GenericType<?>> entityType) {
+        EventImpl(EventType eventType, Optional<GenericType<?>> entityType) {
             this.eventType = eventType;
             this.entityType = entityType;
         }
@@ -532,7 +533,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         }
 
         @Override
-        public EVENT_TYPE eventType() {
+        public EventType eventType() {
             return eventType;
         }
     }
@@ -546,11 +547,11 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         private final Throwable error;
 
         ErrorEventImpl(ErrorEventImpl event, Optional<GenericType<?>> type) {
-            super(event.eventType, type);
+            super(event.eventType(), type);
             error = event.error;
         }
 
-        ErrorEventImpl(Throwable error, EVENT_TYPE eventType) {
+        ErrorEventImpl(Throwable error, EventType eventType) {
             super(eventType, Optional.empty());
             Objects.requireNonNull(error, "error cannot be null!");
             this.error = error;

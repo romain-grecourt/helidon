@@ -287,7 +287,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     /**
      * Indicate that more items should be published in order to meet the
      * current demand of the subscriber.
-     * 
+     *
      * @return whether this publisher currently satisfies the subscriber
      */
     public boolean requiresMoreItems() {

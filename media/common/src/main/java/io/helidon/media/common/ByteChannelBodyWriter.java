@@ -15,6 +15,8 @@
  */
 package io.helidon.media.common;
 
+import java.nio.channels.ReadableByteChannel;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
@@ -22,7 +24,6 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.MultiMapper;
 import io.helidon.common.reactive.RetrySchema;
-import java.nio.channels.ReadableByteChannel;
 
 /**
  * Message body writer for {@link ReadableByteChannel}.

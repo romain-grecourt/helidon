@@ -15,13 +15,14 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.common.http.HashParameters;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import io.helidon.common.http.HashParameters;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 
 /**
  * Writeable body part headers.

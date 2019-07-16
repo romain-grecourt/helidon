@@ -69,7 +69,7 @@ public final class BodyPartBodyStreamReader
     /**
      * Create a new instance of {@link BodyPartBodyStreamReader}.
      *
-     * @return
+     * @return BodyPartBodyStreamReader
      */
     public static BodyPartBodyStreamReader get() {
         return INSTANCE;

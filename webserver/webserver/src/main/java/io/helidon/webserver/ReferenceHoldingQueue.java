@@ -20,10 +20,10 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The ReferenceHoldingQueue is an enhanced reference queue that allows a post

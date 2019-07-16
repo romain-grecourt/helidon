@@ -16,22 +16,21 @@
 
 package io.helidon.media.jsonp.server;
 
+import javax.json.JsonStructure;
 
+import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
 import io.helidon.media.jsonp.common.JsonpBodyReader;
 import io.helidon.media.jsonp.common.JsonpBodyStreamReader;
 import io.helidon.media.jsonp.common.JsonpBodyWriter;
 import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;
-import javax.json.JsonStructure;
-
-import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
+import io.helidon.webserver.Service;
 import io.helidon.webserver.WebServer;
 
-import io.helidon.webserver.Service;
 
 /**
  * It provides contains JSON-P ({@code javax.json}) support for

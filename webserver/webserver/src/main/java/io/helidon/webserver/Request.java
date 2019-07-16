@@ -17,17 +17,20 @@
 package io.helidon.webserver;
 
 import java.net.URI;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+
+import io.helidon.common.GenericType;
 import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.GenericType;
 import io.helidon.media.common.MessageBodyContext;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReaderContext;
@@ -35,12 +38,9 @@ import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
 import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-
-import io.opentracing.SpanContext;
 
 import static io.helidon.common.CollectionsHelper.mapOf;
 
@@ -230,7 +230,7 @@ abstract class Request implements ServerRequest {
 
         @Override
         public void onEvent(MessageBodyContext.Event event) {
-            switch(event.eventType()) {
+            switch (event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
                     GenericType<?> type = event.entityType().orElse(null);
                     readSpan = createReadSpan(type);

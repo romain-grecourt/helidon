@@ -15,10 +15,11 @@
  */
 package io.helidon.media.multipart.common;
 
-import io.helidon.media.common.MessageBodyReadableContent;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+
+import io.helidon.media.common.MessageBodyReadableContent;
 
 /**
  * Readable body part.

@@ -15,10 +15,11 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 
 /**
  * Mono backed by a {@link CompletionStage}.

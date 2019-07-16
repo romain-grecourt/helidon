@@ -21,14 +21,13 @@ import java.util.Objects;
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbBuilder;
 
+import io.helidon.media.jsonb.common.JsonbBodyReader;
+import io.helidon.media.jsonb.common.JsonbBodyWriter;
 import io.helidon.webserver.Handler;
+import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
-
-import io.helidon.media.jsonb.common.JsonbBodyReader;
-import io.helidon.media.jsonb.common.JsonbBodyWriter;
-import io.helidon.webserver.Routing;
 
 /**
  * A {@link Service} and a {@link Handler} that provides <a

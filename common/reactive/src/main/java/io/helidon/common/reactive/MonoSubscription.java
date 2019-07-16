@@ -15,9 +15,10 @@
  */
 package io.helidon.common.reactive;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Single fixed item subscription.
