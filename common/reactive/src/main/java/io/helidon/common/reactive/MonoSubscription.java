@@ -15,19 +15,21 @@
  */
 package io.helidon.common.reactive;
 
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Single fixed item subscription.
  */
-final class MonoSubscription<T> implements Flow.Subscription {
+final class MonoSubscription<T> implements Subscription {
 
     private final T value;
-    private final Flow.Subscriber<? super T> subscriber;
+    private final Subscriber<? super T> subscriber;
     private final AtomicBoolean delivered;
     private final AtomicBoolean canceled;
 
-    MonoSubscription(T value, Flow.Subscriber<? super T> subscriber) {
+    MonoSubscription(T value, Subscriber<? super T> subscriber) {
         this.value = value;
         this.subscriber = subscriber;
         this.delivered = new AtomicBoolean(false);

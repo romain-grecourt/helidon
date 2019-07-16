@@ -32,12 +32,13 @@ import io.helidon.common.http.Parameters;
 
 import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 
+import static io.helidon.common.CollectionsHelper.mapOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsIterableContainingInOrder.contains;
 import static org.hamcrest.core.IsCollectionContaining.hasItems;
-import org.junit.jupiter.api.Assertions;
 
 /**
  * Tests {@link HashRequestHeaders}.
@@ -97,10 +98,10 @@ public class HashRequestHeadersTest {
         HashRequestHeaders hs = withHeader(Http.Header.ACCEPT,
                                            "text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4");
         assertThat(hs.acceptedTypes().size(), is(4));
-        assertThat(hs.acceptedTypes().get(0), is(createMt("text", "*", CollectionsHelper.mapOf("q", "0.3"))));
+        assertThat(hs.acceptedTypes().get(0), is(createMt("text", "*", mapOf("q", "0.3"))));
         assertThat(hs.acceptedTypes().get(0).qualityFactor(), IsCloseTo.closeTo(0, 0.3));
-        assertThat(hs.acceptedTypes().get(1), is(createMt("text", "html", CollectionsHelper.mapOf("q", "0.7"))));
-        assertThat(hs.acceptedTypes().get(2), is(createMt("text", "html", CollectionsHelper.mapOf("level", "1"))));
+        assertThat(hs.acceptedTypes().get(1), is(createMt("text", "html", mapOf("q", "0.7"))));
+        assertThat(hs.acceptedTypes().get(2), is(createMt("text", "html", mapOf("level", "1"))));
         assertThat(hs.acceptedTypes().get(3),
                    is(createMt("text", "html", CollectionsHelper.mapOf("level", "2", "q", "0.4"))));
     }
@@ -112,7 +113,7 @@ public class HashRequestHeadersTest {
             assertThat(hs.acceptedTypes().get(0), is(MediaType.TEXT_HTML));
             assertThat(hs.acceptedTypes().get(1), is(createMt("image", "gif")));
             assertThat(hs.acceptedTypes().get(2), is(createMt("image", "jpeg")));
-            assertThat(hs.acceptedTypes().get(3), is(createMt("*", "*", CollectionsHelper.mapOf("q", ".2"))));
+            assertThat(hs.acceptedTypes().get(3), is(createMt("*", "*", mapOf("q", ".2"))));
         } catch(IllegalStateException ex){
             Assertions.fail(ex.getMessage(), ex);
         }

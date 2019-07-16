@@ -15,6 +15,8 @@
  */
 package io.helidon.common.reactive;
 
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
@@ -24,7 +26,7 @@ import java.util.concurrent.CompletionStage;
 final class MonoFromCompletionStage<T> extends Mono<T> {
 
     private final CompletionStage<? extends T> future;
-    private Flow.Subscriber<? super T> subscriber;
+    private Subscriber<? super T> subscriber;
     private volatile boolean requested;
 
     MonoFromCompletionStage(CompletionStage<? extends T> future) {
@@ -42,12 +44,12 @@ final class MonoFromCompletionStage<T> extends Mono<T> {
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super T> subscriber) {
+    public void subscribe(Subscriber<? super T> subscriber) {
         if (this.subscriber != null) {
             throw new IllegalStateException("Already subscribed to");
         }
         this.subscriber = subscriber;
-        subscriber.onSubscribe(new Flow.Subscription() {
+        subscriber.onSubscribe(new Subscription() {
             @Override
             public void request(long n) {
                 if (n > 0 && !requested) {

@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.helidon.common.CollectionsHelper;
-import static io.helidon.common.CollectionsHelper.mapOf;
 import io.helidon.common.context.Contexts;
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.Http;
@@ -39,6 +38,8 @@ import io.helidon.tracing.config.TracingConfigUtil;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
+
+import static io.helidon.common.CollectionsHelper.mapOf;
 
 /**
  * Default (and only provided) implementation of {@link Routing}.

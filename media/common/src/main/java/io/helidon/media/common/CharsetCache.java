@@ -18,8 +18,8 @@ package io.helidon.media.common;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
@@ -29,7 +29,7 @@ final class CharsetCache<T> {
 
     /**
      * Cache populator.
-     * @param <T> cache item
+     * @param <T> cache item type
      */
     interface Populator<T> extends Function<Charset, T> {
     }
@@ -37,8 +37,12 @@ final class CharsetCache<T> {
     /**
      * The charsets cached by default.
      */
-    private static final Charset[] CHARSETS = loadCharsets();
-    private final Map<Charset, T> CACHE = new HashMap<>();
+    private static final Charset[] DEFAULT_CHARSETS = loadCharsets();
+
+    /**
+     * The cache.
+     */
+    private final Map<Charset, T> cache = new ConcurrentHashMap<>();
 
     /**
      * Create a new cache instance.
@@ -53,19 +57,21 @@ final class CharsetCache<T> {
      * @param item item to cache
      */
     private void add(Populator<T> populator) {
-        for (Charset charset : CHARSETS) {
-            CACHE.put(charset, populator.apply(charset));
+        for (Charset charset : DEFAULT_CHARSETS) {
+            cache.put(charset, populator.apply(charset));
         }
     }
 
     /**
      * Get, or create and cache an item from the charset cache.
+     *
      * @param charset charset
-     * @param populator function used to create the new item to add to the cache
+     * @param populator function used to create the new item if not found in the
+     * cache
      * @return cached item
      */
     T get(Charset charset, Populator<T> populator) {
-        return CACHE.computeIfAbsent(charset, populator);
+        return cache.computeIfAbsent(charset, populator);
     }
 
     /**
