@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * Utility class for caching per commonly used charsets.
+ * Utility for caching per commonly used charsets.
  */
 final class CharsetCache<T> {
 
