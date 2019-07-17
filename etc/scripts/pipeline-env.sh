@@ -46,12 +46,6 @@ inject_credentials(){
     chmod og-rwx ~/.docker/config.json
   fi
 
-  # Add maven settings from MAVEN_SETTINGS_FILE
-  if [ -n "${MAVEN_SETTINGS_FILE}" ] ; then
-    mkdir ~/.m2/ 2>/dev/null || true
-    echo -e "${MAVEN_SETTINGS_FILE}" > ~/.m2/settings.xml
-  fi
-
   # Add maven settings security from MAVEN_SETTINGS_SECURITY_FILE
   # Only if none exist on the system
   if [ -n "${MAVEN_SETTINGS_SECURITY_FILE}" ] && [ ! -e ~/.m2/settings-security.xml ]; then
@@ -59,6 +53,12 @@ inject_credentials(){
     echo "${MAVEN_SETTINGS_SECURITY_FILE}" > ~/.m2/settings-security.xml
   fi
 }
+
+# Add maven settings from MAVEN_SETTINGS_FILE
+if [ -n "${MAVEN_SETTINGS_FILE}" ] ; then
+  mkdir ~/.m2/ 2>/dev/null || true
+  echo -e "${MAVEN_SETTINGS_FILE}" > ~/.m2/settings.xml
+fi
 
 if [ "${WERCKER}" = "true" ] ; then
     export MAVEN_OPTS="-Dmaven.repo.local=${WERCKER_CACHE_DIR}/local_repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn"
