@@ -55,7 +55,7 @@ copyright_job:
 checkstyle:
   stage: build
   only:
-    - /^fix-.*$/
+    - /^internal-.*$/
   script:
     - env
     - if [ -d "$LOCAL_REPO"  ]; then ls "$LOCAL_REPO" ; else echo "No $LOCAL_REPO"; fi
