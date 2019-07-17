@@ -41,7 +41,6 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 
-
 import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONCOMPLETE;
 import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONERROR;
 import static io.helidon.media.common.MessageBodyContext.EventType.BEFORE_ONSUBSCRIBE;
