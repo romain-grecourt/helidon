@@ -16,8 +16,8 @@
 package io.helidon.media.common;
 
 /**
- * Registry of {@link Reader} allowing to register reader instances in the
- * system.
+ * Registry of {@link MessageBodyReader} allowing to register reader instances
+ * in the system.
  */
 public interface MessageBodyReaders {
 

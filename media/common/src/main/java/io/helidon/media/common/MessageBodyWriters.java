@@ -16,8 +16,8 @@
 package io.helidon.media.common;
 
 /**
- * Registry of {@link Writer} allowing to register writer instances in the
- * system.
+ * Registry of {@link MessageBodyWriter} allowing to register writer instances
+ * in the system.
  */
 public interface MessageBodyWriters {
 

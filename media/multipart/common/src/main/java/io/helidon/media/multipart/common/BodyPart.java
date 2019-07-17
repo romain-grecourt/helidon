@@ -24,7 +24,7 @@ public interface BodyPart {
 
     /**
      * Get the reactive representation of the part content.
-     * @return {@link Content}, never {@code null}
+     * @return {@link MessageBodyContent}, never {@code null}
      */
     MessageBodyContent content();
 

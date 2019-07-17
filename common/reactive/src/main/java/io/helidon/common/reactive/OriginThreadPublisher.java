@@ -24,10 +24,14 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
+import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
+
 /**
  * The OriginThreadPublisher's nature is to always run
- * {@link Flow.Subscriber#onNext(T)} on the very same thread as
- * {@link #submit(U)}. In other words, whenever the source of chunks sends
+ * {@link Subscriber#onNext(Object)} on the very same thread as
+ * {@link #submit(Object)}. In other words, whenever the source of chunks sends
  * data, the same thread is used to deliver the data to the subscriber.Standard
  * publisher implementations (such as {@link SubmissionPublisher} or Reactor
  * Flux would use the same thread as {@link Subscription#request(long)} was
@@ -42,7 +46,7 @@ import java.util.logging.Logger;
  * @param <T> type of published items
  * @param <U> type of submitted items
  */
-public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
+public abstract class OriginThreadPublisher<T, U> implements Publisher<T> {
 
     private static final Logger LOGGER =
             Logger.getLogger(OriginThreadPublisher.class.getName());
@@ -56,7 +60,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
      */
     private final Lock reentrantLock = new ReentrantLock();
 
-    private volatile Flow.Subscriber<? super T> singleSubscriber;
+    private volatile Subscriber<? super T> singleSubscriber;
     private volatile boolean completed;
     private volatile Throwable t;
     private final BlockingQueue<T> queue = new ArrayBlockingQueue<>(256);
@@ -83,7 +87,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super T> originalSubscriber) {
+    public void subscribe(Subscriber<? super T> originalSubscriber) {
         if (!hasSingleSubscriber.compareAndSet(false, true)) {
             originalSubscriber.onError(new IllegalStateException(
                     "Only single subscriber is allowed!"));
@@ -94,7 +98,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
 
         reentrantLock.lock();
         try {
-            originalSubscriber.onSubscribe(new Flow.Subscription() {
+            originalSubscriber.onSubscribe(new Subscription() {
 
                 private boolean nexting;
 
@@ -174,7 +178,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
 
     /**
      * Submit the data to the subscriber. The same thread is used to call
-     * {@link Flow.Subscriber#onNext(Object)}. That is, the data are
+     * {@link Subscriber#onNext(Object)}. That is, the data are
      * synchronously passed to the subscriber.
      * <p>
      * Note that in order to maintain a consistency of this publisher, this
@@ -218,7 +222,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     }
 
     /**
-     * Synchronously trigger {@link Flow.Subscriber#onError(Throwable)}.
+     * Synchronously trigger {@link Subscriber#onError(Throwable)}.
      *
      * @param throwable the exception to send
      */
@@ -241,7 +245,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     }
 
     /**
-     * Synchronously trigger {@link Flow.Subscriber#onComplete()}.
+     * Synchronously trigger {@link Subscriber#onComplete()}.
      */
     public void complete() {
         try {
@@ -295,7 +299,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     }
 
     /**
-     * Hook invoked after calls to {@link Flow.Subscription#request(long)}.
+     * Hook invoked after calls to {@link Subscription#request(long)}.
      *
      * @param n the requested count
      * @param result the current total cumulative requested count; ranges
@@ -306,7 +310,7 @@ public abstract class OriginThreadPublisher<T, U> implements Flow.Publisher<T> {
     }
 
     /**
-     * Hook invoked after calls to {@link Flow.Subscription#cancel()}.
+     * Hook invoked after calls to {@link Subscription#cancel()}.
      */
     protected void hookOnCancel() {
     }

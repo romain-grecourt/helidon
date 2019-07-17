@@ -94,7 +94,7 @@ public final class ContentWriters {
      * @param copy a signal if byte array should be copied - set it {@code true}
      * if {@code byte[]} will be immediately reused.
      * @return a {@code byte[]} writer
-     * @deprecated use {@link #bytesToChunks(byte[], boolean)} instead
+     * @deprecated use {@link #writeBytes(byte[], boolean)} instead
      */
     public static Function<byte[], Publisher<DataChunk>> byteArrayWriter(
             boolean copy) {
@@ -112,7 +112,7 @@ public final class ContentWriters {
      * @param charset a standard charset to use
      * @return a {@link String} writer
      * @throws NullPointerException if parameter {@code charset} is {@code null}
-     * @deprecated use {@link #charSequenceToChunks(CharSequence, Charset) }
+     * @deprecated use {@link #writeCharSequence(CharSequence, Charset) }
      * instead
      */
     public static Function<CharSequence, Publisher<DataChunk>> charSequenceWriter(
@@ -147,7 +147,7 @@ public final class ContentWriters {
      * @param retrySchema a retry schema to use in case when {@code read}
      * operation reads {@code 0 bytes}
      * @return a {@link ReadableByteChannel} writer
-     * @deprecated use {@link ByteChannelWriter} instead
+     * @deprecated use {@link ByteChannelBodyWriter} instead
      */
     public static Function<ReadableByteChannel, Publisher<DataChunk>> byteChannelWriter(
             RetrySchema retrySchema) {
@@ -161,7 +161,7 @@ public final class ContentWriters {
      * Returns a writer function for {@link ReadableByteChannel}.
      *
      * @return a {@link ReadableByteChannel} writer
-     * @deprecated use {@link ByteChannelWriter} instead
+     * @deprecated use {@link ByteChannelBodyWriter} instead
      */
     public static Function<ReadableByteChannel, Publisher<DataChunk>> byteChannelWriter() {
         return byteChannelWriter(null);

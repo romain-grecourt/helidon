@@ -26,7 +26,7 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 
 /**
- * Implementation of {@link ReadableContent}.
+ * Readable {@link MessageBodyContent}.
  */
 @SuppressWarnings("deprecation")
 public final class MessageBodyReadableContent

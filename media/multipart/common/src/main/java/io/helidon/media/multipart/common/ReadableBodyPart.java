@@ -55,8 +55,8 @@ public final class ReadableBodyPart implements BodyPart {
      * Indicate if the content of this {@link BodyPart} instance is buffered in
      * memory. When buffered, {@link #as(java.lang.Class)} can be called to
      * unmarshall the content synchronously. Otherwise, use {@link #content()}
-     * and {@link Content#as(java.lang.Class)} to do it asynchronously with a
-     * {@link CompletionStage}.
+     * and {@link MessageBodyReadableContent#as(Class)} to do it
+     * asynchronously with a {@link CompletionStage}.
      *
      * @return {@code true} if buffered, {@code false} otherwise
      */

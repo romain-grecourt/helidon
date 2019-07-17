@@ -58,42 +58,42 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     public enum EventType {
 
         /**
-         * Emitted before {@link Subscriber#onSubscribe() }.
+         * Emitted before {@link Subscriber#onSubscribe(Subscription)}.
          */
         BEFORE_ONSUBSCRIBE,
 
         /**
-         * Emitted after {@link Subscriber#onSubscribe }.
+         * Emitted after {@link Subscriber#onSubscribe(Subscription)}.
          */
         AFTER_ONSUBSCRIBE,
 
         /**
-         * Emitted before {@link Subscriber#onNext() }.
+         * Emitted before {@link Subscriber#onNext(Object)}.
          */
         BEFORE_ONNEXT,
 
         /**
-         * Emitted after {@link Subscriber#onNext() }.
+         * Emitted after {@link Subscriber#onNext(Object)}.
          */
         AFTER_ONNEXT,
 
         /**
-         * Emitted after {@link Subscriber#onError() }.
+         * Emitted after {@link Subscriber#onError(Throwable)}.
          */
         BEFORE_ONERROR,
 
         /**
-         * Emitted after {@link Subscriber#onError() }.
+         * Emitted after {@link Subscriber#onError(Throwable)}.
          */
         AFTER_ONERROR,
 
         /**
-         * Emitted after {@link Subscriber#onComplete() }.
+         * Emitted after {@link Subscriber#onComplete()}.
          */
         BEFORE_ONCOMPLETE,
 
         /**
-         * Emitted after {@link Subscriber#onComplete() }.
+         * Emitted after {@link Subscriber#onComplete()}.
          */
         AFTER_ONCOMPLETE
     }

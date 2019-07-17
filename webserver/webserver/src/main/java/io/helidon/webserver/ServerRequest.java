@@ -106,10 +106,10 @@ public interface ServerRequest extends HttpRequest {
     RequestHeaders headers();
 
     /**
-     * Returns {@link Content reactive representation} of the request content.
+     * Returns {@link MessageBodyReadableContent} reactive representation of the request content.
      *
      * @return a request content
-     * @see InboundMessage
+     * @see MessageBodyReadableContent
      */
     MessageBodyReadableContent content();
 

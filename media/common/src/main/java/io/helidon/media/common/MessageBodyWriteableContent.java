@@ -29,7 +29,7 @@ import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Mono;
 
 /**
- * Implementation of {@link WriteableContent}.
+ * Writeable {@link MessageBodyContent}.
  */
 public final class MessageBodyWriteableContent implements MessageBodyContent,
         MessageBodyWriters, MessageBodyFilters {

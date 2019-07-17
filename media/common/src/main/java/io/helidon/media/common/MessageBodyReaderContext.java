@@ -32,7 +32,7 @@ import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
 
 /**
- * Implementation of {@link ReaderContext}.
+ * Actual implementation of {@link MessageBodyReaders}.
  */
 public final class MessageBodyReaderContext extends MessageBodyContext
         implements MessageBodyReaders, MessageBodyFilters {

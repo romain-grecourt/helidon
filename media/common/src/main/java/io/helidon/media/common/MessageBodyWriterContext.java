@@ -38,7 +38,7 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.MultiMapper;
 
 /**
- * Implementation of {@link WriterContext}.
+ * Actual implementation of {@link MessageBodyWriters}.
  */
 public final class MessageBodyWriterContext extends MessageBodyContext
         implements MessageBodyWriters, MessageBodyFilters {
