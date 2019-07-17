@@ -44,7 +44,7 @@ public final class FileUploadService implements Service {
 
     private void test1(ServerRequest req, ServerResponse res) {
         req.content().as(ReadableMultiPart.class).thenAccept(multiPart -> {
-            for(ReadableBodyPart part : multiPart.bodyParts()){
+            for (ReadableBodyPart part : multiPart.bodyParts()) {
                 System.out.println("Headers: " + part.headers().toMap());
                 System.out.println("Content: " + part.as(String.class));
             }
