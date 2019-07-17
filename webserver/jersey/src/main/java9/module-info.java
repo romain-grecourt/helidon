@@ -25,7 +25,6 @@ module io.helidon.webserver.jersey {
     requires transitive io.helidon.jersey.server;
 
     requires io.helidon.common.context;
-    requires reactor.core;
     requires java.logging;
     requires hk2.api;
 

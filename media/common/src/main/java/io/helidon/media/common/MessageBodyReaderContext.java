@@ -27,7 +27,6 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.ReadOnlyParameters;
-import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
@@ -116,7 +115,9 @@ public final class MessageBodyReaderContext extends MessageBodyContext
      * @deprecated use {@link #registerReader(MessageBodyReader) } instead
      */
     @Deprecated
-    public <T> void registerReader(Class<T> type, Reader<T> reader) {
+    public <T> void registerReader(Class<T> type,
+            io.helidon.common.http.Reader<T> reader) {
+
         readers.registerFirst(new ReaderAdapter<>(type, reader));
     }
 
@@ -129,7 +130,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext
      */
     @Deprecated
     public <T> void registerReader(Predicate<Class<?>> predicate,
-            Reader<T> reader) {
+            io.helidon.common.http.Reader<T> reader) {
 
         readers.registerFirst(new ReaderAdapter<>(predicate, reader));
     }
@@ -357,13 +358,15 @@ public final class MessageBodyReaderContext extends MessageBodyContext
      * Message body reader adapter for the old deprecated reader.
      * @param <T> reader type
      */
+    @SuppressWarnings("deprecation")
     private static final class ReaderAdapter<T> implements MessageBodyReader<T> {
 
-        private final Reader<T> reader;
+        private final io.helidon.common.http.Reader<T> reader;
         private final Predicate<Class<?>> predicate;
         private final Class<T> clazz;
 
-        ReaderAdapter(Predicate<Class<?>> predicate, Reader<T> reader) {
+        ReaderAdapter(Predicate<Class<?>> predicate,
+                io.helidon.common.http.Reader<T> reader) {
             Objects.requireNonNull(predicate, "predicate cannot be null!");
             Objects.requireNonNull(reader, "reader cannot be null!");
             this.reader = reader;
@@ -371,7 +374,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext
             this.clazz = null;
         }
 
-        ReaderAdapter(Class<T> clazz, Reader<T> reader) {
+        ReaderAdapter(Class<T> clazz, io.helidon.common.http.Reader<T> reader) {
             Objects.requireNonNull(clazz, "clazz cannot be null!");
             Objects.requireNonNull(reader, "reader cannot be null!");
             this.reader = reader;

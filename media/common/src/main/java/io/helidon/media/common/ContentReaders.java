@@ -23,7 +23,6 @@ import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
 import io.helidon.common.http.Utils;
 import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
@@ -47,7 +46,7 @@ public final class ContentReaders {
      * The bytes to string mapper charset cache.
      */
     private static final CharsetCache<BytesToString> BTOS_CACHE =
-            new CharsetCache(BTOS_POPULATOR);
+            new CharsetCache<>(BTOS_POPULATOR);
 
     /**
      * A utility class constructor.
@@ -88,7 +87,9 @@ public final class ContentReaders {
      * @deprecated use {@link #readString(Publisher, Charset)} instead
      * instead
      */
-    public static Reader<String> stringReader(Charset charset) {
+    public static io.helidon.common.http.Reader<String> stringReader(
+            Charset charset) {
+
         return (chunks, type) -> readString(chunks, charset).toFuture();
     }
 
@@ -100,7 +101,7 @@ public final class ContentReaders {
      * completion stage that might end exceptionally with
      * @deprecated use {@link #readBytes(Publisher)} instead
      */
-    public static Reader<byte[]> byteArrayReader() {
+    public static io.helidon.common.http.Reader<byte[]> byteArrayReader() {
         return (publisher, clazz) -> readBytes(publisher).toFuture();
     }
 
@@ -115,7 +116,7 @@ public final class ContentReaders {
      * @return a input stream content reader
      * @deprecated use {@link PublisherInputStream} instead
      */
-    public static Reader<InputStream> inputStreamReader() {
+    public static io.helidon.common.http.Reader<InputStream> inputStreamReader() {
         return (publisher, clazz) -> CompletableFuture
                     .completedFuture(new PublisherInputStream(publisher));
     }

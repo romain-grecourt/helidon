@@ -31,7 +31,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 public class ContentWritersTest {
 
-//    @Test
+    @Test
     public void byteWriter() throws Exception {
         byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
         Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, false);
@@ -39,10 +39,10 @@ public class ContentWritersTest {
         assertThat(bytes, is(result));
     }
 
-//    @Test
+    @Test
     public void copyByteWriter() throws Exception {
         byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
-        Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, false);
+        Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, true);
         System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes,
                 0, bytes.length);
         byte[] result = ContentReaders.readBytes(publisher).block();
@@ -57,7 +57,8 @@ public class ContentWritersTest {
         assertThat(result.length, is(0));
     }
 
-//    @Test
+    @Test
+    @SuppressWarnings("deprecation")
     public void charSequenceWriter() throws Exception {
         String data = "abc";
         Publisher<DataChunk> publisher = ContentWriters

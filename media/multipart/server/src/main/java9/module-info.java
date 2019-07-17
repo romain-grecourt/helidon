@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,10 @@
  */
 
 /**
- * Media type support common classes.
- *
- * @see io.helidon.media.common.ContentReaders
- * @see io.helidon.media.common.ContentWriters
+ * Media MultiPart support server classes.
  */
-module io.helidon.media.common {
-    requires java.logging;
-    requires io.helidon.common;
-    requires io.helidon.common.reactive;
-    requires io.helidon.common.http;
-
-    exports io.helidon.media.common;
+module io.helidon.media.multipart.server {
+    requires io.helidon.media.multipart.common;
+    requires io.helidon.webserver;
+    exports io.helidon.media.multipart.server;
 }

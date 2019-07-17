@@ -46,7 +46,7 @@ public final class CharSequenceBodyWriter
      * CharSequence to chunks mapper charset cache.
      */
     private static final CharsetCache<CharSequenceToChunks> CSTOC_CACHE =
-            new CharsetCache(CSTOC_POPULATOR);
+            new CharsetCache<>(CSTOC_POPULATOR);
 
     /**
      * Enforce the use of {@link #get()}.

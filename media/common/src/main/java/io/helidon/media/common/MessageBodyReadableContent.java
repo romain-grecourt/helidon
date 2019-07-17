@@ -21,17 +21,16 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.Content;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 
 /**
  * Implementation of {@link ReadableContent}.
  */
+@SuppressWarnings("deprecation")
 public final class MessageBodyReadableContent
-        implements MessageBodyReaders, MessageBodyFilters, MessageBodyContent, Content {
+        implements MessageBodyReaders, MessageBodyFilters, MessageBodyContent, io.helidon.common.http.Content {
 
     private final Publisher<DataChunk> publisher;
     private final MessageBodyReaderContext context;
@@ -101,14 +100,16 @@ public final class MessageBodyReadableContent
 
     @Deprecated
     @Override
-    public <T> void registerReader(Class<T> type, Reader<T> reader) {
+    public <T> void registerReader(Class<T> type,
+            io.helidon.common.http.Reader<T> reader) {
+
         context.registerReader(type, reader);
     }
 
     @Deprecated
     @Override
     public <T> void registerReader(Predicate<Class<?>> predicate,
-            Reader<T> reader) {
+            io.helidon.common.http.Reader<T> reader) {
 
         context.registerReader(predicate, reader);
     }

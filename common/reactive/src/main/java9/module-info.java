@@ -21,6 +21,7 @@ module io.helidon.common.reactive {
     requires java.logging;
     requires org.reactivestreams;
     requires reactor.core;
+    requires io.helidon.common;
 
     exports io.helidon.common.reactive;
     exports io.helidon.common.reactive.valve;

@@ -34,6 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Unit test for {@link ContentReaders}.
  */
+@SuppressWarnings("deprecation")
 class ContentReadersTest {
     @Test
     void testStringReader() throws Exception {

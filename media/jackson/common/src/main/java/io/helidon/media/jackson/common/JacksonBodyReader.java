@@ -81,6 +81,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
             this.objectMapper = objectMapper;
         }
 
+        @SuppressWarnings("unchecked")
         @Override
         public T map(byte[] bytes) {
             try {
