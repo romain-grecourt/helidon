@@ -77,7 +77,7 @@ public interface MultiPart<T extends BodyPart> {
             if (partName == null) {
                 continue;
             }
-            if (partName.equals(partName)) {
+            if (partName.equals(name)) {
                 result.add(part);
             }
         }
@@ -98,6 +98,7 @@ public interface MultiPart<T extends BodyPart> {
             List<T> result = results.get(name);
             if (result == null) {
                 result = new ArrayList<>();
+                results.put(name, result);
             }
             result.add(part);
         }

@@ -16,6 +16,7 @@
 package io.helidon.media.multipart.common;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -121,7 +122,7 @@ public final class MultiPartEncoder
      * @param data data to submit
      */
     void submit(String data) {
-        submit(DataChunk.create(data.getBytes()));
+        submit(DataChunk.create(data.getBytes(StandardCharsets.UTF_8)));
     }
 
     @Override
@@ -139,8 +140,8 @@ public final class MultiPartEncoder
      */
     void onPartComplete() {
         if (complete) {
-            submit(DataChunk.create(ByteBuffer.wrap(("--" + boundary + "--")
-                    .getBytes())));
+            submit(DataChunk.create(ByteBuffer.wrap(
+                    MIMEParser.getBytes("--" + boundary + "--"))));
             complete();
         } else {
             long n = tryAcquire();

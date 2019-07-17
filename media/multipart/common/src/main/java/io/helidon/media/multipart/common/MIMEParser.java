@@ -422,7 +422,7 @@ final class MIMEParser {
      * Parses the MIME content.
      */
     MIMEParser(String boundary, EventProcessor eventListener) {
-        bndbytes = ("--" + boundary).getBytes();
+        bndbytes = getBytes("--" + boundary);
         listener = eventListener;
         bl = bndbytes.length;
         gss = new int[bl];
@@ -549,6 +549,8 @@ final class MIMEParser {
                                 "Skipped the preamble. position={0}",
                                 buf.length);
                     }
+                    state = STATE.START_PART;
+                    break;
 
                 // fall through
                 case START_PART:
@@ -892,6 +894,22 @@ final class MIMEParser {
             return off;
         }
         return -1;
+    }
+
+    /**
+     * Get the bytes representation of a string.
+     * @param str string to convert
+     * @return byte[]
+     */
+    static byte[] getBytes(String str) {
+        char [] chars= str.toCharArray();
+        int size = chars.length;
+        byte[] bytes = new byte[size];
+
+        for (int i = 0; i < size;) {
+            bytes[i] = (byte) chars[i++];
+        }
+        return bytes;
     }
 
     /**

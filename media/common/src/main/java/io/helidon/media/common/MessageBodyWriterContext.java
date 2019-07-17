@@ -287,8 +287,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyWriter<T>) writers.select(type, this,
                         fallback.writers);
             } else {
-                writer = (MessageBodyWriter<T>) writers.select(type, this,
-                        null);
+                writer = (MessageBodyWriter<T>) writers.select(type, this);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -324,7 +323,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyWriter<T>) writers.get(writerType,
                         fallback.writers);
             } else {
-                writer = (MessageBodyWriter<T>) writers.get(writerType, null);
+                writer = (MessageBodyWriter<T>) writers.get(writerType);
             }
             if (writer == null) {
                 return writerNotFound(writerType.getTypeName());
@@ -359,7 +358,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                     this, fallback.swriters);
             } else {
                 writer = (MessageBodyStreamWriter<T>) swriters.select(type,
-                    null);
+                    this);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -395,8 +394,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
                     fallback.swriters);
             } else {
-                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
-                    null);
+                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType);
             }
             if (writer == null) {
                 return writerNotFound(writerType.getTypeName());
