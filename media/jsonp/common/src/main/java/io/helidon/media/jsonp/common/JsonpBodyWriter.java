@@ -77,7 +77,9 @@ public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
         public Publisher<DataChunk> map(JsonStructure item) {
             CharBuffer buffer = new CharBuffer();
             try (JsonWriter writer = factory.createWriter(buffer)) {
-                writer.write(item);
+                if (writer != null) {
+                    writer.write(item);
+                }
                 return ContentWriters.writeCharBuffer(buffer, charset);
             }
         }

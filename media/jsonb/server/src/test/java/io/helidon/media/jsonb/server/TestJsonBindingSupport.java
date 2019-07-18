@@ -15,6 +15,7 @@
  */
 package io.helidon.media.jsonb.server;
 
+import io.helidon.common.GenericType;
 import java.util.concurrent.TimeUnit;
 
 import javax.json.bind.Jsonb;
@@ -27,6 +28,7 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.testsupport.MediaPublisher;
 import io.helidon.webserver.testsupport.TestClient;
 import io.helidon.webserver.testsupport.TestResponse;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -51,9 +53,34 @@ public class TestJsonBindingSupport {
             .path("/foo")
             .post(MediaPublisher.create(MediaType.APPLICATION_JSON.withCharset("UTF-8"), personJson));
 
-        assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null), is(MediaType.APPLICATION_JSON.toString()));
+        assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null),
+                is(MediaType.APPLICATION_JSON.toString()));
         final String json = response.asString().get(10, TimeUnit.SECONDS);
         assertThat(json, is(personJson));
+    }
+
+    @Test
+    public void genericType() throws Exception {
+        GenericType<List<Person>> personsType = new GenericType<List<Person>>() {};
+        final Routing routing = Routing.builder()
+                .register(JsonBindingSupport.create(JSONB))
+                .post("/foo", (req, res) -> {
+                    req.content().as(personsType)
+                            .thenAccept((List<Person> persons) -> {
+                        res.send(persons);
+                    });
+                })
+                .build();
+
+        final String personsJson = "[{\"name\":\"Frank\"},{\"name\":\"John\"}]";
+        final TestResponse response = TestClient.create(routing)
+            .path("/foo")
+            .post(MediaPublisher.create(MediaType.APPLICATION_JSON.withCharset("UTF-8"),
+                    personsJson));
+        assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null),
+                is(MediaType.APPLICATION_JSON.toString()));
+        final String json = response.asString().get(10, TimeUnit.SECONDS);
+        assertThat(json, is(personsJson));
     }
 
     public static final class Person {

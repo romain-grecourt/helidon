@@ -15,6 +15,7 @@
  */
 package io.helidon.media.jackson.common;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.util.Objects;
 
@@ -28,6 +29,7 @@ import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Type;
 
 /**
  * Message body reader supporting object binding with Jackson.
@@ -71,13 +73,13 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
     private static final class BytesToObject<T>
             implements Mapper<byte[], T> {
 
-        private final GenericType<? super T> type;
+        private final TypeReference<? super T> type;
         private final ObjectMapper objectMapper;
 
-        BytesToObject(GenericType<? super T> type,
+        BytesToObject(GenericType<? super T> gtype,
                 ObjectMapper objectMapper) {
 
-            this.type = type;
+            this.type = new TypeReferenceAdapter(gtype);
             this.objectMapper = objectMapper;
         }
 
@@ -85,10 +87,24 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         @Override
         public T map(byte[] bytes) {
             try {
-                return objectMapper.readValue(bytes, (Class<T>) type.rawType());
+                return objectMapper.readValue(bytes, type);
             } catch (final IOException wrapMe) {
                 throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
             }
+        }
+    }
+
+    private static final class TypeReferenceAdapter<T> extends TypeReference<T> {
+
+        private final GenericType<T> gtype;
+
+        TypeReferenceAdapter(GenericType<T> gtype) {
+            this.gtype = gtype;
+        }
+
+        @Override
+        public Type getType() {
+            return gtype.type();
         }
     }
 }

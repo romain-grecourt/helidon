@@ -57,11 +57,11 @@ public class JsonpBodyStreamReader
         return new JsonArrayStreamProcessor<>(publisher);
     }
 
-    class JsonArrayStreamProcessor<T extends JsonStructure>
+    static class JsonArrayStreamProcessor<T extends JsonStructure>
             implements Processor<DataChunk, T> {
 
         private long itemsRequested;
-        private boolean first = true;
+//        private boolean first = true;
         private Subscriber<? super T> itemSubscriber;
         private final Publisher<DataChunk> chunkPublisher;
         private Subscription chunkSubscription;
