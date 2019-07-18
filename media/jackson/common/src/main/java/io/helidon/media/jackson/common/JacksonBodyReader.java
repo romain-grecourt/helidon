@@ -15,8 +15,8 @@
  */
 package io.helidon.media.jackson.common;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.Objects;
 
 import io.helidon.common.GenericType;
@@ -28,8 +28,8 @@ import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.lang.reflect.Type;
 
 /**
  * Message body reader supporting object binding with Jackson.
