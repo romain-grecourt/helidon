@@ -16,7 +16,6 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.HttpRequest;
 import io.helidon.media.common.MessageBodyReadableContent;
 
@@ -61,7 +60,8 @@ public interface ServerRequest extends HttpRequest {
      *
      * @return a request context
      */
-    ContextualRegistry context();
+    @SuppressWarnings("deprecation")
+    io.helidon.common.http.ContextualRegistry context();
 
     /**
      * Returns the Internet Protocol (IP) address of the interface on which the request was received.

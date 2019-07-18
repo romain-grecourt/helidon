@@ -35,7 +35,6 @@ import java.util.logging.Logger;
 
 import io.helidon.common.Version;
 import io.helidon.common.context.Context;
-import io.helidon.common.http.ContextualRegistry;
 import io.helidon.media.common.MediaSupport;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -57,6 +56,7 @@ import io.netty.util.concurrent.Future;
 /**
  * The Netty based WebServer implementation.
  */
+@SuppressWarnings("deprecation")
 class NettyWebServer implements WebServer {
     static final String TRACING_COMPONENT = "web-server";
 
@@ -71,7 +71,7 @@ class NettyWebServer implements WebServer {
     private final CompletableFuture<WebServer> channelsUpFuture = new CompletableFuture<>();
     private final CompletableFuture<WebServer> channelsCloseFuture = new CompletableFuture<>();
     private final CompletableFuture<WebServer> threadGroupsShutdownFuture = new CompletableFuture<>();
-    private final ContextualRegistry contextualRegistry;
+    private final io.helidon.common.http.ContextualRegistry contextualRegistry;
     private final ConcurrentMap<String, Channel> channels = new ConcurrentHashMap<>();
     private final List<HttpInitializer> initializers = new LinkedList<>();
     private final MediaSupport mediaSupport;
@@ -99,10 +99,10 @@ class NettyWebServer implements WebServer {
         // the contextual registry needs to be created as a different type is expected. Once we remove ContextualRegistry
         // we can simply use the one from config
         Context context = config.context();
-        if (context instanceof ContextualRegistry) {
-            this.contextualRegistry = (ContextualRegistry) context;
+        if (context instanceof io.helidon.common.http.ContextualRegistry) {
+            this.contextualRegistry = (io.helidon.common.http.ContextualRegistry) context;
         } else {
-            this.contextualRegistry = ContextualRegistry.create(config.context());
+            this.contextualRegistry = io.helidon.common.http.ContextualRegistry.create(config.context());
         }
         this.configuration = config;
         this.mediaSupport = mediaSupport;
@@ -358,7 +358,7 @@ class NettyWebServer implements WebServer {
     }
 
     @Override
-    public ContextualRegistry context() {
+    public io.helidon.common.http.ContextualRegistry context() {
         return contextualRegistry;
     }
 

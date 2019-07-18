@@ -23,7 +23,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import io.helidon.common.http.ContextualRegistry;
 import io.helidon.media.common.MediaSupport;
 
 /**
@@ -81,7 +80,8 @@ public interface WebServer {
      *
      * @return a server context
      */
-    ContextualRegistry context();
+    @SuppressWarnings("deprecation")
+    io.helidon.common.http.ContextualRegistry context();
 
     /**
      * Get the parent media support configuration.

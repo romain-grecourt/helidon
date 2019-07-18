@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
@@ -47,6 +46,7 @@ import static io.helidon.common.CollectionsHelper.mapOf;
 /**
  * The basic abstract implementation of {@link ServerRequest}.
  */
+@SuppressWarnings("deprecation")
 abstract class Request implements ServerRequest {
 
     private static final String TRACING_CONTENT_READ_NAME = "content-read";
@@ -59,7 +59,7 @@ abstract class Request implements ServerRequest {
 
     private final BareRequest bareRequest;
     private final WebServer webServer;
-    private final ContextualRegistry context;
+    private final io.helidon.common.http.ContextualRegistry context;
     private final Parameters queryParams;
     private final HashRequestHeaders headers;
     private final MessageBodyReadableContent content;
@@ -75,7 +75,7 @@ abstract class Request implements ServerRequest {
         this.bareRequest = req;
         this.webServer = webServer;
         this.headers = headers;
-        this.context = ContextualRegistry.create(webServer.context());
+        this.context = io.helidon.common.http.ContextualRegistry.create(webServer.context());
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
                 /* decode */ true);
         this.eventListener = new MessageBodyEventListener();
@@ -121,7 +121,8 @@ abstract class Request implements ServerRequest {
     }
 
     @Override
-    public ContextualRegistry context() {
+    @SuppressWarnings("deprecation")
+    public io.helidon.common.http.ContextualRegistry context() {
         return context;
     }
 

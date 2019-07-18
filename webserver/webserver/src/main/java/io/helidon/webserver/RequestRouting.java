@@ -271,6 +271,7 @@ class RequestRouting implements Routing {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Span span() {
             return context().get(ServerRequest.class, Span.class).orElse(null);
         }

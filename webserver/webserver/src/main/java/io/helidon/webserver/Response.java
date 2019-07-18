@@ -48,6 +48,7 @@ import static io.helidon.media.common.MessageBodyContext.EventType.BEFORE_ONSUBS
 /**
  * The basic implementation of {@link ServerResponse}.
  */
+@SuppressWarnings("deprecation")
 abstract class Response implements ServerResponse {
 
     private static final String TRACING_CONTENT_WRITE = "content-write";
@@ -297,7 +298,7 @@ abstract class Response implements ServerResponse {
         private volatile boolean sentVolatile;
 
         private void sendHeadersIfNeeded() {
-            if (headers != null && !sent && !sentVolatile) {
+            if (headers != null) {
                 synchronized (this) {
                     if (!sent && !sentVolatile) {
                         sent = true;
