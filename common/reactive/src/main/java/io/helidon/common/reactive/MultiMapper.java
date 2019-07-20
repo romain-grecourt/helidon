@@ -15,6 +15,7 @@
  */
 package io.helidon.common.reactive;
 
+import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 

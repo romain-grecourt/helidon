@@ -15,9 +15,10 @@
  */
 package io.helidon.common.reactive;
 
+import java.util.Objects;
+
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import java.util.Objects;
 
 /**
  * Processor of {@link Multi} to {@link Mono} that collects items from the

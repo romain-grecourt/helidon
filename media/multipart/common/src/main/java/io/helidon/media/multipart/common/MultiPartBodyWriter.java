@@ -19,7 +19,6 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.MonoMultiMapper;
 import io.helidon.common.reactive.Multi;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
