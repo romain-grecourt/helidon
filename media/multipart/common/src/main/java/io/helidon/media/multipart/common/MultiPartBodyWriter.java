@@ -19,9 +19,8 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoMultiMapper;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 
@@ -63,12 +62,14 @@ public final class MultiPartBodyWriter implements
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<WriteableMultiPart> content,
+    public Publisher<DataChunk> write(WriteableMultiPart content,
             GenericType<? extends WriteableMultiPart> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
-        return content.mapMany(new MultiPartToChunks(boundary, context));
+        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
+        Multi.just(content.bodyParts()).subscribe(encoder);
+        return encoder;
     }
 
     /**
@@ -90,21 +91,5 @@ public final class MultiPartBodyWriter implements
      */
     public static MultiPartBodyWriter get() {
         return INSTANCE;
-    }
-
-    private static final class MultiPartToChunks
-            implements MultiMapper<WriteableMultiPart, DataChunk> {
-
-        private final MultiPartEncoder encoder;
-
-        MultiPartToChunks(String boundary, MessageBodyWriterContext context) {
-            this.encoder = MultiPartEncoder.create(boundary, context);
-        }
-
-        @Override
-        public Publisher<DataChunk> map(WriteableMultiPart multiPart) {
-            Multi.just(multiPart.bodyParts()).subscribe(encoder);
-            return encoder;
-        }
     }
 }

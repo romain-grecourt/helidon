@@ -26,8 +26,8 @@ import javax.json.bind.JsonbException;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mapper;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoMapper;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
@@ -55,8 +55,7 @@ public class JsonbBodyReader implements MessageBodyReader<Object> {
     public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher)
-                .map(new BytesToObject<>(type, jsonb));
+        return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type));
     }
 
     /**
@@ -68,19 +67,17 @@ public class JsonbBodyReader implements MessageBodyReader<Object> {
         return new JsonbBodyReader(jsonb);
     }
 
-    private static final class BytesToObject<T>
-            implements Mapper<byte[], T> {
+    private final class BytesToObject<T>
+            extends MonoMapper<byte[], T> {
 
         private final GenericType<? super T> type;
-        private final Jsonb jsonb;
 
-        BytesToObject(GenericType<? super T> type, Jsonb jsonb) {
+        BytesToObject(GenericType<? super T> type) {
             this.type = type;
-            this.jsonb = jsonb;
         }
 
         @Override
-        public T map(byte[] bytes) {
+        public T mapNext(byte[] bytes) {
             try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
                 return jsonb.fromJson(inputStream, type.type());
             } catch (IOException ex) {

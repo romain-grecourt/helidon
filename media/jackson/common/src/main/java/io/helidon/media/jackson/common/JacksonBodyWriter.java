@@ -16,15 +16,12 @@
 package io.helidon.media.jackson.common;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.Objects;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
@@ -53,15 +50,20 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<Object> content,
+    public Publisher<DataChunk> write(Object content,
             GenericType<? extends Object> type,
             MessageBodyWriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
                 MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.mapMany(new ObjectToChunks(objectMapper,
-                context.charset()));
+        try {
+            CharBuffer buffer = new CharBuffer();
+            objectMapper.writeValue(buffer, content);
+            return ContentWriters.writeCharBuffer(buffer, context.charset());
+        } catch (IOException wrapMe) {
+            throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
+        }
     }
 
     /**
@@ -71,28 +73,5 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
      */
     public static JacksonBodyWriter create(ObjectMapper objectMapper) {
         return new JacksonBodyWriter(objectMapper);
-    }
-
-    private static final class ObjectToChunks
-            implements MultiMapper<Object, DataChunk> {
-
-        private final ObjectMapper objectMapper;
-        private final Charset charset;
-
-        ObjectToChunks(ObjectMapper objectMapper, Charset charset) {
-            this.objectMapper = objectMapper;
-            this.charset = charset;
-        }
-
-        @Override
-        public Publisher<DataChunk> map(Object content) {
-            try {
-                CharBuffer buffer = new CharBuffer();
-                objectMapper.writeValue(buffer, content);
-                return ContentWriters.writeCharBuffer(buffer, charset);
-            } catch (IOException wrapMe) {
-                throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
-            }
-        }
     }
 }

@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
@@ -92,13 +93,28 @@ public abstract class Multi<T> implements Publisher<T> {
 
     /**
      * Map this {@link Multi} instance to a new {@link Multi} of another type
-     * using the given {@link Mapper}.
+     * using the given {@link MultiMapper}.
      * @param <U> mapped item type
-     * @param mapper mapper function
+     * @param mapper mapper
      * @return Multi
      */
-    public final <U> Multi<U> map(Mapper<? super T, ? extends U> mapper) {
-        return new MultiMap<>(this, mapper);
+    public final <U> Multi<U> map(MultiMapper<T, U> mapper) {
+        return mapper;
+    }
+
+    /**
+     * Map this {@link Multi} instance to a new {@link Multi} of another type
+     * using the given java {@link Function}.
+     *
+     * @param <U> mapped item type
+     * @param mapperFunction mapper function
+     * @return Multi
+     */
+    public final <U> Multi<U> map(Function<T, U> mapperFunction) {
+        MultiMapperFunctional<T, U> mapper =
+                new MultiMapperFunctional<>(mapperFunction);
+        this.subscribe(mapper);
+        return mapper;
     }
 
     /**
@@ -108,7 +124,9 @@ public abstract class Multi<T> implements Publisher<T> {
      * @return Mono
      */
     public final Mono<List<T>> collectList() {
-        return new MonoCollector<>(this, new ListCollector<>());
+        MonoListCollector<T> collector = new MonoListCollector<>();
+        this.subscribe(collector);
+        return collector;
     }
 
     /**
@@ -118,7 +136,9 @@ public abstract class Multi<T> implements Publisher<T> {
      * @return Mono
      */
     public final Mono<String> collectString() {
-        return new MonoCollector<>(this, new StringCollector<>());
+        MonoStringCollector<T> collector = new MonoStringCollector<>();
+        this.subscribe(collector);
+        return collector;
     }
 
     /**
@@ -127,8 +147,9 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param collector collector to use
      * @return Mono
      */
-    public final <U> Mono<U> collect(Collector<U, ? super T> collector) {
-        return new MonoCollector<>(this, collector);
+    public final <U> Mono<U> collect(MonoCollector<? super T, U> collector) {
+        this.subscribe(collector);
+        return collector;
     }
 
     /**
@@ -138,7 +159,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param source source publisher
      * @return Multi
      */
-    public static <T> Multi<T> from(Publisher<? extends T> source) {
+    public static <T> Multi<T> from(Publisher<T> source) {
         return new MultiFromPublisher<>(source);
     }
 
@@ -293,53 +314,24 @@ public abstract class Multi<T> implements Publisher<T> {
     }
 
     /**
-     * Implementation of {@link Mono} that exposes items collected from the
-     * specified source {@link Multi} using the given {@link Collector}.
-     *
-     * @param <T> collector container type
-     * @param <U> collected items type
-     */
-    private static final class MonoCollector<U, T> extends Mono<T> {
-
-        private final Multi<? extends U> source;
-        private final Collector<T, U> collector;
-
-        MonoCollector(Multi<? extends U> source, Collector<T, U> collector){
-
-            this.collector = Objects.requireNonNull(collector,
-                    "collector cannot be null!");
-            this.source = source;
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            source.subscribe(new MultiCollectorSubscriber<>(subscriber,
-                    collector));
-        }
-    }
-
-    /**
-     * Implementation of {@link Multi} that maps items using the given
-     * {@link Mapper}.
+     * Implementation of {@link MultiMapper} backed by a java function for
+     * mapping the items.
      *
      * @param <T> input type
-     * @param <R> output type
+     * @param <U> output type
      */
-    private static final class MultiMap<T, R> extends Multi<R> {
+    private static final class MultiMapperFunctional<T, U>
+            extends MultiMapper<T, U> {
 
-        private final Multi<? extends T> source;
-        private final Mapper<? super T, ? extends R> mapper;
+        private final Function<? super T, ? extends U> mapperFunction;
 
-        MultiMap(Multi<? extends T> source,
-                Mapper<? super T, ? extends R> mapper) {
-
-            this.source = source;
-            this.mapper = Objects.requireNonNull(mapper, "mapper");
+        MultiMapperFunctional(Function<? super T, ? extends U> mapperFunction) {
+            this.mapperFunction = mapperFunction;
         }
 
         @Override
-        public void subscribe(Subscriber<? super R> actual) {
-            source.subscribe(new MultiMapSubscriber<>(actual, mapper));
+        public U mapNext(T item) {
+            return mapperFunction.apply(item);
         }
     }
 }

@@ -15,19 +15,78 @@
  */
 package io.helidon.common.reactive;
 
-import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 
 /**
- * Function to map one item to multiple items.
- * @param <T> input item type
- * @param <U> output items type
+ * Processor of {@link Publisher} to {@link Mono} that publishes and maps each
+ * received item.
+ *
+ * @param <T> input type
+ * @param <U> output type
  */
-public interface MultiMapper<T, U> {
+public abstract class MultiMapper<T, U> extends Multi<U> implements Subscriber<T> {
+
+    private Subscriber<? super U> delegate;
+    private boolean done;
+    private Subscription subscription;
 
     /**
-     * Map a given item to multiple items.
+     * Map a given item.
+     *
      * @param item input item to map
-     * @return Publisher of the mapped items
+     * @return mapped item
      */
-    Publisher<U> map(T item);
+    public abstract U mapNext(T item);
+
+    @Override
+    public final void onSubscribe(Subscription s) {
+        if (subscription == null) {
+            subscription = s;
+            if (delegate != null) {
+                delegate.onSubscribe(s);
+            }
+        }
+    }
+
+    @Override
+    public final void onNext(T item) {
+        if (!done) {
+            try {
+                U val = mapNext(item);
+                if (val == null) {
+                    delegate.onError(new IllegalStateException(
+                            "Mapper returned a null value"));
+                } else {
+                    delegate.onNext(val);
+                }
+            } catch (Throwable ex) {
+                onError(ex);
+            }
+        }
+    }
+
+    @Override
+    public final void onError(Throwable ex) {
+        if (!done) {
+            done = true;
+            delegate.onError(ex);
+        }
+    }
+
+    @Override
+    public final void onComplete() {
+        if (!done) {
+            done = true;
+            delegate.onComplete();
+        }
+    }
+
+    @Override
+    public final void subscribe(Subscriber<? super U> subscriber) {
+        this.delegate = subscriber;
+        if (subscription != null) {
+            delegate.onSubscribe(subscription);
+        }
+    }
 }

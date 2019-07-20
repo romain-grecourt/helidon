@@ -106,8 +106,8 @@ public final class MultiPartDecoder
 
     @Override
     protected void hookOnRequested(long n, long result) {
-        // require more raw chunks to decode if not the decoding has not
-        // yet started or if more data is required to make
+        // require more raw chunks to decode if the decoding has not
+        // yet started or if more data is required to make progress
         if (tryAcquire() > 0
                 && (!parserEventProcessor.isStarted()
                 || parserEventProcessor.isDataRequired())) {

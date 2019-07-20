@@ -22,8 +22,8 @@ import java.util.Objects;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mapper;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoMapper;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
@@ -57,8 +57,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
     public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher)
-                .map(new BytesToObject<>(type, objectMapper));
+        return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type));
     }
 
     /**
@@ -70,22 +69,18 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         return new JacksonBodyReader(objectMapper);
     }
 
-    private static final class BytesToObject<T>
-            implements Mapper<byte[], T> {
+    private final class BytesToObject<T>
+            extends MonoMapper<byte[], T> {
 
         private final TypeReference<? super T> type;
-        private final ObjectMapper objectMapper;
 
-        BytesToObject(GenericType<? super T> gtype,
-                ObjectMapper objectMapper) {
-
+        BytesToObject(GenericType<? super T> gtype) {
             this.type = new TypeReferenceAdapter(gtype);
-            this.objectMapper = objectMapper;
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public T map(byte[] bytes) {
+        public T mapNext(byte[] bytes) {
             try {
                 return objectMapper.readValue(bytes, type);
             } catch (final IOException wrapMe) {

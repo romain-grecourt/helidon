@@ -24,10 +24,10 @@ import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Utils;
-import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mapper;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoCollector;
+import io.helidon.common.reactive.MonoMapper;
 import io.helidon.common.reactive.Multi;
 
 /**
@@ -35,18 +35,6 @@ import io.helidon.common.reactive.Multi;
  * content.
  */
 public final class ContentReaders {
-
-    /**
-     * Bytes to string mapper charset cache populator.
-     */
-    private static final CharsetCache.Populator<BytesToString> BTOS_POPULATOR =
-            BytesToString::new;
-
-    /**
-     * The bytes to string mapper charset cache.
-     */
-    private static final CharsetCache<BytesToString> BTOS_CACHE =
-            new CharsetCache<>(BTOS_POPULATOR);
 
     /**
      * A utility class constructor.
@@ -74,8 +62,7 @@ public final class ContentReaders {
     public static Mono<String> readString(Publisher<DataChunk> chunks,
             Charset charset) {
 
-        return readBytes(chunks).map(BTOS_CACHE.get(charset,
-                BTOS_POPULATOR));
+        return readBytes(chunks).map(new BytesToString(charset));
     }
 
     /**
@@ -122,11 +109,11 @@ public final class ContentReaders {
     }
 
     /**
-     * Implementation of {@link Mapper} that converts a {@code byte[]} into a
-     * {@link String} using a given {@link Charset}.
+     * Implementation of {@link MonoMapper} that converts a {@code byte[]} into
+     * a {@link String} using a given {@link Charset}.
      */
     private static final class BytesToString
-            implements Mapper<byte[], String> {
+            extends MonoMapper<byte[], String> {
 
         private final Charset charset;
 
@@ -135,7 +122,7 @@ public final class ContentReaders {
         }
 
         @Override
-        public String map(byte[] bytes) {
+        public String mapNext(byte[] bytes) {
             return new String(bytes, charset);
         }
     }
@@ -145,7 +132,7 @@ public final class ContentReaders {
      * {@code byte[]}.
      */
     private static final class BytesCollector
-            implements Collector<byte[], DataChunk> {
+            extends MonoCollector<DataChunk, byte[]> {
 
         private final ByteArrayOutputStream baos;
 

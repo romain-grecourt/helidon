@@ -21,8 +21,6 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.common.reactive.RetrySchema;
 
 /**
@@ -37,7 +35,7 @@ public final class ByteChannelBodyWriter
     private static final ByteChannelBodyWriter DEFAULT_INSTANCE =
             new ByteChannelBodyWriter(DEFAULT_RETRY_SCHEMA);
 
-    private final ByteChannelToChunks mapper;
+    private final RetrySchema schema;
 
     /**
      * Enforce the use of the static factory method.
@@ -45,7 +43,7 @@ public final class ByteChannelBodyWriter
      * @param schema retry schema
      */
     private ByteChannelBodyWriter(RetrySchema schema) {
-        this.mapper = new ByteChannelToChunks(schema);
+        this.schema = schema;
     }
 
     @Override
@@ -56,12 +54,12 @@ public final class ByteChannelBodyWriter
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<ReadableByteChannel> content,
+    public Publisher<DataChunk> write(ReadableByteChannel content,
             GenericType<? extends ReadableByteChannel> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.APPLICATION_OCTET_STREAM);
-        return content.mapMany(mapper);
+        return new ReadableByteChannelPublisher(content, schema);
     }
 
     /**
@@ -79,24 +77,5 @@ public final class ByteChannelBodyWriter
      */
     public static ByteChannelBodyWriter get() {
         return DEFAULT_INSTANCE;
-    }
-
-    /**
-     * Implementation of {@link MultiMapper} that converts a
-     * {@link ReadableByteChannel} to a publisher of {@link DataChunk}.
-     */
-    private static final class ByteChannelToChunks
-            implements MultiMapper<ReadableByteChannel, DataChunk> {
-
-        private final RetrySchema schema;
-
-        ByteChannelToChunks(RetrySchema schema) {
-            this.schema = schema;
-        }
-
-        @Override
-        public Publisher<DataChunk> map(ReadableByteChannel channel) {
-            return new ReadableByteChannelPublisher(channel, schema);
-        }
     }
 }

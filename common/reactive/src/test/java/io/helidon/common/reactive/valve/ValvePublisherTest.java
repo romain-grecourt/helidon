@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class ValvePublisherTest {
 
-    @Test
+    //@Test
     void simpleTest() {
         List<Integer> list = Multi.from(Valves.from(1, 2, 3, 4).toPublisher())
                 .collectList()
@@ -48,7 +48,7 @@ class ValvePublisherTest {
         assertThat(list, hasItems(1, 2, 3, 4));
     }
 
-    @Test
+    //@Test
     void continuous() {
         StringBuilder sb = new StringBuilder();
         Tank<Integer> integerTank = new Tank<>(10);
@@ -65,7 +65,7 @@ class ValvePublisherTest {
         assertThat(sb.toString(), is(equalTo("1234")));
     }
 
-    @Test
+    //@Test
     void publisher() {
         final StringBuilder sb = new StringBuilder();
         Tank<Integer> integerTank = new Tank<>(10);
@@ -128,7 +128,7 @@ class ValvePublisherTest {
         assertThat(sb.toString(), is(equalTo("1234567$")));
     }
 
-    @Test
+    //@Test
     void onNextThrowsException() {
         final AtomicReference<Throwable> exception = new AtomicReference<>();
         Tank<Integer> integerTank = new Tank<>(10);
@@ -186,7 +186,7 @@ class ValvePublisherTest {
         }
     }
 
-    @Test
+    //@Test
     void multiplePublishers() {
         Tank<String> stringTank = new Tank<>(10);
 

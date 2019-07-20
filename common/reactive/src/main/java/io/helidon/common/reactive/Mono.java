@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
+import java.util.function.Function;
 
 /**
  * Single item publisher facility.
@@ -32,7 +33,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
     /**
      * Retrieve the value of this {@link Mono} instance in a blocking manner.
+     *
      * @return value
+     * @throws IllegalStateException if the Mono wraps an error or if
+     * interrupted
      */
     public final T block() {
         MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
@@ -42,8 +46,11 @@ public abstract class Mono<T> implements Publisher<T> {
 
     /**
      * Retrieve the value of this {@link Mono} instance in a blocking manner.
+     *
      * @param timeout timeout value
      * @return value
+     * @throws IllegalStateException if the Mono wraps an error, or the
+     * timeout is reached or if interrupted
      */
     public final T block(Duration timeout) {
         MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
@@ -54,28 +61,58 @@ public abstract class Mono<T> implements Publisher<T> {
 
     /**
      * Map this {@link Mono} instance to a new {@link Mono} of another type
-     * using the given {@link Mapper}.
+     * using the given {@link MonoMapper}.
      * @param <U> mapped item type
-     * @param mapper mapper function
+     * @param mapper mapper
      * @return Mono
      */
-    public final <U> Mono<U> map(Mapper<T, U> mapper) {
-        return new MonoMap<>(this, mapper);
+    public final <U> Mono<U> map(MonoMapper<T, U> mapper) {
+        this.subscribe(mapper);
+        return mapper;
+    }
+
+    /**
+     * Map this {@link Mono} instance to a new {@link Mono} of another type
+     * using the given java {@link Function}.
+     * @param <U> mapped item type
+     * @param mapperFunction mapper function
+     * @return Mono
+     */
+    public final <U> Mono<U> map(Function<T, U> mapperFunction) {
+        MonoMapperFunctional<T, U> mapper =
+                new MonoMapperFunctional<>(mapperFunction);
+        this.subscribe(mapper);
+        return mapper;
     }
 
     /**
      * Map this {@link Mono} instance to a multiple items using the given
-     * {@link MultiMapper}.
+     * {@link MonoMultiMapper}.
      *
      * @param <U> mapped items type
-     * @param mapper mapper function
+     * @param mapper mapper
      * @return Publisher
      */
-    public final <U> Publisher<U> mapMany(MultiMapper<T, U> mapper) {
-        MonoToMultiProcessor<T, U> processor
-                = new MonoToMultiProcessor<>(mapper);
-        this.subscribe(processor);
-        return processor;
+    public final <U> Publisher<U> mapMany(MonoMultiMapper<T, U> mapper) {
+        this.subscribe(mapper);
+        return mapper;
+    }
+
+    /**
+     * Map this {@link Mono} instance to a multiple items using the given
+     * java {@link Function}..
+     *
+     * @param <U> mapped items type
+     * @param mapperFunction mapper function
+     * @return Publisher
+     */
+    public final <U> Publisher<U> mapMany(
+            Function<T, Publisher<U>> mapperFunction) {
+
+        MonoMultiMapperFunctional<T, U> mapper =
+                new MonoMultiMapperFunctional<>(mapperFunction);
+        this.subscribe(mapper);
+        return mapper;
     }
 
     /**
@@ -254,36 +291,6 @@ public abstract class Mono<T> implements Publisher<T> {
     }
 
     /**
-     * Implementation of {@link Mono} that maps a source {@link Mono} instance
-     * using a {@link Mapper}.
-     *
-     * @param <T> input type
-     * @param <U> output type
-     */
-    private final class MonoMap<T, U> extends Mono<U> {
-
-        private final Mono<? extends T> source;
-        private final Mapper<? super T, ? extends U> mapper;
-
-        MonoMap(Mono<? extends T> source,
-                Mapper<? super T, ? extends U> mapper) {
-
-            this.source = Objects.requireNonNull(source,
-                    "source cannot be null!");
-            this.mapper = Objects.requireNonNull(mapper,
-                    "mapper cannot be null!");
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super U> actual) {
-            MonoMapSubscriber<T, U> manager =
-                    new MonoMapSubscriber<>(actual, mapper);
-            actual.onSubscribe(manager);
-            source.subscribe(manager);
-        }
-    }
-
-    /**
      * Implementation of {@link Mono} that never invokes
      * {@link Subscriber#onComplete()} or
      * {@link Subscriber#onError(java.lang.Throwable)}.
@@ -306,6 +313,50 @@ public abstract class Mono<T> implements Publisher<T> {
         @SuppressWarnings("unchecked")
         static <T> Mono<T> instance() {
             return (Mono<T>) INSTANCE;
+        }
+    }
+
+    /**
+     * Implementation of {@link MonoMapper} backed by a java function for
+     * mapping the items.
+     *
+     * @param <T> input type
+     * @param <U> output type
+     */
+    private static final class MonoMapperFunctional<T, U>
+            extends MonoMapper<T, U> {
+
+        private final Function<T, U> mapperFunction;
+
+        MonoMapperFunctional(Function<T, U> mapperFunction) {
+            this.mapperFunction = mapperFunction;
+        }
+
+        @Override
+        public U mapNext(T item) {
+            return mapperFunction.apply(item);
+        }
+    }
+
+    /**
+     * Implementation of {@link MonoMultiMapper} backed by a java function for
+     * mapping the items.
+     *
+     * @param <T> input type
+     * @param <U> output type
+     */
+    private static final class MonoMultiMapperFunctional<T, U>
+            extends MonoMultiMapper<T, U> {
+
+        private final Function<T, Publisher<U>> mapperFunction;
+
+        MonoMultiMapperFunctional(Function<T, Publisher<U>> mapperFunction) {
+            this.mapperFunction = mapperFunction;
+        }
+
+        @Override
+        public Publisher<U> mapNext(T item) {
+            return mapperFunction.apply(item);
         }
     }
 }

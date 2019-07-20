@@ -28,7 +28,7 @@ public interface MessageBodyStreamWriter<T>
         extends MessageBodyOperator<MessageBodyWriterContext> {
 
     /**
-     * Generate HTTP payload from the objects of the given type.
+     * Generate HTTP payload from the given stream of objects.
      *
      * @param publisher objects to convert to payload
      * @param type requested type

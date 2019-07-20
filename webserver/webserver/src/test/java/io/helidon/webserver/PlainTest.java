@@ -277,7 +277,7 @@ public class PlainTest {
         }
     }
 
-//    @Test
+    @Test
     public void unconsumedLargePostDataCausesConnectionClose() throws Exception {
         // open
         try (SocketHttpClient s = new SocketHttpClient(webServer)) {
@@ -379,6 +379,12 @@ public class PlainTest {
         assertThat(headers, IsMapContaining.hasKey("content-length"));
     }
 
+    @Test
+    public void name() throws Exception {
+        for (byte b: "myData".getBytes()) {
+            System.out.println(b);
+        }
+    }
 
     private Map<String, String> cutHeaders(String response) {
         assertThat(response, notNullValue());
@@ -434,13 +440,6 @@ public class PlainTest {
             webServer.shutdown()
                      .toCompletableFuture()
                      .get(10, TimeUnit.SECONDS);
-        }
-    }
-
-    @Test
-    public void name() throws Exception {
-        for (byte b: "myData".getBytes()) {
-            System.out.println(b);
         }
     }
 }

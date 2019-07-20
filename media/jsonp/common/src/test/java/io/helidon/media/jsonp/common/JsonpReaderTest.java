@@ -75,8 +75,8 @@ public class JsonpReaderTest {
         try {
             readJsonObject("{ \"p\" : \"val\" ");
             fail("Should have thrown an exception");
-        } catch (IllegalStateException e) {
-            assertThat(e.getCause(), is(instanceOf(JsonException.class)));
+        } catch (Throwable ex) {
+            assertThat(ex, is(instanceOf(JsonException.class)));
         }
     }
 

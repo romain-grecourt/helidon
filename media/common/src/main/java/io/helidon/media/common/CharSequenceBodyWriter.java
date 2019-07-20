@@ -15,14 +15,10 @@
  */
 package io.helidon.media.common;
 
-import java.nio.charset.Charset;
-
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
 
 /**
  * Writer for {@code CharSequence}.
@@ -35,18 +31,6 @@ public final class CharSequenceBodyWriter
      */
     private static final CharSequenceBodyWriter INSTANCE =
             new CharSequenceBodyWriter();
-
-    /**
-     * CharSequence to chunks mapper charset cache populator.
-     */
-    private static final CharsetCache.Populator<CharSequenceToChunks> CSTOC_POPULATOR =
-            CharSequenceToChunks::new;
-
-    /**
-     * CharSequence to chunks mapper charset cache.
-     */
-    private static final CharsetCache<CharSequenceToChunks> CSTOC_CACHE =
-            new CharsetCache<>(CSTOC_POPULATOR);
 
     /**
      * Enforce the use of {@link #get()}.
@@ -62,13 +46,12 @@ public final class CharSequenceBodyWriter
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<CharSequence> content,
+    public Publisher<DataChunk> write(CharSequence content,
             GenericType<? extends CharSequence> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.TEXT_PLAIN);
-        return content.mapMany(CSTOC_CACHE.get(context.charset(),
-                CSTOC_POPULATOR));
+        return ContentWriters.writeCharSequence(content, context.charset());
     }
 
     /**
@@ -77,24 +60,5 @@ public final class CharSequenceBodyWriter
      */
     public static CharSequenceBodyWriter get() {
         return INSTANCE;
-    }
-
-    /**
-     * Implementation of {@link MultiMapper} to convert {@link CharSequence} to
-     * a publisher of {@link DataChunk}.
-     */
-    private static final class CharSequenceToChunks
-            implements MultiMapper<CharSequence, DataChunk> {
-
-        private final Charset charset;
-
-        CharSequenceToChunks(Charset charset) {
-            this.charset = charset;
-        }
-
-        @Override
-        public Publisher<DataChunk> map(CharSequence cs) {
-            return ContentWriters.writeCharSequence(cs, charset);
-        }
     }
 }

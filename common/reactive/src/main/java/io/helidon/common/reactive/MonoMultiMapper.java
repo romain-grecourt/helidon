@@ -21,34 +21,38 @@ import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 
 /**
- * Processor to convert a {@link Mono} to a {@link Multi}.
- * @param <T> Mono item type (subscribed)
- * @param <U> Multi item type (published)
+ * Processor of {@link Mono} to {@link Publisher} that expands the first (and
+ * only) item to a publisher.
+ *
+ * @param <T> input type
+ * @param <U> output type
  */
-final class MonoToMultiProcessor<T, U> implements Processor<T, U> {
+public abstract class MonoMultiMapper<T, U> implements Processor<T, U> {
 
-    private final MultiMapper<T, ? extends U> mapper;
     private Throwable error;
     private Publisher<? extends U> delegate;
     private Subscription subscription;
     private Subscriber<? super U> subscriber;
     private volatile boolean subcribed;
 
-    MonoToMultiProcessor(MultiMapper<T, ? extends U> mapper) {
-        this.mapper = mapper;
-    }
+    /**
+     * Map a given item to multiple items.
+     * @param item input item to map
+     * @return Publisher of the mapped items
+     */
+    public abstract Publisher<U> mapNext(T item);
 
     @Override
-    public void onNext(T item) {
+    public final void onNext(T item) {
         if (delegate == null) {
-            delegate = mapper.map(item);
+            delegate = mapNext(item);
             doSusbcribe();
         }
         subscription.cancel();
     }
 
     @Override
-    public void onError(Throwable ex) {
+    public final void onError(Throwable ex) {
         if (delegate == null) {
             error = ex;
             delegate = Mono.<U>error(error);
@@ -57,13 +61,13 @@ final class MonoToMultiProcessor<T, U> implements Processor<T, U> {
     }
 
     @Override
-    public void onSubscribe(Subscription s) {
+    public final void onSubscribe(Subscription s) {
         this.subscription = s;
         s.request(1);
     }
 
     @Override
-    public void onComplete() {
+    public final void onComplete() {
     }
 
     private void doSusbcribe() {
@@ -74,7 +78,7 @@ final class MonoToMultiProcessor<T, U> implements Processor<T, U> {
     }
 
     @Override
-    public void subscribe(Subscriber<? super U> subscriber) {
+    public final void subscribe(Subscriber<? super U> subscriber) {
         this.subscriber = subscriber;
         if (delegate != null) {
             doSusbcribe();

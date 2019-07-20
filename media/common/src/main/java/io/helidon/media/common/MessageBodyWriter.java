@@ -18,7 +18,6 @@ package io.helidon.media.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
 
 /**
  * Conversion operator that generate HTTP payload from objects.
@@ -31,11 +30,11 @@ public interface MessageBodyWriter<T>
     /**
      * Generate HTTP payload from the objects of the given type.
      *
-     * @param mono object mono publisher to convert to payload
+     * @param content object to convert to payload
      * @param type requested type
      * @param context the context providing the headers abstraction
      * @return Publisher of objects
      */
-    Publisher<DataChunk> write(Mono<T> mono, GenericType<? extends T> type,
+    Publisher<DataChunk> write(T content, GenericType<? extends T> type,
             MessageBodyWriterContext context);
 }

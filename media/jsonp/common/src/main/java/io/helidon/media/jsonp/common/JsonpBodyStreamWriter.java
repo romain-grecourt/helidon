@@ -19,6 +19,7 @@ import java.nio.charset.Charset;
 import java.util.Objects;
 
 import javax.json.JsonStructure;
+import javax.json.JsonWriter;
 import javax.json.JsonWriterFactory;
 
 import io.helidon.common.GenericType;
@@ -28,9 +29,10 @@ import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
+import io.helidon.media.common.CharBuffer;
+import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyStreamWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
-import io.helidon.media.jsonp.common.JsonpBodyWriter.JsonStructureToChunks;
 
 /**
  * Message body writer reader for {@link JsonStructure} sub-classes (JSON-P).
@@ -38,7 +40,7 @@ import io.helidon.media.jsonp.common.JsonpBodyWriter.JsonStructureToChunks;
 public abstract class JsonpBodyStreamWriter
         implements MessageBodyStreamWriter<JsonStructure> {
 
-    private final JsonWriterFactory jsonFactory;
+    private final JsonWriterFactory jsonWriterFactory;
     private final String begin;
     private final String separator;
     private final String end;
@@ -55,7 +57,7 @@ public abstract class JsonpBodyStreamWriter
 
         Objects.requireNonNull(jsonFactory);
         Objects.requireNonNull(separator);
-        this.jsonFactory = jsonFactory;
+        this.jsonWriterFactory = jsonFactory;
         this.begin = begin;
         this.separator = separator;
         this.end = end;
@@ -91,7 +93,6 @@ public abstract class JsonpBodyStreamWriter
         private final DataChunk separatorChunk;
         private final DataChunk endChunk;
         private final Charset charset;
-        private final JsonStructureToChunks mapper;
 
         JsonArrayStreamProcessor(Publisher<? extends JsonStructure> publisher,
                 Charset charset) {
@@ -110,7 +111,6 @@ public abstract class JsonpBodyStreamWriter
             }
             Objects.requireNonNull(charset);
             this.charset = charset;
-            this.mapper = new JsonStructureToChunks(jsonFactory, charset);
         }
 
         @Override
@@ -150,7 +150,14 @@ public abstract class JsonpBodyStreamWriter
                 first = false;
             }
 
-            mapper.map(item).subscribe(new Subscriber<DataChunk>() {
+            CharBuffer buffer = new CharBuffer();
+            try (JsonWriter writer = jsonWriterFactory.createWriter(buffer)) {
+                if (writer != null) {
+                    writer.write(item);
+                }
+                ContentWriters.writeCharBuffer(buffer, charset)
+                        .subscribe(new Subscriber<DataChunk>() {
+
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     subscription.request(Long.MAX_VALUE);
@@ -170,7 +177,8 @@ public abstract class JsonpBodyStreamWriter
                 public void onComplete() {
                     // no-op
                 }
-            });
+                });
+            }
         }
 
         @Override

@@ -15,28 +15,28 @@
  */
 package io.helidon.common.reactive;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * {@link Collector} implementation that collects items in a {@link List}.
- * @param <U> collected item type
+ * {@link MonoCollector} implementation that concatenates items
+ * {@link Object#toString()} in a {@link String}.
+ *
+ * @param <T> collected item type
  */
-final class ListCollector<U> implements Collector<List<U>, U> {
+final class MonoStringCollector<T extends Object>
+        extends MonoCollector<T, String> {
 
-    private final ArrayList<U> list;
+    private final StringBuilder sb;
 
-    ListCollector() {
-        this.list = new ArrayList<>();
+    MonoStringCollector() {
+        this.sb = new StringBuilder();
     }
 
     @Override
-    public void collect(U item) {
-        list.add(item);
+    public String value() {
+        return sb.toString();
     }
 
     @Override
-    public List<U> value() {
-        return list;
+    public void collect(T item) {
+        sb.append(item.toString());
     }
 }

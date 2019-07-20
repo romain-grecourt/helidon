@@ -34,8 +34,8 @@ import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoMultiMapper;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
 
 /**
  * Actual implementation of {@link MessageBodyWriters}.
@@ -44,7 +44,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         implements MessageBodyWriters, MessageBodyFilters {
 
     /**
-     * {@link MultiMapper} used to map bytes chunks.
+     * {@link OldMultiMapper} used to map bytes chunks.
      */
     private static final BytesMapper BYTES_MAPPER = new BytesMapper();
 
@@ -265,13 +265,13 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * writer that accepts the specified type and current context.
      *
      * @param <T> entity type parameter
-     * @param content input publisher
+     * @param content object to convert to payload
      * @param type actual representation of the entity type
      * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(Mono<T> content,
+    public <T> Publisher<DataChunk> marshall(T content,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
         try {
@@ -303,14 +303,14 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * writer with the specified class.
      *
      * @param <T> entity type parameter
-     * @param content input publisher
+     * @param content object to convert to payload
      * @param writerType the requested writer class
      * @param type actual representation of the entity type
      * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(Mono<T> content,
+    public <T> Publisher<DataChunk> marshall(T content,
             Class<? extends MessageBodyWriter<T>> writerType,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
@@ -625,23 +625,23 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         }
 
         @Override
-        public Publisher<DataChunk> write(Mono<T> mono,
+        public Publisher<DataChunk> write(T content,
                 GenericType<? extends T> type,
                 MessageBodyWriterContext context) {
 
-            return mono.mapMany(function::apply);
+            return function.apply(content);
         }
     }
 
     /**
-     * Implementation of {@link MultiMapper} to convert {@code byte[]} to
+     * Implementation of {@link MonoMultiMapper} to convert {@code byte[]} to
      * a publisher of {@link DataChunk}.
      */
     private static final class BytesMapper
-            implements MultiMapper<byte[], DataChunk> {
+            extends MonoMultiMapper<byte[], DataChunk> {
 
         @Override
-        public Publisher<DataChunk> map(byte[] item) {
+        public Publisher<DataChunk> mapNext(byte[] item) {
             return ContentWriters.writeBytes(item, false);
         }
     }

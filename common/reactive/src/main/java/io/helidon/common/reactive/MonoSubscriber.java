@@ -54,7 +54,6 @@ final class MonoSubscriber<T> implements Subscriber<T>, Subscription {
             return;
         }
 
-        s.cancel();
         actual.onNext(t);
         onComplete();
     }
@@ -80,7 +79,7 @@ final class MonoSubscriber<T> implements Subscriber<T>, Subscription {
     @Override
     public void request(long n) {
         if (requested.compareAndSet(false, true)) {
-            s.request(Long.MAX_VALUE);
+            s.request(1);
         }
     }
 

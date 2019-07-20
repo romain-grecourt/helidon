@@ -20,11 +20,11 @@ import java.util.LinkedList;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.MonoCollector;
+import io.helidon.common.reactive.MonoMultiMapper;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyReadableContent;
@@ -46,11 +46,6 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * Bytes to chunk mapper singleton.
      */
     private static final BytesToChunks BYTES_TO_CHUNKS = new BytesToChunks();
-
-    /**
-     * Collector singleton to collect body parts from a publisher as a list.
-     */
-    private static final PartsCollector COLLECTOR = new PartsCollector();
 
     /**
      * Private to enforce the use of {@link #get()}.
@@ -78,7 +73,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
-        return (Mono<U>) Multi.from(decoder).collect(COLLECTOR);
+        return (Mono<U>) Multi.from(decoder).collect(new PartsCollector());
     }
 
     /**
@@ -93,7 +88,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * A collector that accumulates and buffers body parts.
      */
     private static final class PartsCollector
-            implements Collector<ReadableMultiPart, ReadableBodyPart> {
+            extends MonoCollector<ReadableBodyPart, ReadableMultiPart> {
 
         private final LinkedList<ReadableBodyPart> bodyParts;
 
@@ -131,14 +126,14 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
     }
 
     /**
-     * Implementation of {@link MultiMapper} that converts {@code byte[]} to a
-     * publisher of {@link DataChunk} by copying the bytes.
+     * Implementation of {@link MonoMultiMapper} that converts {@code byte[]} to
+     * a publisher of {@link DataChunk} by copying the bytes.
      */
     private static final class BytesToChunks
-            implements MultiMapper<byte[], DataChunk> {
+            extends MonoMultiMapper<byte[], DataChunk> {
 
         @Override
-        public Publisher<DataChunk> map(byte[] bytes) {
+        public Publisher<DataChunk> mapNext(byte[] bytes) {
             return ContentWriters.writeBytes(bytes, /* copy */ true);
         }
     }
