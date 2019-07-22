@@ -21,7 +21,7 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Mono;
 
 /**
- * Conversion operator that can convert HTTP payload into one object.
+ * Conversion operator that can convert HTTP payload into an object.
  *
  * @param <T> type or base type supported by the operator
  */
@@ -29,13 +29,13 @@ public interface MessageBodyReader<T>
         extends MessageBodyOperator<MessageBodyReaderContext> {
 
     /**
-     * Convert a HTTP payload into a Mono publisher of the given type.
+     * Convert a HTTP payload into a {@link Mono} of the given type.
      *
-     * @param <U> actual requested type parameter
+     * @param <U> requested type
      * @param publisher HTTP payload
-     * @param type requested type
-     * @param context the context providing the headers abstraction
-     * @return Mono publisher
+     * @param type requested type representation
+     * @param context reader context
+     * @return single item publisher
      */
     <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context);

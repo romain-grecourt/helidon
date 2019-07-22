@@ -32,16 +32,19 @@ import io.helidon.common.reactive.Flow.Subscription;
  * The OriginThreadPublisher's nature is to always run
  * {@link Subscriber#onNext(Object)} on the very same thread as
  * {@link #submit(Object)}. In other words, whenever the source of chunks sends
- * data, the same thread is used to deliver the data to the subscriber.Standard
- * publisher implementations (such as {@link SubmissionPublisher} or Reactor
- * Flux would use the same thread as {@link Subscription#request(long)} was
- * called on to deliver the chunk when the data are already available; this
+ * data, the same thread is used to deliver the data to the subscriber.
+ * <p>
+ * Standard publisher implementations (such as {@link SubmissionPublisher} or
+ * Reactor Flux would use the same thread as {@link Subscription#request(long)}
+ * was called on to deliver the chunk when the data are already available; this
  * implementation however strictly uses the originating thread.<p>
  * In order to be able to achieve such behavior, this publisher provides hooks
  * on subscription methods: {@link #hookOnCancel()} and
  * {@link #hookOnRequested(long, long)}.
+ * </p>
  * <p>
- * This publisher allows only a single subscriber.
+ * <strong>This publisher allows only a single subscriber</strong>.
+ * </p>
  *
  * @param <T> type of published items
  * @param <U> type of submitted items

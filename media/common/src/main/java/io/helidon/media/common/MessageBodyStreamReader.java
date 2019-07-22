@@ -20,7 +20,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 
 /**
- * Conversion operator that can convert HTTP payload into many objects.
+ * Conversion operator that can convert HTTP payload into a stream of objects.
  *
  * @param <T> type or base type supported by the operator
  */
@@ -28,13 +28,13 @@ public interface MessageBodyStreamReader<T>
         extends MessageBodyOperator<MessageBodyReaderContext> {
 
     /**
-     * Convert a HTTP payload into objects of the given type.
+     * Convert the given HTTP payload into objects of the given type.
      *
-     * @param <U> actual requested type parameter
+     * @param <U> requested type
      * @param publisher HTTP payload
-     * @param type requested type
-     * @param context the context providing the headers abstraction
-     * @return Publisher of objects
+     * @param type requested type representation
+     * @param context reader context
+     * @return publisher
      */
     <U extends T> Publisher<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context);

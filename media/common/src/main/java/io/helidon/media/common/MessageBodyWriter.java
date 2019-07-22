@@ -31,9 +31,9 @@ public interface MessageBodyWriter<T>
      * Generate HTTP payload from the objects of the given type.
      *
      * @param content object to convert to payload
-     * @param type requested type
-     * @param context the context providing the headers abstraction
-     * @return Publisher of objects
+     * @param type requested type representation
+     * @param context writer context
+     * @return HTTP payload publisher
      */
     Publisher<DataChunk> write(T content, GenericType<? extends T> type,
             MessageBodyWriterContext context);

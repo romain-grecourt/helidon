@@ -13,13 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.media.common;
+package io.helidon.common.reactive;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Processor;
+import java.util.Objects;
+
+import io.helidon.common.reactive.Flow.Subscriber;
 
 /**
- * Reactive contract for processing message body content.
+ * Implementation of {@link Mono} that represents a non {@code null} value.
+ *
+ * @param <T> item type
  */
-public interface MessageBodyFilter extends Processor<DataChunk, DataChunk> {
+final class MonoJust<T> implements Mono<T> {
+
+    private final T value;
+
+    MonoJust(T value) {
+        this.value = Objects.requireNonNull(value, "value cannot be null!");
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super T> subscriber) {
+        subscriber.onSubscribe(new MonoSubscription<>(value, subscriber));
+    }
 }

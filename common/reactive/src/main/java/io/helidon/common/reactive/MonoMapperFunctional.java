@@ -13,13 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.media.common;
+package io.helidon.common.reactive;
 
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Processor;
+import java.util.function.Function;
 
 /**
- * Reactive contract for processing message body content.
+ * Implementation of {@link MonoMapper} backed by a java function for mapping
+ * the items.
+ *
+ * @param <T> subscribed type
+ * @param <U> published type
  */
-public interface MessageBodyFilter extends Processor<DataChunk, DataChunk> {
+final class MonoMapperFunctional<T, U> extends MonoMapper<T, U> {
+
+    private final Function<T, U> mapperFunction;
+
+    MonoMapperFunctional(Function<T, U> mapperFunction) {
+        this.mapperFunction = mapperFunction;
+    }
+
+    @Override
+    public U mapNext(T item) {
+        return mapperFunction.apply(item);
+    }
 }

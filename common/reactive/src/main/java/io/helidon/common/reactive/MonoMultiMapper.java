@@ -24,8 +24,8 @@ import io.helidon.common.reactive.Flow.Subscription;
  * Processor of {@link Mono} to {@link Publisher} that expands the first (and
  * only) item to a publisher.
  *
- * @param <T> input type
- * @param <U> output type
+ * @param <T> subscribed type
+ * @param <U> published type
  */
 public abstract class MonoMultiMapper<T, U> implements Processor<T, U> {
 

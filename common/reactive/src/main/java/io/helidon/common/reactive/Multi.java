@@ -17,7 +17,6 @@ package io.helidon.common.reactive;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -31,7 +30,7 @@ import static io.helidon.common.CollectionsHelper.listOf;
  * Multiple items publisher facility.
  * @param <T> item type
  */
-public abstract class Multi<T> implements Publisher<T> {
+public interface Multi<T> extends Publisher<T> {
 
     /**
      * Subscribe to this {@link Multi} instance with the given delegate
@@ -39,7 +38,7 @@ public abstract class Multi<T> implements Publisher<T> {
      *
      * @param consumer onNext delegate function
      */
-    public final void subscribe(Consumer<? super T> consumer) {
+    default void subscribe(Consumer<? super T> consumer) {
         this.subscribe(new FunctionalSubscriber<>(consumer, null, null, null));
     }
 
@@ -50,7 +49,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param consumer onNext delegate function
      * @param errorConsumer onError delegate function
      */
-    public final void subscribe(Consumer<? super T> consumer,
+    default void subscribe(Consumer<? super T> consumer,
             Consumer<? super Throwable> errorConsumer) {
 
         this.subscribe(new FunctionalSubscriber<>(consumer, errorConsumer,
@@ -65,7 +64,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param errorConsumer onError delegate function
      * @param completeConsumer onComplete delegate function
      */
-    public final void subscribe(Consumer<? super T> consumer,
+    default void subscribe(Consumer<? super T> consumer,
             Consumer<? super Throwable> errorConsumer,
             Runnable completeConsumer) {
 
@@ -82,7 +81,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param completeConsumer onComplete delegate function
      * @param subscriptionConsumer onSusbcribe delegate function
      */
-    public final void subscribe(Consumer<? super T> consumer,
+    default void subscribe(Consumer<? super T> consumer,
             Consumer<? super Throwable> errorConsumer,
             Runnable completeConsumer,
             Consumer<? super Subscription> subscriptionConsumer) {
@@ -98,7 +97,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param mapper mapper
      * @return Multi
      */
-    public final <U> Multi<U> map(MultiMapper<T, U> mapper) {
+    default <U> Multi<U> map(MultiMapper<T, U> mapper) {
         return mapper;
     }
 
@@ -107,12 +106,11 @@ public abstract class Multi<T> implements Publisher<T> {
      * using the given java {@link Function}.
      *
      * @param <U> mapped item type
-     * @param mapperFunction mapper function
+     * @param function mapper function
      * @return Multi
      */
-    public final <U> Multi<U> map(Function<T, U> mapperFunction) {
-        MultiMapperFunctional<T, U> mapper =
-                new MultiMapperFunctional<>(mapperFunction);
+    default <U> Multi<U> map(Function<T, U> function) {
+        MultiMapperFunctional<T, U> mapper = new MultiMapperFunctional<>(function);
         this.subscribe(mapper);
         return mapper;
     }
@@ -123,7 +121,7 @@ public abstract class Multi<T> implements Publisher<T> {
      *
      * @return Mono
      */
-    public final Mono<List<T>> collectList() {
+    default Mono<List<T>> collectList() {
         MonoListCollector<T> collector = new MonoListCollector<>();
         this.subscribe(collector);
         return collector;
@@ -135,7 +133,7 @@ public abstract class Multi<T> implements Publisher<T> {
      *
      * @return Mono
      */
-    public final Mono<String> collectString() {
+    default Mono<String> collectString() {
         MonoStringCollector<T> collector = new MonoStringCollector<>();
         this.subscribe(collector);
         return collector;
@@ -147,7 +145,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param collector collector to use
      * @return Mono
      */
-    public final <U> Mono<U> collect(MonoCollector<? super T, U> collector) {
+    default <U> Mono<U> collect(MonoCollector<? super T, U> collector) {
         this.subscribe(collector);
         return collector;
     }
@@ -159,7 +157,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param source source publisher
      * @return Multi
      */
-    public static <T> Multi<T> from(Publisher<T> source) {
+    static <T> Multi<T> from(Publisher<T> source) {
         return new MultiFromPublisher<>(source);
     }
 
@@ -171,7 +169,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param items items to publish
      * @return Multi
      */
-    public static <T> Multi<T> just(Collection<T> items) {
+    static <T> Multi<T> just(Collection<T> items) {
         return new MultiFromPublisher<>(new FixedItemsPublisher<>(items));
     }
 
@@ -184,9 +182,8 @@ public abstract class Multi<T> implements Publisher<T> {
      * @return Multi
      */
     @SafeVarargs
-    public static <T> Multi<T> just(T... items) {
-        return new MultiFromPublisher<>(new FixedItemsPublisher<>(
-                listOf(items)));
+    static <T> Multi<T> just(T... items) {
+        return new MultiFromPublisher<>(new FixedItemsPublisher<>(listOf(items)));
     }
 
     /**
@@ -199,7 +196,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param error exception to hold
      * @return Multi
      */
-    public static <T> Multi<T> error(Throwable error) {
+    static <T> Multi<T> error(Throwable error) {
         return new MultiError<>(error);
     }
 
@@ -209,7 +206,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param <T> item type
      * @return Multi
      */
-    public static <T> Multi<T> empty() {
+    static <T> Multi<T> empty() {
         return MultiEmpty.<T>instance();
     }
 
@@ -218,120 +215,7 @@ public abstract class Multi<T> implements Publisher<T> {
      * @param <T> item type
      * @return Multi
      */
-    public static <T> Multi<T> never() {
+    static <T> Multi<T> never() {
         return MultiNever.<T>instance();
-    }
-
-    /**
-     * Implementation of {@link Multi} that represents the absence of a value by
-     * invoking {@link Subscriber#onComplete() } during
-     * {@link Publisher#subscribe(Subscriber)}.
-     */
-    private static final class MultiEmpty extends Multi<Object> {
-
-        private static final MultiEmpty INSTANCE = new MultiEmpty();
-
-        MultiEmpty() {
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super Object> subscriber) {
-            subscriber.onSubscribe(EmptySubscription.INSTANCE);
-            subscriber.onComplete();
-        }
-
-        @SuppressWarnings("unchecked")
-        private static <T> Multi<T> instance() {
-            return (Multi<T>) INSTANCE;
-        }
-    }
-
-    /**
-     * Implementation of {@link Multi} that represents an error, raised during
-     * {@link Publisher#subscribe(Subscriber)} by invoking
-     * {@link Subscriber#onError(java.lang.Throwable)}.
-     *
-     * @param <T> item type
-     */
-    private static final class MultiError<T> extends Multi<T> {
-
-        private final Throwable error;
-
-        MultiError(Throwable error) {
-            this.error = Objects.requireNonNull(error, "error");
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            subscriber.onSubscribe(EmptySubscription.INSTANCE);
-            subscriber.onError(error);
-        }
-    }
-
-    /**
-     * Implementation of {@link Multi} that never invokes
-     * {@link Subscriber#onComplete()} or
-     * {@link Subscriber#onError(java.lang.Throwable)}.
-     */
-    private static final class MultiNever extends Multi<Object> {
-
-        /**
-         * Singleton instance.
-         */
-        private static final MultiNever INSTANCE = new MultiNever();
-
-        private MultiNever() {
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super Object> actual) {
-            actual.onSubscribe(EmptySubscription.INSTANCE);
-        }
-
-        @SuppressWarnings("unchecked")
-        static <T> Multi<T> instance() {
-            return (Multi<T>) INSTANCE;
-        }
-    }
-
-    /**
-     * Implementation of {@link Multi} that is backed by a {@link Publisher}.
-     * @param <T> items type
-     */
-    private static final class MultiFromPublisher<T> extends Multi<T> {
-
-        private final Publisher<? extends T> source;
-
-        private MultiFromPublisher(Publisher<? extends T> source) {
-            Objects.requireNonNull(source, "source cannot be null!");
-            this.source = source;
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            source.subscribe(subscriber);
-        }
-    }
-
-    /**
-     * Implementation of {@link MultiMapper} backed by a java function for
-     * mapping the items.
-     *
-     * @param <T> input type
-     * @param <U> output type
-     */
-    private static final class MultiMapperFunctional<T, U>
-            extends MultiMapper<T, U> {
-
-        private final Function<? super T, ? extends U> mapperFunction;
-
-        MultiMapperFunctional(Function<? super T, ? extends U> mapperFunction) {
-            this.mapperFunction = mapperFunction;
-        }
-
-        @Override
-        public U mapNext(T item) {
-            return mapperFunction.apply(item);
-        }
     }
 }

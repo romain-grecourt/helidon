@@ -20,7 +20,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 
 /**
- * Conversion operator that generate HTTP payload from objects.
+ * Conversion operator that generate HTTP payload from a stream of objects.
  *
  * @param <T> type or base type supported by the operator
  */
@@ -31,9 +31,9 @@ public interface MessageBodyStreamWriter<T>
      * Generate HTTP payload from the given stream of objects.
      *
      * @param publisher objects to convert to payload
-     * @param type requested type
-     * @param context the context providing the headers abstraction
-     * @return Publisher of objects
+     * @param type requested type representation
+     * @param context writer context
+     * @return HTTP payload publisher
      */
     Publisher<DataChunk> write(Publisher<T> publisher,
             GenericType<? extends T> type, MessageBodyWriterContext context);

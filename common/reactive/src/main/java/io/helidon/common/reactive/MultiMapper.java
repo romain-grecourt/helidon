@@ -15,6 +15,7 @@
  */
 package io.helidon.common.reactive;
 
+import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
@@ -23,10 +24,10 @@ import io.helidon.common.reactive.Flow.Subscription;
  * Processor of {@link Publisher} to {@link Mono} that publishes and maps each
  * received item.
  *
- * @param <T> input type
- * @param <U> output type
+ * @param <T> subscribed type
+ * @param <U> published type
  */
-public abstract class MultiMapper<T, U> extends Multi<U> implements Subscriber<T> {
+public abstract class MultiMapper<T, U> implements Processor<T, U>, Multi<U> {
 
     private Subscriber<? super U> delegate;
     private boolean done;

@@ -16,7 +16,6 @@
 package io.helidon.common.reactive;
 
 import java.time.Duration;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
@@ -26,10 +25,10 @@ import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 
 /**
- * Single item publisher facility.
- * @param <T> item type
+ * Single item publisher.
+ * @param <T> published type
  */
-public abstract class Mono<T> implements Publisher<T> {
+public interface Mono<T> extends Publisher<T> {
 
     /**
      * Retrieve the value of this {@link Mono} instance in a blocking manner.
@@ -38,7 +37,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @throws IllegalStateException if the Mono wraps an error or if
      * interrupted
      */
-    public final T block() {
+    default T block() {
         MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
         this.subscribe(subscriber);
         return subscriber.blockingGet();
@@ -52,7 +51,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @throws IllegalStateException if the Mono wraps an error, or the
      * timeout is reached or if interrupted
      */
-    public final T block(Duration timeout) {
+    default T block(Duration timeout) {
         MonoBlockingSubscriber<T> subscriber = new MonoBlockingSubscriber<>();
         this.subscribe(subscriber);
         return subscriber.blockingGet(timeout.toMillis(),
@@ -66,7 +65,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param mapper mapper
      * @return Mono
      */
-    public final <U> Mono<U> map(MonoMapper<T, U> mapper) {
+    default <U> Mono<U> map(MonoMapper<T, U> mapper) {
         this.subscribe(mapper);
         return mapper;
     }
@@ -75,42 +74,41 @@ public abstract class Mono<T> implements Publisher<T> {
      * Map this {@link Mono} instance to a new {@link Mono} of another type
      * using the given java {@link Function}.
      * @param <U> mapped item type
-     * @param mapperFunction mapper function
+     * @param function mapper function
      * @return Mono
      */
-    public final <U> Mono<U> map(Function<T, U> mapperFunction) {
-        MonoMapperFunctional<T, U> mapper =
-                new MonoMapperFunctional<>(mapperFunction);
+    default <U> Mono<U> map(Function<T, U> function) {
+        MonoMapperFunctional<T, U> mapper = new MonoMapperFunctional<>(function);
         this.subscribe(mapper);
         return mapper;
     }
 
     /**
-     * Map this {@link Mono} instance to a multiple items using the given
+     * Map this {@link Mono} instance to a publisher using the given
      * {@link MonoMultiMapper}.
      *
      * @param <U> mapped items type
      * @param mapper mapper
      * @return Publisher
      */
-    public final <U> Publisher<U> mapMany(MonoMultiMapper<T, U> mapper) {
+    default <U> Publisher<U> mapMany(MonoMultiMapper<T, U> mapper) {
         this.subscribe(mapper);
         return mapper;
     }
 
     /**
-     * Map this {@link Mono} instance to a multiple items using the given
-     * java {@link Function}..
+     * Map this {@link Mono} instance to a publisher using the given
+     * java {@link Function}.
      *
      * @param <U> mapped items type
-     * @param mapperFunction mapper function
+     * @param function mapper function
      * @return Publisher
      */
-    public final <U> Publisher<U> mapMany(
-            Function<T, Publisher<U>> mapperFunction) {
+    default <U> Publisher<U> mapMany(
+            Function<T, Publisher<U>> function) {
 
         MonoMultiMapperFunctional<T, U> mapper =
-                new MonoMultiMapperFunctional<>(mapperFunction);
+                new MonoMultiMapperFunctional<>(function);
         this.subscribe(mapper);
         return mapper;
     }
@@ -119,7 +117,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * Exposes this {@link Mono} instance as a {@link CompletableFuture}.
      * @return CompletableFuture
      */
-    public final CompletableFuture<T> toFuture() {
+    default CompletableFuture<T> toFuture() {
         try {
             MonoToCompletableFuture<T> subscriber =
                     new MonoToCompletableFuture<>();
@@ -138,7 +136,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param future source future
      * @return Mono
      */
-    public static <T> Mono<T> fromFuture(CompletionStage<? extends T> future) {
+    static <T> Mono<T> fromFuture(CompletionStage<? extends T> future) {
         return new MonoFromCompletionStage<>(future);
     }
 
@@ -150,7 +148,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @return Mono
      */
     @SuppressWarnings("unchecked")
-    public static <T> Mono<T> from(Publisher<? extends T> source) {
+    static <T> Mono<T> from(Publisher<? extends T> source) {
         if (source instanceof Mono) {
             return (Mono<T>) source;
         }
@@ -165,7 +163,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param item item to publish
      * @return Mono
      */
-    public static <T> Mono<T> just(T item) {
+    static <T> Mono<T> just(T item) {
         return new MonoJust<>(item);
     }
 
@@ -179,7 +177,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param error exception to hold
      * @return Mono
      */
-    public static <T> Mono<T> error(Throwable error) {
+    static <T> Mono<T> error(Throwable error) {
         return new MonoError<>(error);
     }
 
@@ -189,7 +187,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param <T> item type
      * @return Mono
      */
-    public static <T> Mono<T> empty() {
+    static <T> Mono<T> empty() {
         return MonoEmpty.<T>instance();
     }
 
@@ -198,165 +196,7 @@ public abstract class Mono<T> implements Publisher<T> {
      * @param <T> item type
      * @return Mono
      */
-    public static <T> Mono<T> never() {
+    static <T> Mono<T> never() {
         return MonoNever.<T>instance();
-    }
-
-    /**
-     * Implementation of {@link Mono} that represents a non {@code null} value.
-     * @param <T> item type
-     */
-    private static final class MonoJust<T> extends Mono<T> {
-
-        private final T value;
-
-        MonoJust(T value) {
-            this.value = Objects.requireNonNull(value, "value");
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            subscriber.onSubscribe(new MonoSubscription<>(value, subscriber));
-        }
-    }
-
-    /**
-     * Implementation of {@link Mono} that represents the absence of a value by
-     * invoking {@link Subscriber#onComplete() } during
-     * {@link Publisher#subscribe(Subscriber)}.
-     */
-    private static final class MonoEmpty extends Mono<Object> {
-
-        /**
-         * Singleton instance.
-         */
-        private static final MonoEmpty INSTANCE = new MonoEmpty();
-
-        private MonoEmpty() {
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super Object> subscriber) {
-            subscriber.onSubscribe(EmptySubscription.INSTANCE);
-            subscriber.onComplete();
-        }
-
-        @SuppressWarnings("unchecked")
-        private static <T> Mono<T> instance() {
-            return (Mono<T>) INSTANCE;
-        }
-    }
-
-    /**
-     * Implementation of {@link Mono} that represents an error, raised during
-     * {@link Publisher#subscribe(Subscriber)} by invoking
-     * {@link Subscriber#onError(java.lang.Throwable)}.
-     *
-     * @param <T> item type
-     */
-    private static final class MonoError<T> extends Mono<T> {
-
-        private final Throwable error;
-
-        MonoError(Throwable error) {
-            this.error = Objects.requireNonNull(error, "error");
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> subscriber) {
-            subscriber.onSubscribe(EmptySubscription.INSTANCE);
-            subscriber.onError(error);
-        }
-    }
-
-    /**
-     * Implementation of {@link Mono} that exposed the first item of a
-     * {@link Publisher}.
-     *
-     * @param <T> item type
-     */
-    private static final class MonoNext<T> extends Mono<T> {
-
-        private final Publisher<? extends T> source;
-
-        MonoNext(Publisher<? extends T> source) {
-            this.source = Objects.requireNonNull(source,
-                    "source cannot be null!");
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super T> actual) {
-            source.subscribe(new MonoSubscriber<>(actual));
-        }
-    }
-
-    /**
-     * Implementation of {@link Mono} that never invokes
-     * {@link Subscriber#onComplete()} or
-     * {@link Subscriber#onError(java.lang.Throwable)}.
-     */
-    private static final class MonoNever extends Mono<Object> {
-
-        /**
-         * Singleton instance.
-         */
-        private static final MonoNever INSTANCE = new MonoNever();
-
-        private MonoNever() {
-        }
-
-        @Override
-        public void subscribe(Subscriber<? super Object> actual) {
-            actual.onSubscribe(EmptySubscription.INSTANCE);
-        }
-
-        @SuppressWarnings("unchecked")
-        static <T> Mono<T> instance() {
-            return (Mono<T>) INSTANCE;
-        }
-    }
-
-    /**
-     * Implementation of {@link MonoMapper} backed by a java function for
-     * mapping the items.
-     *
-     * @param <T> input type
-     * @param <U> output type
-     */
-    private static final class MonoMapperFunctional<T, U>
-            extends MonoMapper<T, U> {
-
-        private final Function<T, U> mapperFunction;
-
-        MonoMapperFunctional(Function<T, U> mapperFunction) {
-            this.mapperFunction = mapperFunction;
-        }
-
-        @Override
-        public U mapNext(T item) {
-            return mapperFunction.apply(item);
-        }
-    }
-
-    /**
-     * Implementation of {@link MonoMultiMapper} backed by a java function for
-     * mapping the items.
-     *
-     * @param <T> input type
-     * @param <U> output type
-     */
-    private static final class MonoMultiMapperFunctional<T, U>
-            extends MonoMultiMapper<T, U> {
-
-        private final Function<T, Publisher<U>> mapperFunction;
-
-        MonoMultiMapperFunctional(Function<T, Publisher<U>> mapperFunction) {
-            this.mapperFunction = mapperFunction;
-        }
-
-        @Override
-        public Publisher<U> mapNext(T item) {
-            return mapperFunction.apply(item);
-        }
     }
 }

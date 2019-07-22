@@ -36,8 +36,8 @@ public final class MessageBodyReadableContent
     private final MessageBodyReaderContext context;
 
     /**
-     * Create a new readable content backed by the specified inbound publisher.
-     * @param publisher inbound publisher
+     * Create a new readable content backed by the specified publisher.
+     * @param publisher content publisher
      * @param context reader context
      */
     MessageBodyReadableContent(Publisher<DataChunk> publisher,
@@ -132,7 +132,7 @@ public final class MessageBodyReadableContent
     }
 
     /**
-     * Consumes and converts the inbound payload into a completion stage of the
+     * Consumes and converts the content payload into a completion stage of the
      * requested type.
      *
      * @param type the requested type class
@@ -144,7 +144,7 @@ public final class MessageBodyReadableContent
     }
 
     /**
-     * Consumes and converts the inbound payload into a stream of entities of
+     * Consumes and converts the content payload into a stream of entities of
      * the requested type.
      *
      * @param type the requested type class
@@ -156,7 +156,7 @@ public final class MessageBodyReadableContent
     }
 
     /**
-     * Consumes and converts the inbound payload into a stream of entities of
+     * Consumes and converts the content payload into a stream of entities of
      * the requested type.
      *
      * @param type the requested type class
@@ -169,7 +169,7 @@ public final class MessageBodyReadableContent
 
     /**
      * Create a new readable content backed by the given publisher and context.
-     * @param publisher inbound publisher
+     * @param publisher content publisher
      * @param context reader context
      * @return MessageBodyReadableContent
      */

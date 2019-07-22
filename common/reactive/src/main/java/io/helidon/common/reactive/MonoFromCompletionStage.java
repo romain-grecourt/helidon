@@ -24,7 +24,7 @@ import io.helidon.common.reactive.Flow.Subscription;
 /**
  * Mono backed by a {@link CompletionStage}.
  */
-final class MonoFromCompletionStage<T> extends Mono<T> {
+final class MonoFromCompletionStage<T> implements Mono<T> {
 
     private final CompletionStage<? extends T> future;
     private Subscriber<? super T> subscriber;

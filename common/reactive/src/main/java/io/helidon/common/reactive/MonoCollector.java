@@ -17,6 +17,7 @@ package io.helidon.common.reactive;
 
 import java.util.Objects;
 
+import io.helidon.common.reactive.Flow.Processor;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
 
@@ -24,11 +25,11 @@ import io.helidon.common.reactive.Flow.Subscription;
  * Processor of {@link Multi} to {@link Mono} that collects items from the
  * {@link Multi} and publishes a single collector object as a {@link Mono}.
  *
- * @param <T> collected items type (input)
- * @param <U> collector container type (output)
+ * @param <T> subscribed type (collected)
+ * @param <U> published type (collector)
  */
-public abstract class MonoCollector<T, U> extends Mono<U>
-        implements Subscriber<T>, Subscription {
+public abstract class MonoCollector<T, U>
+        implements Processor<T, U>, Mono<U>, Subscription {
 
     private Subscriber<? super U> delegate;
     private Flow.Subscription subscription;
