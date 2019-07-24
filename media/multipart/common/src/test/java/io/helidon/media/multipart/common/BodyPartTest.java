@@ -115,7 +115,7 @@ public class BodyPartTest {
 
     @Test
     public void testBuildingPartWithNoContent() {
-        assertThrows(IllegalStateException.class, ()-> {
+        assertThrows(IllegalStateException.class, () -> {
             ReadableBodyPart.builder().build();
         });
     }
@@ -168,7 +168,7 @@ public class BodyPartTest {
 
         @Override
         public void subscribe(Subscriber<? super DataChunk> subscriber) {
-            delegate.subscribe(new Subscriber<DataChunk> () {
+            delegate.subscribe(new Subscriber<DataChunk>() {
                 @Override
                 public void onSubscribe(Subscription subscription) {
                     subscriber.onSubscribe(subscription);

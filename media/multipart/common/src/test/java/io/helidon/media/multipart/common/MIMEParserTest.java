@@ -42,8 +42,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MIMEParserTest {
 
-    private static final Logger LOGGER =
-            Logger.getLogger(MIMEParser.class.getName());
+    private static final Logger LOGGER
+            = Logger.getLogger(MIMEParser.class.getName());
 
     @BeforeAll
     public static void before() {
@@ -56,7 +56,6 @@ public class MIMEParserTest {
     }
 
     // TODO test mixed with nested boundaries
-
     @Test
     public void testSkipPreambule() {
         String boundary = "boundary";
@@ -90,7 +89,7 @@ public class MIMEParserTest {
         assertThat(parts.size(), is(equalTo(1)));
 
         MIMEPart part1 = parts.get(0);
-        assertThat(part1.headers.get("-" +boundary + "Content-Id"),
+        assertThat(part1.headers.get("-" + boundary + "Content-Id"),
                 hasItems("part1"));
         assertThat(part1.content, is(notNullValue()));
         assertThat(new String(part1.content), is(equalTo("1")));
@@ -157,7 +156,7 @@ public class MIMEParserTest {
                 + "Content-Transfer-Encoding: binary\n"
                 + "Content-Id: part2\n"
                 + "\n").getBytes(),
-                new byte[] { (byte)0xff, (byte)0xd8 },
+                new byte[]{(byte) 0xff, (byte) 0xd8},
                 ("\n--" + boundary + "--").getBytes());
 
         List<MIMEPart> parts = parse(boundary, chunk1).parts;
@@ -253,7 +252,7 @@ public class MIMEParserTest {
                 + "Content-Transfer-Encoding: binary\n"
                 + "Content-Id: part2\n"
                 + "\n").getBytes(),
-                new byte[] { (byte)0xff, (byte)0xd8 });
+                new byte[]{(byte) 0xff, (byte) 0xd8});
 
         MIMEParser.ParsingException ex
                 = assertThrows(MIMEParser.ParsingException.class, () -> {
@@ -335,7 +334,7 @@ public class MIMEParserTest {
                 + "Content-Transfer-Encoding: binary\n"
                 + "Content-Id: part2\n"
                 + "\n").getBytes(),
-                new byte[] { (byte)0xff, (byte)0xd8 },
+                new byte[]{(byte) 0xff, (byte) 0xd8},
                 ("\n--" + boundary).getBytes());
 
         MIMEParser.ParsingException ex
@@ -391,7 +390,7 @@ public class MIMEParserTest {
         assertThat(part1.headers.size(), is(equalTo(1)));
         assertThat(part1.headers.get("Content-Id"), hasItems("part1"));
         assertThat(part1.content, is(notNullValue()));
-        assertThat(new String(part1.content),is(equalTo(
+        assertThat(new String(part1.content), is(equalTo(
                 "this-is-the-1st-slice-of-the-body\n"
                 + "this-is-the-2nd-slice-of-the-body")));
     }
@@ -675,10 +674,11 @@ public class MIMEParserTest {
 
     /**
      * Concatenate the specified byte arrays.
+     *
      * @param arrays byte arrays to concatenate
      * @return resulting array of the concatenation
      */
-    private static byte[] concat(byte[]... arrays){
+    private static byte[] concat(byte[]... arrays) {
         int length = 0;
         for (byte[] array : arrays) {
             length += array.length;
@@ -694,12 +694,13 @@ public class MIMEParserTest {
 
     /**
      * Parse the parts in the given request chunks.
+     *
      * @param boundary boundary string
      * @param requestChunks request chunks
      * @return test parser event processor
      */
     static ParserEventProcessor parse(String boundary,
-            byte[] ... requestChunks) {
+            byte[]... requestChunks) {
 
         ParserEventProcessor processor = new ParserEventProcessor();
         MIMEParser parser = new MIMEParser(boundary, processor);

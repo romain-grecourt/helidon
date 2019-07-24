@@ -354,7 +354,7 @@ public class MultiPartDecoderTest {
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
                     latch.countDown();
-                    assertThat(body,is(equalTo("This is the 2nd body.")));
+                    assertThat(body, is(equalTo("This is the 2nd body.")));
                 });
             }
         };
