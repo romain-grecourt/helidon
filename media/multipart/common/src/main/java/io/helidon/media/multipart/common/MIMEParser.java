@@ -297,6 +297,14 @@ final class MIMEParser {
         private ParsingException(String message) {
             super(message);
         }
+
+        /**
+         * Create a new exception with the specified cause.
+         * @param message exception cause
+         */
+        private ParsingException(Throwable cause) {
+            super(cause);
+        }
     }
 
     /**
@@ -457,7 +465,13 @@ final class MIMEParser {
             default:
                 throw new ParsingException("Invalid state: " + state);
         }
-        makeProgress();
+        try {
+            makeProgress();
+        } catch (ParsingException ex) {
+            throw ex;
+        } catch (Throwable ex) {
+            throw new ParsingException(ex);
+        }
     }
 
     /**
@@ -493,7 +507,7 @@ final class MIMEParser {
     /**
      * Advances parsing.
      */
-    private void makeProgress() throws ParsingException{
+    private void makeProgress() throws ParsingException {
 
         while (true) {
 

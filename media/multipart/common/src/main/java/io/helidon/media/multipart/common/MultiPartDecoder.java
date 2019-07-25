@@ -15,7 +15,6 @@
  */
 package io.helidon.media.multipart.common;
 
-import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.Optional;
@@ -68,6 +67,11 @@ public final class MultiPartDecoder
      * The publisher for the current part.
      */
     private BodyPartContentPublisher contentPublisher;
+
+    /**
+     * The parent chunk for the published body part chunks.
+     */
+    private BodyPartChunk.Parent chunkParent;
 
     /**
      * The MIME parser.
@@ -126,6 +130,10 @@ public final class MultiPartDecoder
 
     @Override
     public void onNext(DataChunk chunk) {
+
+        // set the current parent chunk
+        chunkParent = new BodyPartChunk.Parent(chunk);
+
         try {
             // feed the parser
             parser.offer(chunk.data());
@@ -233,8 +241,8 @@ public final class MultiPartDecoder
                             .build());
                     break;
                 case CONTENT:
-                    contentPublisher.submit(event.asContentEvent()
-                            .data());
+                    contentPublisher.submit(new BodyPartChunk(chunkParent,
+                            event.asContentEvent().data()));
                     break;
                 case END_PART:
                     contentPublisher.complete();
@@ -293,11 +301,11 @@ public final class MultiPartDecoder
      * Body part content publisher.
      */
     static final class BodyPartContentPublisher
-            extends OriginThreadPublisher<DataChunk, ByteBuffer> {
+            extends OriginThreadPublisher<DataChunk, BodyPartChunk> {
 
         @Override
-        protected DataChunk wrap(ByteBuffer item) {
-            return DataChunk.create(item);
+        protected DataChunk wrap(BodyPartChunk item) {
+            return item;
         }
     }
 }
