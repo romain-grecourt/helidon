@@ -165,7 +165,7 @@ public class VirtualBufferTest {
                 + "Content-Id: part1\n"
                 + "\n"
                 + "body 1.aaaa\n").getBytes()), 0);
-        assertThat(buf.length,  is(equalTo(42)));
+        assertThat(buf.length(),  is(equalTo(42)));
         assertThat(new String(buf.getBytes(11, 17)), is(equalTo("Content-Id: part1")));
         List<ByteBuffer> slices1 = buf.slice(30, 31);
         assertThat(slices1.size(), is(equalTo(1)));
@@ -173,7 +173,7 @@ public class VirtualBufferTest {
         assertThat(new String(Utils.toByteArray(bb1)), is(equalTo("b")));
 
         buf.offer(ByteBuffer.wrap("body 1.bbbb\n".getBytes()), 31);
-        assertThat(buf.length,  is(equalTo(23)));
+        assertThat(buf.length(), is(equalTo(23)));
         List<ByteBuffer> slices2 = buf.slice(0, 12);
         assertThat(slices2.size(), is(equalTo(2)));
         ByteBuffer bb2 = slices2.get(0);
@@ -186,7 +186,7 @@ public class VirtualBufferTest {
                 + "Content-Id: part2\n"
                 + "\n"
                 + "This is the 2nd").getBytes()), 12);
-        assertThat(buf.length,  is(equalTo(68)));
+        assertThat(buf.length(),  is(equalTo(68)));
         assertThat(buf.buffersCount(), is(equalTo(2)));
         assertThat(new String(buf.getBytes(34, 17)), is(equalTo("Content-Id: part2")));
         List<ByteBuffer> slices3 = buf.slice(0, 22);
@@ -202,7 +202,7 @@ public class VirtualBufferTest {
 
         buf.offer(ByteBuffer.wrap((" body.\n"
                 + "--boundary--").getBytes()), 33);
-        assertThat(buf.length, is(equalTo(54)));
+        assertThat(buf.length(), is(equalTo(54)));
         assertThat(buf.buffersCount(), is(equalTo(2)));
         List<ByteBuffer> slices5 = buf.slice(24, 41);
         assertThat(slices5.size(), is(equalTo(2)));

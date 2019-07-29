@@ -39,7 +39,7 @@ final class VirtualBuffer {
 
     private final LinkedList<ByteBuffer> buffers;
     private int offset;
-    int length;
+    private int length;
 
     /**
      * Create a new virtual buffer.
@@ -48,6 +48,14 @@ final class VirtualBuffer {
         offset = 0;
         length = 0;
         buffers = new LinkedList<>();
+    }
+
+    /**
+     * Get the buffer length.
+     * @return buffer length
+     */
+    int length() {
+        return length;
     }
 
     /**
@@ -69,15 +77,15 @@ final class VirtualBuffer {
      */
     void offer(ByteBuffer buffer, int newOffset) {
         if (newOffset < 0) {
-            throw new IllegalArgumentException("offset should not be negative");
+            throw new IllegalArgumentException("Negative offset: " + newOffset);
         }
         buffers.offer(buffer.asReadOnlyBuffer());
         length = length + buffer.limit() - newOffset;
         Iterator<ByteBuffer> it = buffers.iterator();
         int pos = 0; // absolute position for current buffer start
-        int off = offset + newOffset; // asbolute new offset with the current buffers
+        int off = offset + newOffset; // new absolute offset with current buffers
         boolean found = false;
-        while(it.hasNext() && pos <= off) {
+        while (it.hasNext() && pos <= off) {
             int nextPosition = pos + it.next().limit();
             if (nextPosition >= off) {
                 offset = off - pos;
@@ -104,8 +112,7 @@ final class VirtualBuffer {
      */
     byte getByte(int index) {
         if (index < 0 || index >= length) {
-            throw new IndexOutOfBoundsException(
-                    "invalid index: " + index);
+            throw new IndexOutOfBoundsException("Invalid index: " + index);
         }
         int pos = 0; // absolute position for current buffer start
         int off = offset + index; // actual offset
@@ -117,7 +124,7 @@ final class VirtualBuffer {
             pos = nextPos;
         }
         // should not be reachable
-        throw new IllegalStateException("Reached end of virtual buffer");
+        throw new IllegalStateException("End of virtual buffer");
     }
 
     /**
@@ -141,7 +148,11 @@ final class VirtualBuffer {
         for (ByteBuffer buffer : buffers) {
             int nextPos = pos + buffer.limit();
             int index;
-            while (count < len && (index = off + count) < nextPos) {
+            while (count < len) {
+                index = off + count;
+                if (index < nextPos) {
+                    break;
+                }
                 dst[count] = buffer.get(index - pos);
                 count++;
             }
@@ -205,7 +216,7 @@ final class VirtualBuffer {
                 || !(end > 0 && end <= length)
                 || begin > end) {
             throw new IndexOutOfBoundsException(
-                    "invalid range, begin=" + begin + ", end=" + end);
+                    "Invalid range, begin=" + begin + ", end=" + end);
         }
     }
 }

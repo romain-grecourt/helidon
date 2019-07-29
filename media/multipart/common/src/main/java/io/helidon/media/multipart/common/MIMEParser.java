@@ -16,7 +16,6 @@
 package io.helidon.media.multipart.common;
 
 import java.io.UnsupportedEncodingException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -451,21 +450,21 @@ final class MIMEParser {
         if (closed) {
             throw new ParsingException("Parser is closed");
         }
-        switch (state) {
-            case START_MESSAGE:
-                buf.offer(data, 0);
-                break;
-            case DATA_REQUIRED:
-                // resume the previous state
-                state = resumeState;
-                resumeState = null;
-                buf.offer(data, position);
-                position = 0;
-                break;
-            default:
-                throw new ParsingException("Invalid state: " + state);
-        }
         try {
+            switch (state) {
+                case START_MESSAGE:
+                    buf.offer(data, 0);
+                    break;
+                case DATA_REQUIRED:
+                    // resume the previous state
+                    state = resumeState;
+                    resumeState = null;
+                    buf.offer(data, position);
+                    position = 0;
+                    break;
+                default:
+                    throw new ParsingException("Invalid state: " + state);
+            }
             makeProgress();
         } catch (ParsingException ex) {
             throw ex;
@@ -475,11 +474,11 @@ final class MIMEParser {
     }
 
     /**
-     * Mark this parser instance as closed. Invoking this method indicates
-     * that no more data will be pushed to the parsing buffer.
+     * Mark this parser instance as closed. Invoking this method indicates that
+     * no more data will be pushed to the parsing buffer.
      *
-     * @throws ParsingException if the parser state is not
-     * {@code END_MESSAGE} or {@code START_MESSAGE}
+     * @throws ParsingException if the parser state is not {@code END_MESSAGE}
+     * or {@code START_MESSAGE}
      */
     void close() throws ParsingException {
         switch (state) {
@@ -648,14 +647,15 @@ final class MIMEParser {
     private List<ByteBuffer> readBody() {
         // matches boundary
         bndStart = match();
+        int bufLen = buf.length();
         if (bndStart == -1) {
             // No boundary is found
-            if (position + bl + 1 < buf.length) {
+            if (position + bl + 1 < bufLen) {
                 // there may be an incomplete boundary at the end of the buffer
                 // return the remaining data minus the boundary length
                 // so that it can be processed next iteration
                 int bodyBegin = position;
-                position = buf.length - (bl + 1);
+                position = bufLen - (bl + 1);
                 return buf.slice(bodyBegin, position);
             }
             // remaining data can be an complete boundary, force it to be
@@ -683,7 +683,7 @@ final class MIMEParser {
         }
 
         // check if this is a "closing" boundary
-        if (bndStart + bl + 1 < buf.length
+        if (bndStart + bl + 1 < bufLen
                 && buf.getByte(bndStart + bl) == '-'
                 && buf.getByte(bndStart + bl + 1) == '-') {
 
@@ -696,13 +696,13 @@ final class MIMEParser {
 
         // Consider all the linear whitespace in boundary+whitespace+"\r\n"
         int lwsp = 0;
-        for (int i = bndStart + bl; i < buf.length
+        for (int i = bndStart + bl; i < bufLen
                 && (buf.getByte(i) == ' ' || buf.getByte(i) == '\t'); i++) {
             ++lwsp;
         }
 
         // Check boundary+whitespace+"\n"
-        if (bndStart + bl + lwsp < buf.length
+        if (bndStart + bl + lwsp < bufLen
                 && buf.getByte(bndStart + bl + lwsp) == '\n') {
 
             state = STATE.END_PART;
@@ -712,7 +712,7 @@ final class MIMEParser {
         }
 
         // Check for boundary+whitespace+"\r\n"
-        if (bndStart + bl + lwsp + 1 < buf.length
+        if (bndStart + bl + lwsp + 1 < bufLen
                 && buf.getByte(bndStart + bl + lwsp) == '\r'
                 && buf.getByte(bndStart + bl + lwsp + 1) == '\n') {
 
@@ -722,7 +722,7 @@ final class MIMEParser {
             return buf.slice(bodyBegin, bodyEnd);
         }
 
-        if (bndStart + bl + lwsp + 1 < buf.length) {
+        if (bndStart + bl + lwsp + 1 < bufLen) {
             // boundary string in a part data
             int bodyBegin = position;
             position = bodyEnd + 1;
@@ -748,22 +748,24 @@ final class MIMEParser {
             return;
         }
 
+        int bufLen = buf.length();
+
         // Consider all the whitespace boundary+whitespace+"\r\n"
         int lwsp = 0;
-        for (int i = bndStart + bl; i < buf.length
+        for (int i = bndStart + bl; i < bufLen
                 && (buf.getByte(i) == ' ' || buf.getByte(i) == '\t'); i++) {
             ++lwsp;
         }
 
         // Check for \n or \r\n
-        if (bndStart + bl + lwsp < buf.length
+        if (bndStart + bl + lwsp < bufLen
                 && (buf.getByte(bndStart + bl + lwsp) == '\n'
                 || buf.getByte(bndStart + bl + lwsp) == '\r')) {
 
             if (buf.getByte(bndStart + bl + lwsp) == '\n') {
                 position = bndStart + bl + lwsp + 1;
                 return;
-            } else if (bndStart + bl + lwsp + 1 < buf.length
+            } else if (bndStart + bl + lwsp + 1 < bufLen
                     && buf.getByte(bndStart + bl + lwsp + 1) == '\n') {
                 position = bndStart + bl + lwsp + 2;
                 return;
@@ -782,20 +784,21 @@ final class MIMEParser {
      * from the buffer
      */
     private String readHeaderLine() {
+        int bufLen = buf.length();
         // need more data to progress
         // need at least one blank line to read (no headers)
-        if (position >= buf.length - 1) {
+        if (position >= bufLen - 1) {
             return null;
         }
         int offset = position;
         int hdrLen = 0;
         int lwsp = 0;
-        for (; offset + hdrLen < buf.length; hdrLen++) {
+        for (; offset + hdrLen < bufLen; hdrLen++) {
             if (buf.getByte(offset + hdrLen) == '\n') {
                 lwsp += 1;
                 break;
             }
-            if (offset + hdrLen + 1 >= buf.length) {
+            if (offset + hdrLen + 1 >= bufLen) {
                 // No more data in the buffer
                 return null;
             }
@@ -870,7 +873,7 @@ final class MIMEParser {
      * @return -1 if there is no match or index where the match starts
      */
     private int match() {
-        int last = buf.length - bndbytes.length;
+        int last = buf.length() - bndbytes.length;
         int off = position;
 
         // Loop over all possible match positions in text
