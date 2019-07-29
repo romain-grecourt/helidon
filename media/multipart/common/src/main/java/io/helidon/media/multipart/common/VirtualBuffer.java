@@ -150,7 +150,7 @@ final class VirtualBuffer {
             int index;
             while (count < len) {
                 index = off + count;
-                if (index < nextPos) {
+                if (index >= nextPos) {
                     break;
                 }
                 dst[count] = buffer.get(index - pos);
