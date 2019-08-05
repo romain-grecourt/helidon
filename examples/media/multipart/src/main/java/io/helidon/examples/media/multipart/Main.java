@@ -16,6 +16,9 @@
 package io.helidon.examples.media.multipart;
 
 import io.helidon.common.http.Http;
+import io.helidon.media.common.MediaSupport;
+import io.helidon.media.multipart.common.MultiPartBodyReader;
+import io.helidon.media.multipart.common.ReadableMultiPart;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.StaticContentSupport;
@@ -60,7 +63,13 @@ public final class Main {
         ServerConfiguration config = ServerConfiguration.builder()
                 .port(8080)
                 .build();
-        WebServer server = WebServer.create(config, createRouting());
+
+        WebServer server = WebServer.builder(createRouting())
+                .config(config)
+                .mediaSupport(MediaSupport.builder()
+                        .registerDefaults()
+                        .registerReader(MultiPartBodyReader.get()))
+                .build();
 
         // Start the server and print some info.
         server.start().thenAccept(ws -> {

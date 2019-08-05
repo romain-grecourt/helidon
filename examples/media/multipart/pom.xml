@@ -34,7 +34,7 @@
     </description>
 
     <properties>
-        <mainClass>io.helidon.examples.media.multipart.MultipartMain</mainClass>
+        <mainClass>io.helidon.examples.media.multipart.Main</mainClass>
     </properties>
 
     <dependencies>

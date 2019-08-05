@@ -17,7 +17,6 @@ package io.helidon.examples.media.multipart;
 
 import io.helidon.media.multipart.common.ReadableBodyPart;
 import io.helidon.media.multipart.common.ReadableMultiPart;
-import io.helidon.media.multipart.server.MultiPartSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -30,8 +29,7 @@ public final class FileUploadService implements Service {
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.register(MultiPartSupport.create())
-             .post("/plain", this::plain)
+        rules.post("/plain", this::plain)
              .post("/", this::test1);
     }
 
