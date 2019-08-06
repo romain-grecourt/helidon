@@ -18,7 +18,6 @@ package io.helidon.examples.media.multipart;
 import io.helidon.common.http.Http;
 import io.helidon.media.common.MediaSupport;
 import io.helidon.media.multipart.common.MultiPartBodyReader;
-import io.helidon.media.multipart.common.ReadableMultiPart;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.StaticContentSupport;

@@ -43,11 +43,6 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             new MultiPartBodyReader();
 
     /**
-     * Bytes to chunk mapper singleton.
-     */
-    private static final BytesToChunks BYTES_TO_CHUNKS = new BytesToChunks();
-
-    /**
      * Private to enforce the use of {@link #get()}.
      */
     private MultiPartBodyReader() {
@@ -104,7 +99,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             // buffer the data
             Publisher<DataChunk> bufferedData = ContentReaders
                     .readBytes(content)
-                    .mapMany(BYTES_TO_CHUNKS);
+                    .mapMany(new BytesToChunks());
 
             // create a content copy with the buffered data
             MessageBodyReadableContent contentCopy = MessageBodyReadableContent

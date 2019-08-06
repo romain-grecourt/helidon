@@ -40,7 +40,7 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
     }
 
     /**
-     * Short-hand for creating an {@link WriteableMultiPart} instances with the
+     * Short-hand for creating {@link WriteableMultiPart} instances with the
      * specified entities as body parts.
      *
      * @param <T> the type of the entities

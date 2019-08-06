@@ -219,4 +219,11 @@ final class VirtualBuffer {
                     "Invalid range, begin=" + begin + ", end=" + end);
         }
     }
+
+    /**
+     * Remove all the underlying {@link ByteBuffer}.
+     */
+    void close() {
+        buffers.clear();
+    }
 }

@@ -439,8 +439,7 @@ final class MIMEParser {
     }
 
     /**
-     * Push new data to the parsing buffer. If the parsing buffer has non
-     * processed data, it will be concatenated with the given new data.
+     * Push new data to the parsing buffer.
      *
      * @param data new data add to the parsing buffer
      * @throws ParsingException if the parser state is not consistent or if
@@ -485,6 +484,7 @@ final class MIMEParser {
             case START_MESSAGE:
             case END_MESSAGE:
                 closed = true;
+                buf.close();
                 break;
             case DATA_REQUIRED:
                 switch (resumeState) {
