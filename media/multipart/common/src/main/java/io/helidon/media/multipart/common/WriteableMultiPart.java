@@ -47,6 +47,22 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
      * @param entities the body part entities
      * @return created MultiPart
      */
+    public static <T> WriteableMultiPart create(T... entities) {
+        Builder builder = builder();
+        for (T entity : entities) {
+            builder.bodyPart(WriteableBodyPart.create(entity));
+        }
+        return builder.build();
+    }
+
+    /**
+     * Short-hand for creating {@link WriteableMultiPart} instances with the
+     * specified entities as body parts.
+     *
+     * @param <T> the type of the entities
+     * @param entities the body part entities
+     * @return created MultiPart
+     */
     public static <T> WriteableMultiPart create(Collection<T> entities) {
         Builder builder = builder();
         for (T entity : entities) {
