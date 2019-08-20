@@ -19,7 +19,6 @@ package io.helidon.media.common;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,17 +28,36 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow;
 
 /**
- * An {@link Flow.Subscriber subscriber} that can subscribe to a source of {@code ByteBuffer} data chunks and then make
- * them available for consumption via standard blocking {@link InputStream} API.
+ * A {@link Flow.Subscriber subscriber} that can subscribe to a {@link Flow.Publisher publisher} of {@link DataChunk data chunk}
+ * and make the data available for consumption via standard blocking {@link InputStream} API.
+ *
+ * This {@link InputStream} is not thread-safe, concurrent accesses should not be allowed and invocations of read() should be
+ * synchronized by the consumer for any state updates to be visible cross-threads.
+ *
+ * The following assumptions are made about the publisher:
+ * <ul>
+ * <li>{@code request} is invoked only after one chunk has been consumed</li>
+ * <li>The number of chunks requested is always 1</li>
+ * <li>The source {@link Flow.Publisher} fully conforms to the reactive-streams specification with respect to:
+ * <ul>
+ * <li>Total order of {@code onNext}, {@code onComplete}, {@code onError} calls</li>
+ * <li>Follows back pressure: {@code onNext} is not called until more chunks are requested</li>
+ * <li>Relaxed ordering of calls to {@code request}, allows to request even after onComplete/onError</li>
+ * </ul>
+ * </li>
+ * </ul>
  */
 public class PublisherInputStream extends InputStream implements Flow.Publisher<DataChunk> {
 
     private static final Logger LOGGER = Logger.getLogger(PublisherInputStream.class.getName());
 
     private final Flow.Publisher<DataChunk> originalPublisher;
-    private final AtomicBoolean closed = new AtomicBoolean(false);
-    private volatile CompletableFuture<DataChunk> processed = new CompletableFuture<>();
+    private CompletableFuture<DataChunk> current = new CompletableFuture<>();
+    private CompletableFuture<DataChunk> next = current;
     private volatile Flow.Subscription subscription;
+    private final AtomicBoolean subscribed = new AtomicBoolean(false);
+    private byte[] oneByte;
+
     /**
      * Wraps the supplied publisher and adds a blocking {@link InputStream} based nature.
      * It is illegal to subscribe to the returned publisher.
@@ -49,49 +67,65 @@ public class PublisherInputStream extends InputStream implements Flow.Publisher<
     public PublisherInputStream(Flow.Publisher<DataChunk> originalPublisher) {
         this.originalPublisher = originalPublisher;
     }
-    private final AtomicBoolean subscribed = new AtomicBoolean(false);
 
-    private static void releaseChunk(DataChunk chunk) {
-        if (chunk != null && !chunk.isReleased()) {
-            LOGGER.finest(() -> "Releasing chunk: " + chunk.id());
-            chunk.release();
-        }
+    @Override
+    public void close() {
+        // assert: if current != next, next cannot ever be resolved with a chunk that needs releasing
+        current.whenComplete(PublisherInputStream::releaseChunk);
+        current = null; // any future read() will fail
     }
 
     @Override
     public int read() throws IOException {
-
-        if (subscribed.compareAndSet(false, true)) {
-            // do the subscribe for the first time
-            subscribe();
+        if (oneByte == null) {
+            oneByte = new byte[1];
+        }
+        // Chunks are always non-empty, so r is either 1 (at least one byte is produced) or
+        // negative (EOF)
+        int r = read(oneByte, 0, 1);
+        if (r < 0) {
+            return r;
         }
 
+        return oneByte[0] & 0xFF;
+    }
+
+    @Override
+    public int read(byte[] buf, int off, int len) throws IOException {
+        if (subscribed.compareAndSet(false, true)) {
+            // subscribe just once
+            subscribe();
+        }
+        if (current == null) {
+            throw new IOException("Already closed");
+        }
         try {
-            while (true) {
-
-                DataChunk chunk = processed.get(); // block until a processing data are available
-                ByteBuffer currentBuffer = chunk != null && !chunk.isReleased() ? chunk.data() : null;
-
-                if (currentBuffer != null && currentBuffer.position() == 0) {
-                    LOGGER.finest(() -> "Reading chunk ID: " + chunk.id());
-                }
-
-                if (currentBuffer != null && currentBuffer.remaining() > 0) {
-                    // if there is anything to read, then read one byte...
-                    return currentBuffer.get() & 0xFF;
-                } else if (!closed.get()) {
-                    // reinitialize the processed buffer future and request more data
-                    processed = new CompletableFuture<>();
-
-                    releaseChunk(chunk);
-                    subscription.request(1);
-                } else {
-                    LOGGER.finest(() -> "Ending stream: " + Optional.ofNullable(chunk).map(DataChunk::id).orElse(null));
-                    // else we have read all the data already and the data inflow has completed
-                    releaseChunk(chunk);
-                    return -1;
-                }
+            DataChunk chunk = current.get(); // block until a processing data are available
+            if (chunk == null) {
+                return -1;
             }
+
+            ByteBuffer currentBuffer = chunk.data();
+
+            if (currentBuffer.position() == 0) {
+                LOGGER.finest(() -> "Reading chunk ID: " + chunk.id());
+            }
+
+            int rem = currentBuffer.remaining();
+            // read as much as possible
+            if (len > rem) {
+                len = rem;
+            }
+            currentBuffer.get(buf, off, len);
+
+            // chunk is consumed entirely, release the chunk and prefetch a new chunk
+            if (len == rem) {
+                releaseChunk(chunk, null);
+                current = next;
+                subscription.request(1);
+            }
+
+            return len;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException(e);
@@ -117,24 +151,34 @@ public class PublisherInputStream extends InputStream implements Flow.Publisher<
             @Override
             public void onNext(DataChunk item) {
                 LOGGER.finest(() -> "Processing chunk: " + item.id());
-                processed.complete(item);
+                // set next to the next future before completing it
+                // since completing next will unblock read() which which may set current to next
+                // if all the data in current has been consumed
+                CompletableFuture<DataChunk> prev = next;
+                next = new CompletableFuture<>();
+                // unblock read()
+                prev.complete(item);
             }
 
             @Override
             public void onError(Throwable throwable) {
-                closed.set(true);
-                if (!processed.completeExceptionally(throwable)) {
-                    // best effort exception propagation
-                    processed = new CompletableFuture<>();
-                    processed.completeExceptionally(throwable);
-                }
+                // unblock read() with an ExecutionException wrapping the throwable
+                // read() uses a try/catch and wraps the ExecutionException cause in an IOException
+                next.completeExceptionally(throwable);
             }
 
             @Override
             public void onComplete() {
-                closed.set(true);
-                processed.complete(null); // if not already completed, then complete
+                // read() returns EOF if the chunk is null
+                next.complete(null);
             }
         });
+    }
+
+    private static void releaseChunk(DataChunk chunk, Throwable th) {
+        if (chunk != null && !chunk.isReleased()) {
+            LOGGER.finest(() -> "Releasing chunk: " + chunk.id());
+            chunk.release();
+        }
     }
 }
