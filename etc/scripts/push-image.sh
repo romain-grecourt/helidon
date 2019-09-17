@@ -38,7 +38,7 @@ readonly SCRIPT=$(basename ${SCRIPT_PATH})
 usage(){
   cat <<EOF
 
-DESCRIPTION: Build a single layer image from a directory
+DESCRIPTION: Push an image tar to a remote registry
 
 USAGE:
 
@@ -47,14 +47,8 @@ $(basename ${SCRIPT}) [--help] [--load] --path=PATH --name=NAME
   --path=PATH
           Path to the source directory to create the image.
 
-  --name=NAME
-          Image name of the form repository:tag.
-
-  --comment=TEXT
-          Comment text to include in the metatada.
-
-  --load
-          Load the created image to the Docker daemon.
+  --repository=NAME
+          Repository name of the form name:tag
 
   --debug
           Print debug output.
