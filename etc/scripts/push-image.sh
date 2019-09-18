@@ -44,11 +44,14 @@ USAGE:
 
 $(basename ${SCRIPT}) [--help] [--load] --path=PATH --name=NAME
 
-  --path=PATH
-          Path to the source directory to create the image.
+  --image=PATH
+          Path to the image tar to be pushed.
 
-  --repository=NAME
-          Repository name of the form name:tag
+  --user=USERNAME
+          Registry username
+
+  --password=PASSWORD
+          Registry password
 
   --debug
           Print debug output.
@@ -72,17 +75,14 @@ for ((i=0;i<${#ARGS[@]};i++))
     "--debug")
         readonly DEBUG=true
         ;;
-    "--path="*)
-        readonly SOURCE_PATH=${ARG#*=}
+    "--image="*)
+        readonly IMAGE_TAR=${ARG#*=}
         ;;
-    "--name="*)
-        readonly IMAGE_NAME=${ARG#*=}
+    "--user="*)
+        readonly UNAME=${ARG#*=}
         ;;
-    "--comment="*)
-        readonly COMMENT=${ARG#*=}
-        ;;
-    "--load")
-        readonly LOAD=true
+    "--password="*)
+        readonly UPASSWD=${ARG#*=}
         ;;
     *)
         echo "ERROR: unkown option: ${ARG}"
@@ -92,24 +92,30 @@ for ((i=0;i<${#ARGS[@]};i++))
   esac
 }
 
-if [ -z "${IMAGE_NAME}" ] ; then
-    echo "ERROR: --name option is required"
+if [ -z "${IMAGE_TAR}" ] ; then
+    echo "ERROR: --image option is required"
+    usage
+    exit 1
+elif [ ! -f "${IMAGE_TAR}" ] ; then
+    echo "ERROR: ${IMAGE_TAR} is not a valid file"
+    exit 1
+fi
+
+if [ -z "${UNAME}" ] ; then
+    echo "ERROR: --user option is required"
     usage
     exit 1
 fi
 
-if [ -z "${SOURCE_PATH}" ] ; then
-    echo "ERROR: --path option is required"
+if [ -z "${UPASSWD}" ] ; then
+    echo "ERROR: --password option is required"
     usage
     exit 1
 fi
 
-if [ -z "${LOAD}" ] ; then
-    readonly LOAD=false
-fi
-
-if [ -z "${COMMENT}" ] ; then
-    readonly COMMENT="created by ${SCRIPT}"
+if ! type jq > /dev/null 2>&1; then
+    echo "ERROR: jq not found in PATH"
+    exit 1
 fi
 
 if [ -z "${DEBUG}" ] ; then
@@ -117,117 +123,139 @@ if [ -z "${DEBUG}" ] ; then
     readonly DEBUG=false
 fi
 
-if ! type sha256sum > /dev/null 2>&1; then
-    if ! type shasum > /dev/null 2>&1; then
-        echo "ERROR: none of sha256sum shasum found in PATH"
-        exit 1
+readonly IMAGE_MANIFEST="$(mktemp -t XXX}).json"
+tar --to-stdout -xf ${IMAGE_TAR} manifest.json > ${IMAGE_MANIFEST}
+echo "INFO: image_manifest=${IMAGE_MANIFEST}"
+
+readonly REPO=$(jq -r '.[].RepoTags[0]' ${IMAGE_MANIFEST})
+readonly IMAGE_NAMESPACE=${REPO%%/*}
+readonly IMAGE_NAME=$(echo ${REPO} | sed -E s@'.*/(.*):.*'@'\1'@g)
+readonly IMAGE_TAG=${REPO##*:}
+echo "INFO: image_namespace=${IMAGE_NAMESPACE}"
+echo "INFO: image_name=${IMAGE_NAME}"
+echo "INFO: image_tag=${IMAGE_TAG}"
+
+readonly AUTH_DOMAIN="auth.docker.io"
+readonly AUTH_SERVICE="registry.docker.io"
+readonly API_URL_BASE="https://registry-1.docker.io/v2/${IMAGE_NAMESPACE}/${IMAGE_NAME}"
+
+get_token(){
+    local tokenOps="service=${AUTH_SERVICE}"
+    tokenOps="${tokenOps}&scope=repository:${IMAGE_NAMESPACE}/${IMAGE_NAME}:push,pull"
+    tokenOps="${tokenOps}&offline_token=1&client_id=${SCRIPT}"
+    curl -X GET -u ${UNAME}:${UPASSWD} "https://${AUTH_DOMAIN}/token?${tokenOps}" | jq -r '.token'
+}
+
+echo "INFO: retrieving auth token"
+readonly TOKEN=$(get_token)
+readonly AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+
+get_header(){
+    grep -i "${1}: " ${2} | awk '{print $2}' | tr -d '\r'
+}
+
+create_blob(){
+    local responseHeaders=$(mktemp -t XXX})
+    curl -v -X POST \
+        -D ${responseHeaders} \
+        -H "${AUTH_HEADER}" \
+       "${API_URL_BASE}/blobs/uploads/"
+    local status=$(head -1 ${responseHeaders})
+    if [[ ${status} =~ .*[202].* ]] ; then
+        UPLOAD_LOCATION=$(get_header "Location" ${responseHeaders})
     else
-        # MacOS
-        readonly SHASUM="shasum -a 256"
+        echo "ERROR: ${status}"
+        return 1
     fi
-else
-    # Linux
-    readonly SHASUM="sha256sum"
+}
+
+blob_size(){
+    local blobLocation=$(get_header "Location" ${RESPONSE_HEADERS})
+    curl -v -L --head -H "${AUTH_HEADER}" "${blobLocation}" > ${RESPONSE_HEADERS}
+    BLOB_SIZE=$(get_header "Content-Length" ${RESPONSE_HEADERS})
+}
+
+readonly IMAGE_CONFIG="$(mktemp -t XXX}).json"
+readonly IMAGE_CONFIG_ENTRY=$(jq -r '.[0].Config' ${IMAGE_MANIFEST})
+tar --to-stdout -xf ${IMAGE_TAR} ${IMAGE_CONFIG_ENTRY} > ${IMAGE_CONFIG}
+echo "INFO: image_config=${IMAGE_CONFIG}"
+
+readonly IMAGE_CONFIG_DIGEST="sha256:${IMAGE_CONFIG_ENTRY%%.json}"
+readonly LAYER_DIGEST=$(jq -r '.rootfs.diff_ids[0]' ${IMAGE_CONFIG})
+echo "INFO: image_config_digest=${IMAGE_CONFIG_DIGEST}"
+echo "INFO: layer_digest=${LAYER_DIGEST}"
+
+RESPONSE_HEADERS=$(mktemp -t XXX})
+
+# upload layer
+create_blob
+tar --to-stdout -xf "${IMAGE_TAR}" $(jq -r '.[0].Layers[0]' ${IMAGE_MANIFEST}) | \
+    curl -v -X PUT --data-binary @- \
+        -D ${RESPONSE_HEADERS} \
+        -H "${AUTH_HEADER}" \
+        -H "Content-Type: application/octet-stream" \
+        "${UPLOAD_LOCATION}&digest=${LAYER_DIGEST}"
+
+STATUS=$(head -1 ${RESPONSE_HEADERS})
+if ! [[ ${STATUS} =~ .*[201].* ]] ; then
+    echo "ERROR: ${status}"
+    return 1
 fi
 
-random_id(){
-  local N B T
-  for (( N=0; N < 32; ++N ))
-  do
-    B=$(( $RANDOM%255 ))
-    if (( N == 6 ))
-    then
-        printf '4%x' $(( B%15 ))
-    elif (( N == 8 ))
-    then
-        local C='89ab'
-        printf '%c%x' ${C:$(( $RANDOM%${#C} )):1} $(( B%15 ))
-    else
-        printf '%02x' $B
-    fi
-  done
-}
+blob_size
+readonly LAYER_SIZE=${BLOB_SIZE}
+echo "INFO: layer_size=${LAYER_SIZE}"
 
-readonly IMAGE_REPO=$(echo ${IMAGE_NAME} | cut -d ':' -f1)
-readonly IMAGE_TAG=$(echo ${IMAGE_NAME} | cut -d ':' -f2)
-readonly WORKDIR=$(mktemp -d -t "XXX${SCRIPT}")
-echo "INFO: source = ${SOURCE_PATH}"
-echo "INFO: name = ${IMAGE_NAME}"
-echo "INFO: image_repo = ${IMAGE_REPO}"
-echo "INFO: image_tag = ${IMAGE_TAG}"
-echo "INFO: workdir ${WORKDIR}"
+# upload image config
+create_blob
+curl -v -X PUT --data-binary @${IMAGE_CONFIG} \
+    -D ${RESPONSE_HEADERS} \
+    -H "${AUTH_HEADER}" \
+    -H "Content-Type: application/vnd.docker.container.image.v1+json" \
+    "${UPLOAD_LOCATION}&digest=${IMAGE_CONFIG_DIGEST}"
 
-readonly CACHE_ID=$(random_id)
-mkdir -p ${WORKDIR}/${CACHE_ID}
+STATUS=$(head -1 ${RESPONSE_HEADERS})
+if ! [[ ${STATUS} =~ .*[201].* ]] ; then
+    echo "ERROR: ${status}"
+    return 1
+fi
 
-tar -cvf ${WORKDIR}/${CACHE_ID}/layer.tar -C ${SOURCE_PATH} .
-echo "1.0" > ${WORKDIR}/${CACHE_ID}/VERSION
-cat << EOF > ${WORKDIR}/${CACHE_ID}/json
+blob_size
+readonly CONFIG_SIZE=${BLOB_SIZE}
+echo "INFO: config_size=${CONFIG_SIZE}"
+
+# create distribution manifest
+readonly DISTRIBUTION_MANIFEST="$(mktemp -t XXX}).json"
+cat << EOF > ${DISTRIBUTION_MANIFEST}
 {
-  "id": "${CACHE_ID}",
-  "architecture": "amd64",
-  "os": "linux"
-}
-EOF
-
-readonly CREATED_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-readonly LAYER_ID=$(${SHASUM} ${WORKDIR}/${CACHE_ID}/layer.tar | cut -d ' ' -f1)
-
-cat << EOF > ${WORKDIR}/config.json
-{
-  "architecture": "amd64",
-  "created": "${CREATED_DATE}",
-  "comment": "${COMMENT}",
-  "os": "linux",
-  "rootfs": {
-    "type": "layers",
-    "diff_ids": [
-      "sha256:${LAYER_ID}"
+    "schemaVersion": 2,
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "config": {
+        "mediaType": "application/vnd.docker.container.image.v1+json",
+        "size": ${CONFIG_SIZE},
+        "digest": "${IMAGE_CONFIG_DIGEST}"
+    },
+    "layers": [
+        {
+            "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+            "size": ${LAYER_SIZE},
+            "digest": "${LAYER_DIGEST}"
+        }
     ]
-  }
 }
 EOF
 
-readonly IMAGE_ID=$(${SHASUM} ${WORKDIR}/config.json | cut -d ' ' -f1)
-mv ${WORKDIR}/config.json ${WORKDIR}/${IMAGE_ID}.json
+# upload manifest
+curl -v -X PUT --data-binary @${DISTRIBUTION_MANIFEST} \
+    -H "${AUTH_HEADER}" \
+    -D ${RESPONSE_HEADERS} \
+    -H "Content-Type: application/vnd.docker.distribution.manifest.v2+json" \
+    "${API_URL_BASE}/manifests/${IMAGE_TAG}"
 
-cat << EOF > ${WORKDIR}/repositories
-{
-  "${IMAGE_REPO}": {
-    "${IMAGE_TAG}": "${CACHE_ID}"
-  }
-}
-EOF
-
-cat << EOF > ${WORKDIR}/manifest.json
-[
-  {
-    "Config": "${IMAGE_ID}.json",
-    "RepoTags": [
-      "${IMAGE_REPO}:${IMAGE_TAG}"
-    ],
-    "Layers": [
-      "${CACHE_ID}/layer.tar"
-    ]
-  }
-]
-EOF
-
-readonly IMAGE_TAR="image-${IMAGE_ID:0:12}.tar"
-echo "INFO: creating ${IMAGE_TAR}..."
-tar -cvf ${IMAGE_TAR} -C ${WORKDIR} .
-
-# load the image
-if ${LOAD} ; then
-    echo "INFO: loading the image to Docker"
-    if ${DEBUG} ; then
-        docker load -i ${IMAGE_TAR}
-    else
-        docker load -i ${IMAGE_TAR} 1> /dev/null
-    fi
+STATUS=$(head -1 ${RESPONSE_HEADERS})
+if ! [[ ${STATUS} =~ .*[201].* ]] ; then
+    echo "ERROR: ${status}"
+    return 1
 fi
 
-if ! ${DEBUG} ; then
-    echo "INFO: cleaning up workdir..."
-    rm -rf ${WORKDIR}
-fi
+echo "DONE!"

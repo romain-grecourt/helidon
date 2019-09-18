@@ -90,6 +90,9 @@ for ((i=0;i<${#ARGS[@]};i++))
     "--load")
         readonly LOAD=true
         ;;
+    "--output-file="*)
+        readonly OUTPUT_FILE=${ARG#*=}
+        ;;
     *)
         echo "ERROR: unkown option: ${ARG}"
         usage
@@ -219,7 +222,12 @@ cat << EOF > ${WORKDIR}/manifest.json
 ]
 EOF
 
-readonly IMAGE_TAR="image-${IMAGE_ID:0:12}.tar"
+if [ ! -z "${OUTPUT_FILE}" ] ; then
+    readonly IMAGE_TAR="${OUTPUT_FILE}"
+else
+    readonly IMAGE_TAR="$(mktemp -t XXX${SCRIPT}).tar"
+fi
+
 echo "INFO: creating ${IMAGE_TAR}..."
 tar -cvf ${IMAGE_TAR} -C ${WORKDIR} .
 
@@ -236,4 +244,9 @@ fi
 if ! ${DEBUG} ; then
     echo "INFO: cleaning up workdir..."
     rm -rf ${WORKDIR}
+fi
+
+if ${LOAD} && [ -z "${OUTPUT_FILE}" ] ; then
+    echo "INFO: cleaning up image tar..."
+    rm -f ${IMAGE_TAR}
 fi
