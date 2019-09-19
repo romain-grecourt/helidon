@@ -53,6 +53,9 @@ $(basename ${SCRIPT}) [--help] [--load] --path=PATH --name=NAME
   --comment=TEXT
           Comment text to include in the metatada.
 
+  --includes=INCLUDES
+          List of relative include paths patterns
+
   --load
           Load the created image to the Docker daemon.
 
@@ -79,13 +82,16 @@ for ((i=0;i<${#ARGS[@]};i++))
         readonly DEBUG=true
         ;;
     "--path="*)
-        readonly SOURCE_PATH=${ARG#*=}
+        readonly SOURCE_PATH=$(cd ${ARG#*=} ; pwd -P)
         ;;
     "--name="*)
         readonly IMAGE_NAME=${ARG#*=}
         ;;
     "--comment="*)
         readonly COMMENT=${ARG#*=}
+        ;;
+    "--includes="*)
+        readonly INCLUDES=${ARG#*=}
         ;;
     "--load")
         readonly LOAD=true
@@ -169,7 +175,20 @@ echo "INFO: workdir ${WORKDIR}"
 readonly CACHE_ID=$(random_id)
 mkdir -p ${WORKDIR}/${CACHE_ID}
 
-tar -cvf ${WORKDIR}/${CACHE_ID}/layer.tar -C ${SOURCE_PATH} .
+readonly TAR_MANIFEST=$(mktemp -t "XXXtar-manifest")
+echo "INFO: tar_manifest=${TAR_MANIFEST}"
+if [ -z "${INCLUDES}" ] ; then
+    find ${SOURCE_PATH} -type f | sed s@"${SOURCE_PATH}/"@@g > ${TAR_MANIFEST}
+else
+    for includedir in ${INCLUDES} ; do
+        find ${SOURCE_PATH}/${includedir} -type f | sed s@"${SOURCE_PATH}/"@@g >> ${TAR_MANIFEST}
+    done
+fi
+
+readonly LAYER_TAR="${WORKDIR}/${CACHE_ID}/layer.tar"
+echo "INFO: creating ${LAYER_TAR}"
+cat ${TAR_MANIFEST} | tar -cvf ${LAYER_TAR} --files-from - -C ${SOURCE_PATH}
+
 echo "1.0" > ${WORKDIR}/${CACHE_ID}/VERSION
 cat << EOF > ${WORKDIR}/${CACHE_ID}/json
 {
@@ -228,7 +247,7 @@ else
     readonly IMAGE_TAR="$(mktemp -t XXX${SCRIPT}).tar"
 fi
 
-echo "INFO: creating ${IMAGE_TAR}..."
+echo "INFO: creating ${IMAGE_TAR}"
 tar -cvf ${IMAGE_TAR} -C ${WORKDIR} .
 
 # load the image
@@ -239,11 +258,6 @@ if ${LOAD} ; then
     else
         docker load -i ${IMAGE_TAR} 1> /dev/null
     fi
-fi
-
-if ! ${DEBUG} ; then
-    echo "INFO: cleaning up workdir..."
-    rm -rf ${WORKDIR}
 fi
 
 if ${LOAD} && [ -z "${OUTPUT_FILE}" ] ; then
