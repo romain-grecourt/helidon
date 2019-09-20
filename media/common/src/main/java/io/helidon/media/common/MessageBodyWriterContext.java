@@ -189,7 +189,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
      */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function) {
-        writers.registerLast(new WriterAdapter<>(function, type, null));
+        writers.registerFirst(new WriterAdapter<>(function, type, null));
         return this;
     }
 
@@ -207,7 +207,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
     public <T> MessageBodyWriterContext registerWriter(Class<T> type, MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
-        writers.registerLast(new WriterAdapter<>(function, type, contentType));
+        writers.registerFirst(new WriterAdapter<>(function, type, contentType));
         return this;
     }
 
@@ -222,7 +222,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
      */
     @Deprecated
     public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
-        writers.registerLast(new WriterAdapter<>(function, accept, null));
+        writers.registerFirst(new WriterAdapter<>(function, accept, null));
         return this;
     }
 
@@ -240,7 +240,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
     public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept, MediaType contentType,
             Function<T, Publisher<DataChunk>> function) {
 
-        writers.registerLast(new WriterAdapter<>(function, accept, contentType));
+        writers.registerFirst(new WriterAdapter<>(function, accept, contentType));
         return this;
     }
 
@@ -261,16 +261,13 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
                 return applyFilters(Multi.<DataChunk>empty());
             }
             if (byte[].class.equals(type.rawType())) {
-                return applyFilters(((Single<byte[]>) content)
-                        .mapMany(BYTES_MAPPER));
+                return applyFilters(((Single<byte[]>) content).mapMany(BYTES_MAPPER));
             }
             MessageBodyWriter<T> writer;
             if (fallback != null) {
-                writer = (MessageBodyWriter<T>) writers.select(type, this,
-                        fallback.writers);
+                writer = (MessageBodyWriter<T>) writers.select(type, this, fallback.writers);
             } else {
-                writer = (MessageBodyWriter<T>) writers.select(type, this,
-                        null);
+                writer = (MessageBodyWriter<T>) writers.select(type, this, null);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -302,8 +299,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
             }
             MessageBodyWriter<T> writer;
             if (fallback != null) {
-                writer = (MessageBodyWriter<T>) writers.get(writerType,
-                        fallback.writers);
+                writer = (MessageBodyWriter<T>) writers.get(writerType, fallback.writers);
             } else {
                 writer = (MessageBodyWriter<T>) writers.get(writerType, null);
             }
@@ -334,11 +330,9 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
             }
             MessageBodyStreamWriter<T> writer;
             if (fallback != null) {
-                writer = (MessageBodyStreamWriter<T>) swriters.select(type,
-                    this, fallback.swriters);
+                writer = (MessageBodyStreamWriter<T>) swriters.select(type, this, fallback.swriters);
             } else {
-                writer = (MessageBodyStreamWriter<T>) swriters.select(type,
-                    null);
+                writer = (MessageBodyStreamWriter<T>) swriters.select(type, null);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -370,8 +364,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
             }
             MessageBodyStreamWriter<T> writer;
             if (fallback != null) {
-                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
-                    fallback.swriters);
+                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType, fallback.swriters);
             } else {
                 writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
                     null);
@@ -474,12 +467,10 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
             } else {
                 for (final MediaType acceptedType : acceptedTypes) {
                     if (predicate.test(acceptedType)) {
-                        if (acceptedType.isWildcardType()
-                                || acceptedType.isWildcardSubtype()) {
+                        if (acceptedType.isWildcardType() || acceptedType.isWildcardSubtype()) {
                             return defaultType;
                         }
-                        return MediaType.create(acceptedType.type(),
-                                acceptedType.subtype());
+                        return MediaType.create(acceptedType.type(), acceptedType.subtype());
                     }
                 }
             }
@@ -573,9 +564,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
 
         @Override
         @SuppressWarnings("unchecked")
-        public boolean accept(GenericType<?> type,
-                MessageBodyWriterContext context) {
-
+        public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
             if (this.type != null) {
                 if (!this.type.isAssignableFrom(type.rawType())) {
                     return false;
@@ -586,7 +575,11 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
                 }
             }
             MediaType ct = context.contentType().orElse(null);
-            return !(contentType != null && ct != null && !ct.test(contentType));
+            if (!(contentType != null && ct != null && !ct.test(contentType))) {
+                context.contentType(contentType);
+                return true;
+            }
+            return false;
         }
 
         @Override

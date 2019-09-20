@@ -16,32 +16,42 @@
 
 package io.helidon.webserver;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
+import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
 
 import io.opentracing.SpanContext;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
-import io.helidon.common.GenericType;
-import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Single;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import io.helidon.common.reactive.Flow.Publisher;
+import java.util.function.Function;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
-import org.junit.jupiter.api.Disabled;
+import static org.hamcrest.beans.HasPropertyWithValue.hasProperty;
+import static org.hamcrest.core.AllOf.allOf;
+import static org.hamcrest.core.IsInstanceOf.instanceOf;
+import static org.hamcrest.core.StringContains.containsString;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -113,26 +123,49 @@ public class ResponseTest {
         assertThat("Content does not match for header: " + headerName, actualValues, containsInAnyOrder(expectedValues));
     }
 
-    @Disabled
+    private static <T> void marshall(Response rsp, T entity)
+            throws InterruptedException, ExecutionException, TimeoutException {
+
+        marshall(rsp, Single.just(entity), (Class<T>)entity.getClass());
+    }
+
+    private static <T> void marshall(Response rsp, Single<T> entity, Class<T> clazz)
+            throws InterruptedException, ExecutionException, TimeoutException {
+
+        Multi.from(rsp.writerContext().marshall(entity, GenericType.create(clazz), null))
+                .collectList()
+                .get(10, TimeUnit.SECONDS);
+    }
+
     @Test
     public void classRelatedWriters() throws Exception {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        assertThat(response.writerContext().marshall(Single.just("foo"), GenericType.create(String.class), null),
-                notNullValue()); // Default
-        assertThat(response.writerContext().marshall(Single.just("foo".getBytes()), GenericType.create(byte[].class), null),
-                notNullValue()); // Default
-        assertThat(response.writerContext().marshall(Single.just(Duration.of(1, ChronoUnit.MINUTES)),
-                GenericType.create(Duration.class), null), nullValue());
+        marshall(response, "foo".getBytes()); // default
+        try {
+            marshall(response, "foo");
+            fail("Should not be called");
+        } catch(ExecutionException e) {
+            assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
+                    hasProperty("message", containsString("No writer found for type"))));
+        }
+        try {
+            marshall(response, Duration.of(1, ChronoUnit.MINUTES));
+            fail("Should not be called");
+        } catch(ExecutionException e) {
+            assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
+                    hasProperty("message", containsString("No writer found for type"))));
+        }
         response.registerWriter(CharSequence.class, o -> {
             sb.append("1");
             return Single.empty();
         });
-        assertThat(response.writerContext().marshall(Single.just("foo"), GenericType.create(String.class), null), notNullValue());
+
+        marshall(response, "foo");
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.empty(), GenericType.create(String.class), null), notNullValue());
+        marshall(response, Single.empty(),String.class);
         assertThat(sb.toString(), is(""));
 
         sb.setLength(0);
@@ -140,20 +173,19 @@ public class ResponseTest {
             sb.append("2");
             return Single.empty();
         });
-        assertThat(response.writerContext().marshall(Single.just("foo"), GenericType.create(String.class), null), notNullValue());
+        marshall(response, "foo");
         assertThat(sb.toString(), is("2"));
 
         sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.just(new StringBuilder()),
-                GenericType.create(StringBuilder.class), null), notNullValue());
+        marshall(response, new StringBuilder());
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        response.registerWriter((Class<Object>) null, o -> {
+        response.registerWriter(Object.class, o -> {
             sb.append("3");
             return Single.empty();
         });
-        assertThat(response.writerContext().marshall(Single.just(1), GenericType.create(int.class), null), notNullValue());
+        marshall(response, 1);
         assertThat(sb.toString(), is("3"));
     }
 
@@ -172,52 +204,43 @@ public class ResponseTest {
                                     sb.append("2");
                                     return Single.empty();
                                 });
-        assertThat(response.writerContext().marshall(Single.just(1), GenericType.create(int.class), null), notNullValue());
+        marshall(response, 1);
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.just(2), GenericType.create(int.class), null), notNullValue());
+        marshall(response, 2);
         assertThat(sb.toString(), is("2"));
 
         sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.just(3), GenericType.create(int.class), null), nullValue());
+        marshall(response, 3);
         assertThat(sb.toString(), is(""));
     }
 
-    @Disabled
     @Test
     public void writerWithMediaType() throws Exception {
         StringBuilder sb = new StringBuilder();
+        Function<? extends CharSequence, Publisher<DataChunk>> stringWriter = o -> {
+            sb.append("A");
+            return Single.empty();
+        };
+        Function<? extends Number, Publisher<DataChunk>> numberWriter = o -> {
+            sb.append("B");
+            return Single.empty();
+        };
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(CharSequence.class,
-                                MediaType.TEXT_PLAIN,
-                                o -> {
-                                    sb.append("A");
-                                    return Single.empty();
-                                });
-        response.registerWriter(Number.class,
-                                MediaType.APPLICATION_JSON,
-                                o -> {
-                                    sb.append("B");
-                                    return Single.empty();
-                                });
-        assertThat(response.writerContext().marshall(Single.just("foo"), GenericType.create(String.class), null), notNullValue());
+        response.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter);
+        response.registerWriter(Number.class, MediaType.APPLICATION_JSON, numberWriter);
+        marshall(response, "foo");
         assertThat(sb.toString(), is("A"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.TEXT_PLAIN));
 
         sb.setLength(0);
-        response.headers().remove(Http.Header.CONTENT_TYPE);
-        assertThat(response.writerContext().marshall(Single.just(1), GenericType.create(int.class), null), notNullValue());
+        response = new ResponseImpl(new NoOpBareResponse(null));
+        response.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter);
+        response.registerWriter(Number.class, MediaType.APPLICATION_JSON, numberWriter);
+        marshall(response, 1);
         assertThat(sb.toString(), is("B"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
-
-        sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.just(1), GenericType.create(int.class), null), notNullValue());
-        assertThat(sb.toString(), is("B"));
-
-        sb.setLength(0);
-        assertThat(response.writerContext().marshall(Single.just(1), GenericType.create(int.class), null), nullValue());
-        assertThat(sb.toString(), is(""));
     }
 
     @Disabled

@@ -54,7 +54,6 @@ import static org.hamcrest.core.IsInstanceOf.instanceOf;
 import static org.hamcrest.core.StringContains.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
-import org.junit.jupiter.api.Disabled;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
@@ -196,7 +195,6 @@ public class RequestContentTest {
                 is("THIRD")));
     }
 
-    @Disabled
     @Test
     public void failingFilter() throws Exception {
         Request request = requestTestStub(Single.never());
@@ -216,15 +214,13 @@ public class RequestContentTest {
             future.get(10, TimeUnit.SECONDS);
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
-            assertThat(e.getCause().getCause(),
-            allOf(instanceOf(IllegalArgumentException.class),
-            hasProperty("message", containsString("Transformation failed!"))));
+            assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
+                hasProperty("message", containsString("Transformation failed!"))));
             assertThat(e.getCause().getCause(),
                 hasProperty("message", containsString("failed-publisher-transformation")));
         }
     }
 
-    @Disabled
     @Test
     public void failingReader() throws Exception {
         Request request = requestTestStub(Single.never());
@@ -237,8 +233,8 @@ public class RequestContentTest {
             request.content().as(Duration.class).toCompletableFuture().get(10, TimeUnit.SECONDS);
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
-            assertThat(e.getCause().getCause(),
-            allOf(instanceOf(IllegalArgumentException.class),
+            assertThat(e.getCause(),
+            allOf(instanceOf(IllegalStateException.class),
                 hasProperty("message", containsString("Transformation failed!"))));
             assertThat(e.getCause().getCause(),
                     hasProperty("message", containsString("failed-read")));

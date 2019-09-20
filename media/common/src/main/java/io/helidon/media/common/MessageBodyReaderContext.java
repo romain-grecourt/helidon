@@ -179,8 +179,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         }
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
-            MessageBodyReader<T> reader = (MessageBodyReader<T>)
-                    readers.get(readerType);
+            MessageBodyReader<T> reader = (MessageBodyReader<T>) readers.get(readerType);
             if (reader == null) {
                 return readerNotFound(readerType.getTypeName());
             }
@@ -206,8 +205,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         }
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
-            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>)
-                    sreaders.select(type, this);
+            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>) sreaders.select(type, this);
             if (reader == null) {
                 return readerNotFound(type.getTypeName());
             }
@@ -236,8 +234,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         }
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
-            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>)
-                    sreaders.get(readerType);
+            MessageBodyStreamReader<T> reader = (MessageBodyStreamReader<T>) sreaders.get(readerType);
             if (reader == null) {
                 return readerNotFound(readerType.getTypeName());
             }
@@ -269,8 +266,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
     public Charset charset() throws IllegalStateException {
         if (contentType.isPresent()) {
             try {
-                return contentType.get().charset().map(Charset::forName)
-                        .orElse(DEFAULT_CHARSET);
+                return contentType.get().charset().map(Charset::forName).orElse(DEFAULT_CHARSET);
             } catch (IllegalCharsetNameException
                     | UnsupportedCharsetException ex) {
                 throw new IllegalStateException(ex);
@@ -293,8 +289,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
             ReadOnlyParameters headers, Optional<MediaType> contentType) {
 
         if (mediaSupport == null) {
-            return new MessageBodyReaderContext(null, eventListener, headers,
-                contentType);
+            return new MessageBodyReaderContext(null, eventListener, headers, contentType);
         }
         return new MessageBodyReaderContext(mediaSupport.readerContext(),
                 eventListener, headers, contentType);
@@ -312,8 +307,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
     public static MessageBodyReaderContext create(MessageBodyReaderContext parent, EventListener eventListener,
             ReadOnlyParameters headers, Optional<MediaType> contentType) {
 
-        return new MessageBodyReaderContext(parent, eventListener, headers,
-                contentType);
+        return new MessageBodyReaderContext(parent, eventListener, headers, contentType);
     }
 
     /**
@@ -324,8 +318,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
      * @return Single
      */
     private static <T> Single<T> readerNotFound(String type) {
-        return Single.<T>error(new IllegalStateException(
-                "No reader found for type: " + type));
+        return Single.<T>error(new IllegalStateException("No reader found for type: " + type));
     }
 
     /**
@@ -337,8 +330,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
      * @return Single
      */
     private static <T> Single<T> transformationFailed(Throwable ex) {
-        return Single.<T>error(new IllegalStateException(
-                    "Transformation failed!", ex));
+        return Single.<T>error(new IllegalStateException("Transformation failed!", ex));
     }
 
     /**
@@ -373,8 +365,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         public <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
                 MessageBodyReaderContext context) {
 
-            return new SingleFromCompletionStage(reader.applyAndCast(publisher,
-                    (Class<U>) type.rawType()));
+            return new SingleFromCompletionStage(reader.applyAndCast(publisher, (Class<U>) type.rawType()));
         }
 
         @Override
