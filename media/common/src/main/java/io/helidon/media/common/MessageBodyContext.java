@@ -27,7 +27,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Base message body context implementation.
@@ -37,8 +37,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Logger.
      */
-    private static final Logger LOGGER =
-            Logger.getLogger(MessageBodyContext.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MessageBodyContext.class.getName());
 
     /**
      * Message body content subscription event listener.
@@ -148,38 +147,32 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Singleton event for {@link EventType#BEFORE_ONSUBSCRIBE}.
      */
-    private static final Event BEFORE_ONSUBSCRIBE = new EventImpl(
-            EventType.BEFORE_ONSUBSCRIBE, Optional.empty());
+    private static final Event BEFORE_ONSUBSCRIBE = new EventImpl(EventType.BEFORE_ONSUBSCRIBE, Optional.empty());
 
     /**
      * Singleton event for {@link EventType#BEFORE_ONNEXT}.
      */
-    private static final Event BEFORE_ONNEXT = new EventImpl(
-            EventType.BEFORE_ONNEXT, Optional.empty());
+    private static final Event BEFORE_ONNEXT = new EventImpl(EventType.BEFORE_ONNEXT, Optional.empty());
 
     /**
      * Singleton event for {@link EventType#BEFORE_ONCOMPLETE}.
      */
-    private static final Event BEFORE_ONCOMPLETE = new EventImpl(
-            EventType.BEFORE_ONCOMPLETE, Optional.empty());
+    private static final Event BEFORE_ONCOMPLETE = new EventImpl(EventType.BEFORE_ONCOMPLETE, Optional.empty());
 
     /**
      * Singleton event for {@link EventType#AFTER_ONSUBSCRIBE}.
      */
-    private static final Event AFTER_ONSUBSCRIBE = new EventImpl(
-            EventType.AFTER_ONSUBSCRIBE, Optional.empty());
+    private static final Event AFTER_ONSUBSCRIBE = new EventImpl(EventType.AFTER_ONSUBSCRIBE, Optional.empty());
 
     /**
      * Singleton event for {@link EventType#AFTER_ONNEXT}.
      */
-    private static final Event AFTER_ONNEXT = new EventImpl(
-            EventType.AFTER_ONNEXT, Optional.empty());
+    private static final Event AFTER_ONNEXT = new EventImpl(EventType.AFTER_ONNEXT, Optional.empty());
 
     /**
      * Singleton event for {@link EventType#AFTER_ONCOMPLETE}.
      */
-    private static final Event AFTER_ONCOMPLETE = new EventImpl(
-            EventType.AFTER_ONCOMPLETE, Optional.empty());
+    private static final Event AFTER_ONCOMPLETE = new EventImpl(EventType.AFTER_ONCOMPLETE, Optional.empty());
 
     /**
      * The filters registry.
@@ -196,9 +189,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      * @param parent content filters parent
      * @param eventListener event listener
      */
-    protected MessageBodyContext(MessageBodyContext parent,
-            EventListener eventListener) {
-
+    protected MessageBodyContext(MessageBodyContext parent, EventListener eventListener) {
         if (parent != null) {
             this.filters = new MessageBodyOperators<>(parent.filters);
             this.eventListener = eventListener;
@@ -232,9 +223,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      * @deprecated use {@link #registerFilter(MessageBodyFilter)} instead
      */
     @Deprecated
-    public void registerFilter(
-            Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-
+    public void registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
         Objects.requireNonNull(function, "filter function is null!");
         filters.registerLast(new FilterOperator(new FunctionFilter(function)));
     }
@@ -254,9 +243,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      * @param type type information associated with the input publisher
      * @return tail of the publisher chain
      */
-    protected Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher,
-            GenericType<?> type) {
-
+    protected Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher, GenericType<?> type) {
         Objects.requireNonNull(type, "type cannot be null!");
         if (eventListener != null) {
             return doApplyFilters(publisher,
@@ -272,11 +259,9 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      * @param listener subscription listener
      * @return tail of the publisher chain
      */
-    private Publisher<DataChunk> doApplyFilters(Publisher<DataChunk> publisher,
-            EventListener listener) {
-
+    private Publisher<DataChunk> doApplyFilters(Publisher<DataChunk> publisher, EventListener listener) {
         if (publisher == null) {
-            publisher = Mono.<DataChunk>empty();
+            publisher = Single.<DataChunk>empty();
         }
         try {
             Publisher<DataChunk> last = publisher;
@@ -294,15 +279,12 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
      * Delegating publisher that subscribes a delegating
      * {@link EventingSubscriber} during {@link Publisher#subscribe }.
      */
-    private static final class EventingPublisher
-            implements Publisher<DataChunk> {
+    private static final class EventingPublisher implements Publisher<DataChunk> {
 
         private final Publisher<DataChunk> publisher;
         private final EventListener listener;
 
-        EventingPublisher(Publisher<DataChunk> publisher,
-                EventListener listener) {
-
+        EventingPublisher(Publisher<DataChunk> publisher, EventListener listener) {
             this.publisher = publisher;
             this.listener = listener;
         }
@@ -322,9 +304,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         private final Subscriber<? super DataChunk> delegate;
         private final EventListener listener;
 
-        EventingSubscriber(Subscriber<? super DataChunk> delegate,
-                EventListener listener) {
-
+        EventingSubscriber(Subscriber<? super DataChunk> delegate, EventListener listener) {
             this.delegate = delegate;
             this.listener = listener;
         }
@@ -391,9 +371,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         private Subscriber<? super DataChunk> subscriber;
         private Publisher<DataChunk> downstream;
 
-        FunctionFilter(
-                Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-
+        FunctionFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
             this.function = function;
         }
 
@@ -438,8 +416,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * {@link Operator} adapter for {@link Filter}.
      */
-    private static final class FilterOperator
-            implements MessageBodyOperator<MessageBodyContext>, MessageBodyFilter {
+    private static final class FilterOperator implements MessageBodyOperator<MessageBodyContext>, MessageBodyFilter {
 
         private final MessageBodyFilter filter;
 
@@ -448,9 +425,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         }
 
         @Override
-        public boolean accept(GenericType<?> type,
-                MessageBodyContext context) {
-
+        public boolean accept(GenericType<?> type, MessageBodyContext context) {
             return this.getClass().equals(type.rawType());
         }
 
@@ -489,9 +464,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         private final EventListener delegate;
         private final Optional<GenericType<?>> entityType;
 
-        TypedEventListener(EventListener delegate,
-                GenericType<?> entityType) {
-
+        TypedEventListener(EventListener delegate, GenericType<?> entityType) {
             this.delegate = delegate;
             this.entityType = Optional.of(entityType);
         }
@@ -541,8 +514,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * {@link ErrorEvent} implementation.
      */
-    private static final class ErrorEventImpl extends EventImpl
-            implements ErrorEvent {
+    private static final class ErrorEventImpl extends EventImpl implements ErrorEvent {
 
         private final Throwable error;
 

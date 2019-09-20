@@ -18,7 +18,7 @@ package io.helidon.media.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Message body reader for {@link String}.
@@ -37,19 +37,16 @@ public final class StringBodyReader implements MessageBodyReader<String> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         return String.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends String> Mono<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, MessageBodyReaderContext context) {
+    public <U extends String> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
+            MessageBodyReaderContext context) {
 
-        return (Mono<U>) ContentReaders.readString(publisher,
-                context.charset());
+        return (Single<U>) ContentReaders.readString(publisher, context.charset());
     }
 
     /**

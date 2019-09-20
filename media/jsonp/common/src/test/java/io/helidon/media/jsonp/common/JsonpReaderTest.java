@@ -24,7 +24,8 @@ import javax.json.JsonObject;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.Test;
 
@@ -75,20 +76,20 @@ public class JsonpReaderTest {
         try {
             readJsonObject("{ \"p\" : \"val\" ");
             fail("Should have thrown an exception");
-        } catch (Throwable ex) {
-            assertThat(ex, is(instanceOf(JsonException.class)));
+        } catch (ExecutionException e) {
+            assertThat(e.getCause(), is(instanceOf(JsonException.class)));
         }
     }
 
-    private static JsonObject readJsonObject(String json) {
-        return READER.read(Mono.just(DataChunk.create(json.getBytes())),
+    private static JsonObject readJsonObject(String json) throws Exception {
+        return READER.read(Single.just(DataChunk.create(json.getBytes())),
                 GenericType.create(JsonObject.class), CONTEXT)
-                .block();
+                .get();
     }
 
-    private static JsonArray readJsonArray(String json) {
-        return READER.read(Mono.just(DataChunk.create(json.getBytes())),
+    private static JsonArray readJsonArray(String json) throws Exception {
+        return READER.read(Single.just(DataChunk.create(json.getBytes())),
                 GenericType.create(JsonArray.class), CONTEXT)
-                .block();
+                .get();
     }
 }

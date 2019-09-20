@@ -75,42 +75,32 @@ public final class MessageBodyReadableContent
     }
 
     @Override
-    public MessageBodyReadableContent registerReader(
-            MessageBodyReader<?> reader) {
-
+    public MessageBodyReadableContent registerReader(MessageBodyReader<?> reader) {
         context.registerReader(reader);
         return this;
     }
 
     @Override
-    public MessageBodyReadableContent registerReader(
-            MessageBodyStreamReader<?> reader) {
-
+    public MessageBodyReadableContent registerReader(MessageBodyStreamReader<?> reader) {
         context.registerReader(reader);
         return this;
     }
 
     @Deprecated
     @Override
-    public void registerFilter(
-            Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-
+    public void registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
         context.registerFilter(function);
     }
 
     @Deprecated
     @Override
-    public <T> void registerReader(Class<T> type,
-            io.helidon.common.http.Reader<T> reader) {
-
+    public <T> void registerReader(Class<T> type, io.helidon.common.http.Reader<T> reader) {
         context.registerReader(type, reader);
     }
 
     @Deprecated
     @Override
-    public <T> void registerReader(Predicate<Class<?>> predicate,
-            io.helidon.common.http.Reader<T> reader) {
-
+    public <T> void registerReader(Predicate<Class<?>> predicate, io.helidon.common.http.Reader<T> reader) {
         context.registerReader(predicate, reader);
     }
 
@@ -127,8 +117,8 @@ public final class MessageBodyReadableContent
 
     @Override
     public <T> CompletionStage<T> as(final Class<T> type) {
-            return context.unmarshall(publisher, GenericType.create(type))
-                .toFuture();
+        return context.unmarshall(publisher, GenericType.create(type))
+                .toStage();
     }
 
     /**
@@ -140,7 +130,7 @@ public final class MessageBodyReadableContent
      * @return a completion stage of the requested type
      */
     public <T> CompletionStage<T> as(final GenericType<T> type) {
-        return context.unmarshall(publisher, type).toFuture();
+        return context.unmarshall(publisher, type).toStage();
     }
 
     /**
@@ -173,9 +163,7 @@ public final class MessageBodyReadableContent
      * @param context reader context
      * @return MessageBodyReadableContent
      */
-    public static MessageBodyReadableContent create(
-            Publisher<DataChunk> publisher, MessageBodyReaderContext context) {
-
+    public static MessageBodyReadableContent create(Publisher<DataChunk> publisher, MessageBodyReaderContext context) {
         return new MessageBodyReadableContent(publisher, context);
     }
 }

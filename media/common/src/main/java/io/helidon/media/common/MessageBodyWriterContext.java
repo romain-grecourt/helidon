@@ -32,21 +32,18 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MonoMultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.Multi;
 
 /**
- * Writer message body context.
- * @see MessageBodyWriters
- * @see MessageBodyFilters
+ * Implementation of {@link WriterContext}.
  */
-public final class MessageBodyWriterContext extends MessageBodyContext
-        implements MessageBodyWriters, MessageBodyFilters {
+public final class MessageBodyWriterContext extends MessageBodyContext implements MessageBodyWriters, MessageBodyFilters {
 
     /**
-     * {@link OldMultiMapper} used to map bytes chunks.
+     * {@link MultiMapper} used to map bytes chunks.
      */
     private static final BytesMapper BYTES_MAPPER = new BytesMapper();
 
@@ -67,8 +64,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     /**
      * Private to enforce the use of the static factory methods.
      */
-    private MessageBodyWriterContext(MessageBodyWriterContext parent,
-            EventListener eventListener, Parameters headers,
+    private MessageBodyWriterContext(MessageBodyWriterContext parent, EventListener eventListener, Parameters headers,
             List<MediaType> acceptedTypes) {
 
         super(parent, eventListener);
@@ -127,16 +123,13 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @param acceptedTypes accepted types, may be {@code null}
      * @return MessageBodyWriterContext
      */
-    public static MessageBodyWriterContext create(
-            MediaSupport mediaSupport, EventListener eventListener,
-            Parameters headers, List<MediaType> acceptedTypes) {
+    public static MessageBodyWriterContext create(MediaSupport mediaSupport, EventListener eventListener, Parameters headers,
+            List<MediaType> acceptedTypes) {
 
         if (mediaSupport == null) {
-            return new MessageBodyWriterContext(null, eventListener, headers,
-                    acceptedTypes);
+            return new MessageBodyWriterContext(null, eventListener, headers, acceptedTypes);
         }
-        return new MessageBodyWriterContext(mediaSupport.writerContext(),
-                eventListener, headers, acceptedTypes);
+        return new MessageBodyWriterContext(mediaSupport.writerContext(), eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -149,12 +142,10 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @param acceptedTypes accepted types, may be {@code null}
      * @return MessageBodyWriterContext
      */
-    public static MessageBodyWriterContext create(
-            MessageBodyWriterContext parent, EventListener eventListener,
+    public static MessageBodyWriterContext create(MessageBodyWriterContext parent, EventListener eventListener,
             Parameters headers, List<MediaType> acceptedTypes) {
 
-        return new MessageBodyWriterContext(parent, eventListener, headers,
-                acceptedTypes);
+        return new MessageBodyWriterContext(parent, eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -177,17 +168,13 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     @Override
-    public MessageBodyWriterContext registerWriter(
-            MessageBodyWriter<?> writer) {
-
+    public MessageBodyWriterContext registerWriter(MessageBodyWriter<?> writer) {
         writers.registerFirst(writer);
         return this;
     }
 
     @Override
-    public MessageBodyWriterContext registerWriter(
-            MessageBodyStreamWriter<?> writer) {
-
+    public MessageBodyWriterContext registerWriter(MessageBodyStreamWriter<?> writer) {
         swriters.registerFirst(writer);
         return this;
     }
@@ -201,9 +188,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriterContext registerWriter(Class<T> type,
-            Function<T, Publisher<DataChunk>> function) {
-
+    public <T> MessageBodyWriterContext registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function) {
         writers.registerLast(new WriterAdapter<>(function, type, null));
         return this;
     }
@@ -219,8 +204,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriterContext registerWriter(Class<T> type,
-            MediaType contentType,
+    public <T> MessageBodyWriterContext registerWriter(Class<T> type, MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
         writers.registerLast(new WriterAdapter<>(function, type, contentType));
@@ -237,9 +221,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept,
-            Function<T, Publisher<DataChunk>> function) {
-
+    public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
         writers.registerLast(new WriterAdapter<>(function, accept, null));
         return this;
     }
@@ -255,8 +237,8 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept,
-            MediaType contentType, Function<T, Publisher<DataChunk>> function) {
+    public <T> MessageBodyWriterContext registerWriter(Predicate<?> accept, MediaType contentType,
+            Function<T, Publisher<DataChunk>> function) {
 
         writers.registerLast(new WriterAdapter<>(function, accept, contentType));
         return this;
@@ -267,21 +249,19 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * writer that accepts the specified type and current context.
      *
      * @param <T> entity type parameter
-     * @param content object to convert to payload
+     * @param content input publisher
      * @param type actual representation of the entity type
      * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(T content,
-            GenericType<T> type, MessageBodyWriterContext fallback) {
-
+    public <T> Publisher<DataChunk> marshall(Single<T> content, GenericType<T> type, MessageBodyWriterContext fallback) {
         try {
             if (content == null) {
                 return applyFilters(Multi.<DataChunk>empty());
             }
             if (byte[].class.equals(type.rawType())) {
-                return applyFilters(((Mono<byte[]>) content)
+                return applyFilters(((Single<byte[]>) content)
                         .mapMany(BYTES_MAPPER));
             }
             MessageBodyWriter<T> writer;
@@ -289,7 +269,8 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyWriter<T>) writers.select(type, this,
                         fallback.writers);
             } else {
-                writer = (MessageBodyWriter<T>) writers.select(type, this);
+                writer = (MessageBodyWriter<T>) writers.select(type, this,
+                        null);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -305,15 +286,14 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * writer with the specified class.
      *
      * @param <T> entity type parameter
-     * @param content object to convert to payload
+     * @param content input publisher
      * @param writerType the requested writer class
      * @param type actual representation of the entity type
      * @param fallback fallback context, may be {@code null}
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(T content,
-            Class<? extends MessageBodyWriter<T>> writerType,
+    public <T> Publisher<DataChunk> marshall(Single<T> content, Class<? extends MessageBodyWriter<T>> writerType,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
         try {
@@ -325,7 +305,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyWriter<T>) writers.get(writerType,
                         fallback.writers);
             } else {
-                writer = (MessageBodyWriter<T>) writers.get(writerType);
+                writer = (MessageBodyWriter<T>) writers.get(writerType, null);
             }
             if (writer == null) {
                 return writerNotFound(writerType.getTypeName());
@@ -347,9 +327,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content,
-            GenericType<T> type, MessageBodyWriterContext fallback) {
-
+    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content, GenericType<T> type, MessageBodyWriterContext fallback) {
         try {
             if (content == null) {
                 return applyFilters(Multi.<DataChunk>empty());
@@ -360,7 +338,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                     this, fallback.swriters);
             } else {
                 writer = (MessageBodyStreamWriter<T>) swriters.select(type,
-                    this);
+                    null);
             }
             if (writer == null) {
                 return writerNotFound(type.getTypeName());
@@ -383,8 +361,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content,
-            Class<? extends MessageBodyWriter<T>> writerType,
+    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content, Class<? extends MessageBodyWriter<T>> writerType,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
         try {
@@ -396,7 +373,8 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
                     fallback.swriters);
             } else {
-                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType);
+                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
+                    null);
             }
             if (writer == null) {
                 return writerNotFound(writerType.getTypeName());
@@ -451,8 +429,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      */
     public void contentType(MediaType contentType) {
         if (contentType != null) {
-            headers.putIfAbsent(Http.Header.CONTENT_TYPE,
-                    contentType.toString());
+            headers.putIfAbsent(Http.Header.CONTENT_TYPE, contentType.toString());
         }
     }
 
@@ -465,8 +442,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      */
     public void contentLength(long contentLength) {
         if (contentLength >= 0) {
-            headers.putIfAbsent(Http.Header.CONTENT_LENGTH,
-                    String.valueOf(contentLength));
+            headers.putIfAbsent(Http.Header.CONTENT_LENGTH, String.valueOf(contentLength));
         }
     }
 
@@ -488,9 +464,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return MediaType, never {@code null}
      * @throws IllegalStateException if no media type can be returned
      */
-    public MediaType findAccepted(Predicate<MediaType> predicate,
-            MediaType defaultType) throws IllegalStateException {
-
+    public MediaType findAccepted(Predicate<MediaType> predicate, MediaType defaultType) throws IllegalStateException {
         Objects.requireNonNull(predicate, "predicate cannot be null");
         Objects.requireNonNull(defaultType, "defaultType cannot be null");
         MediaType contentType = contentType().orElse(null);
@@ -524,9 +498,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return MediaType, never {@code null}
      * @throws IllegalStateException if the media type is not found
      */
-    public MediaType findAccepted(MediaType mediaType)
-            throws IllegalStateException {
-
+    public MediaType findAccepted(MediaType mediaType) throws IllegalStateException {
         Objects.requireNonNull(mediaType, "mediaType cannot be null");
         for (MediaType acceptedType : acceptedTypes) {
             if (mediaType.equals(acceptedType)) {
@@ -544,8 +516,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         MediaType contentType = contentType().orElse(null);
         if (contentType != null) {
             try {
-                charsetCache = contentType.charset().map(Charset::forName)
-                        .orElse(DEFAULT_CHARSET);
+                charsetCache = contentType.charset().map(Charset::forName).orElse(DEFAULT_CHARSET);
                 charsetCached = true;
                 return charsetCache;
             } catch (IllegalCharsetNameException
@@ -559,23 +530,21 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     /**
-     * Create a mono that will emit a reader not found error to its subscriber.
+     * Create a single that will emit a reader not found error to its subscriber.
      *
      * @param <T> publisher item type
      * @param type reader type that is not found
-     * @return Mono
+     * @return single
      */
-    private static <T> Mono<T> writerNotFound(String type) {
-        return Mono.<T>error(new IllegalStateException(
-                "No writer found for type: " + type));
+    private static <T> Single<T> writerNotFound(String type) {
+        return Single.<T>error(new IllegalStateException("No writer found for type: " + type));
     }
 
     /**
      * Message body writer adapter for the old deprecated writer.
      * @param <T> writer type
      */
-    private static final class WriterAdapter<T>
-            implements MessageBodyWriter<T> {
+    private static final class WriterAdapter<T> implements MessageBodyWriter<T> {
 
         private final Function<T, Publisher<DataChunk>> function;
         private final Predicate predicate;
@@ -583,9 +552,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         private final MediaType contentType;
 
         @SuppressWarnings("unchecked")
-        WriterAdapter(Function<T, Publisher<DataChunk>> function,
-                Predicate<?> predicate, MediaType contentType) {
-
+        WriterAdapter(Function<T, Publisher<DataChunk>> function, Predicate<?> predicate, MediaType contentType) {
             Objects.requireNonNull(function, "function cannot be null!");
             Objects.requireNonNull(predicate, "predicate cannot be null!");
             this.function = function;
@@ -595,9 +562,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         }
 
         @SuppressWarnings("unchecked")
-        WriterAdapter(Function<? extends T, Publisher<DataChunk>> function,
-                Class<T> type, MediaType contentType) {
-
+        WriterAdapter(Function<? extends T, Publisher<DataChunk>> function, Class<T> type, MediaType contentType) {
             Objects.requireNonNull(function, "function cannot be null!");
             Objects.requireNonNull(type, "type cannot be null!");
             this.function = (Function<T, Publisher<DataChunk>>) function;
@@ -621,29 +586,23 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 }
             }
             MediaType ct = context.contentType().orElse(null);
-            return !(contentType != null
-                    && ct != null
-                    && !ct.test(contentType));
+            return !(contentType != null && ct != null && !ct.test(contentType));
         }
 
         @Override
-        public Publisher<DataChunk> write(T content,
-                GenericType<? extends T> type,
-                MessageBodyWriterContext context) {
-
-            return function.apply(content);
+        public Publisher<DataChunk> write(Single<T> single, GenericType<? extends T> type, MessageBodyWriterContext context) {
+            return single.mapMany(function::apply);
         }
     }
 
     /**
-     * Implementation of {@link MonoMultiMapper} to convert {@code byte[]} to
+     * Implementation of {@link MultiMapper} to convert {@code byte[]} to
      * a publisher of {@link DataChunk}.
      */
-    private static final class BytesMapper
-            extends MonoMultiMapper<byte[], DataChunk> {
+    private static final class BytesMapper implements Mapper<byte[], Publisher<DataChunk>> {
 
         @Override
-        public Publisher<DataChunk> mapNext(byte[] item) {
+        public Publisher<DataChunk> map(byte[] item) {
             return ContentWriters.writeBytes(item, false);
         }
     }

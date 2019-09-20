@@ -29,21 +29,16 @@ import io.netty.channel.ChannelHandlerContext;
  * it is associated with the connection context handler and it maintains a fine
  * control of the associated context handler to perform Netty push-backing.
  */
-class HttpRequestScopedPublisher
-        extends OriginThreadPublisher<DataChunk, ByteBuf> {
+class HttpRequestScopedPublisher extends OriginThreadPublisher<DataChunk, ByteBuf> {
 
-    private static final Logger LOGGER =
-            Logger.getLogger(HttpRequestScopedPublisher.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(HttpRequestScopedPublisher.class.getName());
 
     private volatile boolean suspended = false;
     private final ChannelHandlerContext ctx;
-    private final ReentrantReadWriteLock.WriteLock lock =
-            new ReentrantReadWriteLock().writeLock();
+    private final ReentrantReadWriteLock.WriteLock lock = new ReentrantReadWriteLock().writeLock();
     private final ReferenceHoldingQueue<DataChunk> referenceQueue;
 
-    HttpRequestScopedPublisher(ChannelHandlerContext ctx,
-            ReferenceHoldingQueue<DataChunk> referenceQueue) {
-
+    HttpRequestScopedPublisher(ChannelHandlerContext ctx, ReferenceHoldingQueue<DataChunk> referenceQueue) {
         super();
         this.referenceQueue = referenceQueue;
         this.ctx = ctx;
@@ -138,5 +133,10 @@ class HttpRequestScopedPublisher
     @Override
     protected DataChunk wrap(ByteBuf data) {
         return new ByteBufRequestChunk(data, referenceQueue);
+    }
+
+    @Override
+    protected void drain(DataChunk item) {
+        item.release();
     }
 }

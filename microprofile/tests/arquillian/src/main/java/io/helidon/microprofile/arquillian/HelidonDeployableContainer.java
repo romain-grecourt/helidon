@@ -16,6 +16,7 @@
 
 package io.helidon.microprofile.arquillian;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -23,8 +24,8 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -123,7 +124,11 @@ public class HelidonDeployableContainer implements DeployableContainer<HelidonCo
 
         try {
             // Create the temporary deployment directory.
-            context.deployDir = Files.createTempDirectory("helidon-arquillian-test");
+            if (containerConfig.getUseRelativePath()) {
+                context.deployDir = Paths.get("target/helidon-arquillian-test");
+            } else {
+                context.deployDir = Files.createTempDirectory("helidon-arquillian-test");
+            }
             LOGGER.info("Running Arquillian tests in directory: " + context.deployDir.toAbsolutePath());
 
             // Copy the archive into deployDir. Save off the class names for all classes included in the
@@ -182,8 +187,7 @@ public class HelidonDeployableContainer implements DeployableContainer<HelidonCo
 
     void startServer(RunContext context, URL[] classPath, Set<String> classNames)
             throws ReflectiveOperationException {
-        context.classLoader = (URLClassLoader) ((PrivilegedAction<ClassLoader>) () -> new URLClassLoader(classPath))
-                .run();
+        context.classLoader = new MyClassloader(new URLClassLoader(classPath));
 
         context.oldClassLoader = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(context.classLoader);
@@ -380,7 +384,7 @@ public class HelidonDeployableContainer implements DeployableContainer<HelidonCo
          */
         private Path deployDir;
         // class loader of this server instance
-        private URLClassLoader classLoader;
+        private MyClassloader classLoader;
         // class of the runner - loaded once per each run
         private Class<?> runnerClass;
         // runner used to run this server instance
@@ -389,4 +393,26 @@ public class HelidonDeployableContainer implements DeployableContainer<HelidonCo
         private ClassLoader oldClassLoader;
     }
 
+    static class MyClassloader extends ClassLoader implements Closeable {
+        private final URLClassLoader wrapped;
+
+        MyClassloader(URLClassLoader wrapped) {
+            super(wrapped);
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        public InputStream getResourceAsStream(String name) {
+            InputStream stream = wrapped.getResourceAsStream(name);
+            if ((null == stream) && name.startsWith("/")) {
+                return wrapped.getResourceAsStream(name.substring(1));
+            }
+            return stream;
+        }
+
+        @Override
+        public void close() throws IOException {
+             this.wrapped.close();
+        }
+    }
 }

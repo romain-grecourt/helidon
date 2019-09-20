@@ -23,9 +23,7 @@ public final class MediaSupport {
     private final MessageBodyReaderContext readerContext;
     private final MessageBodyWriterContext writerContext;
 
-    private MediaSupport(MessageBodyReaderContext readerContext,
-            MessageBodyWriterContext writerContext) {
-
+    private MediaSupport(MessageBodyReaderContext readerContext, MessageBodyWriterContext writerContext) {
         this.readerContext = readerContext;
         this.writerContext = writerContext;
     }
@@ -74,8 +72,7 @@ public final class MediaSupport {
     /**
      * MediaSupport builder.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<MediaSupport> {
+    public static final class Builder implements io.helidon.common.Builder<MediaSupport> {
 
         private final MessageBodyReaderContext readerContext;
         private final MessageBodyWriterContext writerContext;

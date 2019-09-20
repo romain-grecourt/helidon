@@ -27,11 +27,14 @@ module io.helidon.security.integration.jersey {
     requires transitive io.helidon.security.util;
     requires transitive io.helidon.common.serviceloader;
     requires transitive java.ws.rs;
-    requires transitive io.helidon.jersey.server;
-    requires transitive io.helidon.jersey.client;
 
     requires io.helidon.common.context;
+    requires io.helidon.jersey.common;
     requires io.helidon.security.integration.common;
+    requires io.helidon.webclient.jaxrs;
+    requires jersey.common;
+    requires jersey.server;
+    requires jersey.client;
     requires javax.inject;
 
     exports io.helidon.security.integration.jersey;

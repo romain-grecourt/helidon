@@ -17,12 +17,10 @@ package io.helidon.common.reactive;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
 
 import static io.helidon.common.CollectionsHelper.listOf;
 
@@ -30,124 +28,53 @@ import static io.helidon.common.CollectionsHelper.listOf;
  * Multiple items publisher facility.
  * @param <T> item type
  */
-public interface Multi<T> extends Publisher<T> {
+public interface Multi<T> extends Subscribable<T> {
 
     /**
-     * Subscribe to this {@link Multi} instance with the given delegate
-     * functions.
+     * Map this {@link Multi} instance to a new {@link Multi} of another type using the given {@link Mapper}.
      *
-     * @param consumer onNext delegate function
-     */
-    default void subscribe(Consumer<? super T> consumer) {
-        this.subscribe(new FunctionalSubscriber<>(consumer, null, null, null));
-    }
-
-    /**
-     * Subscribe to this {@link Multi} instance with the given delegate
-     * functions.
-     *
-     * @param consumer onNext delegate function
-     * @param errorConsumer onError delegate function
-     */
-    default void subscribe(Consumer<? super T> consumer,
-            Consumer<? super Throwable> errorConsumer) {
-
-        this.subscribe(new FunctionalSubscriber<>(consumer, errorConsumer,
-                null, null));
-    }
-
-    /**
-     * Subscribe to this {@link Multi} instance with the given delegate
-     * functions.
-     *
-     * @param consumer onNext delegate function
-     * @param errorConsumer onError delegate function
-     * @param completeConsumer onComplete delegate function
-     */
-    default void subscribe(Consumer<? super T> consumer,
-            Consumer<? super Throwable> errorConsumer,
-            Runnable completeConsumer) {
-
-        this.subscribe(new FunctionalSubscriber<>(consumer, errorConsumer,
-                completeConsumer, null));
-    }
-
-    /**
-     * Subscribe to this {@link Multi} instance with the given delegate
-     * functions.
-     *
-     * @param consumer onNext delegate function
-     * @param errorConsumer onError delegate function
-     * @param completeConsumer onComplete delegate function
-     * @param subscriptionConsumer onSusbcribe delegate function
-     */
-    default void subscribe(Consumer<? super T> consumer,
-            Consumer<? super Throwable> errorConsumer,
-            Runnable completeConsumer,
-            Consumer<? super Subscription> subscriptionConsumer) {
-
-        this.subscribe(new FunctionalSubscriber<>(consumer, errorConsumer,
-                completeConsumer, subscriptionConsumer));
-    }
-
-    /**
-     * Map this {@link Multi} instance to a new {@link Multi} of another type
-     * using the given {@link MultiMapper}.
      * @param <U> mapped item type
      * @param mapper mapper
      * @return Multi
+     * @throws NullPointerException if mapper is {@code null}
      */
-    default <U> Multi<U> map(MultiMapper<T, U> mapper) {
-        return mapper;
+    default <U> Multi<U> map(Mapper<T, U> mapper) {
+        MultiMappingProcessor<T, U> processor = new MultiMappingProcessor<>(mapper);
+        this.subscribe(processor);
+        return processor;
     }
 
     /**
-     * Map this {@link Multi} instance to a new {@link Multi} of another type
-     * using the given java {@link Function}.
+     * Collect the items of this {@link Multi} instance into a {@link Single} of {@link List}.
      *
-     * @param <U> mapped item type
-     * @param function mapper function
-     * @return Multi
+     * @return Single
      */
-    default <U> Multi<U> map(Function<T, U> function) {
-        MultiMapperFunctional<T, U> mapper = new MultiMapperFunctional<>(function);
-        this.subscribe(mapper);
-        return mapper;
+    default Single<List<T>> collectList() {
+        return collect(new ListCollector<>());
     }
 
     /**
-     * Collect the items of this {@link Multi} instance into a {@link Mono} of
-     * {@link List}.
+     * Collect the items of this {@link Multi} instance into a {@link Single}.
      *
-     * @return Mono
-     */
-    default Mono<List<T>> collectList() {
-        MonoListCollector<T> collector = new MonoListCollector<>();
-        this.subscribe(collector);
-        return collector;
-    }
-
-    /**
-     * Collect the items of this {@link Multi} instance into a {@link Mono} of
-     * {@link String}.
-     *
-     * @return Mono
-     */
-    default Mono<String> collectString() {
-        MonoStringCollector<T> collector = new MonoStringCollector<>();
-        this.subscribe(collector);
-        return collector;
-    }
-
-    /**
-     * Collect the items of this {@link Multi} instance into a {@link Mono}.
      * @param <U> collector container type
      * @param collector collector to use
-     * @return Mono
+     * @return Single
+     * @throws NullPointerException if collector is {@code null}
      */
-    default <U> Mono<U> collect(MonoCollector<? super T, U> collector) {
-        this.subscribe(collector);
-        return collector;
+    default <U> Single<U> collect(Collector<T, U> collector) {
+        MultiCollectingProcessor<? super T, U> processor = new MultiCollectingProcessor<>(collector);
+        this.subscribe(processor);
+        return processor;
+    }
+
+    /**
+     * Get the first item of this {@link Multi} instance as a {@link Single}.
+     * @return Single
+     */
+    default Single<T> first() {
+        MultiFirstProcessor<T> processor = new MultiFirstProcessor<>();
+        this.subscribe(processor);
+        return processor;
     }
 
     /**
@@ -156,30 +83,35 @@ public interface Multi<T> extends Publisher<T> {
      * @param <T> item type
      * @param source source publisher
      * @return Multi
+     * @throws NullPointerException if source is {@code null}
      */
+    @SuppressWarnings("unchecked")
     static <T> Multi<T> from(Publisher<T> source) {
+        if (source instanceof Multi) {
+            return (Multi<T>) source;
+        }
         return new MultiFromPublisher<>(source);
     }
 
     /**
-     * Create a {@link Multi} instance that publishes the given items to a
-     * single subscriber.
+     * Create a {@link Multi} instance that publishes the given items to a single subscriber.
      *
      * @param <T> item type
      * @param items items to publish
      * @return Multi
+     * @throws NullPointerException if items is {@code null}
      */
     static <T> Multi<T> just(Collection<T> items) {
         return new MultiFromPublisher<>(new FixedItemsPublisher<>(items));
     }
 
     /**
-     * Create a {@link Multi} instance that publishes the given items to a
-     * single subscriber.
+     * Create a {@link Multi} instance that publishes the given items to a single subscriber.
      *
      * @param <T> item type
      * @param items items to publish
      * @return Multi
+     * @throws NullPointerException if items is {@code null}
      */
     @SafeVarargs
     static <T> Multi<T> just(T... items) {
@@ -187,14 +119,13 @@ public interface Multi<T> extends Publisher<T> {
     }
 
     /**
-     * Create a {@link Multi} instance that reports the given given exception to
-     * its subscriber(s). The exception is reported by invoking
-     * {@link Subscriber#onError(java.lang.Throwable)} when
-     * {@link Publisher#subscribe(Subscriber)} is called.
+     * Create a {@link Multi} instance that reports the given exception to its subscriber(s). The exception is reported by
+     * invoking {@link Subscriber#onError(java.lang.Throwable)} when {@link Publisher#subscribe(Subscriber)} is called.
      *
      * @param <T> item type
      * @param error exception to hold
      * @return Multi
+     * @throws NullPointerException if error is {@code null}
      */
     static <T> Multi<T> error(Throwable error) {
         return new MultiError<>(error);
@@ -212,6 +143,7 @@ public interface Multi<T> extends Publisher<T> {
 
     /**
      * Get a {@link Multi} instance that never completes.
+     *
      * @param <T> item type
      * @return Multi
      */

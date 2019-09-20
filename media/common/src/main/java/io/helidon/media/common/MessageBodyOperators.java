@@ -30,8 +30,7 @@ import io.helidon.common.GenericType;
  * Thread-safe hierarchical registry of message body operators.
  * @param <T> operator type
  */
-final class MessageBodyOperators<T extends MessageBodyOperator<?>>
-        implements Iterable<T>, AutoCloseable {
+final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements Iterable<T>, AutoCloseable {
 
     private final MessageBodyOperators<T> parent;
     private final LinkedList<T> operators;
@@ -98,9 +97,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
      * @param context the message body context
      * @return operator found, or {@code null} or no operator was found
      */
-    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(
-            GenericType<?> type, V context) {
-
+    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(GenericType<?> type, V context) {
         return select(type, context, /* fallback */ null);
     }
 
@@ -113,8 +110,8 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
      * @return operator, or {@code null} or no operator was found
      */
     @SuppressWarnings("unchecked")
-    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(
-            GenericType<?> type, V context, MessageBodyOperators<T> fallback) {
+    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(GenericType<?> type, V context,
+            MessageBodyOperators<T> fallback) {
 
         Objects.requireNonNull(type, "type is null!");
         Objects.requireNonNull(context, "context is null!");
@@ -153,9 +150,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
      * found in this registry hierarchy
      * @return operator, or {@code null} or no operator was found
      */
-    T get(Class<? extends MessageBodyOperator> operatorClass,
-            MessageBodyOperators<T> fallback) {
-
+    T get(Class<? extends MessageBodyOperator> operatorClass, MessageBodyOperators<T> fallback) {
         Objects.requireNonNull(operatorClass, "operatorClass is null!");
         try {
             lock.readLock().lock();
@@ -193,8 +188,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>>
      * hierarchy.
      * @param <T> Operator type
      */
-    private static final class ParentedIterator<T extends MessageBodyOperator<?>>
-            implements Iterator<T> {
+    private static final class ParentedIterator<T extends MessageBodyOperator<?>> implements Iterator<T> {
 
         private final Iterator<T> iterator;
         private final Lock readLock;

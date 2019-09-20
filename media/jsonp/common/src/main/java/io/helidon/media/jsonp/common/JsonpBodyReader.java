@@ -26,9 +26,9 @@ import javax.json.JsonStructure;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MonoMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
@@ -53,26 +53,30 @@ public final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
     }
 
     @Override
-    public <U extends JsonStructure> Mono<U> read(
+    public <U extends JsonStructure> Single<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
         return ContentReaders.readBytes(publisher)
-                .map(new BytesToJsonStructure<>(context.charset()));
+                // TODO cache per charset / type
+                .map(new BytesToJsonStructure<>(jsonFactory,
+                        context.charset()));
     }
 
-    private final class BytesToJsonStructure<T extends JsonStructure>
-            extends MonoMapper<byte[], T> {
+    private static final class BytesToJsonStructure<T extends JsonStructure>
+            implements Mapper<byte[], T> {
 
+        private final JsonReaderFactory jsonFactory;
         private final Charset charset;
 
-        BytesToJsonStructure(Charset charset) {
+        BytesToJsonStructure(JsonReaderFactory jsonFactory, Charset charset) {
+            this.jsonFactory = jsonFactory;
             this.charset = charset;
         }
 
         @Override
         @SuppressWarnings("unchecked")
-        public T mapNext(byte[] bytes) {
+        public T map(byte[] bytes) {
             InputStream is = new ByteArrayInputStream(bytes);
             JsonReader reader = jsonFactory.createReader(is, charset);
             return (T) reader.read();

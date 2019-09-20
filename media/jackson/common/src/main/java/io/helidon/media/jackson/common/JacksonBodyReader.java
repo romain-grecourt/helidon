@@ -16,19 +16,17 @@
 package io.helidon.media.jackson.common;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.Objects;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MonoMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -54,10 +52,11 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
+    public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type));
+        return ContentReaders.readBytes(publisher)
+                .map(new BytesToObject<>(type, objectMapper));
     }
 
     /**
@@ -69,37 +68,26 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         return new JacksonBodyReader(objectMapper);
     }
 
-    private final class BytesToObject<T>
-            extends MonoMapper<byte[], T> {
+    private static final class BytesToObject<T>
+            implements Mapper<byte[], T> {
 
-        private final TypeReference<? super T> type;
+        private final GenericType<? super T> type;
+        private final ObjectMapper objectMapper;
 
-        BytesToObject(GenericType<? super T> gtype) {
-            this.type = new TypeReferenceAdapter(gtype);
+        BytesToObject(GenericType<T> type,
+                ObjectMapper objectMapper) {
+
+            this.type = type;
+            this.objectMapper = objectMapper;
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public T mapNext(byte[] bytes) {
+        public T map(byte[] bytes) {
             try {
-                return objectMapper.readValue(bytes, type);
+                return objectMapper.readValue(bytes, (Class<T>) type.rawType());
             } catch (final IOException wrapMe) {
                 throw new JacksonRuntimeException(wrapMe.getMessage(), wrapMe);
             }
-        }
-    }
-
-    private static final class TypeReferenceAdapter<T> extends TypeReference<T> {
-
-        private final GenericType<T> gtype;
-
-        TypeReferenceAdapter(GenericType<T> gtype) {
-            this.gtype = gtype;
-        }
-
-        @Override
-        public Type getType() {
-            return gtype.type();
         }
     }
 }

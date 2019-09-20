@@ -15,16 +15,19 @@
  */
 package io.helidon.media.common;
 
+import java.nio.charset.Charset;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Single;
 
 /**
  * Writer for {@code CharSequence}.
  */
-public final class CharSequenceBodyWriter
-        implements MessageBodyWriter<CharSequence> {
+public final class CharSequenceBodyWriter implements MessageBodyWriter<CharSequence> {
 
     /**
      * Singleton instance.
@@ -39,19 +42,16 @@ public final class CharSequenceBodyWriter
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return CharSequence.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(CharSequence content,
-            GenericType<? extends CharSequence> type,
+    public Publisher<DataChunk> write(Single<CharSequence> content, GenericType<? extends CharSequence> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.TEXT_PLAIN);
-        return ContentWriters.writeCharSequence(content, context.charset());
+        return content.mapMany(new CharSequenceToChunks(context.charset()));
     }
 
     /**
@@ -60,5 +60,19 @@ public final class CharSequenceBodyWriter
      */
     public static CharSequenceBodyWriter get() {
         return INSTANCE;
+    }
+
+    private static final class CharSequenceToChunks implements Mapper<CharSequence, Publisher<DataChunk>> {
+
+        private final Charset charset;
+
+        CharSequenceToChunks(Charset charset) {
+            this.charset = charset;
+        }
+
+        @Override
+        public Publisher<DataChunk> map(CharSequence content) {
+            return ContentWriters.writeCharSequence(content, charset);
+        }
     }
 }

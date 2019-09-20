@@ -28,6 +28,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.MessageBodyContext;
 import io.helidon.media.common.MessageBodyFilter;
 import io.helidon.media.common.MessageBodyStreamWriter;
@@ -47,7 +48,6 @@ import static io.helidon.media.common.MessageBodyContext.EventType.BEFORE_ONSUBS
 /**
  * The basic implementation of {@link ServerResponse}.
  */
-@SuppressWarnings("deprecation")
 abstract class Response implements ServerResponse {
 
     private static final String TRACING_CONTENT_WRITE = "content-write";
@@ -166,7 +166,7 @@ abstract class Response implements ServerResponse {
         try {
             sendLockSupport.execute(() -> {
                 Publisher<DataChunk> sendPublisher = writerContext.marshall(
-                        content, GenericType.create(content), null);
+                        Single.just(content), GenericType.create(content), null);
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);
@@ -297,7 +297,7 @@ abstract class Response implements ServerResponse {
         private volatile boolean sentVolatile;
 
         private void sendHeadersIfNeeded() {
-            if (headers != null) {
+            if (headers != null && !sent && !sentVolatile) {
                 synchronized (this) {
                     if (!sent && !sentVolatile) {
                         sent = true;

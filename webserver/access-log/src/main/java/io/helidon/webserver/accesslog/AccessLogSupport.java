@@ -193,7 +193,7 @@ public final class AccessLogSupport implements Service {
         private final List<AccessLogEntry> entries = new LinkedList<>();
         private Clock clock = Clock.systemDefaultZone();
         private String loggerName = DEFAULT_LOGGER_NAME;
-        private boolean enabled;
+        private boolean enabled = true;
 
         private Builder() {
         }
@@ -255,7 +255,7 @@ public final class AccessLogSupport implements Service {
 
         /**
          * The format for log entries (similar to the Apache {@code LogFormat}).
-         * <table>
+         * <table class="config">
          *     <caption>Log format elements</caption>
          *     <tr>
          *         <td>%h</td>

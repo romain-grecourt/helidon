@@ -26,12 +26,12 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Single;
 
 /**
- * Writeable {@link MessageBodyContent}.
+ * Implementation of {@link WriteableContent}.
  */
-public final class MessageBodyWriteableContent implements MessageBodyContent,
-        MessageBodyWriters, MessageBodyFilters {
+public final class MessageBodyWriteableContent implements MessageBodyContent, MessageBodyWriters, MessageBodyFilters {
 
     private final Object entity;
     private final Publisher<Object> stream;
@@ -125,31 +125,25 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
             return pub;
         }
         if (entity != null) {
-            return context.marshall(entity, type, fallback);
+            return context.marshall(Single.just(entity), type, fallback);
         }
         return context.marshallStream(stream, type, fallback);
     }
 
     @Override
-    public MessageBodyWriteableContent registerFilter(
-            MessageBodyFilter filter) {
-
+    public MessageBodyWriteableContent registerFilter(MessageBodyFilter filter) {
         context.registerFilter(filter);
         return this;
     }
 
     @Override
-    public MessageBodyWriteableContent registerWriter(
-            MessageBodyWriter<?> writer) {
-
+    public MessageBodyWriteableContent registerWriter(MessageBodyWriter<?> writer) {
         context.registerWriter(writer);
         return this;
     }
 
     @Override
-    public MessageBodyWriteableContent registerWriter(
-            MessageBodyStreamWriter<?> writer) {
-
+    public MessageBodyWriteableContent registerWriter(MessageBodyStreamWriter<?> writer) {
         context.registerWriter(writer);
         return this;
     }
@@ -164,9 +158,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
-            Function<T, Publisher<DataChunk>> function) {
-
+    public <T> MessageBodyWriteableContent registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function) {
         context.registerWriter(type, function);
         return this;
     }
@@ -182,8 +174,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriteableContent registerWriter(Class<T> type,
-            MediaType contentType,
+    public <T> MessageBodyWriteableContent registerWriter(Class<T> type, MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
         context.registerWriter(type, contentType, function);
@@ -200,9 +191,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriteableContent registerWriter(
-            Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
-
+    public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
         context.registerWriter(accept, function);
         return this;
     }
@@ -218,8 +207,8 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @deprecated use {@link #registerWriter(MessageBodyWriter) } instead
      */
     @Deprecated
-    public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept,
-            MediaType contentType, Function<T, Publisher<DataChunk>> function) {
+    public <T> MessageBodyWriteableContent registerWriter(Predicate<?> accept, MediaType contentType,
+            Function<T, Publisher<DataChunk>> function) {
 
         context.registerWriter(accept, contentType, function);
         return this;
@@ -231,9 +220,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @deprecated use {@link #registerFilter(MessageBodyFilter)} instead
      */
     @Deprecated
-    public void registerFilter(
-            Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-
+    public void registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
         context.registerFilter(function);
     }
 
@@ -244,9 +231,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @param headers writer context backing headers, must not be {@code null}
      * @return MessageBodyWriteableContent
      */
-    public static MessageBodyWriteableContent create(Object entity,
-            Parameters headers) {
-
+    public static MessageBodyWriteableContent create(Object entity, Parameters headers) {
         return new MessageBodyWriteableContent(entity, headers);
     }
 
@@ -258,8 +243,8 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @param headers writer context backing headers, must not be {@code null}
      * @return MessageBodyWriteableContent
      */
-    public static MessageBodyWriteableContent create(Publisher<Object> stream,
-            GenericType<? extends Object> type, Parameters headers) {
+    public static MessageBodyWriteableContent create(Publisher<Object> stream, GenericType<? extends Object> type,
+            Parameters headers) {
 
         return new MessageBodyWriteableContent(stream, type, headers);
     }
@@ -271,9 +256,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
      * @param headers writer context backing headers, must not be {@code null}
      * @return MessageBodyWriteableContent
      */
-    public static MessageBodyWriteableContent create(
-            Publisher<DataChunk> publisher, Parameters headers) {
-
+    public static MessageBodyWriteableContent create(Publisher<DataChunk> publisher, Parameters headers) {
         return new MessageBodyWriteableContent(publisher, headers);
     }
 }

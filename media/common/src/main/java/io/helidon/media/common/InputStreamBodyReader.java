@@ -20,7 +20,7 @@ import java.io.InputStream;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Message body reader for {@link InputStream}.
@@ -30,8 +30,7 @@ public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
     /**
      * Singleton instance.
      */
-    private static final InputStreamBodyReader INSTANCE =
-            new InputStreamBodyReader();
+    private static final InputStreamBodyReader INSTANCE = new InputStreamBodyReader();
 
     /**
      * Enforce the use of {@link #get() }.
@@ -46,11 +45,10 @@ public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends InputStream> Mono<U> read(
-            Publisher<DataChunk> publisher, GenericType<U> type,
+    public <U extends InputStream> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return (Mono<U>) Mono.just(new PublisherInputStream(publisher));
+        return (Single<U>) Single.just(new PublisherInputStream(publisher));
     }
 
     /**

@@ -24,8 +24,7 @@ import io.helidon.common.reactive.Flow.Publisher;
  *
  * @param <T> type or base type supported by the operator
  */
-public interface MessageBodyStreamReader<T>
-        extends MessageBodyOperator<MessageBodyReaderContext> {
+public interface MessageBodyStreamReader<T> extends MessageBodyOperator<MessageBodyReaderContext> {
 
     /**
      * Convert the given HTTP payload into objects of the given type.
@@ -36,6 +35,5 @@ public interface MessageBodyStreamReader<T>
      * @param context reader context
      * @return publisher
      */
-    <U extends T> Publisher<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, MessageBodyReaderContext context);
+    <U extends T> Publisher<U> read(Publisher<DataChunk> publisher, GenericType<U> type, MessageBodyReaderContext context);
 }

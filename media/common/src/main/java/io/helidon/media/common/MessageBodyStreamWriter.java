@@ -24,8 +24,7 @@ import io.helidon.common.reactive.Flow.Publisher;
  *
  * @param <T> type or base type supported by the operator
  */
-public interface MessageBodyStreamWriter<T>
-        extends MessageBodyOperator<MessageBodyWriterContext> {
+public interface MessageBodyStreamWriter<T> extends MessageBodyOperator<MessageBodyWriterContext> {
 
     /**
      * Generate HTTP payload from the given stream of objects.
@@ -35,6 +34,5 @@ public interface MessageBodyStreamWriter<T>
      * @param context writer context
      * @return HTTP payload publisher
      */
-    Publisher<DataChunk> write(Publisher<T> publisher,
-            GenericType<? extends T> type, MessageBodyWriterContext context);
+    Publisher<DataChunk> write(Publisher<T> publisher, GenericType<? extends T> type, MessageBodyWriterContext context);
 }

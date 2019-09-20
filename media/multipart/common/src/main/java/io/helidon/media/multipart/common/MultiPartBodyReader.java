@@ -20,11 +20,11 @@ import java.util.LinkedList;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
+import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MonoCollector;
-import io.helidon.common.reactive.MonoMultiMapper;
 import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyReadableContent;
@@ -43,6 +43,16 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             new MultiPartBodyReader();
 
     /**
+     * Bytes to chunk mapper singleton.
+     */
+    private static final BytesToChunks BYTES_TO_CHUNKS = new BytesToChunks();
+
+    /**
+     * Collector singleton to collect body parts from a publisher as a list.
+     */
+    private static final PartsCollector COLLECTOR = new PartsCollector();
+
+    /**
      * Private to enforce the use of {@link #get()}.
      */
     private MultiPartBodyReader() {
@@ -55,7 +65,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends MultiPart> Mono<U> read(Publisher<DataChunk> publisher,
+    public <U extends MultiPart> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
         String boundary = null;
@@ -68,7 +78,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
-        return (Mono<U>) Multi.from(decoder).collect(new PartsCollector());
+        return (Single<U>) Multi.from(decoder).collect(COLLECTOR);
     }
 
     /**
@@ -83,7 +93,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * A collector that accumulates and buffers body parts.
      */
     private static final class PartsCollector
-            extends MonoCollector<ReadableBodyPart, ReadableMultiPart> {
+            implements Collector<ReadableBodyPart, ReadableMultiPart> {
 
         private final LinkedList<ReadableBodyPart> bodyParts;
 
@@ -99,7 +109,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             // buffer the data
             Publisher<DataChunk> bufferedData = ContentReaders
                     .readBytes(content)
-                    .mapMany(new BytesToChunks());
+                    .mapMany(BYTES_TO_CHUNKS);
 
             // create a content copy with the buffered data
             MessageBodyReadableContent contentCopy = MessageBodyReadableContent
@@ -121,14 +131,14 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
     }
 
     /**
-     * Implementation of {@link MonoMultiMapper} that converts {@code byte[]} to
-     * a publisher of {@link DataChunk} by copying the bytes.
+     * Implementation of {@link MultiMapper} that converts {@code byte[]} to a
+     * publisher of {@link DataChunk} by copying the bytes.
      */
     private static final class BytesToChunks
-            extends MonoMultiMapper<byte[], DataChunk> {
+            implements Mapper<byte[], Publisher<DataChunk>> {
 
         @Override
-        public Publisher<DataChunk> mapNext(byte[] bytes) {
+        public Publisher<DataChunk> map(byte[] bytes) {
             return ContentWriters.writeBytes(bytes, /* copy */ true);
         }
     }

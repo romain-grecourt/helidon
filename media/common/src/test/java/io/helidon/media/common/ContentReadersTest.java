@@ -38,11 +38,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class ContentReadersTest {
     @Test
     void testStringReader() throws Exception {
-        Multi<DataChunk> chunks = Multi.just(DataChunk.create(
-                new byte[] {(byte) 225, (byte) 226, (byte) 227}));
+        Multi<DataChunk> chunks = Multi.just(DataChunk.create(new byte[] {(byte) 225, (byte) 226, (byte) 227}));
 
-        CompletableFuture<? extends String> future = ContentReaders
-                .stringReader(Charset.forName("cp1250"))
+        CompletableFuture<? extends String> future =
+                ContentReaders.stringReader(Charset.forName("cp1250"))
                         .apply(chunks)
                         .toCompletableFuture();
 
@@ -55,8 +54,7 @@ class ContentReadersTest {
         String original = "Popokatepetl";
         byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
 
-        CompletableFuture<? extends byte[]> future = ContentReaders
-                .byteArrayReader()
+        CompletableFuture<? extends byte[]> future = ContentReaders.byteArrayReader()
                 .apply(Multi.just(DataChunk.create(bytes)))
                 .toCompletableFuture();
 
@@ -69,8 +67,7 @@ class ContentReadersTest {
         String original = "Popokatepetl";
         byte[] bytes = original.getBytes(StandardCharsets.UTF_8);
 
-        CompletableFuture<? extends InputStream> future = ContentReaders
-                .inputStreamReader()
+        CompletableFuture<? extends InputStream> future = ContentReaders.inputStreamReader()
                 .apply(Multi.just(DataChunk.create(bytes)))
                 .toCompletableFuture();
 

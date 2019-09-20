@@ -22,7 +22,7 @@
  */
 module io.helidon.media.common {
     requires java.logging;
-    requires io.helidon.common;
+    requires io.helidon.common.mapper;
     requires io.helidon.common.reactive;
     requires io.helidon.common.http;
 

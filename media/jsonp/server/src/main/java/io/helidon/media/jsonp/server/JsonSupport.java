@@ -105,6 +105,10 @@ public final class JsonSupport implements Service, Handler {
         request.next();
     }
 
+    JsonpBodyReader reader() {
+        return reader;
+    }
+
     /**
      * Returns a singleton instance of JsonSupport with default configuration.
      * <p>
