@@ -20,11 +20,11 @@ import java.util.LinkedList;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyReadableContent;
@@ -65,7 +65,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends MultiPart> Mono<U> read(Publisher<DataChunk> publisher,
+    public <U extends MultiPart> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
         String boundary = null;
@@ -78,7 +78,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
         }
         MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
         publisher.subscribe(decoder);
-        return (Mono<U>) Multi.from(decoder).collect(COLLECTOR);
+        return (Single<U>) Multi.from(decoder).collect(COLLECTOR);
     }
 
     /**
@@ -93,7 +93,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * A collector that accumulates and buffers body parts.
      */
     private static final class PartsCollector
-            implements Collector<ReadableMultiPart, ReadableBodyPart> {
+            implements Collector<ReadableBodyPart, ReadableMultiPart> {
 
         private final LinkedList<ReadableBodyPart> bodyParts;
 
@@ -135,7 +135,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * publisher of {@link DataChunk} by copying the bytes.
      */
     private static final class BytesToChunks
-            implements MultiMapper<byte[], DataChunk> {
+            implements Mapper<byte[], Publisher<DataChunk>> {
 
         @Override
         public Publisher<DataChunk> map(byte[] bytes) {

@@ -24,11 +24,10 @@ import java.nio.file.StandardOpenOption;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.common.reactive.RetrySchema;
-
+import io.helidon.common.reactive.Single;
 
 import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA;
 
@@ -56,7 +55,7 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<Path> content,
+    public Publisher<DataChunk> write(Single<Path> content,
             GenericType<? extends Path> type,
             MessageBodyWriterContext context) {
 
@@ -77,7 +76,7 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
      * publisher of {@link DataChunk}.
      */
     private static final class PathToChunks
-            implements MultiMapper<Path, DataChunk> {
+            implements Mapper<Path, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
         private final MessageBodyWriterContext context;
@@ -98,7 +97,7 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
                         StandardOpenOption.READ);
                 return new ReadableByteChannelPublisher(fc, schema);
             } catch (IOException ex) {
-                return Mono.<DataChunk>error(ex);
+                return Single.<DataChunk>error(ex);
             }
         }
     }

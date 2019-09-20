@@ -35,7 +35,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Flow;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 import io.helidon.webserver.BareRequest;
 import io.helidon.webserver.BareResponse;
 import io.helidon.webserver.Handler;
@@ -155,7 +155,7 @@ public class TestClient {
             this.path = path;
             this.headers = new ReadOnlyParameters(headers).toMap();
             if (publisher == null) {
-                this.publisher = Mono.<DataChunk>empty();
+                this.publisher = Single.<DataChunk>empty();
             } else {
                 this.publisher = publisher;
             }

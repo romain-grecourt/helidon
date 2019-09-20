@@ -24,9 +24,9 @@ import javax.json.JsonWriterFactory;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
@@ -51,7 +51,7 @@ public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<JsonStructure> content,
+    public Publisher<DataChunk> write(Single<JsonStructure> content,
             GenericType<? extends JsonStructure> type,
             MessageBodyWriterContext context) {
 
@@ -63,7 +63,7 @@ public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
     }
 
     static final class JsonStructureToChunks
-            implements MultiMapper<JsonStructure, DataChunk> {
+            implements Mapper<JsonStructure, Publisher<DataChunk>> {
 
         private final JsonWriterFactory factory;
         private final Charset charset;

@@ -25,9 +25,9 @@ import java.nio.file.StandardOpenOption;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.RetrySchema;
 
 import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA;
@@ -56,7 +56,7 @@ public final class FileBodyWriter implements MessageBodyWriter<File> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<File> content,
+    public Publisher<DataChunk> write(Single<File> content,
             GenericType<? extends File> type,
             MessageBodyWriterContext context) {
 
@@ -77,7 +77,7 @@ public final class FileBodyWriter implements MessageBodyWriter<File> {
      * publisher of {@link DataChunk}.
      */
     private static final class FileToChunks
-            implements MultiMapper<File, DataChunk> {
+            implements Mapper<File, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
         private final MessageBodyWriterContext context;
@@ -98,7 +98,7 @@ public final class FileBodyWriter implements MessageBodyWriter<File> {
                 FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
                 return new ReadableByteChannelPublisher(fc, schema);
             } catch (IOException ex) {
-                return Mono.<DataChunk>error(ex);
+                return Single.<DataChunk>error(ex);
             }
         }
     }

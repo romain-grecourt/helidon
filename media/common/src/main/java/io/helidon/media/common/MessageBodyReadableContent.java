@@ -127,7 +127,7 @@ public final class MessageBodyReadableContent
     @Override
     public <T> CompletionStage<T> as(final Class<T> type) {
             return context.unmarshall(publisher, GenericType.create(type))
-                .toFuture();
+                .toStage();
     }
 
     /**
@@ -139,7 +139,7 @@ public final class MessageBodyReadableContent
      * @return a completion stage of the requested type
      */
     public <T> CompletionStage<T> as(final GenericType<T> type) {
-        return context.unmarshall(publisher, type).toFuture();
+        return context.unmarshall(publisher, type).toStage();
     }
 
     /**

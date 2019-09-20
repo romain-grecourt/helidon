@@ -26,7 +26,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Implementation of {@link WriteableContent}.
@@ -126,7 +126,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent,
             return pub;
         }
         if (entity != null) {
-            return context.marshall(Mono.just(entity), type, fallback);
+            return context.marshall(Single.just(entity), type, fallback);
         }
         return context.marshallStream(stream, type, fallback);
     }

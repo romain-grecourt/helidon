@@ -22,9 +22,9 @@ import java.util.Objects;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MessageBodyWriter;
@@ -53,7 +53,7 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<Object> content,
+    public Publisher<DataChunk> write(Single<Object> content,
             GenericType<? extends Object> type,
             MessageBodyWriterContext context) {
 
@@ -74,7 +74,7 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
     }
 
     private static final class ObjectToChunks
-            implements MultiMapper<Object, DataChunk> {
+            implements Mapper<Object, Publisher<DataChunk>> {
 
         private final ObjectMapper objectMapper;
         private final Charset charset;

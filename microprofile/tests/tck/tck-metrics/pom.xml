@@ -24,39 +24,32 @@
     <parent>
         <groupId>io.helidon.microprofile.tests</groupId>
         <artifactId>tck-project</artifactId>
-        <version>1.1.3-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <artifactId>tck-metrics</artifactId>
     <name>Helidon Microprofile Tests TCK Metrics</name>
 
     <dependencies>
         <dependency>
-            <groupId>io.helidon.microprofile.metrics</groupId>
-            <artifactId>helidon-microprofile-metrics</artifactId>
+            <groupId>io.helidon.microprofile.tests</groupId>
+            <artifactId>helidon-arquillian</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.helidon.microprofile.bundles</groupId>
+                    <artifactId>helidon-microprofile-3.0</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.microprofile.bundles</groupId>
+            <artifactId>helidon-microprofile-2.2</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.microprofile.config</groupId>
-            <artifactId>helidon-microprofile-config</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.microprofile.config</groupId>
-            <artifactId>helidon-microprofile-config-cdi</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.microprofile.tests</groupId>
-            <artifactId>helidon-arquillian</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -66,8 +59,14 @@
         </dependency>
         <dependency>
             <groupId>org.eclipse.microprofile.metrics</groupId>
+            <artifactId>microprofile-metrics-api</artifactId>
+            <version>${version.lib.microprofile-metrics1-api}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.microprofile.metrics</groupId>
             <artifactId>microprofile-metrics-rest-tck</artifactId>
-            <version>${version.lib.microprofile-metrics-api}</version>
+            <version>${version.lib.microprofile-metrics1-api}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -79,7 +78,7 @@
         <dependency>
             <groupId>org.eclipse.microprofile.metrics</groupId>
             <artifactId>microprofile-metrics-api-tck</artifactId>
-            <version>${version.lib.microprofile-metrics-api}</version>
+            <version>${version.lib.microprofile-metrics1-api}</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>

@@ -18,7 +18,7 @@ package io.helidon.media.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Conversion operator that can convert HTTP payload into one object.
@@ -29,14 +29,14 @@ public interface MessageBodyReader<T>
         extends MessageBodyOperator<MessageBodyReaderContext> {
 
     /**
-     * Convert a HTTP payload into a Mono publisher of the given type.
+     * Convert a HTTP payload into a Single publisher of the given type.
      *
      * @param <U> actual requested type parameter
      * @param publisher HTTP payload
      * @param type requested type
      * @param context the context providing the headers abstraction
-     * @return Mono publisher
+     * @return Single publisher
      */
-    <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
+    <U extends T> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context);
 }

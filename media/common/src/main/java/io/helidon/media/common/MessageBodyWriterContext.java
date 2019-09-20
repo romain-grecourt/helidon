@@ -32,10 +32,10 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
 
 /**
  * Implementation of {@link WriterContext}.
@@ -271,7 +271,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(Mono<T> content,
+    public <T> Publisher<DataChunk> marshall(Single<T> content,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
         try {
@@ -279,7 +279,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
                 return applyFilters(Multi.<DataChunk>empty());
             }
             if (byte[].class.equals(type.rawType())) {
-                return applyFilters(((Mono<byte[]>) content)
+                return applyFilters(((Single<byte[]>) content)
                         .mapMany(BYTES_MAPPER));
             }
             MessageBodyWriter<T> writer;
@@ -311,7 +311,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Publisher<DataChunk> marshall(Mono<T> content,
+    public <T> Publisher<DataChunk> marshall(Single<T> content,
             Class<? extends MessageBodyWriter<T>> writerType,
             GenericType<T> type, MessageBodyWriterContext fallback) {
 
@@ -559,14 +559,14 @@ public final class MessageBodyWriterContext extends MessageBodyContext
     }
 
     /**
-     * Create a mono that will emit a reader not found error to its subscriber.
+     * Create a single that will emit a reader not found error to its subscriber.
      *
      * @param <T> publisher item type
      * @param type reader type that is not found
-     * @return Mono
+     * @return single
      */
-    private static <T> Mono<T> writerNotFound(String type) {
-        return Mono.<T>error(new IllegalStateException(
+    private static <T> Single<T> writerNotFound(String type) {
+        return Single.<T>error(new IllegalStateException(
                 "No writer found for type: " + type));
     }
 
@@ -627,11 +627,11 @@ public final class MessageBodyWriterContext extends MessageBodyContext
         }
 
         @Override
-        public Publisher<DataChunk> write(Mono<T> mono,
+        public Publisher<DataChunk> write(Single<T> single,
                 GenericType<? extends T> type,
                 MessageBodyWriterContext context) {
 
-            return mono.mapMany(function::apply);
+            return single.mapMany(function::apply);
         }
     }
 
@@ -640,7 +640,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext
      * a publisher of {@link DataChunk}.
      */
     private static final class BytesMapper
-            implements MultiMapper<byte[], DataChunk> {
+            implements Mapper<byte[], Publisher<DataChunk>> {
 
         @Override
         public Publisher<DataChunk> map(byte[] item) {

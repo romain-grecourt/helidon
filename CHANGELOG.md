@@ -5,26 +5,130 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] 
+## [1.3.0] 
 
 ### Notes
 
+This release is a feature release and adds support for MicroProfile 3.0 and
+support for Hibernate as a JPA provider. It also includes a number of additional
+bug fixes and enhancements.
+
+**Note:** MicroProfile 3.0 breaks compatibility with MicroProfile 2.2 -- specifically
+in the area of Metrics. Since Helidon 1.3 continues to support MicroProfile 2.2
+your applications that depend on the MicroProfile 2.2 APIs should continue to work
+when you upgrade to Helidon 1.3. But when you switch to MicroProfile 3.0 you will
+likely need to change code that uses the MicroProfile Metrics API. For more
+information see sections 6.5 and Chapter 7 of
+[microprofile-metrics-spec-2.0.pdf](https://github.com/eclipse/microprofile-metrics/releases/download/2.0/microprofile-metrics-spec-2.0.pdf)
+
+As part of this release we are also deprecating APIs for possible removal
+in a future release. Please see the Deprecations section below.
+
 ### Improvements
 
-- WebServer: Access log support [800](https://github.com/oracle/helidon/pull/800)
+- MicroProfile 3.0
+- MicroProfile Metrics 2.0.1 [992](https://github.com/oracle/helidon/pull/992)
+- MicroProfile REST Client 1.3 [1010](https://github.com/oracle/helidon/pull/1010)
+- Security: New SecureUserStore [989](https://github.com/oracle/helidon/pull/989)
+- Security: Allow injection of Security through CDI [986](https://github.com/oracle/helidon/pull/986)
+- Security: Jersey client: propagate SecurityContext automatically [943](https://github.com/oracle/helidon/pull/943)
+- JPA: Add Hibernate support [894](https://github.com/oracle/helidon/pull/894)
+- OpenAPI: Support admin port [999](https://github.com/oracle/helidon/pull/999)
+- Health check endpoint can now be disabled [990](https://github.com/oracle/helidon/pull/990)
+- Introduce parent poms for applications to reduce Maven boilerplate [1022](https://github.com/oracle/helidon/pull/1022)
+- Documentation: new guides [898](https://github.com/oracle/helidon/pull/898) [890](https://github.com/oracle/helidon/pull/890) [918](https://github.com/oracle/helidon/pull/918) [925](https://github.com/oracle/helidon/pull/925) [942](https://github.com/oracle/helidon/pull/942) [959](https://github.com/oracle/helidon/pull/959) [961](https://github.com/oracle/helidon/pull/961) [974](https://github.com/oracle/helidon/pull/974) [987](https://github.com/oracle/helidon/pull/987) [996](https://github.com/oracle/helidon/pull/996) [1011](https://github.com/oracle/helidon/pull/892) [1008](https://github.com/oracle/helidon/pull/1008)
+- Helidon bare archetypes [950](https://github.com/oracle/helidon/pull/950) [995](https://github.com/oracle/helidon/pull/995)
+
+### Fixes
+
+- Upgrade Jersey to 2.29.1 [1010](https://github.com/oracle/helidon/pull/1010)
+- Upgrade Jackson databind to 2.9.9.3 [969](https://github.com/oracle/helidon/pull/969)
+- GraalVM: Support static content for Graal native-image [962](https://github.com/oracle/helidon/pull/962)
+- GraalVM: Support for Jersey in Graal native-image [985](https://github.com/oracle/helidon/pull/985)
+- Fix NullPointerException in ConfigCdiExtension; repairs erroneous private constructors in JPA and JTA integrations [1005](https://github.com/oracle/helidon/pull/1005)
+- Config: Fix precedence for explicit sys prop and env var sources [1002](https://github.com/oracle/helidon/pull/1002)
+- bom/pom.xml cleanup [980](https://github.com/oracle/helidon/pull/980)
+- TracerBuilder now uses Helidon service loader [967](https://github.com/oracle/helidon/pull/967)
+- Reactive utilities [1003](https://github.com/oracle/helidon/pull/1003)
+- Tests: improve AccessLogSupportTest and fix test with locales other than en_US [998](https://github.com/oracle/helidon/pull/998)
+- Documentation: javadoc cleanup [993](https://github.com/oracle/helidon/pull/993) [997](https://github.com/oracle/helidon/pull/997)
+
+### Deprecations
+
+The following APIs are deprecated and will be removed in a future release:
+
+- MicroProfile 2.2 and earlier. Use MicroProfile 3.0.
+- The `@SecureClient` annotation. Security propagation is now automatic across the MicroProfile and Jersey REST clients.
+- `UserStore` in basic authentication. Replaced by `SecureUserStore`.
+- All methods that use `Span` in Webserver APIs (and Security etc.). Use `SpanContext` instead.
+- All methods that provide general health checks and not readiness or liveness checks. For example
+  use `HealthSupportBuilder.addLiveness()` instead of `HealthSupportBuilder.add()`
+- `io.helidon.common.reactive.SubmissionPublisher`
+- The `io.helidon.service.configuration` package.
+- The `io.helidon.common.reactive.valve` package.
+- Any other classes and methods that have been annotated as deprecated.
+
+
+## [1.2.1] - 2019-08-21
+
+### Notes
+
+This release contains bug and performance fixes as well as support for
+the latest releases of GraalVM (19.1.1 and 19.2.0)
+
+### Fixes
+
+- Tracing: Zipkin integration no longer fails in MP due to class cast exception. [901](https://github.com/oracle/helidon/pull/901)
+- Jersey client to automatically propagate context when using asynchronous operations. [905](https://github.com/oracle/helidon/pull/905)
+- Smart resizing of Jersey thread pool [871](https://github.com/oracle/helidon/pull/871)
+- WebServer: Upgrade Netty to 4.1.39 [899](https://github.com/oracle/helidon/pull/899)
+- WebServer: Change Netty workers default to equal available processors. [874](https://github.com/oracle/helidon/pull/874)
+- JPA: Add support for unitName-less PersistenceContext injection points [914](https://github.com/oracle/helidon/pull/914)
+- JPA: Promoting JPA integration to supported status [908](https://github.com/oracle/helidon/pull/908)
+- Health: Healthchecks moved to liveness checks. [903](https://github.com/oracle/helidon/pull/903)
+- MP Server: Logging a warning when more than one MP server is started. [902](https://github.com/oracle/helidon/pull/902)
+- GraalVM: Changes for Zipkin and Netty to run with latest Graal VM native-image [915](https://github.com/oracle/helidon/pull/915)
+- Security: Properly log audit event [886](https://github.com/oracle/helidon/pull/886)
+- OpenAPI: Allow different servers within an app to report different OpenAPI doc [883](Allow different servers within an app to report different OpenAPI doc)
+- Correct erroneous assert statement in JedisExtension [917](https://github.com/oracle/helidon/pull/917)
+- UCP Unit test [889](https://github.com/oracle/helidon/pull/889)
+- Examples: Add H2-based example for the Hikari connection pool [898](https://github.com/oracle/helidon/pull/898)
+- Documentation fixes [892](https://github.com/oracle/helidon/pull/892) [898](https://github.com/oracle/helidon/pull/898) [906](https://github.com/oracle/helidon/pull/906)
+
+
+## [1.2.0] - 2019-07-29
+
+### Notes
+
+This release contains full support for MicroProfile 2.2. We also have a few new 
+enhancements and bug and performances fixes.
+
+### Improvements
+
+- MicroProfile OpenTracing 1.3.1 [826](https://github.com/oracle/helidon/pull/826)
+- MicroProfile REST Client 1.2.1 [407](https://github.com/oracle/helidon/issues/407)
+- MicroProfile Health 2.0 [835](https://github.com/oracle/helidon/pull/835)
+- WebServer: Access log support [800](https://github.com/oracle/helidon/pull/800) [837](https://github.com/oracle/helidon/pull/837)
 - WebServer: Support for HTTP/2 negotiation with TLS/APLN [807](https://github.com/oracle/helidon/pull/807)
 - Config: credentials support added to git config [810](https://github.com/oracle/helidon/pull/801)
 - Early Access: support for the Oracle Universal Connection Pool [777](https://github.com/oracle/helidon/pull/777)
+- Early Access: JPA/JTA: Support analog to extended persistence contexts [639](https://github.com/oracle/helidon/issues/639)
 
 ### Fixes
 
 - WebServer: Return a 400 response for a request with an invalid URL [796](https://github.com/oracle/helidon/pull/796)
 - WebServer: Changes to content length optimization to handle flushes [783](https://github.com/oracle/helidon/pull/783)
 - WebServer: Refine content length support [795](https://github.com/oracle/helidon/pull/795)
-- Update jackson databind to 2.9.9 [797](https://github.com/oracle/helidon/pull/797)
+- Upgrade Jersey to 2.29 [813](https://github.com/oracle/helidon/pull/813)
+- Upgrade jackson databind to 2.9.9 [797](https://github.com/oracle/helidon/pull/797)
 - Enable Netty autoread only after completing a response [823](https://github.com/oracle/helidon/pull/823)
 - Tracing: add Tracing configuration module [809](https://github.com/oracle/helidon/pull/809)
 - Tracing: Fix constant sampler name for Jaeger [828](https://github.com/oracle/helidon/pull/828)
+- Tracing: IDCS Role mapper: calls to IDCS not associated with the call [794](https://github.com/oracle/helidon/issues/794)
+- Config: Enable support of application.yaml use case in data source injection extensions [847](https://github.com/oracle/helidon/pull/847)
+- Config: Correct traversal logic for MpConfig when acquiring configuration property names [845](https://github.com/oracle/helidon/pull/845)
+- MicroProfile Config: MpConfig will never include Helidon Config property names in the return value of getPropertyNames() [844](https://github.com/oracle/helidon/issues/844)
+- Update examples and tests to use microprofile-2.2 bundle [843](https://github.com/oracle/helidon/pull/843)
 
 ## [1.1.2] - 2019-06-14
 
@@ -286,6 +390,12 @@ wanted to get these changes in before 1.0. For details see
 - Fault Tolerance: Memory improvement [180](https://github.com/oracle/helidon/pull/180) 
 - Build: fails when compiling with Java 11 [225](https://github.com/oracle/helidon/issues/225)
 
+## [0.10.6] - 2019-08-07
+
+### Fixes
+
+- WebServer (backport): Remove the channel closed listener in BareResponseImpl when request completes. [695](https://github.com/oracle/helidon/pull/695)
+
 ## [0.10.5] - 2018-11-06
 
 ### Fixes
@@ -370,7 +480,9 @@ for details.
 ### Notes
 - Initial source drop on Github
 
-[Unreleased]: https://github.com/oracle/helidon/compare/1.1.2...HEAD
+[1.3.0]: https://github.com/oracle/helidon/compare/1.2.1...1.3.0
+[1.2.1]: https://github.com/oracle/helidon/compare/1.2.0...1.2.1
+[1.2.0]: https://github.com/oracle/helidon/compare/1.1.2...1.2.0
 [1.1.2]: https://github.com/oracle/helidon/compare/1.1.1...1.1.2
 [1.1.1]: https://github.com/oracle/helidon/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/oracle/helidon/compare/1.0.3...1.1.0
@@ -380,6 +492,7 @@ for details.
 [1.0.0]: https://github.com/oracle/helidon/compare/0.11.0...1.0.0
 [0.11.1]: https://github.com/oracle/helidon/compare/0.11.0...0.11.1
 [0.11.0]: https://github.com/oracle/helidon/compare/0.10.5...0.11.0
+[0.10.6]: https://github.com/oracle/helidon/compare/0.10.5...0.10.6
 [0.10.5]: https://github.com/oracle/helidon/compare/0.10.4...0.10.5
 [0.10.4]: https://github.com/oracle/helidon/compare/0.10.3...0.10.4
 [0.10.3]: https://github.com/oracle/helidon/compare/0.10.2...0.10.3

@@ -25,29 +25,17 @@ import java.util.concurrent.CompletableFuture;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Reader;
 import io.helidon.common.http.Utils;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mapper;
-import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
 
 /**
  * Utility class that provides standalone mechanisms for reading message body
  * content.
  */
 public final class ContentReaders {
-
-    /**
-     * Bytes to string mapper charset cache populator.
-     */
-    private static final CharsetCache.Populator<BytesToString> BTOS_POPULATOR =
-            BytesToString::new;
-
-    /**
-     * The bytes to string mapper charset cache.
-     */
-    private static final CharsetCache<BytesToString> BTOS_CACHE =
-            new CharsetCache(BTOS_POPULATOR);
 
     /**
      * A utility class constructor.
@@ -60,9 +48,9 @@ public final class ContentReaders {
      * array.
      *
      * @param chunks source publisher
-     * @return Mono
+     * @return Single
      */
-    public static Mono<byte[]> readBytes(Publisher<DataChunk> chunks) {
+    public static Single<byte[]> readBytes(Publisher<DataChunk> chunks) {
         return Multi.from(chunks).collect(new BytesCollector());
     }
 
@@ -70,26 +58,21 @@ public final class ContentReaders {
      * Convert the given publisher of {@link DataChunk} into a {@link String}.
      * @param chunks source publisher
      * @param charset charset to use for decoding the bytes
-     * @return Mono
+     * @return Single
      */
-    public static Mono<String> readString(Publisher<DataChunk> chunks,
-            Charset charset) {
-
-        return readBytes(chunks).map(BTOS_CACHE.get(charset,
-                BTOS_POPULATOR));
+    public static Single<String> readString(Publisher<DataChunk> chunks, Charset charset) {
+        return readBytes(chunks).map(new BytesToString(charset));
     }
 
     /**
-     * For basic charsets, returns a cached {@link StringBodyReader} instance or
-     * create a new instance otherwise.
+     * Get a reader that converts a {@link DataChunk} publisher to a
+     * {@link String}.
      *
      * @param charset the charset to use with the returned string content reader
      * @return a string content reader
-     * @deprecated use {@link #readString(Publisher, Charset)} instead
-     * instead
      */
     public static Reader<String> stringReader(Charset charset) {
-        return (chunks, type) -> readString(chunks, charset).toFuture();
+        return (chunks, type) -> readString(chunks, charset).toStage();
     }
 
     /**
@@ -98,10 +81,9 @@ public final class ContentReaders {
      *
      * @return reader that transforms a publisher of byte buffers to a
      * completion stage that might end exceptionally with
-     * @deprecated use {@link #readBytes(Publisher)} instead
      */
     public static Reader<byte[]> byteArrayReader() {
-        return (publisher, clazz) -> readBytes(publisher).toFuture();
+        return (publisher, clazz) -> readBytes(publisher).toStage();
     }
 
     /**
@@ -113,19 +95,16 @@ public final class ContentReaders {
      * {@link InputStream#read()}) block.
      *
      * @return a input stream content reader
-     * @deprecated use {@link PublisherInputStream} instead
      */
     public static Reader<InputStream> inputStreamReader() {
-        return (publisher, clazz) -> CompletableFuture
-                    .completedFuture(new PublisherInputStream(publisher));
+        return (publisher, clazz) -> CompletableFuture.completedFuture(new PublisherInputStream(publisher));
     }
 
     /**
-     * Implementation of {@link Mapper} that converts a {@code byte[]} into a
-     * {@link String} using a given {@link Charset}.
+     * Implementation of {@link Mapper} that converts a {@code byte[]} into
+     * a {@link String} using a given {@link Charset}.
      */
-    private static final class BytesToString
-            implements Mapper<byte[], String> {
+    private static final class BytesToString implements Mapper<byte[], String> {
 
         private final Charset charset;
 
@@ -143,8 +122,7 @@ public final class ContentReaders {
      * Implementation of {@link Collector} that collects chunks into a single
      * {@code byte[]}.
      */
-    private static final class BytesCollector
-            implements Collector<byte[], DataChunk> {
+    private static final class BytesCollector implements Collector<DataChunk, byte[]> {
 
         private final ByteArrayOutputStream baos;
 
@@ -157,8 +135,7 @@ public final class ContentReaders {
             try {
                 Utils.write(chunk.data(), baos);
             } catch (IOException e) {
-                throw new IllegalArgumentException(
-                        "Cannot convert byte buffer to a byte array!", e);
+                throw new IllegalArgumentException("Cannot convert byte buffer to a byte array!", e);
             } finally {
                 chunk.release();
             }

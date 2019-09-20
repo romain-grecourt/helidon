@@ -20,9 +20,9 @@ import java.nio.charset.Charset;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 
 /**
  * Writer for {@code CharSequence}.
@@ -62,7 +62,7 @@ public final class CharSequenceBodyWriter
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<CharSequence> content,
+    public Publisher<DataChunk> write(Single<CharSequence> content,
             GenericType<? extends CharSequence> type,
             MessageBodyWriterContext context) {
 
@@ -84,7 +84,7 @@ public final class CharSequenceBodyWriter
      * a publisher of {@link DataChunk}.
      */
     private static final class CharSequenceToChunks
-            implements MultiMapper<CharSequence, DataChunk> {
+            implements Mapper<CharSequence, Publisher<DataChunk>> {
 
         private final Charset charset;
 

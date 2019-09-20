@@ -20,9 +20,9 @@ import java.util.Objects;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mapper;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.common.MessageBodyReaderContext;
@@ -52,7 +52,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public <U extends Object> Mono<U> read(Publisher<DataChunk> publisher,
+    public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
         return ContentReaders.readBytes(publisher)
@@ -74,7 +74,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         private final GenericType<? super T> type;
         private final ObjectMapper objectMapper;
 
-        BytesToObject(GenericType<? super T> type,
+        BytesToObject(GenericType<T> type,
                 ObjectMapper objectMapper) {
 
             this.type = type;

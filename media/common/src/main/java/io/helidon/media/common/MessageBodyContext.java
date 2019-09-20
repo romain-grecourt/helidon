@@ -27,7 +27,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Flow.Subscription;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Base message body context implementation.
@@ -276,7 +276,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
             EventListener listener) {
 
         if (publisher == null) {
-            publisher = Mono.<DataChunk>empty();
+            publisher = Single.<DataChunk>empty();
         }
         try {
             Publisher<DataChunk> last = publisher;

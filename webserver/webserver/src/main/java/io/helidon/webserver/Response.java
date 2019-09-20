@@ -28,7 +28,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.MessageBodyContext;
 import io.helidon.media.common.MessageBodyFilter;
 import io.helidon.media.common.MessageBodyStreamWriter;
@@ -166,7 +166,7 @@ abstract class Response implements ServerResponse {
         try {
             sendLockSupport.execute(() -> {
                 Publisher<DataChunk> sendPublisher = writerContext.marshall(
-                        Mono.just(content), GenericType.create(content), null);
+                        Single.just(content), GenericType.create(content), null);
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);

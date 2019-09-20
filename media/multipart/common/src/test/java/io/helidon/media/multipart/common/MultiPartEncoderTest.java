@@ -16,10 +16,10 @@
 package io.helidon.media.multipart.common;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.concurrent.CompletionException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import io.helidon.common.CollectionsHelper;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.DataChunk;
@@ -47,7 +47,7 @@ public class MultiPartEncoderTest {
     // TODO test throttling
 
     @Test
-    public void testEncodeOnePart() {
+    public void testEncodeOnePart() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
                 WriteableBodyPart.builder()
@@ -61,7 +61,7 @@ public class MultiPartEncoderTest {
     }
 
     @Test
-    public void testEncodeOnePartWithHeaders() {
+    public void testEncodeOnePartWithHeaders() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
                 WriteableBodyPart.builder()
@@ -79,7 +79,7 @@ public class MultiPartEncoderTest {
     }
 
     @Test
-    public void testEncodeTwoParts() {
+    public void testEncodeTwoParts() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
                 WriteableBodyPart.builder()
@@ -157,12 +157,12 @@ public class MultiPartEncoderTest {
     }
 
     private static String encodeParts(String boundary,
-            WriteableBodyPart... parts) {
+            WriteableBodyPart... parts) throws Exception {
 
         MultiPartEncoder encoder = MultiPartEncoder.create(boundary,
                 MEDIA_SUPPORT.writerContext());
         Multi.just(parts).subscribe(encoder);
         return ContentReaders.readString(encoder, StandardCharsets.UTF_8)
-                .block(Duration.ofSeconds(10));
+                .get(10, TimeUnit.SECONDS);
     }
 }

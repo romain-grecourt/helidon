@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.Http;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -120,7 +120,7 @@ public class RoutingTest {
         BareRequest bareRequestMock = mock(BareRequest.class);
         doReturn(URI.create("http://0.0.0.0:1234/" + path)).when(bareRequestMock).uri();
         doReturn(method).when(bareRequestMock).method();
-        doReturn(Mono.empty()).when(bareRequestMock).bodyPublisher();
+        doReturn(Single.empty()).when(bareRequestMock).bodyPublisher();
         WebServer webServerMock = mock(WebServer.class);
         when(webServerMock.context()).thenReturn(ContextualRegistry.create());
         doReturn(webServerMock).when(bareRequestMock).webServer();

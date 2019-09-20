@@ -20,7 +20,7 @@ import java.io.InputStream;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Single;
 
 /**
  * Message body reader for {@link InputStream}.
@@ -46,11 +46,11 @@ public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends InputStream> Mono<U> read(
+    public <U extends InputStream> Single<U> read(
             Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return (Mono<U>) Mono.just(new PublisherInputStream(publisher));
+        return (Single<U>) Single.just(new PublisherInputStream(publisher));
     }
 
     /**

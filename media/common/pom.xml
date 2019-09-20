@@ -21,7 +21,7 @@
     <parent>
         <groupId>io.helidon.media</groupId>
         <artifactId>helidon-media-project</artifactId>
-        <version>1.1.3-SNAPSHOT</version>
+        <version>1.3.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -32,7 +32,14 @@
         <dependency>
             <groupId>io.helidon.common</groupId>
             <artifactId>helidon-common-http</artifactId>
-            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.common</groupId>
+            <artifactId>helidon-common-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.common</groupId>
+            <artifactId>helidon-common-mapper</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

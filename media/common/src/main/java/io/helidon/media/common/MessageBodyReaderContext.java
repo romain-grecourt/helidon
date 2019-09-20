@@ -29,8 +29,11 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.http.Reader;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
+import io.helidon.common.reactive.Flow.Subscriber;
+import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Implementation of {@link ReaderContext}.
@@ -144,16 +147,16 @@ public final class MessageBodyReaderContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Mono<T> unmarshall(Publisher<DataChunk> payload,
+    public <T> Single<T> unmarshall(Publisher<DataChunk> payload,
             GenericType<T> type) {
 
         if (payload == null) {
-            return Mono.<T>empty();
+            return Single.<T>empty();
         }
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
             if (byte[].class.equals(type.rawType())) {
-                return (Mono<T>) ContentReaders.readBytes(filteredPayload);
+                return (Single<T>) ContentReaders.readBytes(filteredPayload);
             }
             MessageBodyReader<T> reader = (MessageBodyReader<T>)
                     readers.select(type, this);
@@ -177,12 +180,12 @@ public final class MessageBodyReaderContext extends MessageBodyContext
      * @return publisher, never {@code null}
      */
     @SuppressWarnings("unchecked")
-    public <T> Mono<T> unmarshall(Publisher<DataChunk> payload,
+    public <T> Single<T> unmarshall(Publisher<DataChunk> payload,
             Class<? extends MessageBodyReader<T>> readerType,
             GenericType<T> type) {
 
         if (payload == null) {
-            return Mono.<T>empty();
+            return Single.<T>empty();
         }
         try {
             Publisher<DataChunk> filteredPayload = applyFilters(payload, type);
@@ -329,27 +332,27 @@ public final class MessageBodyReaderContext extends MessageBodyContext
     }
 
     /**
-     * Create a mono that will emit a reader not found error to its subscriber.
+     * Create a single that will emit a reader not found error to its subscriber.
      *
      * @param <T> publisher item type
      * @param type reader type that is not found
-     * @return Mono
+     * @return Single
      */
-    private static <T> Mono<T> readerNotFound(String type) {
-        return Mono.<T>error(new IllegalStateException(
+    private static <T> Single<T> readerNotFound(String type) {
+        return Single.<T>error(new IllegalStateException(
                 "No reader found for type: " + type));
     }
 
     /**
-     * Create a mono that will emit a transformation failed error to its
+     * Create a single that will emit a transformation failed error to its
      * subscriber.
      *
      * @param <T> publisher item type
      * @param ex exception cause
-     * @return Mono
+     * @return Single
      */
-    private static <T> Mono<T> transformationFailed(Throwable ex) {
-        return Mono.<T>error(new IllegalStateException(
+    private static <T> Single<T> transformationFailed(Throwable ex) {
+        return Single.<T>error(new IllegalStateException(
                     "Transformation failed!", ex));
     }
 
@@ -381,10 +384,10 @@ public final class MessageBodyReaderContext extends MessageBodyContext
 
         @SuppressWarnings("unchecked")
         @Override
-        public <U extends T> Mono<U> read(Publisher<DataChunk> publisher,
+        public <U extends T> Single<U> read(Publisher<DataChunk> publisher,
                 GenericType<U> type, MessageBodyReaderContext context) {
 
-            return Mono.fromFuture(reader.applyAndCast(publisher,
+            return new SingleFromCompletionStage(reader.applyAndCast(publisher,
                     (Class<U>) type.rawType()));
         }
 
@@ -396,6 +399,53 @@ public final class MessageBodyReaderContext extends MessageBodyContext
                 return predicate.test(type.rawType());
             }
             return clazz.isAssignableFrom(type.rawType());
+        }
+    }
+
+    /**
+     * Single from future.
+     * @param <T> item type
+     */
+    private static final class SingleFromCompletionStage<T> implements Single<T> {
+
+        private final CompletionStage<? extends T> future;
+        private Subscriber<? super T> subscriber;
+        private volatile boolean requested;
+
+        SingleFromCompletionStage(CompletionStage<? extends T> future) {
+            this.future = Objects.requireNonNull(future, "future");
+        }
+
+        private void submit(T item) {
+            subscriber.onNext(item);
+            subscriber.onComplete();
+        }
+
+        private <U extends T> U raiseError(Throwable error) {
+            subscriber.onError(error);
+            return null;
+        }
+
+        @Override
+        public void subscribe(Subscriber<? super T> subscriber) {
+            if (this.subscriber != null) {
+                throw new IllegalStateException("Already subscribed to");
+            }
+            this.subscriber = subscriber;
+            subscriber.onSubscribe(new Subscription() {
+                @Override
+                public void request(long n) {
+                    if (n > 0 && !requested) {
+                        future.exceptionally(SingleFromCompletionStage.this::raiseError);
+                        future.thenAccept(SingleFromCompletionStage.this::submit);
+                        requested = true;
+                    }
+                }
+
+                @Override
+                public void cancel() {
+                }
+            });
         }
     }
 }

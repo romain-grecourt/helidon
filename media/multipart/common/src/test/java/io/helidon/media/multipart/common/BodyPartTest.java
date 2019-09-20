@@ -63,13 +63,13 @@ public class BodyPartTest {
     }
 
     @Test
-    public void testContentFromEntity() {
+    public void testContentFromEntity() throws Exception {
         Publisher<DataChunk> publisher = WriteableBodyPart
                 .create("body part data")
                 .content()
                 .toPublisher(MEDIA_SUPPORT.writerContext());
         String result = ContentReaders.readString(publisher, DEFAULT_CHARSET)
-                .block();
+                .get();
         assertThat(result, is(equalTo("body part data")));
     }
 

@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Flow.Publisher;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,21 +32,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 public class ContentWritersTest {
 
-//    @Test
+    @Test
     public void byteWriter() throws Exception {
         byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
         Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, false);
-        byte[] result = ContentReaders.readBytes(publisher).block();
+        byte[] result = ContentReaders.readBytes(publisher).get(5, TimeUnit.SECONDS);
         assertThat(bytes, is(result));
     }
 
-//    @Test
+    @Test
     public void copyByteWriter() throws Exception {
         byte[] bytes = "abc".getBytes(StandardCharsets.ISO_8859_1);
-        Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, false);
-        System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes,
-                0, bytes.length);
-        byte[] result = ContentReaders.readBytes(publisher).block();
+        Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, true);
+        System.arraycopy("xxx".getBytes(StandardCharsets.ISO_8859_1), 0, bytes, 0, bytes.length);
+        byte[] result = ContentReaders.readBytes(publisher).get();
         assertThat("abc".getBytes(StandardCharsets.ISO_8859_1), is(result));
     }
 
@@ -53,16 +53,15 @@ public class ContentWritersTest {
     public void byteWriterEmpty() throws Exception {
         byte[] bytes = new byte[0];
         Publisher<DataChunk> publisher = ContentWriters.writeBytes(bytes, false);
-        byte[] result = ContentReaders.readBytes(publisher).block();
+        byte[] result = ContentReaders.readBytes(publisher).get(5, TimeUnit.SECONDS);
         assertThat(result.length, is(0));
     }
 
-//    @Test
+    @Test
     public void charSequenceWriter() throws Exception {
         String data = "abc";
-        Publisher<DataChunk> publisher = ContentWriters
-                .charSequenceWriter(StandardCharsets.UTF_8).apply(data);
-        byte[] result = ContentReaders.readBytes(publisher).block();
+        Publisher<DataChunk> publisher = ContentWriters.charSequenceWriter(StandardCharsets.UTF_8).apply(data);
+        byte[] result = ContentReaders.readBytes(publisher).get(5, TimeUnit.SECONDS);
         assertThat(new String(result, StandardCharsets.UTF_8), is(data));
     }
 }

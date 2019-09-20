@@ -18,10 +18,10 @@ package io.helidon.media.multipart.common;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
 import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.MultiMapper;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.MessageBodyWriterContext;
 
@@ -63,7 +63,7 @@ public final class MultiPartBodyWriter implements
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<WriteableMultiPart> content,
+    public Publisher<DataChunk> write(Single<WriteableMultiPart> content,
             GenericType<? extends WriteableMultiPart> type,
             MessageBodyWriterContext context) {
 
@@ -93,7 +93,7 @@ public final class MultiPartBodyWriter implements
     }
 
     private static final class MultiPartToChunks
-            implements MultiMapper<WriteableMultiPart, DataChunk> {
+            implements Mapper<WriteableMultiPart, Publisher<DataChunk>> {
 
         private final MultiPartEncoder encoder;
 

@@ -20,10 +20,10 @@ import java.nio.channels.ReadableByteChannel;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
+import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Mono;
-import io.helidon.common.reactive.MultiMapper;
 import io.helidon.common.reactive.RetrySchema;
+import io.helidon.common.reactive.Single;
 
 /**
  * Message body writer for {@link ReadableByteChannel}.
@@ -56,7 +56,7 @@ public final class ByteChannelBodyWriter
     }
 
     @Override
-    public Publisher<DataChunk> write(Mono<ReadableByteChannel> content,
+    public Publisher<DataChunk> write(Single<ReadableByteChannel> content,
             GenericType<? extends ReadableByteChannel> type,
             MessageBodyWriterContext context) {
 
@@ -86,7 +86,7 @@ public final class ByteChannelBodyWriter
      * {@link ReadableByteChannel} to a publisher of {@link DataChunk}.
      */
     private static final class ByteChannelToChunks
-            implements MultiMapper<ReadableByteChannel, DataChunk> {
+            implements Mapper<ReadableByteChannel, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
 
