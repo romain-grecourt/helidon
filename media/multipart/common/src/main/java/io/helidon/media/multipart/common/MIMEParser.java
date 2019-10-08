@@ -334,8 +334,7 @@ final class MIMEParser {
     /**
      * Singleton for {@link StartMessageEvent}.
      */
-    private static final StartMessageEvent START_MESSAGE_EVENT =
-            new StartMessageEvent();
+    private static final StartMessageEvent START_MESSAGE_EVENT = new StartMessageEvent();
 
     /**
      * Singleton for {@link StartPartEvent}.
@@ -345,8 +344,7 @@ final class MIMEParser {
     /**
      * Singleton for {@link EndHeadersEvent}.
      */
-    private static final EndHeadersEvent END_HEADERS_EVENT =
-            new EndHeadersEvent();
+    private static final EndHeadersEvent END_HEADERS_EVENT = new EndHeadersEvent();
 
     /**
      * Singleton for {@link EndPartEvent}.
@@ -356,8 +354,7 @@ final class MIMEParser {
     /**
      * Singleton for {@link EndMessageEvent}.
      */
-    private static final EndMessageEvent END_MESSAGE_EVENT =
-            new EndMessageEvent();
+    private static final EndMessageEvent END_MESSAGE_EVENT = new EndMessageEvent();
 
     /**
      * The current parser state.
@@ -513,8 +510,7 @@ final class MIMEParser {
             switch (state) {
                 case START_MESSAGE:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.START_MESSAGE);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.START_MESSAGE);
                     }
                     state = STATE.SKIP_PREAMBLE;
                     listener.process(START_MESSAGE_EVENT);
@@ -522,14 +518,12 @@ final class MIMEParser {
 
                 case SKIP_PREAMBLE:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.SKIP_PREAMBLE);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.SKIP_PREAMBLE);
                     }
                     skipPreamble();
                     if (bndStart == -1) {
                         if (LOGGER.isLoggable(Level.FINER)) {
-                            LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                    STATE.DATA_REQUIRED);
+                            LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.DATA_REQUIRED);
                         }
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.SKIP_PREAMBLE;
@@ -537,9 +531,7 @@ final class MIMEParser {
                         return;
                     }
                     if (LOGGER.isLoggable(Level.FINE)) {
-                        LOGGER.log(Level.FINE,
-                                "Skipped the preamble. position={0}",
-                                position);
+                        LOGGER.log(Level.FINE, "Skipped the preamble. position={0}", position);
                     }
                     state = STATE.START_PART;
                     break;
@@ -547,8 +539,7 @@ final class MIMEParser {
                 // fall through
                 case START_PART:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.START_PART);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.START_PART);
                     }
                     state = STATE.HEADERS;
                     listener.process(START_PART_EVENT);
@@ -556,14 +547,12 @@ final class MIMEParser {
 
                 case HEADERS:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.HEADERS);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.HEADERS);
                     }
                     String headerLine = readHeaderLine();
                     if (headerLine == null) {
                         if (LOGGER.isLoggable(Level.FINER)) {
-                            LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                    STATE.DATA_REQUIRED);
+                            LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.DATA_REQUIRED);
                         }
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.HEADERS;
@@ -572,8 +561,7 @@ final class MIMEParser {
                     }
                     if (!headerLine.isEmpty()) {
                         Hdr header = new Hdr(headerLine);
-                        listener.process(new HeaderEvent(header.name(),
-                                header.value()));
+                        listener.process(new HeaderEvent(header.name(), header.value()));
                         break;
                     }
                     state = STATE.BODY;
@@ -583,14 +571,12 @@ final class MIMEParser {
 
                 case BODY:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.BODY);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.BODY);
                     }
                     List<ByteBuffer> contentBuffers = readBody();
                     if (bndStart == -1 || contentBuffers.isEmpty()) {
                         if (LOGGER.isLoggable(Level.FINER)) {
-                            LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                    STATE.DATA_REQUIRED);
+                            LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.DATA_REQUIRED);
                         }
                         state = STATE.DATA_REQUIRED;
                         resumeState = STATE.BODY;
@@ -608,8 +594,7 @@ final class MIMEParser {
 
                 case END_PART:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.END_PART);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.END_PART);
                     }
                     if (done) {
                         state = STATE.END_MESSAGE;
@@ -621,15 +606,13 @@ final class MIMEParser {
 
                 case END_MESSAGE:
                     if (LOGGER.isLoggable(Level.FINER)) {
-                        LOGGER.log(Level.FINER, "MIMEParser state={0}",
-                                STATE.END_MESSAGE);
+                        LOGGER.log(Level.FINER, "MIMEParser state={0}", STATE.END_MESSAGE);
                     }
                     listener.process(END_MESSAGE_EVENT);
                     return;
 
                 case DATA_REQUIRED:
-                    listener.process(new DataRequiredEvent(
-                            resumeState == STATE.BODY));
+                    listener.process(new DataRequiredEvent(resumeState == STATE.BODY));
                     return;
 
                 default:

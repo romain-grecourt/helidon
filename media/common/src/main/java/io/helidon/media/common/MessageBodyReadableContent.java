@@ -40,9 +40,7 @@ public final class MessageBodyReadableContent
      * @param publisher content publisher
      * @param context reader context
      */
-    MessageBodyReadableContent(Publisher<DataChunk> publisher,
-            MessageBodyReaderContext context) {
-
+    MessageBodyReadableContent(Publisher<DataChunk> publisher, MessageBodyReaderContext context) {
         Objects.requireNonNull(publisher, "publisher is null!");
         Objects.requireNonNull(context, "context is null!");
         this.publisher = publisher;
@@ -109,9 +107,7 @@ public final class MessageBodyReadableContent
         try {
             context.applyFilters(publisher).subscribe(subscriber);
         } catch (Exception e) {
-            subscriber.onError(new IllegalArgumentException(
-                    "Unexpected exception occurred during publishers chaining",
-                    e));
+            subscriber.onError(new IllegalArgumentException("Unexpected exception occurred during publishers chaining", e));
         }
     }
 

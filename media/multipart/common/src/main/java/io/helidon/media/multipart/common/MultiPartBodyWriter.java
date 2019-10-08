@@ -28,8 +28,7 @@ import io.helidon.media.common.MessageBodyWriterContext;
 /**
  * {@link WriteableMultiPart} writer.
  */
-public final class MultiPartBodyWriter implements
-        MessageBodyWriter<WriteableMultiPart> {
+public final class MultiPartBodyWriter implements MessageBodyWriter<WriteableMultiPart> {
 
     /**
      * The default boundary used for encoding multipart messages.
@@ -39,8 +38,7 @@ public final class MultiPartBodyWriter implements
     /**
      * Singleton instance.
      */
-    private static final MultiPartBodyWriter INSTANCE =
-            new MultiPartBodyWriter(DEFAULT_BOUNDARY);
+    private static final MultiPartBodyWriter INSTANCE = new MultiPartBodyWriter(DEFAULT_BOUNDARY);
 
     /**
      * The actual boundary string.
@@ -56,15 +54,12 @@ public final class MultiPartBodyWriter implements
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return WriteableMultiPart.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Single<WriteableMultiPart> content,
-            GenericType<? extends WriteableMultiPart> type,
+    public Publisher<DataChunk> write(Single<WriteableMultiPart> content, GenericType<? extends WriteableMultiPart> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
@@ -92,8 +87,7 @@ public final class MultiPartBodyWriter implements
         return INSTANCE;
     }
 
-    private static final class MultiPartToChunks
-            implements Mapper<WriteableMultiPart, Publisher<DataChunk>> {
+    private static final class MultiPartToChunks implements Mapper<WriteableMultiPart, Publisher<DataChunk>> {
 
         private final MultiPartEncoder encoder;
 

@@ -96,9 +96,7 @@ final class VirtualBuffer {
             it.remove();
         }
         if (!found) {
-            throw new IllegalStateException(
-                    "Unable to find new absolute position for offset: "
-                            + newOffset);
+            throw new IllegalStateException("Unable to find new absolute position for offset: " + newOffset);
         }
     }
 
@@ -215,8 +213,7 @@ final class VirtualBuffer {
         if (!(begin >= 0 && begin < length)
                 || !(end > 0 && end <= length)
                 || begin > end) {
-            throw new IndexOutOfBoundsException(
-                    "Invalid range, begin=" + begin + ", end=" + end);
+            throw new IndexOutOfBoundsException("Invalid range, begin=" + begin + ", end=" + end);
         }
     }
 

@@ -30,21 +30,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class ContentDispositionTest {
 
-    private static final ZonedDateTime ZDT = ZonedDateTime
-            .of(2008, 6, 3, 11, 5, 30, 0, ZoneId.of("Z"));
+    private static final ZonedDateTime ZDT = ZonedDateTime.of(2008, 6, 3, 11, 5, 30, 0, ZoneId.of("Z"));
 
     @Test
     public void testNoType() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            ContentDisposition.parse("foo=\"bar\"; bar=\"foo\"");
-        });
+        assertThrows(IllegalArgumentException.class, () -> ContentDisposition.parse("foo=\"bar\"; bar=\"foo\""));
     }
 
     @Test
     public void testWhiteSpaces() {
-        ContentDisposition cd = ContentDisposition
-                .parse(" inline;foo=bar; bar=foo ; abc=xyz ");
-
+        ContentDisposition cd = ContentDisposition.parse(" inline;foo=bar; bar=foo ; abc=xyz ");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.parameters(), is(notNullValue()));
         assertThat(cd.parameters().size(), is(equalTo(3)));
@@ -55,9 +50,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testQuotedString() {
-        ContentDisposition cd = ContentDisposition
-                .parse("inline; foo=\" b a r\"");
-
+        ContentDisposition cd = ContentDisposition.parse("inline; foo=\" b a r\"");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.parameters(), is(notNullValue()));
         assertThat(cd.parameters().size(), is(equalTo(1)));
@@ -66,9 +59,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testName() {
-        ContentDisposition cd = ContentDisposition
-                .parse("form-data; name=user");
-
+        ContentDisposition cd = ContentDisposition.parse("form-data; name=user");
         assertThat(cd.type(), is(equalTo("form-data")));
         assertThat(cd.name().isPresent(), is(equalTo(true)));
         assertThat(cd.name().get(), is(equalTo("user")));
@@ -78,9 +69,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testFilename() {
-        ContentDisposition cd = ContentDisposition
-                .parse("attachment; filename=index.html");
-
+        ContentDisposition cd = ContentDisposition.parse("attachment; filename=index.html");
         assertThat(cd.type(), is(equalTo("attachment")));
         assertThat(cd.filename().isPresent(), is(equalTo(true)));
         assertThat(cd.filename().get(), is(equalTo("index.html")));
@@ -90,9 +79,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testCreationDate() {
-        ContentDisposition cd = ContentDisposition
-                .parse("attachment; creation-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
-
+        ContentDisposition cd = ContentDisposition.parse("attachment; creation-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
         assertThat(cd.type(), is(equalTo("attachment")));
         assertThat(cd.creationDate().isPresent(), is(equalTo(true)));
         assertThat(cd.creationDate().get(), is(equalTo(ZDT)));
@@ -102,9 +89,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testModificationDate() {
-        ContentDisposition cd = ContentDisposition
-                .parse("attachment; modification-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
-
+        ContentDisposition cd = ContentDisposition.parse("attachment; modification-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
         assertThat(cd.type(), is(equalTo("attachment")));
         assertThat(cd.modificationDate().isPresent(), is(equalTo(true)));
         assertThat(cd.modificationDate().get(), is(equalTo(ZDT)));
@@ -114,9 +99,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testReadDate() {
-        ContentDisposition cd = ContentDisposition
-                .parse("attachment; read-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
-
+        ContentDisposition cd = ContentDisposition.parse("attachment; read-date=\"Tue, 3 Jun 2008 11:05:30 GMT\"");
         assertThat(cd.type(), is(equalTo("attachment")));
         assertThat(cd.readDate().isPresent(), is(equalTo(true)));
         assertThat(cd.readDate().get(), is(equalTo(ZDT)));
@@ -126,9 +109,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testSize() {
-        ContentDisposition cd = ContentDisposition
-                .parse("inline; size=128");
-
+        ContentDisposition cd = ContentDisposition.parse("inline; size=128");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.size().isPresent(), is(equalTo(true)));
         assertThat(cd.size().getAsLong(), is(equalTo(128L)));
@@ -138,8 +119,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testPercentEncodedFilename() {
-        ContentDisposition cd = ContentDisposition
-                .parse("inline; filename=the%20great%20file.html");
+        ContentDisposition cd = ContentDisposition.parse("inline; filename=the%20great%20file.html");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.filename().isPresent(), is(equalTo(true)));
         assertThat(cd.filename().get(), is(equalTo("the great file.html")));
@@ -149,9 +129,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testFilenameWithBackslash() {
-        ContentDisposition cd = ContentDisposition
-                .parse("inline; filename=\"C:\\index.html\"");
-
+        ContentDisposition cd = ContentDisposition.parse("inline; filename=\"C:\\index.html\"");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.filename().isPresent(), is(equalTo(true)));
         assertThat(cd.filename().get(), is(equalTo("C:\\index.html")));
@@ -161,9 +139,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testParamsWithQuotedPair() {
-        ContentDisposition cd = ContentDisposition
-                .parse("inline; foo=\"\\\\\"; bar=\"\\\"\"");
-
+        ContentDisposition cd = ContentDisposition.parse("inline; foo=\"\\\\\"; bar=\"\\\"\"");
         assertThat(cd.type(), is(equalTo("inline")));
         assertThat(cd.parameters(), is(notNullValue()));
         assertThat(cd.parameters().size(), is(equalTo(2)));
@@ -173,9 +149,7 @@ public class ContentDispositionTest {
 
     @Test
     public void testCaseInsensitiveType() {
-        ContentDisposition cd = ContentDisposition
-                .parse("aTTachMENT; name=bar");
-
+        ContentDisposition cd = ContentDisposition.parse("aTTachMENT; name=bar");
         assertThat(cd.type(), is(equalTo("attachment")));
         assertThat(cd.name().isPresent(), is(equalTo(true)));
         assertThat(cd.name().get(), is(equalTo("bar")));

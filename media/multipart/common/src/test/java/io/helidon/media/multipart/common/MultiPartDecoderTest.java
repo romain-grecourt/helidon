@@ -45,8 +45,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MultiPartDecoderTest {
 
-    private static final Logger LOGGER =
-            Logger.getLogger(MultiPartDecoder.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MultiPartDecoder.class.getName());
 
     @BeforeAll
     public static void before() {
@@ -104,8 +103,7 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount() == 3) {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part1"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -113,8 +111,7 @@ public class MultiPartDecoderTest {
                     assertThat(body, is(equalTo("body 1")));
                 });
             } else {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part2"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part2"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -123,8 +120,7 @@ public class MultiPartDecoderTest {
                 });
             }
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.INFINITE, consumer);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.INFINITE, consumer);
         partsPublisher(boundary, chunk1).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
@@ -154,8 +150,7 @@ public class MultiPartDecoderTest {
                         + "this-is-the-2nd-slice-of-the-body")));
             });
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.INFINITE, consumer);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.INFINITE, consumer);
         partsPublisher(boundary, chunk1, chunk2).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
@@ -178,10 +173,8 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             assertThat(part.headers().values("Content-Id"), hasItems("part1"));
-            assertThat(part.headers().values("Content-Type"),
-                    hasItems("text/plain"));
-            assertThat(part.headers().values("Set-Cookie"),
-                    hasItems("bob=alice", "foo=bar"));
+            assertThat(part.headers().values("Content-Type"), hasItems("text/plain"));
+            assertThat(part.headers().values("Set-Cookie"), hasItems("bob=alice", "foo=bar"));
             DataChunkSubscriber subscriber = new DataChunkSubscriber();
             part.content().subscribe(subscriber);
             subscriber.content().thenAccept(body -> {
@@ -189,10 +182,8 @@ public class MultiPartDecoderTest {
                 assertThat(body, is(equalTo("body 1")));
             });
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.INFINITE, consumer);
-        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4, chunk5)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.INFINITE, consumer);
+        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4, chunk5).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(true)));
@@ -215,8 +206,7 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount()== 3) {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part1"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -224,8 +214,7 @@ public class MultiPartDecoderTest {
                     assertThat(body, is(equalTo("body 1")));
                 });
             } else {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part2"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part2"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -234,10 +223,8 @@ public class MultiPartDecoderTest {
                 });
             }
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
-        partsPublisher(boundary, chunk1)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
+        partsPublisher(boundary, chunk1).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(true)));
@@ -260,10 +247,8 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount()== 1) {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part1"));
-                DataChunkSubscriber subscriber1 =
-                        new DataChunkSubscriber();
+                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
+                DataChunkSubscriber subscriber1 = new DataChunkSubscriber();
                 part.content().subscribe(subscriber1);
                 subscriber1.content().thenAccept(body -> {
                     latch.countDown();
@@ -272,10 +257,8 @@ public class MultiPartDecoderTest {
             }
         };
 
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.CANCEL_AFTER_ONE, consumer);
-        partsPublisher(boundary, chunk1)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.CANCEL_AFTER_ONE, consumer);
+        partsPublisher(boundary, chunk1).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(false)));
@@ -290,16 +273,12 @@ public class MultiPartDecoderTest {
                 + "\n"
                 + "<foo>bar</foo>\n").getBytes();
 
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.CANCEL_AFTER_ONE, null);
-        partsPublisher(boundary, chunk1)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.CANCEL_AFTER_ONE, null);
+        partsPublisher(boundary, chunk1).subscribe(testSubscriber);
         assertThat(testSubscriber.complete, is(equalTo(false)));
         assertThat(testSubscriber.error, is(notNullValue()));
-        assertThat(testSubscriber.error.getClass(),
-                is(equalTo(MIMEParser.ParsingException.class)));
-        assertThat(testSubscriber.error.getMessage(),
-                is(equalTo("No closing MIME boundary")));
+        assertThat(testSubscriber.error.getClass(), is(equalTo(MIMEParser.ParsingException.class)));
+        assertThat(testSubscriber.error.getMessage(), is(equalTo("No closing MIME boundary")));
     }
 
     @Test
@@ -322,8 +301,7 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount() == 3) {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part1"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
                 part.content().subscribe(new Subscriber<DataChunk>() {
                     Subscription subscription;
 
@@ -348,8 +326,7 @@ public class MultiPartDecoderTest {
                     }
                 });
             } else {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part2"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part2"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -358,10 +335,8 @@ public class MultiPartDecoderTest {
                 });
             }
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
-        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
+        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4).subscribe(testSubscriber);
         waitOnLatch(latch);
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(true)));
@@ -387,8 +362,7 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount() == 2) {
-                assertThat(part.headers().values("Content-Id"),
-                        hasItems("part1"));
+                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
             }
             part.content().subscribe(new Subscriber<DataChunk>() {
 
@@ -411,10 +385,8 @@ public class MultiPartDecoderTest {
                 }
             });
         };
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
-        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4)
-                .subscribe(testSubscriber);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
+        partsPublisher(boundary, chunk1, chunk2, chunk3, chunk4).subscribe(testSubscriber);
         waitOnLatchNegative(latch, "the 2nd part should not be processed");
         assertThat(latch.getCount(), is(equalTo(1L)));
         assertThat(testSubscriber.error, is(nullValue()));
@@ -423,16 +395,14 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testUpstreamError() {
-        MultiPartDecoder decoder = MultiPartDecoder
-                .create("boundary", MEDIA_SUPPORT.readerContext());
+        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_SUPPORT.readerContext());
         new Publisher<DataChunk>(){
             @Override
             public void subscribe(Subscriber<? super DataChunk> subscriber) {
                 subscriber.onError(new IllegalStateException("oops"));
             }
         }.subscribe(decoder);
-        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
-                SUBSCRIBER_TYPE.INFINITE, null);
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.INFINITE, null);
         decoder.subscribe(testSubscriber);
         assertThat(testSubscriber.complete, is(equalTo(false)));
         assertThat(testSubscriber.error, is(notNullValue()));
@@ -441,15 +411,13 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartDecoder decoder = MultiPartDecoder
-                .create("boundary", MEDIA_SUPPORT.readerContext());
+        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_SUPPORT.readerContext());
         chunksPublisher("foo".getBytes()).subscribe(decoder);
         try {
             chunksPublisher("bar".getBytes()).subscribe(decoder);
             fail("exception should be thrown");
         } catch(IllegalStateException ex) {
-            assertThat(ex.getMessage(),
-                    is(equalTo("Input subscription already set")));
+            assertThat(ex.getMessage(), is(equalTo("Input subscription already set")));
         }
     }
 
@@ -473,9 +441,7 @@ public class MultiPartDecoderTest {
         private Throwable error;
         private boolean complete;
 
-        BodyPartSubscriber(SUBSCRIBER_TYPE subscriberType,
-                Consumer<BodyPart> consumer) {
-
+        BodyPartSubscriber(SUBSCRIBER_TYPE subscriberType, Consumer<BodyPart> consumer) {
             this.subscriberType = subscriberType;
             this.consumer = consumer;
         }
@@ -521,11 +487,8 @@ public class MultiPartDecoderTest {
      * @param chunks request chunks
      * @return publisher of body parts
      */
-    static Publisher<? extends BodyPart> partsPublisher(String boundary,
-            byte[]... chunks) {
-
-        MultiPartDecoder decoder = MultiPartDecoder
-                .create(boundary, MEDIA_SUPPORT.readerContext());
+    static Publisher<? extends BodyPart> partsPublisher(String boundary, byte[]... chunks) {
+        MultiPartDecoder decoder = MultiPartDecoder.create(boundary, MEDIA_SUPPORT.readerContext());
         chunksPublisher(chunks).subscribe(decoder);
         return decoder;
     }
@@ -577,8 +540,7 @@ public class MultiPartDecoderTest {
     static final class DataChunkSubscriber implements Subscriber<DataChunk> {
 
         private final StringBuilder sb = new StringBuilder();
-        private final CompletableFuture<String> future
-                = new CompletableFuture<>();
+        private final CompletableFuture<String> future = new CompletableFuture<>();
 
         @Override
         public void onSubscribe(Subscription subscription) {

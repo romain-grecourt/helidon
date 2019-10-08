@@ -68,16 +68,14 @@ public class BodyPartTest {
                 .create("body part data")
                 .content()
                 .toPublisher(MEDIA_SUPPORT.writerContext());
-        String result = ContentReaders.readString(publisher, DEFAULT_CHARSET)
-                .get();
+        String result = ContentReaders.readString(publisher, DEFAULT_CHARSET).get();
         assertThat(result, is(equalTo("body part data")));
     }
 
     @Test
     public void testBufferedPart() {
         ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(
-                        chunksPublisher("abc".getBytes())))
+                .content(readableContent(chunksPublisher("abc".getBytes())))
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -87,20 +85,16 @@ public class BodyPartTest {
     @Test
     public void testNonBufferedPart() {
         ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(
-                        chunksPublisher("abc".getBytes())))
+                .content(readableContent(chunksPublisher("abc".getBytes())))
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(false)));
-        assertThrows(IllegalStateException.class, () -> {
-            bodyPart.as(String.class);
-        });
+        assertThrows(IllegalStateException.class, () -> bodyPart.as(String.class));
     }
 
     @Test
     public void testBadBufferedPart() {
         ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(new UncompletablePublisher(
-                        "abc".getBytes(), "def".getBytes())))
+                .content(readableContent(new UncompletablePublisher("abc".getBytes(), "def".getBytes())))
                 .buffered()
                 .build();
         assertThat(bodyPart.isBuffered(), is(equalTo(true)));
@@ -108,16 +102,13 @@ public class BodyPartTest {
             bodyPart.as(String.class);
             fail("exception should be thrown");
         } catch (IllegalStateException ex) {
-            assertThat(ex.getMessage(),
-                    is(equalTo("Unable to convert part content synchronously")));
+            assertThat(ex.getMessage(), is(equalTo("Unable to convert part content synchronously")));
         }
     }
 
     @Test
     public void testBuildingPartWithNoContent() {
-        assertThrows(IllegalStateException.class, () -> {
-            ReadableBodyPart.builder().build();
-        });
+        assertThrows(IllegalStateException.class, () -> ReadableBodyPart.builder().build());
     }
 
     @Test
@@ -148,11 +139,8 @@ public class BodyPartTest {
         assertThat(bodyPart.name(), is(nullValue()));
     }
 
-    static MessageBodyReadableContent readableContent(
-            Publisher<DataChunk> chunks) {
-
-        return MessageBodyReadableContent.create(chunks,
-                MEDIA_SUPPORT.readerContext());
+    static MessageBodyReadableContent readableContent(Publisher<DataChunk> chunks) {
+        return MessageBodyReadableContent.create(chunks, MEDIA_SUPPORT.readerContext());
     }
 
     /**

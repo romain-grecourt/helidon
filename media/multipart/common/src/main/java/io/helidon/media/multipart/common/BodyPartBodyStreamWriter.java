@@ -25,14 +25,12 @@ import io.helidon.media.common.MessageBodyWriterContext;
 /**
  * {@link WriteableBodyPart} stream writer.
  */
-public final class BodyPartBodyStreamWriter
-        implements MessageBodyStreamWriter<WriteableBodyPart> {
+public final class BodyPartBodyStreamWriter implements MessageBodyStreamWriter<WriteableBodyPart> {
 
     /**
      * Singleton instance.
      */
-    private static final BodyPartBodyStreamWriter INSTANCE =
-            new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
+    private static final BodyPartBodyStreamWriter INSTANCE = new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
 
     private final String boundary;
 
@@ -49,8 +47,7 @@ public final class BodyPartBodyStreamWriter
     }
 
     @Override
-    public Publisher<DataChunk> write(Publisher<WriteableBodyPart> content,
-            GenericType<? extends WriteableBodyPart> type,
+    public Publisher<DataChunk> write(Publisher<WriteableBodyPart> content, GenericType<? extends WriteableBodyPart> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);

@@ -33,9 +33,7 @@ public final class ReadableBodyPart implements BodyPart {
     /**
      * Private to enforce the use of {@link #builder()}.
      */
-    private ReadableBodyPart(MessageBodyReadableContent content,
-            ReadableBodyPartHeaders headers, boolean buffered) {
-
+    private ReadableBodyPart(MessageBodyReadableContent content, ReadableBodyPartHeaders headers, boolean buffered) {
         this.content = content;
         this.headers = headers;
         this.buffered = buffered;
@@ -77,13 +75,11 @@ public final class ReadableBodyPart implements BodyPart {
      */
     public <T> T as(Class<T> clazz) {
         if (!buffered) {
-            throw new IllegalStateException(
-                    "The content of this part is not buffered");
+            throw new IllegalStateException("The content of this part is not buffered");
         }
         CompletableFuture<T> future = content.as(clazz).toCompletableFuture();
         if (!future.isDone()) {
-            throw new IllegalStateException(
-                    "Unable to convert part content synchronously");
+            throw new IllegalStateException("Unable to convert part content synchronously");
         }
         try {
             return future.get();
@@ -104,8 +100,7 @@ public final class ReadableBodyPart implements BodyPart {
     /**
      * Builder class for creating {@link BodyPart} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<ReadableBodyPart> {
+    public static final class Builder implements io.helidon.common.Builder<ReadableBodyPart> {
 
         private ReadableBodyPartHeaders headers;
         private MessageBodyReadableContent content;

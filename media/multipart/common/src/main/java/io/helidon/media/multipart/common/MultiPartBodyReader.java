@@ -112,8 +112,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
                     .mapMany(BYTES_TO_CHUNKS);
 
             // create a content copy with the buffered data
-            MessageBodyReadableContent contentCopy = MessageBodyReadableContent
-                    .create(bufferedData, content.readerContext());
+            MessageBodyReadableContent contentCopy = MessageBodyReadableContent.create(bufferedData, content.readerContext());
 
             // create a new body part with the buffered content
             ReadableBodyPart bufferedBodyPart = ReadableBodyPart.builder()
@@ -134,8 +133,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * Implementation of {@link MultiMapper} that converts {@code byte[]} to a
      * publisher of {@link DataChunk} by copying the bytes.
      */
-    private static final class BytesToChunks
-            implements Mapper<byte[], Publisher<DataChunk>> {
+    private static final class BytesToChunks implements Mapper<byte[], Publisher<DataChunk>> {
 
         @Override
         public Publisher<DataChunk> map(byte[] bytes) {

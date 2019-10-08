@@ -31,8 +31,7 @@ public final class WriteableBodyPart implements BodyPart {
      * Private to enforce the use of {@link #builder()} or
      * {@link #create(java.lang.Object)}.
      */
-    private WriteableBodyPart(MessageBodyWriteableContent content,
-            WriteableBodyPartHeaders headers) {
+    private WriteableBodyPart(MessageBodyWriteableContent content, WriteableBodyPartHeaders headers) {
 
         this.content = content;
         this.headers = headers;
@@ -69,8 +68,7 @@ public final class WriteableBodyPart implements BodyPart {
     /**
      * Builder class for creating {@link BodyPart} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<WriteableBodyPart> {
+    public static final class Builder implements io.helidon.common.Builder<WriteableBodyPart> {
 
         private WriteableBodyPartHeaders headers;
         private Object entity;

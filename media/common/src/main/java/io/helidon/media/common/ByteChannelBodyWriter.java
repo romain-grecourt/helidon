@@ -30,11 +30,9 @@ import io.helidon.common.reactive.Single;
  */
 public final class ByteChannelBodyWriter implements MessageBodyWriter<ReadableByteChannel> {
 
-    static final RetrySchema DEFAULT_RETRY_SCHEMA =
-            RetrySchema.linear(0, 10, 250);
+    static final RetrySchema DEFAULT_RETRY_SCHEMA = RetrySchema.linear(0, 10, 250);
 
-    private static final ByteChannelBodyWriter DEFAULT_INSTANCE =
-            new ByteChannelBodyWriter(DEFAULT_RETRY_SCHEMA);
+    private static final ByteChannelBodyWriter DEFAULT_INSTANCE = new ByteChannelBodyWriter(DEFAULT_RETRY_SCHEMA);
 
     private final ByteChannelToChunks mapper;
 
@@ -48,15 +46,12 @@ public final class ByteChannelBodyWriter implements MessageBodyWriter<ReadableBy
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return ReadableByteChannel.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Single<ReadableByteChannel> content,
-            GenericType<? extends ReadableByteChannel> type,
+    public Publisher<DataChunk> write(Single<ReadableByteChannel> content, GenericType<? extends ReadableByteChannel> type,
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.APPLICATION_OCTET_STREAM);
@@ -84,8 +79,7 @@ public final class ByteChannelBodyWriter implements MessageBodyWriter<ReadableBy
      * Implementation of {@link MultiMapper} that converts a
      * {@link ReadableByteChannel} to a publisher of {@link DataChunk}.
      */
-    private static final class ByteChannelToChunks
-            implements Mapper<ReadableByteChannel, Publisher<DataChunk>> {
+    private static final class ByteChannelToChunks implements Mapper<ReadableByteChannel, Publisher<DataChunk>> {
 
         private final RetrySchema schema;
 

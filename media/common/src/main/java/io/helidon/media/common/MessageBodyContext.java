@@ -246,8 +246,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     protected Publisher<DataChunk> applyFilters(Publisher<DataChunk> publisher, GenericType<?> type) {
         Objects.requireNonNull(type, "type cannot be null!");
         if (eventListener != null) {
-            return doApplyFilters(publisher,
-                    new TypedEventListener(eventListener, type));
+            return doApplyFilters(publisher, new TypedEventListener(eventListener, type));
         } else {
             return doApplyFilters(publisher, eventListener);
         }
@@ -298,8 +297,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
     /**
      * Delegating subscriber that emits the events.
      */
-    private static final class EventingSubscriber
-            implements Subscriber<DataChunk> {
+    private static final class EventingSubscriber implements Subscriber<DataChunk> {
 
         private final Subscriber<? super DataChunk> delegate;
         private final EventListener listener;
@@ -314,9 +312,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
                 try {
                     listener.onEvent(event);
                 } catch (Throwable ex) {
-                    LOGGER.log(Level.WARNING,
-                            "An exception occurred in EventListener.onEvent",
-                            ex);
+                    LOGGER.log(Level.WARNING, "An exception occurred in EventListener.onEvent", ex);
                 }
             }
         }
@@ -369,6 +365,9 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
 
         private final Function<Publisher<DataChunk>, Publisher<DataChunk>> function;
         private Subscriber<? super DataChunk> subscriber;
+        private Subscription subscription;
+        private Throwable error;
+        private boolean completed;
         private Publisher<DataChunk> downstream;
 
         FunctionFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
@@ -376,15 +375,23 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
         }
 
         @Override
-        public void onSubscribe(Subscription subscription) {
+        public void onSubscribe(Subscription s) {
+            this.subscription = s;
             downstream = function.apply(new Publisher<DataChunk>() {
                 @Override
                 public void subscribe(Subscriber<? super DataChunk> subscriber) {
                     if (FunctionFilter.this.subscriber != null) {
-                        throw new IllegalStateException("Already subscribed to!");
+                        subscriber.onError(new IllegalStateException("Already subscribed to!"));
+                    } else {
+                        FunctionFilter.this.subscriber = subscriber;
+                        if (error != null) {
+                            subscriber.onError(error);
+                        } else if (completed) {
+                            subscriber.onComplete();
+                        } else {
+                            subscriber.onSubscribe(subscription);
+                        }
                     }
-                    FunctionFilter.this.subscriber = subscriber;
-                    subscriber.onSubscribe(subscription);
                 }
             });
         }
@@ -396,20 +403,40 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
 
         @Override
         public void onError(Throwable throwable) {
-            this.subscriber.onError(throwable);
+            if(subscriber != null) {
+                subscriber.onError(throwable);
+            } else {
+                error = throwable;
+            }
         }
 
         @Override
         public void onComplete() {
-            this.subscriber.onComplete();
+            if (this.subscriber != null) {
+                this.subscriber.onComplete();
+            } else {
+                completed = true;
+            }
         }
 
         @Override
-        public void subscribe(Subscriber<? super DataChunk> subscriber) {
-            if (downstream == null) {
-                throw new IllegalStateException("Not ready!");
+        public void subscribe(Subscriber<? super DataChunk> s) {
+            if (downstream != null && subscriber != null) {
+                downstream.subscribe(s);
+            } else {
+                if (subscriber == null) {
+                    subscriber = s;
+                }
+                if (error != null) {
+                    subscriber.onError(error);
+                } else if (completed) {
+                    subscriber.onComplete();
+                } else if (subscription != null) {
+                    subscriber.onSubscribe(subscription);
+                } else {
+                    subscriber.onError(new IllegalStateException("Not ready!"));
+                }
             }
-            downstream.subscribe(subscriber);
         }
     }
 

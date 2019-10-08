@@ -41,8 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MultiPartEncoderTest {
 
-    private static final List<WriteableBodyPart> EMPTY_PARTS =
-            CollectionsHelper.<WriteableBodyPart>listOf();
+    private static final List<WriteableBodyPart> EMPTY_PARTS = CollectionsHelper.<WriteableBodyPart>listOf();
 
     // TODO test throttling
 
@@ -100,28 +99,23 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartEncoder encoder = MultiPartEncoder
-                .create("boundary", MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
         Multi.just(EMPTY_PARTS).subscribe(encoder);
         try {
             Multi.just(EMPTY_PARTS).subscribe(encoder);
             fail("exception should be thrown");
         } catch(IllegalStateException ex) {
-            assertThat(ex.getMessage(),
-                    is(equalTo("Input subscription already set")));
+            assertThat(ex.getMessage(), is(equalTo("Input subscription already set")));
         }
     }
 
     @Test
     public void testUpstreamError() {
-        MultiPartEncoder decoder = MultiPartEncoder
-                .create("boundary", MEDIA_SUPPORT.writerContext());
-        Multi.<WriteableBodyPart>error(new IllegalStateException("oops"))
-                .subscribe(decoder);
+        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
+        Multi.<WriteableBodyPart>error(new IllegalStateException("oops")).subscribe(decoder);
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         decoder.subscribe(subscriber);
-        CompletableFuture<String> future = subscriber.content()
-                .toCompletableFuture();
+        CompletableFuture<String> future = subscriber.content().toCompletableFuture();
         assertThat(future.isCompletedExceptionally(), is(equalTo(true)));
         try {
             future.getNow(null);
@@ -134,8 +128,7 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testPartContentPublisherError() {
-        MultiPartEncoder decoder = MultiPartEncoder
-                .create("boundary", MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
         Multi.just(WriteableBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
@@ -143,26 +136,20 @@ public class MultiPartEncoderTest {
                 .build()).subscribe(decoder);
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         decoder.subscribe(subscriber);
-        CompletableFuture<String> future = subscriber.content()
-                .toCompletableFuture();
+        CompletableFuture<String> future = subscriber.content().toCompletableFuture();
         assertThat(future.isCompletedExceptionally(), is(equalTo(true)));
         try {
             future.getNow(null);
             fail("exception should be thrown");
         } catch(CompletionException ex) {
-            assertThat(ex.getCause(),
-                    is(instanceOf(IllegalStateException.class)));
+            assertThat(ex.getCause(), is(instanceOf(IllegalStateException.class)));
             assertThat(ex.getCause().getMessage(), is(equalTo("oops")));
         }
     }
 
-    private static String encodeParts(String boundary,
-            WriteableBodyPart... parts) throws Exception {
-
-        MultiPartEncoder encoder = MultiPartEncoder.create(boundary,
-                MEDIA_SUPPORT.writerContext());
+    private static String encodeParts(String boundary, WriteableBodyPart... parts) throws Exception {
+        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, MEDIA_SUPPORT.writerContext());
         Multi.just(parts).subscribe(encoder);
-        return ContentReaders.readString(encoder, StandardCharsets.UTF_8)
-                .get(10, TimeUnit.SECONDS);
+        return ContentReaders.readString(encoder, StandardCharsets.UTF_8).get(10, TimeUnit.SECONDS);
     }
 }

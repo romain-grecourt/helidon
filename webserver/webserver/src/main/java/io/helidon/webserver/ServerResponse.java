@@ -173,7 +173,9 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param <T>      a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
+     * @deprecated use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
      */
+    @Deprecated
     <T> ServerResponse registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function);
 
     /**
@@ -192,6 +194,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @throws NullPointerException if {@code function} parameter is {@code null}
      * @deprecated use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
      */
+    @Deprecated
     <T> ServerResponse registerWriter(Class<T> type,
                                       MediaType contentType,
                                       Function<? extends T, Publisher<DataChunk>> function);
@@ -209,6 +212,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @throws NullPointerException if {@code function} parameter is {@code null}
      * @deprecated use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
      */
+    @Deprecated
     <T> ServerResponse registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function);
 
     /**
@@ -227,6 +231,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @throws NullPointerException if {@code function} parameter is {@code null}
      * @deprecated use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
      */
+    @Deprecated
     <T> ServerResponse registerWriter(Predicate<?> accept,
                                       MediaType contentType,
                                       Function<T, Publisher<DataChunk>> function);
@@ -250,6 +255,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @throws NullPointerException if parameter {@code function} is {@code null}
      * @deprecated use {@link #registerFilter(io.helidon.media.common.MessageBodyFilter)} instead
      */
+    @Deprecated
     ServerResponse registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function);
 
 

@@ -25,14 +25,12 @@ import io.helidon.media.common.MessageBodyStreamReader;
 /**
  * {@link ReadableBodyPart} stream reader.
  */
-public final class BodyPartBodyStreamReader
-        implements MessageBodyStreamReader<ReadableBodyPart> {
+public final class BodyPartBodyStreamReader implements MessageBodyStreamReader<ReadableBodyPart> {
 
     /**
      * Singleton instance.
      */
-    private static final BodyPartBodyStreamReader INSTANCE =
-            new BodyPartBodyStreamReader();
+    private static final BodyPartBodyStreamReader INSTANCE = new BodyPartBodyStreamReader();
 
     /**
      * Private to enforce the use of {@link #get()}.
@@ -41,16 +39,13 @@ public final class BodyPartBodyStreamReader
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         return BodyPart.class.isAssignableFrom(type.rawType());
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <U extends ReadableBodyPart> Publisher<U> read(
-            Publisher<DataChunk> publisher, GenericType<U> type,
+    public <U extends ReadableBodyPart> Publisher<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
         String boundary = null;

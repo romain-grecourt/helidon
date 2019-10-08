@@ -81,8 +81,7 @@ public final class MultiPartEncoder
     @Override
     public void onSubscribe(Subscription subscription) {
         if (partsSubscription != null) {
-            throw new IllegalStateException(
-                    "Input subscription already set");
+            throw new IllegalStateException("Input subscription already set");
         }
         partsSubscription = subscription;
     }
@@ -96,8 +95,7 @@ public final class MultiPartEncoder
         sb.append("--").append(boundary).append("\r\n");
 
         // headers lines
-        for (Map.Entry<String, List<String>> headerEntry
-                : headers.entrySet()) {
+        for (Map.Entry<String, List<String>> headerEntry : headers.entrySet()) {
 
             String headerName = headerEntry.getKey();
             for (String headerValue : headerEntry.getValue()) {
@@ -140,8 +138,7 @@ public final class MultiPartEncoder
      */
     void onPartComplete() {
         if (complete) {
-            submit(DataChunk.create(ByteBuffer.wrap(
-                    MIMEParser.getBytes("--" + boundary + "--"))));
+            submit(DataChunk.create(ByteBuffer.wrap(MIMEParser.getBytes("--" + boundary + "--"))));
             complete();
         } else {
             long n = tryAcquire();
@@ -162,8 +159,7 @@ public final class MultiPartEncoder
     /**
      * Subscriber of part content.
      */
-    private static final class BodyPartContentSubscriber
-            implements Subscriber<DataChunk> {
+    private static final class BodyPartContentSubscriber implements Subscriber<DataChunk> {
 
         private Subscription subscription;
         private final MultiPartEncoder encoder;
@@ -207,9 +203,7 @@ public final class MultiPartEncoder
      * @param context writer context
      * @return MultiPartEncoder
      */
-    public static MultiPartEncoder create(String boundary,
-            MessageBodyWriterContext context) {
-
+    public static MultiPartEncoder create(String boundary, MessageBodyWriterContext context) {
         return new MultiPartEncoder(boundary, context);
     }
 }

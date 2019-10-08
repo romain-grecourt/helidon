@@ -27,8 +27,7 @@ import io.helidon.common.http.MediaType;
 /**
  * Writeable body part headers.
  */
-public final class WriteableBodyPartHeaders extends HashParameters
-        implements BodyPartHeaders {
+public final class WriteableBodyPartHeaders extends HashParameters implements BodyPartHeaders {
 
     /**
      * Create a new instance.
@@ -99,14 +98,12 @@ public final class WriteableBodyPartHeaders extends HashParameters
     /**
      * Builder class to create {@link WriteableBodyPartHeaders} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<WriteableBodyPartHeaders> {
+    public static final class Builder implements io.helidon.common.Builder<WriteableBodyPartHeaders> {
 
         /**
          * The headers map.
          */
-        private final Map<String, List<String>> headers
-                = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        private final Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         /**
          * Force the use of {@link WriteableBodyPartHeaders#builder() }.
@@ -146,8 +143,7 @@ public final class WriteableBodyPartHeaders extends HashParameters
          * @return this builder
          */
         public Builder contentDisposition(ContentDisposition contentDisp) {
-            return header(Http.Header.CONTENT_DISPOSITION,
-                    contentDisp.toString());
+            return header(Http.Header.CONTENT_DISPOSITION, contentDisp.toString());
         }
 
         @Override

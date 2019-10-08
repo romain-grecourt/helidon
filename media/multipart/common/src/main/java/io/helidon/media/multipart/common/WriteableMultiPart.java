@@ -82,8 +82,7 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
     /**
      * Builder class for creating {@link WriteableMultiPart} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<WriteableMultiPart> {
+    public static final class Builder implements io.helidon.common.Builder<WriteableMultiPart> {
 
         private final ArrayList<WriteableBodyPart> bodyParts = new ArrayList<>();
 

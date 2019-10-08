@@ -32,8 +32,7 @@ public final class CharSequenceBodyWriter implements MessageBodyWriter<CharSeque
     /**
      * Singleton instance.
      */
-    private static final CharSequenceBodyWriter INSTANCE =
-            new CharSequenceBodyWriter();
+    private static final CharSequenceBodyWriter INSTANCE = new CharSequenceBodyWriter();
 
     /**
      * Enforce the use of {@link #get()}.

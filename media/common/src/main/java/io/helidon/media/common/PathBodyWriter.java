@@ -84,8 +84,7 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
             try {
                 context.contentType(MediaType.APPLICATION_OCTET_STREAM);
                 context.contentLength(Files.size(path));
-                FileChannel fc = FileChannel.open(path,
-                        StandardOpenOption.READ);
+                FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
                 return new ReadableByteChannelPublisher(fc, schema);
             } catch (IOException ex) {
                 return Single.<DataChunk>error(ex);

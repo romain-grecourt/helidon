@@ -149,8 +149,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
             if (byte[].class.equals(type.rawType())) {
                 return (Single<T>) ContentReaders.readBytes(filteredPayload);
             }
-            MessageBodyReader<T> reader = (MessageBodyReader<T>)
-                    readers.select(type, this);
+            MessageBodyReader<T> reader = (MessageBodyReader<T>) readers.select(type, this);
             if (reader == null) {
                 return readerNotFound(type.getTypeName());
             }
@@ -267,8 +266,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         if (contentType.isPresent()) {
             try {
                 return contentType.get().charset().map(Charset::forName).orElse(DEFAULT_CHARSET);
-            } catch (IllegalCharsetNameException
-                    | UnsupportedCharsetException ex) {
+            } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
                 throw new IllegalStateException(ex);
             }
         }
@@ -291,8 +289,7 @@ public final class MessageBodyReaderContext extends MessageBodyContext implement
         if (mediaSupport == null) {
             return new MessageBodyReaderContext(null, eventListener, headers, contentType);
         }
-        return new MessageBodyReaderContext(mediaSupport.readerContext(),
-                eventListener, headers, contentType);
+        return new MessageBodyReaderContext(mediaSupport.readerContext(), eventListener, headers, contentType);
     }
 
     /**

@@ -53,24 +53,21 @@ public final class ContentDisposition {
     /**
      * Matcher for type and parameters.
      */
-    private static final CharMatcher TOKEN_MATCHER =
-            CharMatcher.ascii()
-                    .and(CharMatcher.javaIsoControl().negate())
-                    .and(CharMatcher.isNot(' '))
-                    .and(CharMatcher.noneOf("()<>@,;:\\\"/[]?="));
+    private static final CharMatcher TOKEN_MATCHER = CharMatcher.ascii()
+            .and(CharMatcher.javaIsoControl().negate())
+            .and(CharMatcher.isNot(' '))
+            .and(CharMatcher.noneOf("()<>@,;:\\\"/[]?="));
 
     /**
      * Matcher for linear white space.
      */
-    private static final CharMatcher LINEAR_WHITE_SPACE =
-            CharMatcher.anyOf(" \t\r\n");
+    private static final CharMatcher LINEAR_WHITE_SPACE = CharMatcher.anyOf(" \t\r\n");
 
     /**
      * Matcher for quoted text.
      */
-    private static final CharMatcher QUOTED_TEXT_MATCHER =
-            CharMatcher.ascii()
-                    .and(CharMatcher.noneOf("\"\\\r"));
+    private static final CharMatcher QUOTED_TEXT_MATCHER = CharMatcher.ascii()
+            .and(CharMatcher.noneOf("\"\\\r"));
 
     /**
      * Constant for the name parameter.
@@ -105,8 +102,7 @@ public final class ContentDisposition {
     /**
      * Empty content disposition.
      */
-    static final ContentDisposition EMPTY = new ContentDisposition("",
-            Collections.emptyMap());
+    static final ContentDisposition EMPTY = new ContentDisposition("", Collections.emptyMap());
 
     /**
      * The content disposition type.
@@ -175,8 +171,7 @@ public final class ContentDisposition {
      * @return {@code Optional<ZonedDateTime>}, never {@code null}
      */
     public Optional<ZonedDateTime> creationDate() {
-        return Optional.ofNullable(parameters.get(CREATION_DATE_PARAMETER))
-                .map(Http.DateTime::parse);
+        return Optional.ofNullable(parameters.get(CREATION_DATE_PARAMETER)).map(Http.DateTime::parse);
     }
 
     /**
@@ -186,8 +181,7 @@ public final class ContentDisposition {
      * @return {@code Optional<ZonedDateTime>}, never {@code null}
      */
     public Optional<ZonedDateTime> modificationDate() {
-        return Optional.ofNullable(parameters.get(MODIFICATION_DATE_PARAMETER))
-                .map(Http.DateTime::parse);
+        return Optional.ofNullable(parameters.get(MODIFICATION_DATE_PARAMETER)).map(Http.DateTime::parse);
     }
 
     /**
@@ -197,8 +191,7 @@ public final class ContentDisposition {
      * @return {@code Optional<ZonedDateTime>}, never {@code null}
      */
     public Optional<ZonedDateTime> readDate() {
-        return Optional.ofNullable(parameters.get(READ_DATE_PARAMETER))
-                .map(Http.DateTime::parse);
+        return Optional.ofNullable(parameters.get(READ_DATE_PARAMETER)).map(Http.DateTime::parse);
     }
 
     /**
@@ -281,15 +274,13 @@ public final class ContentDisposition {
                             char c = tokenizer.previewChar();
                             if ('"' == c || '\\' == c) {
                                 // process
-                                valueBuilder.append(tokenizer
-                                        .consumeCharacter(CharMatcher.ascii()));
+                                valueBuilder.append(tokenizer.consumeCharacter(CharMatcher.ascii()));
                                 continue;
                             } else {
                                 valueBuilder.append('\\');
                             }
                         }
-                        valueBuilder.append(tokenizer
-                                .consumeToken(QUOTED_TEXT_MATCHER));
+                        valueBuilder.append(tokenizer.consumeToken(QUOTED_TEXT_MATCHER));
                     }
                     value = valueBuilder.toString();
                     tokenizer.consumeCharacter('"');
@@ -300,16 +291,14 @@ public final class ContentDisposition {
             }
             return new ContentDisposition(type, parameters);
         } catch (IllegalStateException e) {
-            throw new IllegalArgumentException("Could not parse '" + input
-                    + "'", e);
+            throw new IllegalArgumentException("Could not parse '" + input + "'", e);
         }
     }
 
     /**
      * Builder class to create {@link ContentDisposition} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<ContentDisposition> {
+    public static final class Builder implements io.helidon.common.Builder<ContentDisposition> {
 
         private String type;
         private final Map<String, String> params = new HashMap<>();
@@ -357,8 +346,7 @@ public final class ContentDisposition {
          * @return this builder
          */
         public Builder creationDate(ZonedDateTime date) {
-            params.put("creation-date",
-                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            params.put("creation-date", date.format(Http.DateTime.RFC_1123_DATE_TIME));
             return this;
         }
 
@@ -368,8 +356,7 @@ public final class ContentDisposition {
          * @return this builder
          */
         public Builder modificationDate(ZonedDateTime date) {
-            params.put("modification-date",
-                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            params.put("modification-date", date.format(Http.DateTime.RFC_1123_DATE_TIME));
             return this;
         }
 
@@ -379,8 +366,7 @@ public final class ContentDisposition {
          * @return this builder
          */
         public Builder readDate(ZonedDateTime date) {
-            params.put("read-date",
-                    date.format(Http.DateTime.RFC_1123_DATE_TIME));
+            params.put("read-date", date.format(Http.DateTime.RFC_1123_DATE_TIME));
             return this;
         }
 

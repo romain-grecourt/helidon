@@ -69,18 +69,14 @@ abstract class Response implements ServerResponse {
      * @param webServer a web server.
      * @param bareResponse an implementation of the response SPI.
      */
-    Response(WebServer webServer, BareResponse bareResponse,
-            List<MediaType> acceptedTypes) {
-
+    Response(WebServer webServer, BareResponse bareResponse, List<MediaType> acceptedTypes) {
         this.webServer = webServer;
         this.bareResponse = bareResponse;
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
         this.eventListener = new MessageBodyEventListener();
-        this.writerContext = MessageBodyWriterContext.create(
-                webServer.mediaSupport(), eventListener,
-                headers, acceptedTypes);
+        this.writerContext = MessageBodyWriterContext.create(webServer.mediaSupport(), eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -180,8 +176,7 @@ abstract class Response implements ServerResponse {
     @Override
     public CompletionStage<ServerResponse> send(Publisher<DataChunk> content) {
         try {
-            Publisher<DataChunk> sendPublisher = writerContext
-                    .applyFilters(content);
+            Publisher<DataChunk> sendPublisher = writerContext.applyFilters(content);
             sendLockSupport.execute(() -> {
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
@@ -199,14 +194,11 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public <T> CompletionStage<ServerResponse> send(Publisher<T> content,
-            Class<T> itemClass) {
-
+    public <T> CompletionStage<ServerResponse> send(Publisher<T> content, Class<T> itemClass) {
         try {
             sendLockSupport.execute(() -> {
                 GenericType<T> type = GenericType.create(itemClass);
-                Publisher<DataChunk> sendPublisher = writerContext
-                        .marshallStream(content, type, null);
+                Publisher<DataChunk> sendPublisher = writerContext.marshallStream(content, type, null);
                 sendLockSupport.contentSend = true;
                 sendPublisher.subscribe(bareResponse);
             }, content == null);
@@ -236,32 +228,25 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Response registerFilter(
-            Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-
+    public Response registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
         writerContext.registerFilter(function);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Class<T> type,
-            Function<T, Publisher<DataChunk>> function) {
-
+    public <T> Response registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function) {
         writerContext.registerWriter(type, function);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Predicate<?> accept,
-            Function<T, Publisher<DataChunk>> function) {
-
+    public <T> Response registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
         writerContext.registerWriter(accept, function);
         return this;
     }
 
     @Override
-    public <T> Response registerWriter(Class<T> type,
-            MediaType contentType,
+    public <T> Response registerWriter(Class<T> type, MediaType contentType,
             Function<? extends T, Publisher<DataChunk>> function) {
 
         writerContext.registerWriter(type, contentType, function);
@@ -269,8 +254,8 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public <T> Response registerWriter(Predicate<?> accept,
-            MediaType contentType, Function<T, Publisher<DataChunk>> function) {
+    public <T> Response registerWriter(Predicate<?> accept, MediaType contentType,
+            Function<T, Publisher<DataChunk>> function) {
 
         writerContext.registerWriter(accept, contentType, function);
         return this;
@@ -286,8 +271,7 @@ abstract class Response implements ServerResponse {
         return bareResponse.requestId();
     }
 
-    private final class MessageBodyEventListener
-            implements MessageBodyContext.EventListener {
+    private final class MessageBodyEventListener implements MessageBodyContext.EventListener {
 
         private Span span;
 
@@ -345,8 +329,7 @@ abstract class Response implements ServerResponse {
 
         private boolean contentSend = false;
 
-        private synchronized void execute(Runnable runnable,
-                boolean silentSendStatus) {
+        private synchronized void execute(Runnable runnable, boolean silentSendStatus) {
 
             // test effective close
             if (contentSend) {

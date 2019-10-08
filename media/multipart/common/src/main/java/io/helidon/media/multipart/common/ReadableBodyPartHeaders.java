@@ -27,8 +27,7 @@ import io.helidon.common.http.ReadOnlyParameters;
 /**
  * Readable body part headers.
  */
-public final class ReadableBodyPartHeaders extends ReadOnlyParameters
-        implements BodyPartHeaders {
+public final class ReadableBodyPartHeaders extends ReadOnlyParameters implements BodyPartHeaders {
 
     private final Object internalLock = new Object();
     private ContentDisposition contentDisposition;
@@ -76,8 +75,7 @@ public final class ReadableBodyPartHeaders extends ReadOnlyParameters
     /**
      * Builder class to create {@link ReadableBodyPartHeaders} instances.
      */
-    public static final class Builder
-            implements io.helidon.common.Builder<ReadableBodyPartHeaders> {
+    public static final class Builder implements io.helidon.common.Builder<ReadableBodyPartHeaders> {
 
         /**
          * The headers map.

@@ -40,8 +40,7 @@ public final class MultiPartDecoder
     /**
      * Logger.
      */
-    private static final Logger LOGGER =
-            Logger.getLogger(MultiPartDecoder.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(MultiPartDecoder.class.getName());
 
     /**
      * Indicate that the chunks subscription is complete.
@@ -113,8 +112,7 @@ public final class MultiPartDecoder
         // require more raw chunks to decode if the decoding has not
         // yet started or if more data is required to make progress
         if (tryAcquire() > 0
-                && (!parserEventProcessor.isStarted()
-                || parserEventProcessor.isDataRequired())) {
+                && (!parserEventProcessor.isStarted() || parserEventProcessor.isDataRequired())) {
             chunksSubscription.request(1);
         }
     }
@@ -122,8 +120,7 @@ public final class MultiPartDecoder
     @Override
     public void onSubscribe(Subscription subscription) {
         if (chunksSubscription != null) {
-            throw new IllegalStateException(
-                    "Input subscription already set");
+            throw new IllegalStateException("Input subscription already set");
         }
         chunksSubscription = subscription;
     }
@@ -155,8 +152,7 @@ public final class MultiPartDecoder
         // request more data if not stuck at content
         // or if the part content subscriber needs more
         if (!complete && parserEventProcessor.isDataRequired()
-                && (!parserEventProcessor.isContentDataRequired()
-                || contentPublisher.requiresMoreItems())) {
+                && (!parserEventProcessor.isContentDataRequired() || contentPublisher.requiresMoreItems())) {
 
             LOGGER.fine("Requesting one more chunk from upstream");
             chunksSubscription.request(1);
@@ -190,17 +186,14 @@ public final class MultiPartDecoder
      * @param context reader context
      * @return MultiPartDecoder
      */
-    public static MultiPartDecoder create(String boundary,
-            MessageBodyReaderContext context) {
-
+    public static MultiPartDecoder create(String boundary, MessageBodyReaderContext context) {
         return new MultiPartDecoder(boundary, context);
     }
 
     /**
      * MIMEParser event processor.
      */
-    private final class ParserEventProcessor
-            implements MIMEParser.EventProcessor {
+    private final class ParserEventProcessor implements MIMEParser.EventProcessor {
 
         private MIMEParser.ParserEvent lastEvent = null;
 
@@ -215,25 +208,18 @@ public final class MultiPartDecoder
                     bodyPartBuilder = ReadableBodyPart.builder();
                     break;
                 case HEADER:
-                    MIMEParser.HeaderEvent headerEvent
-                            = event.asHeaderEvent();
-                    bodyPartHeaderBuilder.header(headerEvent.name(),
-                            headerEvent.value());
+                    MIMEParser.HeaderEvent headerEvent = event.asHeaderEvent();
+                    bodyPartHeaderBuilder.header(headerEvent.name(), headerEvent.value());
                     break;
                 case END_HEADERS:
-                    ReadableBodyPartHeaders headers = bodyPartHeaderBuilder
-                            .build();
+                    ReadableBodyPartHeaders headers = bodyPartHeaderBuilder.build();
 
                     // create a reader context for the part
-                    MessageBodyReaderContext partContext =
-                            MessageBodyReaderContext.create(context,
-                                    /* eventListener */ null, headers,
-                                    Optional.of(headers.contentType()));
+                    MessageBodyReaderContext partContext = MessageBodyReaderContext.create(context, /* eventListener */ null,
+                            headers, Optional.of(headers.contentType()));
 
                     // create a readable content for the part
-                    MessageBodyReadableContent partContent =
-                            MessageBodyReadableContent.create(contentPublisher,
-                                    partContext);
+                    MessageBodyReadableContent partContent = MessageBodyReadableContent.create(contentPublisher, partContext);
 
                     bodyParts.add(bodyPartBuilder
                             .headers(headers)
@@ -241,8 +227,7 @@ public final class MultiPartDecoder
                             .build());
                     break;
                 case CONTENT:
-                    contentPublisher.submit(new BodyPartChunk(chunkParent,
-                            event.asContentEvent().data()));
+                    contentPublisher.submit(new BodyPartChunk(chunkParent, event.asContentEvent().data()));
                     break;
                 case END_PART:
                     contentPublisher.complete();
@@ -292,16 +277,14 @@ public final class MultiPartDecoder
          * otherwise
          */
         boolean isContentDataRequired() {
-            return isDataRequired()
-                    && lastEvent.asDataRequiredEvent().isContent();
+            return isDataRequired() && lastEvent.asDataRequiredEvent().isContent();
         }
     }
 
     /**
      * Body part content publisher.
      */
-    static final class BodyPartContentPublisher
-            extends OriginThreadPublisher<DataChunk, BodyPartChunk> {
+    static final class BodyPartContentPublisher extends OriginThreadPublisher<DataChunk, BodyPartChunk> {
 
         @Override
         protected DataChunk wrap(BodyPartChunk item) {

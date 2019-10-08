@@ -189,17 +189,16 @@ public class ResponseTest {
         assertThat(sb.toString(), is("3"));
     }
 
-    @Disabled
     @Test
     public void writerByPredicate() throws Exception {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(o -> "1".equals(String.valueOf(o)),
+        response.registerWriter(o -> Integer.class.isAssignableFrom((Class<?>)o),
                                 o -> {
                                     sb.append("1");
                                     return Single.empty();
                                 });
-        response.registerWriter(o -> "2".equals(String.valueOf(o)),
+        response.registerWriter(o -> Long.class.isAssignableFrom((Class<?>)o),
                                 o -> {
                                     sb.append("2");
                                     return Single.empty();
@@ -208,11 +207,11 @@ public class ResponseTest {
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        marshall(response, 2);
+        marshall(response, 2L);
         assertThat(sb.toString(), is("2"));
 
         sb.setLength(0);
-        marshall(response, 3);
+        marshall(response, "3".getBytes());
         assertThat(sb.toString(), is(""));
     }
 
@@ -243,7 +242,6 @@ public class ResponseTest {
         assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
     }
 
-    @Disabled
     @Test
     public void filters() throws Exception {
         StringBuilder sb = new StringBuilder();

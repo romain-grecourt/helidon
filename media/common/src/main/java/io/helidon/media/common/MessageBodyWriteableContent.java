@@ -67,9 +67,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent, Me
      * @param headers writer context backing headers
      */
     @SuppressWarnings("unchecked")
-    MessageBodyWriteableContent(Publisher<Object> stream,
-            GenericType<? extends Object> type, Parameters headers) {
-
+    MessageBodyWriteableContent(Publisher<Object> stream, GenericType<? extends Object> type, Parameters headers) {
         Objects.requireNonNull(stream, "stream cannot be null!");
         Objects.requireNonNull(type, "type cannot be null!");
         this.stream = stream;
@@ -86,9 +84,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent, Me
      * @param publisher raw publisher
      * @param headers writer context backing headers
      */
-    MessageBodyWriteableContent(Publisher<DataChunk> publisher,
-            Parameters headers) {
-
+    MessageBodyWriteableContent(Publisher<DataChunk> publisher, Parameters headers) {
         Objects.requireNonNull(publisher, "publisher cannot be null!");
         this.publisher = publisher;
         this.context = MessageBodyWriterContext.create(headers);

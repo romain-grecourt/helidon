@@ -154,8 +154,7 @@ public class VirtualBufferTest {
         barSlice.position(barSlicePos);
         byte[] newBytes2 = "?abc???".getBytes();
         System.arraycopy(newBytes2, 0, bytes2, 0, newBytes2.length);
-        assertThat(new String(Utils.toByteArray(barSlice)),
-                is(equalTo("abc")));
+        assertThat(new String(Utils.toByteArray(barSlice)), is(equalTo("abc")));
     }
 
     @Test
