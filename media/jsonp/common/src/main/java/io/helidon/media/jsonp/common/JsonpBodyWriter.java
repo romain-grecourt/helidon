@@ -44,26 +44,20 @@ public class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Single<JsonStructure> content,
-            GenericType<? extends JsonStructure> type,
+    public Publisher<DataChunk> write(Single<JsonStructure> content, GenericType<? extends JsonStructure> type,
             MessageBodyWriterContext context) {
 
-        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
-                MediaType.APPLICATION_JSON);
+        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.mapMany(new JsonStructureToChunks(jsonWriterFactory,
-                context.charset()));
+        return content.mapMany(new JsonStructureToChunks(jsonWriterFactory, context.charset()));
     }
 
-    static final class JsonStructureToChunks
-            implements Mapper<JsonStructure, Publisher<DataChunk>> {
+    static final class JsonStructureToChunks implements Mapper<JsonStructure, Publisher<DataChunk>> {
 
         private final JsonWriterFactory factory;
         private final Charset charset;

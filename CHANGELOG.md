@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] 
+
+### Notes
+
+### Fixes
+
+## [1.3.1] 
+
+### Notes
+
+This is a bugfix release. It fixes a Helidon MP 
+configuration regression on Windows: [1038](https://github.com/oracle/helidon/issues/1038), as
+well as other fixes listed below.
+
+### Fixes
+
+- Config: Fix UrlConfigSource to work on windows [1039](https://github.com/oracle/helidon/pull/1039)
+- JAX-RS resources now have CDI dependent scope by default. [1050](https://github.com/oracle/helidon/pull/1050)
+- Metrics: Allow config to disable all base metrics easily  [1052](https://github.com/oracle/helidon/pull/1052)
+- Metrics: Fully enforce reusability in MP Metrics 1.1. support [1048](https://github.com/oracle/helidon/pull/1048)
+- Security: Use RSA with padding [1036](https://github.com/oracle/helidon/pull/1036)
+- Update POM names for consistency [1031](https://github.com/oracle/helidon/pull/1031) [1032](https://github.com/oracle/helidon/pull/1032)
+- Add stand-alone pom examples [1031](https://github.com/oracle/helidon/pull/1031)
+- Remove Oracle Maven Repository dependency [1040](https://github.com/oracle/helidon/pull/1040)
+- Fixes a reference to a non-existent ResourceBundle [1058](https://github.com/oracle/helidon/pull/1058)
+- Add exclusions for org.osgi:org.osgi.annotation.versioning [1034](https://github.com/oracle/helidon/pull/1034)
+- Documentation fixes [1043](https://github.com/oracle/helidon/pull/1043) [1053](https://github.com/oracle/helidon/pull/1053) 
+- Documentation: add tracing guides [1023](https://github.com/oracle/helidon/pull/1023) [1014](https://github.com/oracle/helidon/pull/1014)
+- Examples fixes [1056](https://github.com/oracle/helidon/pull/1056)
+- Build fixes [1027](https://github.com/oracle/helidon/pull/1027) [1033](https://github.com/oracle/helidon/pull/1033) [1035](https://github.com/oracle/helidon/pull/1035)
+
 ## [1.3.0] 
 
 ### Notes
@@ -480,6 +511,8 @@ for details.
 ### Notes
 - Initial source drop on Github
 
+[Unreleased]: https://github.com/oracle/helidon/compare/1.3.1...HEAD
+[1.3.1]: https://github.com/oracle/helidon/compare/1.3.0...1.3.1
 [1.3.0]: https://github.com/oracle/helidon/compare/1.2.1...1.3.0
 [1.2.1]: https://github.com/oracle/helidon/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/oracle/helidon/compare/1.1.2...1.2.0

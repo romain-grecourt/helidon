@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Objects;
 
+import javax.json.JsonException;
 import javax.json.JsonReader;
 import javax.json.JsonReaderFactory;
 import javax.json.JsonStructure;
@@ -46,31 +47,26 @@ public final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public <U extends JsonStructure> Single<U> read(
-            Publisher<DataChunk> publisher, GenericType<U> type,
+    public <U extends JsonStructure> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher)
-                // TODO cache per charset / type
-                .map(new BytesToJsonStructure<>(jsonFactory,
-                        context.charset()));
+        return ContentReaders.readBytes(publisher).map(new BytesToJsonStructure<>(jsonFactory, context.charset()));
     }
 
-    private static final class BytesToJsonStructure<T extends JsonStructure>
-            implements Mapper<byte[], T> {
+    private static final class BytesToJsonStructure<T extends JsonStructure> implements Mapper<byte[], T> {
 
         private final JsonReaderFactory jsonFactory;
+        private final GenericType<T> type;
         private final Charset charset;
 
-        BytesToJsonStructure(JsonReaderFactory jsonFactory, Charset charset) {
+        BytesToJsonStructure(JsonReaderFactory jsonFactory, GenericType<T> type, Charset charset) {
             this.jsonFactory = jsonFactory;
+            this.type = type;
             this.charset = charset;
         }
 
@@ -79,7 +75,11 @@ public final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
         public T map(byte[] bytes) {
             InputStream is = new ByteArrayInputStream(bytes);
             JsonReader reader = jsonFactory.createReader(is, charset);
-            return (T) reader.read();
+            JsonStructure json = reader.read();
+            if (!type.rawType().isAssignableFrom(json.getClass())) {
+                throw new JsonException("Unable to convert " + json.getClass() + " to " + type.rawType());
+            }
+            return (T) json;
         }
     }
 }

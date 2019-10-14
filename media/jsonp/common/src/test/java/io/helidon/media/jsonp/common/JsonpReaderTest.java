@@ -41,11 +41,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class JsonpReaderTest {
 
-    private final static MessageBodyReaderContext CONTEXT =
-            MessageBodyReaderContext.create();
+    private final static MessageBodyReaderContext CONTEXT = MessageBodyReaderContext.create();
 
-    private final static JsonpBodyReader READER = JsonProcessing.create()
-            .newReader();
+    private final static JsonpBodyReader READER = JsonProcessing.create().newReader();
 
     @Test
     public void simpleJsonObject() throws Exception {
@@ -82,14 +80,10 @@ public class JsonpReaderTest {
     }
 
     private static JsonObject readJsonObject(String json) throws Exception {
-        return READER.read(Single.just(DataChunk.create(json.getBytes())),
-                GenericType.create(JsonObject.class), CONTEXT)
-                .get();
+        return READER.read(Single.just(DataChunk.create(json.getBytes())), GenericType.create(JsonObject.class), CONTEXT).get();
     }
 
     private static JsonArray readJsonArray(String json) throws Exception {
-        return READER.read(Single.just(DataChunk.create(json.getBytes())),
-                GenericType.create(JsonArray.class), CONTEXT)
-                .get();
+        return READER.read(Single.just(DataChunk.create(json.getBytes())), GenericType.create(JsonArray.class), CONTEXT).get();
     }
 }
