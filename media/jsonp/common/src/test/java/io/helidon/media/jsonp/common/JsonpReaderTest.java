@@ -57,8 +57,8 @@ public class JsonpReaderTest {
         try {
             readJsonArray("{ \"p\" : \"val\" }");
             fail("Should have thrown an exception");
-        } catch (Throwable ex) {
-            assertThat(ex, is(instanceOf(ClassCastException.class)));
+        } catch (ExecutionException ex) {
+            assertThat(ex.getCause(), is(instanceOf(JsonException.class)));
         }
     }
 

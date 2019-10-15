@@ -91,8 +91,7 @@ public class RequestContentTest {
                     .map(s -> DataChunk.create(s.getBytes()));
         });
 
-        assertThat("Apply filter is expected to be called after a subscription!",
-                sb.toString(), is(""));
+        assertThat("Apply filter is expected to be called after a subscription!", sb.toString(), is(""));
 
         Multi.from(request.content()).subscribe(chunk -> sb.append(requestChunkAsString(chunk)).append("-"));
         assertThat(sb.toString(), is("apply_filter-FIRST-SECOND-THIRD-"));
@@ -131,9 +130,8 @@ public class RequestContentTest {
                     @Override
                     public void onNext(DataChunk item) {
                         // mapping the on next call only
-                        subscriberDelegate.onNext(
-                                DataChunk.create(requestChunkAsString(item)
-                                        .toUpperCase().getBytes()));
+                        subscriberDelegate.onNext(DataChunk.create(
+                                requestChunkAsString(item).toUpperCase().getBytes()));
                     }
 
                     @Override
@@ -186,13 +184,8 @@ public class RequestContentTest {
             return future;
         });
 
-        List result = request.content().as(List.class)
-                .toCompletableFuture()
-                .get(10, TimeUnit.SECONDS);
-        assertThat((List<String>) result, hasItems(
-                is("FIRST"),
-                is("SECOND"),
-                is("THIRD")));
+        List result = request.content().as(List.class).toCompletableFuture().get(10, TimeUnit.SECONDS);
+        assertThat((List<String>) result, hasItems(is("FIRST"), is("SECOND"), is("THIRD")));
     }
 
     @Test
@@ -234,10 +227,8 @@ public class RequestContentTest {
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
             assertThat(e.getCause(),
-            allOf(instanceOf(IllegalStateException.class),
-                hasProperty("message", containsString("Transformation failed!"))));
-            assertThat(e.getCause().getCause(),
-                    hasProperty("message", containsString("failed-read")));
+            allOf(instanceOf(IllegalStateException.class), hasProperty("message", containsString("Transformation failed!"))));
+            assertThat(e.getCause().getCause(), hasProperty("message", containsString("failed-read")));
         }
     }
 

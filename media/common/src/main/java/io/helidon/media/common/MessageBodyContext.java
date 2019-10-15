@@ -421,7 +421,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
 
         @Override
         public void subscribe(Subscriber<? super DataChunk> s) {
-            if (downstream != null && subscriber != null) {
+            if (downstream != null) {
                 downstream.subscribe(s);
             } else {
                 if (subscriber == null) {

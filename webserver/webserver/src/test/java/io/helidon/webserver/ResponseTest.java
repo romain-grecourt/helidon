@@ -16,8 +16,7 @@
 
 package io.helidon.webserver;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import java.util.function.Function;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,22 +25,22 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Flow;
+import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 
 import io.opentracing.SpanContext;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.CollectionsHelper.listOf;
-import io.helidon.common.reactive.Flow.Publisher;
-import java.util.function.Function;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -258,7 +257,7 @@ public class ResponseTest {
             sb.append("C");
             return p;
         });
-        assertThat(response.writerContext().applyFilters(Single.empty()), notNullValue());
+        assertThat(response.writerContext().applyFilters(Single.just(DataChunk.create("foo".getBytes()))), notNullValue());
         assertThat(sb.toString(), is("ABC"));
     }
 

@@ -73,8 +73,7 @@ import io.helidon.webserver.WebServer;
  */
 public final class JsonSupport implements Service, Handler {
 
-    private static final JsonSupport INSTANCE =
-            new JsonSupport(JsonProcessing.create());
+    private static final JsonSupport INSTANCE = new JsonSupport(JsonProcessing.create());
 
     private final JsonpBodyReader reader;
     private final JsonpBodyStreamReader streamReader;
