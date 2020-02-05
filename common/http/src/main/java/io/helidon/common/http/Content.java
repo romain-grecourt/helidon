@@ -17,10 +17,9 @@
 package io.helidon.common.http;
 
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import io.helidon.common.reactive.Flow;
 
 /**
  * Represents an HTTP entity as a {@link Flow.Publisher publisher} of {@link DataChunk chunks} with specific

@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.util.Objects;
+import java.util.concurrent.Flow.Publisher;
 
 import javax.json.JsonException;
 import javax.json.JsonReader;
@@ -28,7 +29,6 @@ import javax.json.JsonStructure;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;

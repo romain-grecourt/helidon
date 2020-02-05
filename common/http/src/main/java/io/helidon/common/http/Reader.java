@@ -17,9 +17,8 @@
 package io.helidon.common.http;
 
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
 import java.util.function.BiFunction;
-
-import io.helidon.common.reactive.Flow;
 
 /**
  * The Reader transforms a {@link DataChunk} publisher into a completion stage of the associated type.

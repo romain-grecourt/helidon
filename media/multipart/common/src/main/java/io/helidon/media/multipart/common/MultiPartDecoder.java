@@ -19,11 +19,11 @@ import java.util.LinkedList;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.concurrent.Flow.Processor;
+import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Logger;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Processor;
-import io.helidon.common.reactive.Flow.Subscription;
 import io.helidon.common.reactive.OriginThreadPublisher;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReaderContext;

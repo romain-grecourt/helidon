@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.concurrent.Flow.Publisher;
 
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbException;
@@ -26,7 +27,6 @@ import javax.json.bind.JsonbException;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MessageBodyReader;

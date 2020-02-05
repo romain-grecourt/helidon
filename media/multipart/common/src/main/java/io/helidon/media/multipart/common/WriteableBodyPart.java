@@ -15,8 +15,9 @@
  */
 package io.helidon.media.multipart.common;
 
+import java.util.concurrent.Flow.Publisher;
+
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.MessageBodyWriteableContent;
 
 /**

@@ -46,12 +46,10 @@ import javax.ws.rs.core.Application;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 
-import io.helidon.common.OptionalHelper;
 import io.helidon.common.Prioritized;
 import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.microprofile.config.MpConfig;
 import io.helidon.microprofile.server.spi.MpServiceContext;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerConfiguration;
@@ -70,7 +68,12 @@ public class ServerImpl implements Server {
     private static final Logger LOGGER = Logger.getLogger(ServerImpl.class.getName());
     private static final Logger JERSEY_LOGGER = Logger.getLogger(ServerImpl.class.getName() + ".jersey");
     private static final Logger STARTUP_LOGGER = Logger.getLogger("io.helidon.microprofile.startup.server");
+    private static final String EXIT_ON_STARTED_KEY = "exit.on.started";
+    private static final boolean EXIT_ON_STARTED = "!".equals(System.getProperty(EXIT_ON_STARTED_KEY));
     private static final StartedServers STARTED_SERVERS = new StartedServers();
+
+    private static long initStartupTime = System.nanoTime();
+    private static long initFinishTime = -1;
 
     private final SeContainer container;
     private final boolean containerCreated;
@@ -80,9 +83,24 @@ public class ServerImpl implements Server {
     private final boolean supportParallelRun;
     private int port = -1;
 
+    static void recordInitStart(long time) {
+        if (time < initStartupTime) {
+            initStartupTime = time;
+        }
+    }
+
+    private static boolean recordInitFinish(long time) {
+        boolean result = initFinishTime == -1;
+        if (result) {
+            initFinishTime = time;
+        }
+        return result;
+    }
+
     ServerImpl(Builder builder) {
-        MpConfig mpConfig = (MpConfig) builder.config();
-        Config config = mpConfig.helidonConfig();
+        org.eclipse.microprofile.config.Config mpConfig = builder.config();
+        Config config = (Config) mpConfig;
+
         this.container = builder.cdiContainer();
         this.containerCreated = builder.containerCreated();
         this.context = builder.context();
@@ -110,9 +128,8 @@ public class ServerImpl implements Server {
                 .port(builder.port())
                 .bindAddress(listenHost);
 
-        OptionalHelper.from(Optional.ofNullable(builder.basePath()))
+        Optional.ofNullable(builder.basePath())
                 .or(() -> config.get("server.base-path").asString().asOptional())
-                .asOptional()
                 .ifPresent(basePath -> {
                     routingBuilder.any("/", (req, res) -> {
                         res.status(Http.Status.MOVED_PERMANENTLY_301);
@@ -333,7 +350,7 @@ public class ServerImpl implements Server {
     }
 
     private void loadExtensions(Builder builder,
-                                MpConfig mpConfig,
+                                org.eclipse.microprofile.config.Config mpConfig,
                                 Config config,
                                 List<JaxRsApplication> apps,
                                 Routing.Builder routingBuilder,
@@ -359,7 +376,7 @@ public class ServerImpl implements Server {
                 });
     }
 
-    private MpServiceContext createExtensionContext(MpConfig mpConfig,
+    private MpServiceContext createExtensionContext(org.eclipse.microprofile.config.Config mpConfig,
                                                     Config config,
                                                     List<JaxRsApplication> apps,
                                                     Routing.Builder routingBuilder,
@@ -446,23 +463,32 @@ public class ServerImpl implements Server {
         CountDownLatch cdl = new CountDownLatch(1);
         AtomicReference<Throwable> throwRef = new AtomicReference<>();
 
-        long beforeT = System.nanoTime();
         server.start()
                 .whenComplete((webServer, throwable) -> {
                     if (null != throwable) {
                         STARTUP_LOGGER.log(Level.FINEST, "Startup failed", throwable);
                         throwRef.set(throwable);
                     } else {
-                        long t = TimeUnit.MILLISECONDS.convert(System.nanoTime() - beforeT, TimeUnit.NANOSECONDS);
-
+                        boolean reportInitTime = recordInitFinish(System.nanoTime());
                         port = webServer.port();
                         STARTUP_LOGGER.finest("Started up");
-                        if ("0.0.0.0".equals(host)) {
-                            // listening on all addresses
-                            LOGGER.info(() -> "Server started on http://localhost:" + port + " (and all other host addresses) "
-                                    + "in " + t + " milliseconds.");
-                        } else {
-                            LOGGER.info(() -> "Server started on http://" + host + ":" + port + " in " + t + " milliseconds.");
+                        if (reportInitTime) {
+                            /*
+                             * Report initialization time only during the first server start; init
+                             * includes most notably CDI initialization and server start-up.
+                             */
+                            long initializationElapsedTime =
+                                TimeUnit.MILLISECONDS.convert(initFinishTime - initStartupTime,
+                                        TimeUnit.NANOSECONDS);
+
+                            if ("0.0.0.0".equals(host)) {
+                                // listening on all addresses
+                                LOGGER.info(() -> "Server initialized on http://localhost:" + port + " (and all other host addresses)"
+                                        + " in " + initializationElapsedTime + " milliseconds.");
+                            } else {
+                                LOGGER.info(() -> "Server initialized on http://" + host + ":" + port
+                                        + " in " + initializationElapsedTime + " milliseconds.");
+                            }
                         }
                     }
                     cdl.countDown();
@@ -476,11 +502,18 @@ public class ServerImpl implements Server {
         }
 
         if (throwRef.get() == null) {
+            if (EXIT_ON_STARTED) {
+                exitOnStarted();
+            }
             return this;
         } else {
             throw new MpException("Failed to start server", throwRef.get());
         }
+    }
 
+    private void exitOnStarted() {
+        LOGGER.info(String.format("Exiting, -D%s set.",  EXIT_ON_STARTED_KEY));
+        System.exit(0);
     }
 
     @Override

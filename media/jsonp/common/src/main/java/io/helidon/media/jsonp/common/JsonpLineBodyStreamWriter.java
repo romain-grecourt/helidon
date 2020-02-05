@@ -17,11 +17,11 @@ package io.helidon.media.jsonp.common;
 
 import javax.json.JsonStructure;
 import javax.json.JsonWriterFactory;
+import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.media.common.MessageBodyWriterContext;
 
 /**

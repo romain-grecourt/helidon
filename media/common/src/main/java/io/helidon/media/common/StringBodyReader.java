@@ -17,8 +17,9 @@ package io.helidon.media.common;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Single;
+
+import java.util.concurrent.Flow.Publisher;
 
 /**
  * Message body reader for {@link String}.

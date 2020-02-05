@@ -27,12 +27,12 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
-import io.helidon.common.http.Parameters;
 import io.helidon.media.common.MessageBodyContext;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.http.Parameters;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
@@ -40,8 +40,6 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-
-import static io.helidon.common.CollectionsHelper.mapOf;
 
 /**
  * The basic abstract implementation of {@link ServerRequest}.
@@ -241,7 +239,7 @@ abstract class Request implements ServerRequest {
                     if (readSpan != null) {
                         Tags.ERROR.set(readSpan, Boolean.TRUE);
                         Throwable ex = event.asErrorEvent().error();
-                        readSpan.log(mapOf("event", "error",
+                        readSpan.log(Map.of("event", "error",
                                 "error.kind", "Exception",
                                 "error.object", ex,
                                 "message", ex.toString()));

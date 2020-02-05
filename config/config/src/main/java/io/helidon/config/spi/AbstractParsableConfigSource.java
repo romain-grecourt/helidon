@@ -18,7 +18,6 @@ package io.helidon.config.spi;
 
 import java.util.Optional;
 
-import io.helidon.common.OptionalHelper;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigException;
 import io.helidon.config.spi.ConfigNode.ObjectNode;
@@ -95,10 +94,9 @@ public abstract class AbstractParsableConfigSource<S> extends AbstractConfigSour
      * @throws ConfigParserException in case of problem to parse configuration from the source
      */
     private ObjectNode parse(ConfigContext context, ConfigParser.Content<S> content) throws ConfigParserException {
-        return OptionalHelper.from(Optional.ofNullable(parser()))
+        return Optional.ofNullable(parser())
                 .or(() -> context.findParser(Optional.ofNullable(content.mediaType())
                                                      .orElseThrow(() -> new ConfigException("Unknown media type."))))
-                .asOptional()
                 .map(parser -> parser.parse(content))
                 .orElseThrow(() -> new ConfigException("Cannot find suitable parser for '"
                                                                + content.mediaType() + "' media type."));
@@ -127,8 +125,10 @@ public abstract class AbstractParsableConfigSource<S> extends AbstractConfigSour
      *
      * @param <B> type of Builder implementation
      * @param <T> type of key source attributes (target) used to construct polling strategy from
+     * @param <S> type of the config source to be built
      */
-    public abstract static class Builder<B extends Builder<B, T>, T> extends AbstractConfigSource.Builder<B, T> {
+    public abstract static class Builder<B extends Builder<B, T, S>, T, S extends AbstractMpSource<?>>
+            extends AbstractConfigSource.Builder<B, T, S> {
         private static final String MEDIA_TYPE_KEY = "media-type";
         private String mediaType;
         private ConfigParser parser;
@@ -148,16 +148,17 @@ public abstract class AbstractParsableConfigSource<S> extends AbstractConfigSour
          * <li>{@code media-type} - type {@code String}, see {@link #mediaType(String)}</li>
          * </ul>
          *
-         * @param metaConfig configuration properties used to initialize a builder instance.
+         * @param metaConfig configuration properties used to configure a builder instance.
          * @return modified builder instance
          */
         @Override
-        protected B init(Config metaConfig) {
+        public B config(Config metaConfig) {
             //media-type
-            metaConfig.get(MEDIA_TYPE_KEY).asString()
+            metaConfig.get(MEDIA_TYPE_KEY)
+                    .asString()
                     .ifPresent(this::mediaType);
 
-            return super.init(metaConfig);
+            return super.config(metaConfig);
         }
 
         /**

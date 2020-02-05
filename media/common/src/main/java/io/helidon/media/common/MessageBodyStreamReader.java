@@ -15,9 +15,10 @@
  */
 package io.helidon.media.common;
 
+import java.util.concurrent.Flow.Publisher;
+
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Publisher;
 
 /**
  * Conversion operator that can convert HTTP payload into a stream of objects.

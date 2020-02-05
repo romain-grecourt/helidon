@@ -15,15 +15,13 @@
  */
 package io.helidon.integrations.cdi.jpa.chirp;
 
-import java.util.Objects;
-
 import javax.annotation.sql.DataSourceDefinition;
-import javax.inject.Inject;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.BeforeDestroyed;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.se.SeContainer;
 import javax.enterprise.inject.se.SeContainerInitializer;
+import javax.inject.Inject;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.PersistenceContextType;
@@ -50,7 +48,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @DataSourceDefinition(
     name = "chirp",
     className = "org.h2.jdbcx.JdbcDataSource",
-    url = "jdbc:h2:mem:chirp;INIT=RUNSCRIPT FROM 'classpath:chirp.ddl'",
+    url = "jdbc:h2:mem:chirp;INIT=SET TRACE_LEVEL_FILE=4\\;RUNSCRIPT FROM 'classpath:chirp.ddl'",
     serverName = "",
     properties = {
         "user=sa"

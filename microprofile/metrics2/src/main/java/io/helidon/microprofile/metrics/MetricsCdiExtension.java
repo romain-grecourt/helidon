@@ -22,7 +22,6 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -71,6 +70,7 @@ import org.eclipse.microprofile.metrics.annotation.Timed;
 import static io.helidon.microprofile.metrics.MetricUtil.LookupResult;
 import static io.helidon.microprofile.metrics.MetricUtil.getMetricName;
 import static io.helidon.microprofile.metrics.MetricUtil.lookupAnnotation;
+import static io.helidon.microprofile.metrics.MetricUtil.tags;
 
 /**
  * MetricsCdiExtension class.
@@ -141,19 +141,6 @@ public class MetricsCdiExtension implements Extension {
             registry.concurrentGauge(meta, tags(concurrentGauge.tags()));
             LOGGER.log(Level.FINE, () -> "Registered concurrent gauge " + metricName);
         }
-    }
-
-    private static Tag[] tags(String[] tagStrings) {
-        final List<Tag> result = new ArrayList<>();
-        for (int i = 0; i < tagStrings.length; i++) {
-            final int eq = tagStrings[i].indexOf("=");
-            if (eq > 0) {
-                final String tagName = tagStrings[i].substring(0, eq);
-                final String tagValue = tagStrings[i].substring(eq + 1);
-                result.add(new Tag(tagName, tagValue));
-            }
-        }
-        return result.toArray(new Tag[result.size()]);
     }
 
     /**
@@ -394,7 +381,8 @@ public class MetricsCdiExtension implements Extension {
             MetricID gaugeID = gaugeSite.getKey();
 
             AnnotatedMethodConfigurator<?> site = gaugeSite.getValue();
-            DelegatingGauge<? extends Number> dg;
+            // TODO uncomment following clause once MP metrics enforces restriction
+            DelegatingGauge<? /* extends Number */> dg;
             try {
                 dg = buildDelegatingGauge(gaugeID.getName(), site,
                         bm);
@@ -417,20 +405,23 @@ public class MetricsCdiExtension implements Extension {
         annotatedGaugeSites.clear();
     }
 
-    private DelegatingGauge<? extends Number> buildDelegatingGauge(String gaugeName,
+    private DelegatingGauge<? /* extends Number */> buildDelegatingGauge(String gaugeName,
             AnnotatedMethodConfigurator<?> site, BeanManager bm) {
+        // TODO uncomment preceding clause once MP metrics enforces restriction
         Bean<?> bean = bm.getBeans(site.getAnnotated().getJavaMember().getDeclaringClass())
                 .stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Cannot find bean for annotated gauge " + gaugeName));
 
         Class<?> returnType = site.getAnnotated().getJavaMember().getReturnType();
-        Class<? extends Number> narrowedReturnType = typeToNumber(returnType);
+        // TODO uncomment following line once MP metrics enforces restriction
+//        Class<? extends Number> narrowedReturnType = typeToNumber(returnType);
 
         return DelegatingGauge.newInstance(
                 site.getAnnotated().getJavaMember(),
                 getReference(bm, bean.getBeanClass(), bean),
-                narrowedReturnType);
+                // TODO use narrowedReturnType instead of returnType below once MP metrics enforces restriction
+                returnType);
     }
 
     @SuppressWarnings("unchecked")

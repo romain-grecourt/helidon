@@ -16,6 +16,7 @@
 package io.helidon.media.jsonp.common;
 
 import java.nio.charset.Charset;
+import java.util.concurrent.Flow.Publisher;
 
 import javax.json.JsonStructure;
 import javax.json.JsonWriter;
@@ -25,7 +26,6 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;

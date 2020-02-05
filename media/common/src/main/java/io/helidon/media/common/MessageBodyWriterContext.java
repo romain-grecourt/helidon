@@ -22,10 +22,10 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import io.helidon.common.CollectionsHelper;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
@@ -33,7 +33,6 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.Multi;
 
@@ -73,7 +72,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
         if (acceptedTypes != null) {
             this.acceptedTypes = acceptedTypes;
         } else {
-            this.acceptedTypes = CollectionsHelper.listOf();
+            this.acceptedTypes = List.of();
         }
         if (parent != null) {
             this.writers = new MessageBodyOperators<>(parent.writers);
@@ -94,7 +93,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
         this.headers = headers;
         this.writers = new MessageBodyOperators<>();
         this.swriters = new MessageBodyOperators<>();
-        this.acceptedTypes = CollectionsHelper.listOf();
+        this.acceptedTypes = List.of();
     }
 
     /**
@@ -105,7 +104,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
         this.headers = ReadOnlyParameters.empty();
         this.writers = new MessageBodyOperators<>();
         this.swriters = new MessageBodyOperators<>();
-        this.acceptedTypes = CollectionsHelper.listOf();
+        this.acceptedTypes = List.of();
         this.contentTypeCache = Optional.empty();
         this.contentTypeCached = true;
         this.charsetCache = DEFAULT_CHARSET;

@@ -16,13 +16,13 @@
 package io.helidon.media.multipart.common;
 
 import java.util.LinkedList;
+import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Collector;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;

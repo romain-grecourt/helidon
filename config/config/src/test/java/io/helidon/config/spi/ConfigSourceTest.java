@@ -19,9 +19,9 @@ package io.helidon.config.spi;
 import java.io.StringReader;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 
-import io.helidon.common.reactive.Flow;
 import io.helidon.config.ConfigParsers;
 import io.helidon.config.ConfigSources;
 import io.helidon.config.ValueNodeMatcher;
@@ -113,7 +113,7 @@ public class ConfigSourceTest {
     public void testFromSystemPropertiesDescription() {
         ConfigSource configSource = ConfigSources.systemProperties();
 
-        assertThat(configSource.description(), is("SystemPropertiesConfig"));
+        assertThat(configSource.description(), is("SystemPropertiesConfig[]*"));
     }
 
     @Test
@@ -131,7 +131,7 @@ public class ConfigSourceTest {
     public void testFromEnvironmentVariablesDescription() {
         ConfigSource configSource = ConfigSources.environmentVariables();
 
-        assertThat(configSource.description(), is("EnvironmentVariablesConfig"));
+        assertThat(configSource.description(), is("EnvironmentVariablesConfig[]"));
     }
 
     @Test

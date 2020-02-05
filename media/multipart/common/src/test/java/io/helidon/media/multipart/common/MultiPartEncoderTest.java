@@ -19,11 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.TimeUnit;
-import io.helidon.common.CollectionsHelper;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Multi;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkSubscriber;
@@ -41,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class MultiPartEncoderTest {
 
-    private static final List<WriteableBodyPart> EMPTY_PARTS = CollectionsHelper.<WriteableBodyPart>listOf();
+    private static final List<WriteableBodyPart> EMPTY_PARTS = List.of();
 
     // TODO test throttling
 

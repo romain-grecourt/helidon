@@ -24,9 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
-import io.helidon.common.CollectionsHelper;
-import io.helidon.common.OptionalHelper;
 import io.helidon.common.configurable.Resource;
 import io.helidon.config.Config;
 import io.helidon.security.AuthenticationResponse;
@@ -46,7 +45,6 @@ import io.helidon.security.jwt.jwk.JwkEC;
 import io.helidon.security.jwt.jwk.JwkKeys;
 import io.helidon.security.jwt.jwk.JwkOctet;
 import io.helidon.security.jwt.jwk.JwkRSA;
-import io.helidon.security.providers.jwt.JwtProvider;
 
 import org.eclipse.microprofile.auth.LoginConfig;
 import org.eclipse.microprofile.jwt.Claims;
@@ -54,7 +52,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import static io.helidon.common.CollectionsHelper.listOf;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -99,7 +96,7 @@ public class JwtAuthProviderTest {
 
         when(ec.securityLevels()).thenReturn(securityLevels);
         when(appSecurityLevel.filterAnnotations(LoginConfig.class, EndpointConfig.AnnotationScope.CLASS))
-                .thenReturn(listOf(new LoginConfig(){
+                .thenReturn(List.of(new LoginConfig() {
                     @Override
                     public Class<? extends Annotation> annotationType() {
                         return LoginConfig.class;
@@ -145,7 +142,7 @@ public class JwtAuthProviderTest {
                 .addAttribute("given_name", givenName)
                 .addAttribute("full_name", fullName)
                 .addAttribute("locale", locale)
-                .addAttribute("roles", CollectionsHelper.setOf("role1", "role2"))
+                .addAttribute("roles", Set.of("role1", "role2"))
                 .build();
 
         Subject subject = Subject.builder()
@@ -197,7 +194,7 @@ public class JwtAuthProviderTest {
         assertThat(jwt.givenName(), is(Optional.of(givenName)));
         assertThat(jwt.fullName(), is(Optional.of(fullName)));
         assertThat(jwt.locale(), is(Optional.of(locale)));
-        assertThat(jwt.audience(), is(Optional.of(listOf("audience.application.id"))));
+        assertThat(jwt.audience(), is(Optional.of(List.of("audience.application.id"))));
         assertThat(jwt.issuer(), is(Optional.of("jwt.example.com")));
         assertThat(jwt.algorithm(), is(Optional.of(JwkEC.ALG_ES256)));
         Instant instant = jwt.issueTime().get();
@@ -212,8 +209,8 @@ public class JwtAuthProviderTest {
         ProviderRequest atnRequest = mockRequest(signedToken);
 
         AuthenticationResponse authenticationResponse = provider.syncAuthenticate(atnRequest);
-        OptionalHelper.from(authenticationResponse.user()
-                                    .map(Subject::principal))
+        authenticationResponse.user()
+                .map(Subject::principal)
                 .ifPresentOrElse(atnPrincipal -> {
                     assertThat(atnPrincipal, instanceOf(JsonWebTokenImpl.class));
                     JsonWebTokenImpl jsonWebToken = (JsonWebTokenImpl) atnPrincipal;
@@ -273,7 +270,7 @@ public class JwtAuthProviderTest {
         // stored as "name" attribute on principal, full name is stored as "name" in JWT
         assertThat(jwt.fullName(), is(Optional.empty()));
         assertThat(jwt.locale(), is(Optional.empty()));
-        assertThat(jwt.audience(), is(Optional.of(listOf("audience.application.id"))));
+        assertThat(jwt.audience(), is(Optional.of(List.of("audience.application.id"))));
         assertThat(jwt.issuer(), is(Optional.of("jwt.example.com")));
         assertThat(jwt.algorithm(), is(Optional.of(JwkOctet.ALG_HS256)));
         Instant instant = jwt.issueTime().get();
@@ -287,10 +284,9 @@ public class JwtAuthProviderTest {
         //now we need to use the same token to invoke authentication
         ProviderRequest atnRequest = mockRequest(signedToken);
 
-
         AuthenticationResponse authenticationResponse = provider.syncAuthenticate(atnRequest);
-        OptionalHelper.from(authenticationResponse.user()
-                                    .map(Subject::principal))
+        authenticationResponse.user()
+                .map(Subject::principal)
                 .ifPresentOrElse(atnPrincipal -> {
                     assertThat(atnPrincipal.id(), is(userId));
                     assertThat(atnPrincipal.getName(), is(userId));
@@ -361,7 +357,7 @@ public class JwtAuthProviderTest {
         assertThat(jwt.givenName(), is(Optional.of(givenName)));
         assertThat(jwt.fullName(), is(Optional.of(fullName)));
         assertThat(jwt.locale(), is(Optional.of(locale)));
-        assertThat(jwt.audience(), is(Optional.of(listOf("audience.application.id"))));
+        assertThat(jwt.audience(), is(Optional.of(List.of("audience.application.id"))));
         assertThat(jwt.issuer(), is(Optional.of("jwt.example.com")));
         assertThat(jwt.algorithm(), is(Optional.of(JwkRSA.ALG_RS256)));
 
@@ -380,8 +376,8 @@ public class JwtAuthProviderTest {
         ProviderRequest atnRequest = mockRequest(signedToken);
 
         AuthenticationResponse authenticationResponse = provider.syncAuthenticate(atnRequest);
-        OptionalHelper.from(authenticationResponse.user()
-                                    .map(Subject::principal))
+        authenticationResponse.user()
+                .map(Subject::principal)
                 .ifPresentOrElse(atnPrincipal -> {
                     assertThat(atnPrincipal.id(), is(userId));
                     assertThat(atnPrincipal.getName(), is(username));
@@ -412,7 +408,7 @@ public class JwtAuthProviderTest {
 
         when(ep.securityLevels()).thenReturn(securityLevels);
         when(appSecurityLevel.filterAnnotations(LoginConfig.class, EndpointConfig.AnnotationScope.CLASS))
-                .thenReturn(listOf(lc));
+                .thenReturn(List.of(lc));
         when(atnRequest.endpointConfig()).thenReturn(ep);
 
         return atnRequest;

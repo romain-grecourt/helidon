@@ -16,6 +16,8 @@
 package io.helidon.media.common;
 
 import java.util.Objects;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -24,8 +26,6 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.reactive.Flow.Publisher;
-import io.helidon.common.reactive.Flow.Subscriber;
 import io.helidon.common.reactive.Single;
 
 /**

@@ -21,11 +21,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import io.helidon.common.OptionalHelper;
-import io.helidon.common.reactive.Flow;
 import io.helidon.config.Config;
 import io.helidon.config.internal.ConfigKeyImpl;
 import io.helidon.config.internal.ListNodeBuilderImpl;
@@ -42,7 +41,7 @@ import io.helidon.config.spi.ConfigParser.Content;
  * @param <S> a type of data stamp
  * @see Builder
  */
-public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode, S> implements ConfigSource {
+public abstract class AbstractConfigSource<S> extends AbstractMpSource<S> implements ConfigSource {
 
     private final Function<Config.Key, String> mediaTypeMapping;
     private final Function<Config.Key, ConfigParser> parserMapping;
@@ -54,7 +53,7 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
      *
      * @param builder builder to be initialized from
      */
-    protected AbstractConfigSource(Builder<?, ?> builder) {
+    protected AbstractConfigSource(Builder<?, ?, ?> builder) {
         super(builder);
 
         mediaTypeMapping = builder.mediaTypeMapping();
@@ -80,7 +79,12 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
                 || (mediaTypeMapping == null && parserMapping == null)) {
             return data;
         }
-        return new Data<>(Optional.of(processObject(data.stamp(), ConfigKeyImpl.of(), data.data().get())), data.stamp());
+        Data<ObjectNode, S> result = new Data<>(Optional.of(processObject(data.stamp(), ConfigKeyImpl.of(), data.data().get())),
+                                                data.stamp());
+
+        super.processLoadedData(result);
+
+        return result;
     }
 
     private ConfigNode processNode(Optional<S> datastamp, ConfigKeyImpl key, ConfigNode node) {
@@ -123,10 +127,9 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
     }
 
     private Optional<ConfigParser> findParserForKey(Config.Key key) {
-        return OptionalHelper.from(Optional.ofNullable(parserMapping).map(mapping -> mapping.apply(key)))
+        return Optional.ofNullable(parserMapping).map(mapping -> mapping.apply(key))
                 .or(() -> Optional.ofNullable(mediaTypeMapping).map(mapping -> mapping.apply(key))
-                        .flatMap(mediaType -> configContext().findParser(mediaType)))
-                .asOptional();
+                        .flatMap(mediaType -> configContext().findParser(mediaType)));
     }
 
     /**
@@ -151,15 +154,16 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
      *
      * @param <B> type of Builder implementation
      * @param <T> type of key source attributes (target) used to construct polling strategy from
+     * @param <S> Type of the source to be built
      */
-    public abstract static class Builder<B extends Builder<B, T>, T>
-            extends AbstractSource.Builder<B, T, ConfigSource>
-            implements io.helidon.common.Builder<ConfigSource> {
+    public abstract static class Builder<B extends Builder<B, T, S>, T, S extends AbstractMpSource<?>>
+            extends AbstractSource.Builder<B, T, S>
+            implements io.helidon.common.Builder<S> {
 
         private static final String MEDIA_TYPE_MAPPING_KEY = "media-type-mapping";
         private Function<Config.Key, String> mediaTypeMapping;
         private Function<Config.Key, ConfigParser> parserMapping;
-        private volatile ConfigSource configSource;
+        private volatile S configSource;
 
         /**
          * Initialize builder.
@@ -174,7 +178,7 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
         }
 
         @Override
-        public ConfigSource get() {
+        public S get() {
             if (configSource == null) {
                 configSource = build();
             }
@@ -187,16 +191,16 @@ public abstract class AbstractConfigSource<S> extends AbstractSource<ObjectNode,
          * <li>{@code media-type-mapping} - type {@code Map} - key to media type, see {@link #mediaTypeMapping(Function)}</li>
          * </ul>
          *
-         * @param metaConfig configuration properties used to initialize a builder instance.
+         * @param metaConfig configuration properties used to configure a builder instance.
          * @return modified builder instance
          */
         @Override
-        protected B init(Config metaConfig) {
+        public B config(Config metaConfig) {
             //media-type-mapping
             metaConfig.get(MEDIA_TYPE_MAPPING_KEY).detach().asMap()
                     .ifPresent(this::initMediaTypeMapping);
 
-            return super.init(metaConfig);
+            return super.config(metaConfig);
         }
 
         private void initMediaTypeMapping(Map<String, String> mediaTypeMapping) {

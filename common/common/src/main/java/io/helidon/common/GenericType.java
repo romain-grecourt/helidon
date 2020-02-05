@@ -190,4 +190,9 @@ public class GenericType<T> implements Type {
         }
         return false;
     }
+
+    @Override
+    public String toString() {
+        return type.toString();
+    }
 }

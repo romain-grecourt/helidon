@@ -27,20 +27,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Flow;
-import io.helidon.common.reactive.Flow.Publisher;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.common.CollectionsHelper.listOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -122,6 +121,7 @@ public class ResponseTest {
         assertThat("Content does not match for header: " + headerName, actualValues, containsInAnyOrder(expectedValues));
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> void marshall(Response rsp, T entity)
             throws InterruptedException, ExecutionException, TimeoutException {
 
@@ -264,7 +264,7 @@ public class ResponseTest {
     static class ResponseImpl extends Response {
 
         public ResponseImpl(BareResponse bareResponse) {
-            super(mock(WebServer.class), bareResponse, listOf());
+            super(mock(WebServer.class), bareResponse, List.of());
         }
 
         @Override

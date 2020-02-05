@@ -15,8 +15,9 @@
  */
 package io.helidon.media.common;
 
+import java.util.concurrent.Flow.Processor;
+
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Flow.Processor;
 
 /**
  * Reactive contract for processing message body content.

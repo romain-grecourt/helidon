@@ -16,8 +16,8 @@
 package io.helidon.common.reactive;
 
 
-import io.helidon.common.reactive.Flow.Subscriber;
-import io.helidon.common.reactive.Flow.Subscription;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +29,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * {@link BaseProcessor} test.
@@ -80,7 +81,7 @@ public class BaseProcessorTest {
         processor.subscribe(subscriber);
         subscriber.request1();
         processor.onComplete();
-        processor.onNext("foo");
+        assertThrows(IllegalStateException.class, () -> processor.onNext("foo"));
         assertThat(subscriber.isComplete(), is(equalTo(true)));
         assertThat(subscriber.getItems(), is(empty()));
     }

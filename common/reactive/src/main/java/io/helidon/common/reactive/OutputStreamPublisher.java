@@ -22,9 +22,10 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 
 /**
- * Output stream that {@link io.helidon.common.reactive.Flow.Publisher} publishes any data written to it as {@link ByteBuffer}
+ * Output stream that {@link java.util.concurrent.Flow.Publisher} publishes any data written to it as {@link ByteBuffer}
  * events.
  */
 @SuppressWarnings("WeakerAccess")
@@ -144,6 +145,9 @@ public class OutputStreamPublisher extends OutputStream implements Flow.Publishe
         } catch (ExecutionException e) {
             complete(e.getCause());
             throw new IOException(e.getCause());
+        } catch (IllegalStateException e) {
+            complete(e);
+            throw new IOException(e);
         }
     }
 

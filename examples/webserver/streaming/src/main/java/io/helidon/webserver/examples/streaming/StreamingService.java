@@ -28,7 +28,6 @@ import javax.json.JsonBuilderFactory;
 import javax.json.JsonObject;
 import javax.json.JsonWriterFactory;
 
-import io.helidon.common.reactive.Flow;
 import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
 import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;

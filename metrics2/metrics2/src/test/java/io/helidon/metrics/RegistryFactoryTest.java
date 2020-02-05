@@ -16,7 +16,8 @@
 
 package io.helidon.metrics;
 
-import io.helidon.common.CollectionsHelper;
+import java.util.Map;
+
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
 
@@ -55,7 +56,7 @@ public class RegistryFactoryTest {
     static void createInstance() {
         unconfigured = RegistryFactory.create();
         Config config = Config.builder()
-                .sources(ConfigSources.create(CollectionsHelper.mapOf(
+                .sources(ConfigSources.create(Map.of(
                         "base." + METRIC_USED_HEAP.getName() + ".enabled",
                         "false")))
                 .build();
@@ -88,9 +89,17 @@ public class RegistryFactoryTest {
     }
 
     @Test
-    void testVendorFinal() {
-        assertThrows(UnsupportedOperationException.class, () -> vendor.counter("another.counter"));
-        assertThrows(UnsupportedOperationException.class, () -> vendorUn.counter("another.counter"));
+    void testVendorModifiable() {
+        Counter c1 = vendor.counter("new.counter");
+        Counter c2 = vendorUn.counter("new.counter");
+
+        assertThat(c1, notNullValue());
+        assertThat(c2, notNullValue());
+        assertNotSame(c1, c2);
+
+        //replace c2 with a counter from the same registry
+        c2 = vendor.counter("new.counter");
+        assertSame(c1, c2);
     }
 
     @Test
