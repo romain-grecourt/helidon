@@ -13,28 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.common.reactive;
 
 /**
- * A collector accumulates the items provided when {@link #collect(java.lang.Object)} is invoked and makes them available in a
- * single container object with {@link #value()}.
- *
- * @param <T> collected items type (input)
- * @param <U> result container type (output)
+ * Media MultiPart support common classes.
  */
-public interface Collector<T, U> {
-
-    /**
-     * Collect the given item.
-     *
-     * @param item item to collect
-     */
-    void collect(T item);
-
-    /**
-     * Get the collected items container.
-     *
-     * @return U
-     */
-    U value();
+module io.helidon.media.multipart.common {
+    requires io.helidon.common;
+    requires io.helidon.common.http;
+    requires io.helidon.common.mapper;
+    requires io.helidon.common.reactive;
+    requires io.helidon.media.common;
+    requires java.logging;
+    exports io.helidon.media.multipart.common;
 }
