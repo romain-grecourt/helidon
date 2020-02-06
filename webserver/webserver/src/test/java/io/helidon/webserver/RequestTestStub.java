@@ -16,6 +16,7 @@
 
 package io.helidon.webserver;
 
+import io.helidon.common.reactive.Single;
 import java.net.URI;
 
 import io.opentracing.Span;
@@ -54,6 +55,7 @@ public class RequestTestStub extends Request {
     private static BareRequest bareRequestMock() {
         BareRequest bareRequestMock = mock(BareRequest.class);
         doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
+        doReturn(Single.empty()).when(bareRequestMock).bodyPublisher();
         return bareRequestMock;
     }
 

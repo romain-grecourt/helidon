@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.helidon.media.common.MediaSupport;
+import io.helidon.common.HelidonFeatures;
+import io.helidon.common.HelidonFlavor;
 
 /**
  * Represents a immutably configured WEB server.
@@ -223,6 +225,9 @@ public interface WebServer {
      * sockets and optional multiple routings.
      */
     final class Builder implements io.helidon.common.Builder<WebServer> {
+        static {
+            HelidonFeatures.register(HelidonFlavor.SE, "WebServer");
+        }
 
         private final Map<String, Routing> routings = new HashMap<>();
         private final Routing defaultRouting;

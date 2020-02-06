@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 import javax.annotation.Priority;
 
 import io.helidon.common.GenericType;
+import io.helidon.common.HelidonFeatures;
+import io.helidon.common.HelidonFlavor;
 import io.helidon.common.Prioritized;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.common.serviceloader.Priorities;
@@ -64,6 +66,10 @@ import org.eclipse.microprofile.config.spi.Converter;
  */
 class BuilderImpl implements Config.Builder {
     static final Executor DEFAULT_CHANGES_EXECUTOR = Executors.newCachedThreadPool(new ConfigThreadFactory("config"));
+
+    static {
+        HelidonFeatures.register(HelidonFlavor.SE, "Config");
+    }
 
     /*
      * Config sources
@@ -91,9 +97,11 @@ class BuilderImpl implements Config.Builder {
      */
     private final List<Function<Config, ConfigFilter>> filterProviders;
     private boolean filterServicesEnabled;
-    /*
-     * Changes (TODO to be removed)
+    /**
+     * Change support now uses Flow API, which seems like an overkill.
+     * @deprecated change support must be refactored, it is too complex
      */
+    @Deprecated
     private Executor changesExecutor;
     private int changesMaxBuffer;
     /*
@@ -569,11 +577,16 @@ class BuilderImpl implements Config.Builder {
     }
 
     private boolean hasSourceType(Class<?> sourceType) {
-        if (sources != null) {
-            for (ConfigSource source : sources) {
-                if (sourceType.isAssignableFrom(source.getClass())) {
-                    return true;
-                }
+
+        for (ConfigSource source : sources) {
+            if (sourceType.isAssignableFrom(source.getClass())) {
+                return true;
+            }
+        }
+
+        for (PrioritizedConfigSource prioritizedSource : prioritizedSources) {
+            if (sourceType.isAssignableFrom(prioritizedSource.configSourceClass())) {
+                return true;
             }
         }
         return false;
@@ -641,12 +654,17 @@ class BuilderImpl implements Config.Builder {
     }
 
     private static void loadMapperServices(List<ConfigMapperProvider> providers) {
-        ServiceLoader.load(ConfigMapperProvider.class)
+        HelidonServiceLoader.builder(ServiceLoader.load(ConfigMapperProvider.class))
+                .defaultPriority(ConfigMapperProvider.PRIORITY)
+                .build()
                 .forEach(providers::add);
     }
 
     private static List<ConfigParser> loadParserServices() {
-        return loadPrioritizedServices(ConfigParser.class, ConfigParser.PRIORITY);
+        return HelidonServiceLoader.builder(ServiceLoader.load(ConfigParser.class))
+                .defaultPriority(ConfigParser.PRIORITY)
+                .build()
+                .asList();
     }
 
     private void addAutoLoadedFilters() {
@@ -667,15 +685,13 @@ class BuilderImpl implements Config.Builder {
         /*
          * Map each autoloaded ConfigFilter to a filter-providing function.
          */
-        ConfigUtils.asStream(ServiceLoader.load(ConfigFilter.class).iterator())
+        HelidonServiceLoader.builder(ServiceLoader.load(ConfigFilter.class))
+                .defaultPriority(ConfigFilter.PRIORITY)
+                .build()
+                .asList()
+                .stream()
                 .map(filter -> (Function<Config, ConfigFilter>) (Config t) -> filter)
                 .forEach(this::addFilter);
-    }
-
-    private static <T> List<T> loadPrioritizedServices(Class<T> serviceClass, int priority) {
-        return ConfigUtils
-                .asPrioritizedStream(ServiceLoader.load(serviceClass), priority)
-                .collect(Collectors.toList());
     }
 
     /**
@@ -818,7 +834,7 @@ class BuilderImpl implements Config.Builder {
     private interface PrioritizedConfigSource extends Prioritized,
                                                       ConfigSource,
                                                       org.eclipse.microprofile.config.spi.ConfigSource {
-
+        Class<?> configSourceClass();
     }
 
     private static final class MpSourceWrapper implements PrioritizedConfigSource {
@@ -829,14 +845,29 @@ class BuilderImpl implements Config.Builder {
         }
 
         @Override
+        public Class<?> configSourceClass() {
+            return delegate.getClass();
+        }
+
+        @Override
         public int priority() {
+            // MP config is using "ordinals" - the higher the number, the more important it is
+            // We are using "priorities" - the lower the number, the more important it is
             String value = delegate.getValue(CONFIG_ORDINAL);
+
+            int priority;
+
             if (null != value) {
-                return 101 - Integer.parseInt(value);
+                priority = Integer.parseInt(value);
+            } else {
+                priority = Priorities.find(delegate, 100);
             }
 
             // priority from Prioritized and annotation (MP has it reversed)
-            return 101 - Priorities.find(delegate, 100);
+            // it is a tough call how to merge priorities and ordinals
+            // now we use a "101" as a constant, so components with ordinal 100 will have
+            // priority of 1
+            return 101 - priority;
         }
 
         @Override
@@ -886,6 +917,11 @@ class BuilderImpl implements Config.Builder {
 
         AbstractMpSource<?> unwrap() {
             return delegate;
+        }
+
+        @Override
+        public Class<?> configSourceClass() {
+            return delegate.getClass();
         }
 
         @Override

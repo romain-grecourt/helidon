@@ -33,6 +33,10 @@ import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.http.Parameters;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
@@ -78,10 +82,8 @@ abstract class Request implements ServerRequest {
                 /* decode */ true);
         this.eventListener = new MessageBodyEventListener();
         MessageBodyReaderContext readerContext = MessageBodyReaderContext
-                .create(webServer.mediaSupport(), eventListener, headers,
-                        headers.contentType());
-        this.content = MessageBodyReadableContent.create(req.bodyPublisher(),
-                readerContext);
+                .create(webServer.mediaSupport(), eventListener, headers, headers.contentType());
+        this.content = MessageBodyReadableContent.create(req.bodyPublisher(), readerContext);
     }
 
     /**

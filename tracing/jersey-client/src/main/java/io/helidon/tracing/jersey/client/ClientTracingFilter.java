@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,9 @@ import javax.ws.rs.client.ClientResponseContext;
 import javax.ws.rs.client.ClientResponseFilter;
 import javax.ws.rs.core.MultivaluedMap;
 
+import io.helidon.common.HelidonFeatures;
 import io.helidon.common.context.Contexts;
+import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 import io.helidon.tracing.jersey.client.internal.TracingContext;
@@ -134,12 +136,15 @@ public class ClientTracingFilter implements ClientRequestFilter, ClientResponseF
      */
     public static final String X_REQUEST_ID = "x-request-id";
 
-
     static final String SPAN_PROPERTY_NAME = ClientTracingFilter.class.getName() + ".span";
 
     private static final List<String> PROPAGATED_HEADERS = List.of(X_REQUEST_ID, X_OT_SPAN_CONTEXT);
     private static final int HTTP_STATUS_ERROR_THRESHOLD = 400;
     private static final int HTTP_STATUS_SERVER_ERROR_THRESHOLD = 500;
+
+    static {
+        HelidonFeatures.register("Tracing", "Integration", "Jersey Client");
+    }
 
     private final Optional<TracerProvider> tracerProvider;
 
@@ -149,7 +154,7 @@ public class ClientTracingFilter implements ClientRequestFilter, ClientResponseF
      * Required by integrated platform.
      */
     public ClientTracingFilter() {
-        Iterator<TracerProvider> iterator = ServiceLoader.load(TracerProvider.class)
+        Iterator<TracerProvider> iterator = HelidonServiceLoader.create(ServiceLoader.load(TracerProvider.class))
                 .iterator();
 
         if (iterator.hasNext()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package io.helidon.webserver.examples.streaming;
 
-import io.helidon.media.jsonp.server.JsonSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
@@ -38,9 +37,8 @@ public class Main {
      */
     static Routing createRouting() {
         return Routing.builder()
-                .register(JsonSupport.create())
-                .register(new StreamingService())
-                .build();
+                      .register(new StreamingService())
+                      .build();
     }
 
     /**
@@ -50,16 +48,16 @@ public class Main {
      */
     public static void main(String[] args) {
         ServerConfiguration config = ServerConfiguration.builder()
-                .port(8080)
-                .build();
+                                                        .port(8080)
+                                                        .build();
         WebServer server = WebServer.create(config, createRouting());
 
         server.start().thenAccept(ws ->
-                System.out.println("Steaming service is up at http://localhost:" + ws.port())
+            System.out.println("Steaming service is up at http://localhost:" + ws.port())
         );
 
         server.whenShutdown().thenRun(() ->
-                System.out.println("Streaming service is down")
+            System.out.println("Streaming service is down")
         );
     }
 }

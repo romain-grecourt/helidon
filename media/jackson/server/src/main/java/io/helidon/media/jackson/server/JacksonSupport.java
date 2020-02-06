@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package io.helidon.media.jackson.server;
 
+import io.helidon.common.HelidonFeatures;
+import io.helidon.common.HelidonFlavor;
 import io.helidon.media.jackson.common.JacksonBodyReader;
 import io.helidon.media.jackson.common.JacksonBodyWriter;
 import io.helidon.webserver.Handler;
@@ -34,6 +36,10 @@ import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
  * support to Helidon.
  */
 public final class JacksonSupport implements Service, Handler {
+
+    static {
+        HelidonFeatures.register(HelidonFlavor.SE, "WebServer", "Jackson");
+    }
 
     private final JacksonBodyReader reader;
     private final JacksonBodyWriter writer;

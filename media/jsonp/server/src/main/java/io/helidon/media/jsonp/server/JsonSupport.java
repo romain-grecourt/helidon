@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,10 @@
 
 package io.helidon.media.jsonp.server;
 
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.concurrent.Flow;
-import java.util.function.Function;
-
-import javax.json.JsonReader;
 import javax.json.JsonStructure;
 
-import io.helidon.common.http.Content;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
+import io.helidon.common.HelidonFeatures;
+import io.helidon.common.HelidonFlavor;
 import io.helidon.media.jsonp.common.JsonProcessing;
 import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
 import io.helidon.media.jsonp.common.JsonpBodyReader;
@@ -81,6 +74,10 @@ import io.helidon.webserver.WebServer;
  * @see JsonpBodyWriter
  */
 public final class JsonSupport implements Service, Handler {
+
+    static {
+        HelidonFeatures.register(HelidonFlavor.SE, "WebServer", "JSON-P");
+    }
 
     private static final JsonSupport INSTANCE = new JsonSupport(JsonProcessing.create());
 

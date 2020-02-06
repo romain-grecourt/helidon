@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import java.util.Objects;
 import javax.json.bind.Jsonb;
 import javax.json.bind.JsonbBuilder;
 
+import io.helidon.common.HelidonFeatures;
+import io.helidon.common.HelidonFlavor;
 import io.helidon.media.jsonb.common.JsonbBodyReader;
 import io.helidon.media.jsonb.common.JsonbBodyWriter;
 import io.helidon.webserver.Handler;
@@ -34,6 +36,10 @@ import io.helidon.webserver.Service;
  * href="http://json-b.net/">JSON-B</a> support to Helidon.
  */
 public final class JsonBindingSupport implements Service, Handler {
+
+    static {
+        HelidonFeatures.register(HelidonFlavor.SE, "WebServer", "JSON-B");
+    }
 
     private final JsonbBodyReader reader;
     private final JsonbBodyWriter writer;

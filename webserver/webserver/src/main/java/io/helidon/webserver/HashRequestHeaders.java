@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,17 +92,19 @@ public class HashRequestHeaders extends ReadOnlyParameters implements RequestHea
 
     @Override
     public Parameters cookies() {
-        if (cookies == null) {
+        Parameters lCookies = this.cookies;
+        if (lCookies == null) {
             synchronized (internalLock) {
-                if (cookies == null) {
+                lCookies = this.cookies;
+                if (lCookies == null) {
                     List<Parameters> list = all(Http.Header.COOKIE).stream()
                                                     .map(CookieParser::parse)
                                                     .collect(Collectors.toList());
-                    cookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
+                    this.cookies = lCookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
                 }
             }
         }
-        return cookies;
+        return lCookies;
     }
 
     @Override
@@ -189,7 +191,8 @@ public class HashRequestHeaders extends ReadOnlyParameters implements RequestHea
      */
     static class CookieParser {
 
-        private CookieParser() {}
+        private CookieParser() {
+        }
 
         private static final String RFC2965_VERSION = "$Version";
         private static final String RFC2965_PATH = "$Path";

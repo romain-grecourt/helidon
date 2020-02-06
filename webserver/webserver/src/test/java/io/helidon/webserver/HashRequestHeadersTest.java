@@ -30,6 +30,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 
 import org.hamcrest.number.IsCloseTo;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
