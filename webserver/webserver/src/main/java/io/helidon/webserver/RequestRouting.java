@@ -76,7 +76,8 @@ class RequestRouting implements Routing {
             String rawPath = canonicalize(bareRequest.uri().normalize().getRawPath());
 
             Crawler crawler = new Crawler(routes, path, rawPath, bareRequest.method());
-            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, requestHeaders);
+            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers,
+                    requestHeaders);
 
             Contexts.runInContext(nextRequests.context(), (Runnable) nextRequests::next);
         } catch (Error | RuntimeException e) {

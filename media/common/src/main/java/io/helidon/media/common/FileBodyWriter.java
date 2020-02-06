@@ -27,8 +27,8 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.RetrySchema;
+import io.helidon.common.reactive.Single;
 
 import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA;
 

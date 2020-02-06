@@ -17,12 +17,12 @@
 package io.helidon.webserver;
 
 import java.nio.ByteBuffer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.helidon.common.http.AlreadyCompletedException;
 import io.helidon.common.http.DataChunk;

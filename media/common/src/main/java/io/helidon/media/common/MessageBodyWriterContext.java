@@ -33,8 +33,8 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
 
 /**
  * Implementation of {@link WriterContext}.

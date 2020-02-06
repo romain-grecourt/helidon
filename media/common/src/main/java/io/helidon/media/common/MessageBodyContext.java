@@ -403,7 +403,7 @@ public abstract class MessageBodyContext implements MessageBodyFilters {
 
         @Override
         public void onError(Throwable throwable) {
-            if(subscriber != null) {
+            if (subscriber != null) {
                 subscriber.onError(throwable);
             } else {
                 error = throwable;

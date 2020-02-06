@@ -61,7 +61,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
     /**
      * Creates a new instance.
      */
-    public HashRequestHeaders() {
+    HashRequestHeaders() {
         this(null);
     }
 
@@ -71,7 +71,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
      *
      * @param initialContent initial content.
      */
-    public HashRequestHeaders(Map<String, List<String>> initialContent) {
+    HashRequestHeaders(Map<String, List<String>> initialContent) {
         super(initialContent);
     }
 
@@ -100,7 +100,8 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
                     List<Parameters> list = all(Http.Header.COOKIE).stream()
                                                     .map(CookieParser::parse)
                                                     .collect(Collectors.toList());
-                    this.cookies = lCookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
+                    lCookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
+                    this.cookies = lCookies;
                 }
             }
         }

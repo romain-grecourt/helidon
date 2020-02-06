@@ -23,9 +23,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import io.helidon.media.common.MediaSupport;
 import io.helidon.common.HelidonFeatures;
 import io.helidon.common.HelidonFlavor;
+import io.helidon.media.common.MediaSupport;
 
 /**
  * Represents a immutably configured WEB server.
