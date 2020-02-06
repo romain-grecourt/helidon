@@ -21,11 +21,8 @@ import javax.json.JsonStructure;
 import io.helidon.common.HelidonFeatures;
 import io.helidon.common.HelidonFlavor;
 import io.helidon.media.jsonp.common.JsonProcessing;
-import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
 import io.helidon.media.jsonp.common.JsonpBodyReader;
-import io.helidon.media.jsonp.common.JsonpBodyStreamReader;
 import io.helidon.media.jsonp.common.JsonpBodyWriter;
-import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -82,17 +79,11 @@ public final class JsonSupport implements Service, Handler {
     private static final JsonSupport INSTANCE = new JsonSupport(JsonProcessing.create());
 
     private final JsonpBodyReader reader;
-    private final JsonpBodyStreamReader streamReader;
     private final JsonpBodyWriter writer;
-    private final JsonpLineBodyStreamWriter lineStreamWriter;
-    private final JsonpArrayBodyStreamWriter arrayStreamWriter;
 
     private JsonSupport(JsonProcessing processing) {
         reader = processing.newReader();
-        streamReader = processing.newStreamReader();
         writer = processing.newWriter();
-        lineStreamWriter = processing.newLineDelimitedStreamWriter();
-        arrayStreamWriter = processing.newArrayStreamWriter();
     }
 
     @Override
@@ -102,11 +93,8 @@ public final class JsonSupport implements Service, Handler {
 
     @Override
     public void accept(final ServerRequest request, final ServerResponse response) {
-        request.content().registerReader(reader)
-                .registerReader(streamReader);
-        response.registerWriter(writer)
-                .registerWriter(lineStreamWriter)
-                .registerWriter(arrayStreamWriter);
+        request.content().registerReader(reader);
+        response.registerWriter(writer);
         request.next();
     }
 

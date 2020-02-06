@@ -28,10 +28,10 @@ import javax.json.JsonObject;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
+import io.helidon.media.common.MessageBodyReaderContext;
 
 import org.hamcrest.core.Is;
 import org.hamcrest.core.IsInstanceOf;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -44,13 +44,15 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class JsonContentReaderTest {
 
+    private final static MessageBodyReaderContext CONTEXT = MessageBodyReaderContext.create();
+
     @Test
     public void simpleJsonObject() throws Exception {
         Publisher<DataChunk> chunks = Multi.just("{ \"p\" : \"val\" }").map(s -> DataChunk.create(s.getBytes()));
 
         CompletionStage<? extends JsonObject> stage = JsonSupport.create()
                 .reader()
-                .read(chunks, GenericType.create(JsonObject.class), null)
+                .read(chunks, GenericType.create(JsonObject.class), CONTEXT)
                 .toStage();
 
         JsonObject jsonObject = stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
@@ -63,7 +65,7 @@ public class JsonContentReaderTest {
 
         CompletionStage<? extends JsonArray> stage = JsonSupport.create()
                 .reader()
-                .read(chunks, GenericType.create(JsonArray.class), null)
+                .read(chunks, GenericType.create(JsonArray.class), CONTEXT)
                 .toStage();
 
         try {
@@ -83,7 +85,7 @@ public class JsonContentReaderTest {
 
         CompletionStage<? extends JsonArray> stage = JsonSupport.create()
                 .reader()
-                .read(chunks, GenericType.create(JsonArray.class), null)
+                .read(chunks, GenericType.create(JsonArray.class), CONTEXT)
                 .toStage();
 
         JsonArray array = stage.toCompletableFuture().get(10, TimeUnit.SECONDS);
@@ -96,7 +98,7 @@ public class JsonContentReaderTest {
 
         CompletionStage<? extends JsonObject> stage = JsonSupport.create()
                 .reader()
-                .read(chunks, GenericType.create(JsonObject.class), null)
+                .read(chunks, GenericType.create(JsonObject.class), CONTEXT)
                 .toStage();
         try {
             stage.toCompletableFuture().get(10, TimeUnit.SECONDS);

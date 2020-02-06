@@ -17,20 +17,10 @@ package io.helidon.media.jsonp.common;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Flow;
-import java.util.function.Function;
 
 import javax.json.Json;
 import javax.json.JsonReaderFactory;
 import javax.json.JsonWriterFactory;
-
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
-import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.ContentWriters;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Support for JSON Processing integration.
@@ -54,35 +44,11 @@ public final class JsonProcessing {
     }
 
     /**
-     * Create a new JSON-P entity stream reader.
-     * @return JsonEntityStreamReader
-     */
-    public JsonpBodyStreamReader newStreamReader() {
-        return new JsonpBodyStreamReader(jsonReaderFactory);
-    }
-
-    /**
      * Create a new JSON-P entity writer.
      * @return JsonEntityWriter
      */
     public JsonpBodyWriter newWriter() {
         return new JsonpBodyWriter(jsonWriterFactory);
-    }
-
-    /**
-     * Create a new line delimited JSON-P stream writer.
-     * @return JsonLineDelimitedEntityStreamWriter
-     */
-    public JsonpLineBodyStreamWriter newLineDelimitedStreamWriter() {
-        return new JsonpLineBodyStreamWriter(jsonWriterFactory);
-    }
-
-    /**
-     * Create a new JSON-P array stream writer.
-     * @return JsonArrayEntityStreamWriter
-     */
-    public JsonpArrayBodyStreamWriter newArrayStreamWriter() {
-        return new JsonpArrayBodyStreamWriter(jsonWriterFactory);
     }
 
     /**
@@ -114,11 +80,9 @@ public final class JsonProcessing {
     /**
      * Fluent-API builder for {@link io.helidon.media.jsonp.common.JsonProcessing}.
      */
-    public static class Builder
-            implements io.helidon.common.Builder<JsonProcessing> {
+    public static class Builder implements io.helidon.common.Builder<JsonProcessing> {
 
-        private static final JsonProcessing DEFAULT_INSTANCE =
-                new JsonProcessing(readerFactory(null), writerFactory(null));
+        private static final JsonProcessing DEFAULT_INSTANCE = new JsonProcessing(readerFactory(null), writerFactory(null));
 
         private JsonWriterFactory jsonWriterFactory;
         private JsonReaderFactory jsonReaderFactory;

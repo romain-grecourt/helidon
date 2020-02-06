@@ -212,9 +212,10 @@ public class RequestContentTest {
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
             assertThat(e.getCause(),
-                    allOf(instanceOf(IllegalArgumentException.class),
-                    hasProperty("message", containsString("Transformation failed!"))));
-            assertThat(e.getCause().getCause(), hasProperty("message", containsString("failed-publisher-transformation")));
+                    allOf(instanceOf(IllegalStateException.class),
+                        hasProperty("message", containsString("Transformation failed!"))));
+            assertThat(e.getCause().getCause(),
+                    hasProperty("message", containsString("failed-publisher-transformation")));
         }
     }
 
@@ -231,11 +232,10 @@ public class RequestContentTest {
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
             assertThat(e.getCause(),
-                    allOf(instanceOf(IllegalArgumentException.class),
-                    hasProperty("message",
-                            containsString("Transformation failed!"))));
-            assertThat(e.getCause().getCause(), hasProperty("message",
-                    containsString("failed-read")));
+                    allOf(instanceOf(IllegalStateException.class),
+                        hasProperty("message", containsString("Transformation failed!"))));
+            assertThat(e.getCause().getCause(),
+                    hasProperty("message", containsString("failed-read")));
         }
     }
 
