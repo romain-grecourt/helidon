@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
+import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
@@ -60,7 +61,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
     /**
      * Creates a new instance.
      */
-    HashRequestHeaders() {
+    public HashRequestHeaders() {
         this(null);
     }
 
@@ -70,7 +71,7 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
      *
      * @param initialContent initial content.
      */
-    HashRequestHeaders(Map<String, List<String>> initialContent) {
+    public HashRequestHeaders(Map<String, List<String>> initialContent) {
         super(initialContent);
     }
 
@@ -91,17 +92,19 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
 
     @Override
     public Parameters cookies() {
-        if (cookies == null) {
+        Parameters lCookies = this.cookies;
+        if (lCookies == null) {
             synchronized (internalLock) {
-                if (cookies == null) {
+                lCookies = this.cookies;
+                if (lCookies == null) {
                     List<Parameters> list = all(Http.Header.COOKIE).stream()
                                                     .map(CookieParser::parse)
                                                     .collect(Collectors.toList());
-                    cookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
+                    this.cookies = lCookies = Parameters.toUnmodifiableParameters(HashParameters.concat(list));
                 }
             }
         }
-        return cookies;
+        return lCookies;
     }
 
     @Override
@@ -241,27 +244,11 @@ class HashRequestHeaders extends ReadOnlyParameters implements RequestHeaders {
                             continue; // Skip RFC2965 attributes
                         }
                         String value = token.substring(eqInd + 1).trim();
-                        result.add(name, unwrap(value));
+                        result.add(name, Utils.unwrap(value));
                     }
                 }
             }
             return result;
-        }
-
-        /**
-         * Unwrap from double-quotes - if exists.
-         *
-         * @param str string to unwrap.
-         * @return unwrapped string.
-         */
-        private static String unwrap(String str) {
-            if (str == null) {
-                return null;
-            }
-            if (str.length() >= 2 && '"' == str.charAt(0) && '"' == str.charAt(str.length() - 1)) {
-                return str.substring(1, str.length() - 1);
-            }
-            return str;
         }
     }
 }

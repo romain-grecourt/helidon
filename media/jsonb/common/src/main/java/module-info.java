@@ -23,6 +23,7 @@ module io.helidon.media.jsonb.common {
 
     requires io.helidon.common;
     requires io.helidon.common.http;
+    requires io.helidon.common.mapper;
     requires io.helidon.common.reactive;
     requires io.helidon.media.common;
     requires transitive java.json.bind;

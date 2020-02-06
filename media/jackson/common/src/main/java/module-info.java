@@ -22,10 +22,11 @@
 module io.helidon.media.jackson.common {
 
     requires com.fasterxml.jackson.databind;
+    requires com.fasterxml.jackson.core;
     requires io.helidon.common;
     requires io.helidon.common.http;
+    requires io.helidon.common.mapper;
     requires io.helidon.common.reactive;
     requires io.helidon.media.common;
-    
     exports io.helidon.media.jackson.common;
 }

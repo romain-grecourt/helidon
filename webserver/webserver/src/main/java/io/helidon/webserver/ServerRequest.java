@@ -16,9 +16,8 @@
 
 package io.helidon.webserver;
 
-import io.helidon.common.http.Content;
-import io.helidon.common.http.ContextualRegistry;
 import io.helidon.common.http.HttpRequest;
+import io.helidon.media.common.MessageBodyReadableContent;
 
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -61,7 +60,8 @@ public interface ServerRequest extends HttpRequest {
      *
      * @return a request context
      */
-    ContextualRegistry context();
+    @SuppressWarnings("deprecation")
+    io.helidon.common.http.ContextualRegistry context();
 
     /**
      * Returns the Internet Protocol (IP) address of the interface on which the request was received.
@@ -106,12 +106,12 @@ public interface ServerRequest extends HttpRequest {
     RequestHeaders headers();
 
     /**
-     * Returns {@link Content reactive representation} of the request content.
+     * Returns {@link MessageBodyReadableContent} reactive representation of the request content.
      *
      * @return a request content
-     * @see Content
+     * @see MessageBodyReadableContent
      */
-    Content content();
+    MessageBodyReadableContent content();
 
     /**
      * A unique correlation ID that is associated with this request and its associated response.

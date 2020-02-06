@@ -32,6 +32,7 @@ import io.helidon.common.http.Parameters;
 import org.hamcrest.number.IsCloseTo;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;

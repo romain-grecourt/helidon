@@ -639,6 +639,7 @@ public interface Routing {
          *
          * @return a new instance
          */
+        @Override
         public Routing build() {
             if (!tracingRegistered) {
                 register(WebTracingConfig.create());

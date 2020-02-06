@@ -98,7 +98,7 @@ class MediaTypeTest {
     @Test
     void jsonPredicate() {
         assertThat(MediaType.JSON_PREDICATE.test(MediaType.parse("application/json")), is(true));
-        assertThat(MediaType.JSON_PREDICATE.test(MediaType.parse("application/javascript")), is(true));
+        assertThat(MediaType.JSON_PREDICATE.test(MediaType.parse("application/javascript")), is(false));
         assertThat(MediaType.JSON_PREDICATE.test(MediaType.parse("application/manifest+json")), is(true));
         assertThat(MediaType.JSON_PREDICATE.test(MediaType.parse("application/manifest")), is(false));
     }
