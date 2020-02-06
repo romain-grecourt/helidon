@@ -29,7 +29,6 @@ import java.util.function.Supplier;
  */
 @FunctionalInterface
 public interface Builder<T> extends Supplier<T> {
-
     /**
      * Build the instance from this builder.
      *

@@ -32,8 +32,7 @@ import io.helidon.media.common.MessageBodyStreamReader;
 /**
  * Message body stream reader for {@link JsonStructure} sub-classes (JSON-P).
  */
-public class JsonpBodyStreamReader
-        implements MessageBodyStreamReader<JsonStructure> {
+public class JsonpBodyStreamReader implements MessageBodyStreamReader<JsonStructure> {
 
     private final JsonReaderFactory jsonFactory;
 
@@ -43,25 +42,20 @@ public class JsonpBodyStreamReader
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public <U extends JsonStructure> Publisher<U> read(
-            Publisher<DataChunk> publisher, GenericType<U> type,
+    public <U extends JsonStructure> Publisher<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
         return new JsonArrayStreamProcessor<>(publisher);
     }
 
-    static class JsonArrayStreamProcessor<T extends JsonStructure>
-            implements Processor<DataChunk, T> {
+    static class JsonArrayStreamProcessor<T extends JsonStructure> implements Processor<DataChunk, T> {
 
         private long itemsRequested;
-//        private boolean first = true;
         private Subscriber<? super T> itemSubscriber;
         private final Publisher<DataChunk> chunkPublisher;
         private Subscription chunkSubscription;

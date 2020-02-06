@@ -576,4 +576,3 @@ public class ConfigCdiExtension implements Extension {
         }
     }
 }
-

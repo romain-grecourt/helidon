@@ -50,8 +50,7 @@ class JsonSupportTest {
 
     @Test
     public void defaultJsonSupportAsSingleton() {
-        assertThat(JsonSupport.create(),
-                is(sameInstance(JsonSupport.create())));
+        assertThat(JsonSupport.create(), is(sameInstance(JsonSupport.create())));
     }
 
     @Test

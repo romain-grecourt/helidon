@@ -44,7 +44,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class JsonContentReaderTest {
 
-    @Disabled
     @Test
     public void simpleJsonObject() throws Exception {
         Publisher<DataChunk> chunks = Multi.just("{ \"p\" : \"val\" }").map(s -> DataChunk.create(s.getBytes()));
@@ -58,7 +57,6 @@ public class JsonContentReaderTest {
         assertThat(jsonObject.getJsonString("p").getString(), Is.is("val"));
     }
 
-    @Disabled
     @Test
     public void incompatibleTypes() throws Exception {
         Publisher<DataChunk> chunks = Multi.just("{ \"p\" : \"val\" }").map(s -> DataChunk.create(s.getBytes()));
@@ -79,7 +77,6 @@ public class JsonContentReaderTest {
         }
     }
 
-    @Disabled
     @Test
     public void simpleJsonArray() throws Exception {
         Publisher<DataChunk> chunks = Multi.just("[ \"val\" ]").map(s -> DataChunk.create(s.getBytes()));
@@ -93,7 +90,6 @@ public class JsonContentReaderTest {
         assertThat(array.getString(0), Is.is("val"));
     }
 
-    @Disabled
     @Test
     public void invalidJson() throws Exception {
         Publisher<DataChunk> chunks = Multi.just("{ \"p\" : \"val\" ").map(s -> DataChunk.create(s.getBytes()));

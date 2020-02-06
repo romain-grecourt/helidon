@@ -37,8 +37,7 @@ import io.helidon.media.common.MessageBodyWriterContext;
 /**
  * Message body writer reader for {@link JsonStructure} sub-classes (JSON-P).
  */
-public abstract class JsonpBodyStreamWriter
-        implements MessageBodyStreamWriter<JsonStructure> {
+public abstract class JsonpBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> {
 
     private final JsonWriterFactory jsonWriterFactory;
     private final String begin;
@@ -52,9 +51,7 @@ public abstract class JsonpBodyStreamWriter
      * @param separator separator character
      * @param end end character
      */
-    protected JsonpBodyStreamWriter(JsonWriterFactory jsonFactory,
-            String begin, String separator, String end) {
-
+    protected JsonpBodyStreamWriter(JsonWriterFactory jsonFactory, String begin, String separator, String end) {
         Objects.requireNonNull(jsonFactory);
         Objects.requireNonNull(separator);
         this.jsonWriterFactory = jsonFactory;
@@ -64,25 +61,20 @@ public abstract class JsonpBodyStreamWriter
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Publisher<JsonStructure> content,
-            GenericType<? extends JsonStructure> type,
+    public Publisher<DataChunk> write(Publisher<JsonStructure> content, GenericType<? extends JsonStructure> type,
             MessageBodyWriterContext context) {
 
-         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
-                MediaType.APPLICATION_JSON);
+         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
          context.contentType(contentType);
          return new JsonArrayStreamProcessor(content, context.charset());
     }
 
-    class JsonArrayStreamProcessor
-            implements Processor<JsonStructure, DataChunk> {
+    class JsonArrayStreamProcessor implements Processor<JsonStructure, DataChunk> {
 
         private long itemsRequested;
         private boolean first = true;
@@ -94,9 +86,7 @@ public abstract class JsonpBodyStreamWriter
         private final DataChunk endChunk;
         private final Charset charset;
 
-        JsonArrayStreamProcessor(Publisher<? extends JsonStructure> publisher,
-                Charset charset) {
-
+        JsonArrayStreamProcessor(Publisher<? extends JsonStructure> publisher, Charset charset) {
             this.itemPublisher = publisher;
             if (begin != null) {
                 this.beginChunk = DataChunk.create(begin.getBytes(charset));
@@ -155,28 +145,27 @@ public abstract class JsonpBodyStreamWriter
                 if (writer != null) {
                     writer.write(item);
                 }
-                ContentWriters.writeCharBuffer(buffer, charset)
-                        .subscribe(new Subscriber<DataChunk>() {
+                ContentWriters.writeCharBuffer(buffer, charset).subscribe(new Subscriber<DataChunk>() {
 
-                @Override
-                public void onSubscribe(Subscription subscription) {
-                    subscription.request(Long.MAX_VALUE);
-                }
+                    @Override
+                    public void onSubscribe(Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
+                    }
 
-                @Override
-                public void onNext(DataChunk item) {
-                    chunkSubscriber.onNext(item);
-                }
+                    @Override
+                    public void onNext(DataChunk item) {
+                        chunkSubscriber.onNext(item);
+                    }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    chunkSubscriber.onError(throwable);
-                }
+                    @Override
+                    public void onError(Throwable throwable) {
+                        chunkSubscriber.onError(throwable);
+                    }
 
-                @Override
-                public void onComplete() {
-                    // no-op
-                }
+                    @Override
+                    public void onComplete() {
+                        // no-op
+                    }
                 });
             }
         }

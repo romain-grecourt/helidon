@@ -52,15 +52,12 @@ public class JsonbBodyWriter implements MessageBodyWriter<Object> {
     }
 
     @Override
-    public Publisher<DataChunk> write(Single<Object> content,
-            GenericType<? extends Object> type,
+    public Publisher<DataChunk> write(Single<Object> content,  GenericType<? extends Object> type,
             MessageBodyWriterContext context) {
 
-        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
-                MediaType.APPLICATION_JSON);
+        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.mapMany(new ObjectToChunks(jsonb,
-                context.charset()));
+        return content.mapMany(new ObjectToChunks(jsonb, context.charset()));
     }
 
     /**
@@ -76,8 +73,7 @@ public class JsonbBodyWriter implements MessageBodyWriter<Object> {
     /**
      * Implementation of {@link MultiMapper} that converts objects into chunks.
      */
-    private static final class ObjectToChunks
-            implements Mapper<Object, Publisher<DataChunk>> {
+    private static final class ObjectToChunks implements Mapper<Object, Publisher<DataChunk>> {
 
         private final Jsonb jsonb;
         private final Charset charset;
