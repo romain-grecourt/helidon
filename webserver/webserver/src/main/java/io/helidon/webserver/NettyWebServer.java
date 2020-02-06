@@ -93,7 +93,8 @@ class NettyWebServer implements WebServer {
      */
     NettyWebServer(ServerConfiguration config,
                    Routing routing,
-                   Map<String, Routing> namedRoutings, MediaSupport mediaSupport) {
+                   Map<String, Routing> namedRoutings,
+                   MediaSupport mediaSupport) {
         Set<Map.Entry<String, SocketConfiguration>> sockets = config.sockets().entrySet();
 
         HelidonFeatures.print(HelidonFlavor.SE, config.printFeatureDetails());

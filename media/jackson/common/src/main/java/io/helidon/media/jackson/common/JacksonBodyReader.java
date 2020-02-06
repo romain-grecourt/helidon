@@ -42,21 +42,17 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         Class<?> clazz = type.rawType();
         return !CharSequence.class.isAssignableFrom(clazz)
-                && objectMapper.canDeserialize(
-                        objectMapper.constructType(clazz));
+                && objectMapper.canDeserialize(objectMapper.constructType(clazz));
     }
 
     @Override
     public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher)
-                .map(new BytesToObject<>(type, objectMapper));
+        return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type, objectMapper));
     }
 
     /**
@@ -68,8 +64,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         return new JacksonBodyReader(objectMapper);
     }
 
-    private static final class BytesToObject<T>
-            implements Mapper<byte[], T> {
+    private static final class BytesToObject<T> implements Mapper<byte[], T> {
 
         private final GenericType<? super T> type;
         private final ObjectMapper objectMapper;
@@ -82,6 +77,7 @@ public final class JacksonBodyReader implements MessageBodyReader<Object> {
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public T map(byte[] bytes) {
             try {
                 return objectMapper.readValue(bytes, (Class<T>) type.rawType());

@@ -33,10 +33,6 @@ import io.helidon.media.common.MessageBodyReaderContext;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
-import io.helidon.common.http.Parameters;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
@@ -78,8 +74,7 @@ abstract class Request implements ServerRequest {
         this.webServer = webServer;
         this.headers = headers;
         this.context = io.helidon.common.http.ContextualRegistry.create(webServer.context());
-        this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(),
-                /* decode */ true);
+        this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(), true);
         this.eventListener = new MessageBodyEventListener();
         MessageBodyReaderContext readerContext = MessageBodyReaderContext
                 .create(webServer.mediaSupport(), eventListener, headers, headers.contentType());
@@ -196,8 +191,7 @@ abstract class Request implements ServerRequest {
         return bareRequest.requestId();
     }
 
-    private final class MessageBodyEventListener
-            implements MessageBodyContext.EventListener {
+    private final class MessageBodyEventListener implements MessageBodyContext.EventListener {
 
         private Span readSpan;
 
@@ -210,10 +204,10 @@ abstract class Request implements ServerRequest {
 
             SpanTracingConfig spanConfig = TracingConfigUtil
                     .spanConfig(NettyWebServer.TRACING_COMPONENT,
-                            TRACING_CONTENT_READ_NAME);
+                                TRACING_CONTENT_READ_NAME,
+                                context());
 
-            String spanName = spanConfig.newName()
-                    .orElse(TRACING_CONTENT_READ_NAME);
+            String spanName = spanConfig.newName().orElse(TRACING_CONTENT_READ_NAME);
 
             if (spanConfig.enabled()) {
                 // only create a real span if enabled
@@ -278,9 +272,7 @@ abstract class Request implements ServerRequest {
          * @param params resolved path parameters.
          * @param absolutePath absolute path.
          */
-        Path(String path, String rawPath, Map<String, String> params,
-                Path absolutePath) {
-
+        Path(String path, String rawPath, Map<String, String> params, Path absolutePath) {
             this.path = path;
             this.rawPath = rawPath;
             this.params = params == null ? Collections.emptyMap() : params;
@@ -295,8 +287,7 @@ abstract class Request implements ServerRequest {
         @Override
         public List<String> segments() {
             List<String> result = segments;
-            // No synchronisation needed, worth case is multiple splitting.
-            if (result == null) {
+            if (result == null) { // No synchronisation needed, worth case is multiple splitting.
                 StringTokenizer stok = new StringTokenizer(path, "/");
                 result = new ArrayList<>();
                 while (stok.hasMoreTokens()) {
@@ -322,15 +313,11 @@ abstract class Request implements ServerRequest {
             return absolutePath == null ? this : absolutePath;
         }
 
-        static Path create(Path contextual, String path,
-                Map<String, String> params) {
-
+        static Path create(Path contextual, String path,  Map<String, String> params) {
             return create(contextual, path, path, params);
         }
 
-        static Path create(Path contextual, String path, String rawPath,
-                Map<String, String> params) {
-
+        static Path create(Path contextual, String path, String rawPath, Map<String, String> params) {
             if (contextual == null) {
                 return new Path(path, rawPath, params, null);
             } else {
@@ -338,19 +325,15 @@ abstract class Request implements ServerRequest {
             }
         }
 
-        Path createSubpath(String path, String rawPath,
-                Map<String, String> params) {
-
+        Path createSubpath(String path, String rawPath, Map<String, String> params) {
             if (params == null) {
                 params = Collections.emptyMap();
             }
             if (absolutePath == null) {
-                HashMap<String, String> map =
-                        new HashMap<>(this.params.size() + params.size());
+                HashMap<String, String> map = new HashMap<>(this.params.size() + params.size());
                 map.putAll(this.params);
                 map.putAll(params);
-                return new Path(path, rawPath, params,
-                        new Path(this.path, this.rawPath, map, null));
+                return new Path(path, rawPath, params, new Path(this.path, this.rawPath, map, null));
             } else {
                 int size = this.params.size() + params.size()
                         + absolutePath.params.size();
@@ -358,9 +341,7 @@ abstract class Request implements ServerRequest {
                 map.putAll(absolutePath.params);
                 map.putAll(this.params);
                 map.putAll(params);
-                return new Path(path, rawPath, params,
-                        new Path(absolutePath.path, absolutePath.rawPath, map,
-                                /* absolute path */ null));
+                return new Path(path, rawPath, params, new Path(absolutePath.path, absolutePath.rawPath, map, null));
             }
         }
     }

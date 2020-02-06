@@ -45,23 +45,18 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyWriterContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyWriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
                 && objectMapper.canSerialize(type.rawType());
     }
 
     @Override
-    public Publisher<DataChunk> write(Single<Object> content,
-            GenericType<? extends Object> type,
+    public Publisher<DataChunk> write(Single<Object> content, GenericType<? extends Object> type,
             MessageBodyWriterContext context) {
 
-        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE,
-                MediaType.APPLICATION_JSON);
+        MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-        return content.mapMany(new ObjectToChunks(objectMapper,
-                context.charset()));
+        return content.mapMany(new ObjectToChunks(objectMapper, context.charset()));
     }
 
     /**
@@ -73,8 +68,7 @@ public final class JacksonBodyWriter implements MessageBodyWriter<Object> {
         return new JacksonBodyWriter(objectMapper);
     }
 
-    private static final class ObjectToChunks
-            implements Mapper<Object, Publisher<DataChunk>> {
+    private static final class ObjectToChunks implements Mapper<Object, Publisher<DataChunk>> {
 
         private final ObjectMapper objectMapper;
         private final Charset charset;

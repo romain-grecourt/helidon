@@ -365,8 +365,7 @@ public final class MessageBodyWriterContext extends MessageBodyContext implement
             if (fallback != null) {
                 writer = (MessageBodyStreamWriter<T>) swriters.get(writerType, fallback.swriters);
             } else {
-                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType,
-                    null);
+                writer = (MessageBodyStreamWriter<T>) swriters.get(writerType, null);
             }
             if (writer == null) {
                 return writerNotFound(writerType.getTypeName());

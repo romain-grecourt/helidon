@@ -45,9 +45,7 @@ public class JsonbBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public boolean accept(GenericType<?> type,
-            MessageBodyReaderContext context) {
-
+    public boolean accept(GenericType<?> type, MessageBodyReaderContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType());
     }
 
@@ -55,8 +53,7 @@ public class JsonbBodyReader implements MessageBodyReader<Object> {
     public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
             GenericType<U> type, MessageBodyReaderContext context) {
 
-        return ContentReaders.readBytes(publisher)
-                .map(new BytesToObject<>(type, jsonb));
+        return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type, jsonb));
     }
 
     /**
@@ -68,8 +65,7 @@ public class JsonbBodyReader implements MessageBodyReader<Object> {
         return new JsonbBodyReader(jsonb);
     }
 
-    private static final class BytesToObject<T>
-            implements Mapper<byte[], T> {
+    private static final class BytesToObject<T> implements Mapper<byte[], T> {
 
         private final GenericType<? super T> type;
         private final Jsonb jsonb;

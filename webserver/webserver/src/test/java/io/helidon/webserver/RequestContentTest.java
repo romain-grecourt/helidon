@@ -130,8 +130,9 @@ public class RequestContentTest {
                     @Override
                     public void onNext(DataChunk item) {
                         // mapping the on next call only
-                        subscriberDelegate.onNext(DataChunk.create(
-                                requestChunkAsString(item).toUpperCase().getBytes()));
+                        subscriberDelegate.onNext(
+                                DataChunk.create(requestChunkAsString(item)
+                                        .toUpperCase().getBytes()));
                     }
 
                     @Override
@@ -144,7 +145,6 @@ public class RequestContentTest {
                         subscriberDelegate.onComplete();
                     }
                 }));
-
         request.content().registerReader(Iterable.class, (publisher1, clazz) -> {
             fail("Iterable reader should have not been used!");
             throw new IllegalStateException("unreachable code");
@@ -184,8 +184,12 @@ public class RequestContentTest {
             return future;
         });
 
-        List result = request.content().as(List.class).toCompletableFuture().get(10, TimeUnit.SECONDS);
-        assertThat((List<String>) result, hasItems(is("FIRST"), is("SECOND"), is("THIRD")));
+        List result = request.content().as(List.class).toCompletableFuture()
+                .get(10, TimeUnit.SECONDS);
+        assertThat((List<String>) result, hasItems(
+                is("FIRST"),
+                is("SECOND"),
+                is("THIRD")));
     }
 
     @Test
@@ -207,10 +211,10 @@ public class RequestContentTest {
             future.get(10, TimeUnit.SECONDS);
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
-            assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
-                hasProperty("message", containsString("Transformation failed!"))));
-            assertThat(e.getCause().getCause(),
-                hasProperty("message", containsString("failed-publisher-transformation")));
+            assertThat(e.getCause(),
+                    allOf(instanceOf(IllegalArgumentException.class),
+                    hasProperty("message", containsString("Transformation failed!"))));
+            assertThat(e.getCause().getCause(), hasProperty("message", containsString("failed-publisher-transformation")));
         }
     }
 
@@ -227,8 +231,11 @@ public class RequestContentTest {
             fail("Should have thrown an exception");
         } catch (ExecutionException e) {
             assertThat(e.getCause(),
-            allOf(instanceOf(IllegalStateException.class), hasProperty("message", containsString("Transformation failed!"))));
-            assertThat(e.getCause().getCause(), hasProperty("message", containsString("failed-read")));
+                    allOf(instanceOf(IllegalArgumentException.class),
+                    hasProperty("message",
+                            containsString("Transformation failed!"))));
+            assertThat(e.getCause().getCause(), hasProperty("message",
+                    containsString("failed-read")));
         }
     }
 
@@ -267,13 +274,14 @@ public class RequestContentTest {
 
         AtomicReference<Throwable> receivedThrowable = new AtomicReference<>();
 
-        Multi.from(request.content()).subscribe(byteBuffer -> {
-            fail("Should not have been called!");
-        }, receivedThrowable::set);
+        Multi.from(request.content())
+                .subscribe(byteBuffer -> {
+                    fail("Should not have been called!");
+                }, receivedThrowable::set);
 
         Throwable throwable = receivedThrowable.get();
         assertThat(throwable, allOf(instanceOf(IllegalArgumentException.class),
-            hasProperty("message", containsString("Unexpected exception occurred during publishers chaining"))));
+                hasProperty("message", containsString("Unexpected exception occurred during publishers chaining"))));
         assertThat(throwable.getCause(), hasProperty("message", containsString("failed-publisher-transformation")));
     }
 

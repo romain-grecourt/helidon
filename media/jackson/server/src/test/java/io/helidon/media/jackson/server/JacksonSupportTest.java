@@ -15,8 +15,10 @@
  */
 package io.helidon.media.jackson.server;
 
-import io.helidon.common.GenericType;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import io.helidon.common.GenericType;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.webserver.Handler;
@@ -24,11 +26,10 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.testsupport.MediaPublisher;
 import io.helidon.webserver.testsupport.TestClient;
 import io.helidon.webserver.testsupport.TestResponse;
-import java.util.List;
-import static org.hamcrest.CoreMatchers.is;
 
 import org.junit.jupiter.api.Test;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**

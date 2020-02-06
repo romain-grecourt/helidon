@@ -57,8 +57,7 @@ class RequestRouting implements Routing {
      * @param errorHandlers         a list of error handlers
      * @param newWebServerCallbacks a list of callback handlers for registration in new {@link WebServer}. It is copied.
      */
-    RequestRouting(RouteList routes, List<ErrorHandlerRecord<?>> errorHandlers,
-            List<Consumer<WebServer>> newWebServerCallbacks) {
+    RequestRouting(RouteList routes, List<ErrorHandlerRecord<?>> errorHandlers, List<Consumer<WebServer>> newWebServerCallbacks) {
         this.routes = routes;
         this.errorHandlers = errorHandlers;
         this.newWebServerCallbacks = new ArrayList<>(newWebServerCallbacks);
@@ -69,8 +68,7 @@ class RequestRouting implements Routing {
 
         try {
             WebServer webServer = bareRequest.webServer();
-            HashRequestHeaders requestHeaders = new HashRequestHeaders(
-                    bareRequest.headers());
+            HashRequestHeaders requestHeaders = new HashRequestHeaders(bareRequest.headers());
             RoutedResponse response = new RoutedResponse(webServer, bareResponse, requestHeaders.acceptedTypes());
 
             // Jersey needs the raw path (not decoded) so we get that too
@@ -78,9 +76,7 @@ class RequestRouting implements Routing {
             String rawPath = canonicalize(bareRequest.uri().normalize().getRawPath());
 
             Crawler crawler = new Crawler(routes, path, rawPath, bareRequest.method());
-
-            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers,
-                    requestHeaders);
+            RoutedRequest nextRequests = new RoutedRequest(bareRequest, response, webServer, crawler, errorHandlers, requestHeaders);
 
             Contexts.runInContext(nextRequests.context(), (Runnable) nextRequests::next);
         } catch (Error | RuntimeException e) {
@@ -443,9 +439,7 @@ class RequestRouting implements Routing {
 
     private static class RoutedResponse extends Response {
 
-        RoutedResponse(WebServer webServer, BareResponse bareResponse,
-                List<MediaType> acceptedTypes) {
-
+        RoutedResponse(WebServer webServer, BareResponse bareResponse, List<MediaType> acceptedTypes) {
             super(webServer, bareResponse, acceptedTypes);
         }
 

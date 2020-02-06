@@ -33,7 +33,7 @@ stages:
 build_job:
   stage: build
   only:
-    - /^internal-.*$/
+    - /^fix-.*$/
   script:
     - env
     - if [ -d "$LOCAL_REPO"  ]; then ls "$LOCAL_REPO" ; else echo "No $LOCAL_REPO"; fi
@@ -44,7 +44,7 @@ build_job:
 copyright_job:
   stage: build
   only:
-    - /^internal-.*$/
+    - /^fix-.*$/
   script:
     - env
     - if [ -d "$LOCAL_REPO"  ]; then ls "$LOCAL_REPO" ; else echo "No $LOCAL_REPO"; fi
@@ -55,7 +55,7 @@ copyright_job:
 checkstyle:
   stage: build
   only:
-    - /^internal-.*$/
+    - /^fix-.*$/
   script:
     - env
     - if [ -d "$LOCAL_REPO"  ]; then ls "$LOCAL_REPO" ; else echo "No $LOCAL_REPO"; fi

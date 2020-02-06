@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.webserver.RoutingTest.RoutingChecker;

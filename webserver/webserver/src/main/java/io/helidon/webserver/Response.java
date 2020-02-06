@@ -330,14 +330,12 @@ abstract class Response implements ServerResponse {
         private boolean contentSend = false;
 
         private synchronized void execute(Runnable runnable, boolean silentSendStatus) {
-
             // test effective close
             if (contentSend) {
                 if (silentSendStatus) {
                     return;
                 } else {
-                    throw new IllegalStateException(
-                            "Response is already sent!");
+                    throw new IllegalStateException("Response is already sent!");
                 }
             }
             runnable.run();
