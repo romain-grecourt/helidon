@@ -19,18 +19,8 @@ package io.helidon.webserver.examples.streaming;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.json.Json;
-import javax.json.JsonBuilderFactory;
-import javax.json.JsonObject;
-import javax.json.JsonWriterFactory;
-
-import io.helidon.media.jsonp.common.JsonProcessing;
-import io.helidon.media.jsonp.common.JsonpArrayBodyStreamWriter;
-import io.helidon.media.jsonp.common.JsonpLineBodyStreamWriter;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
@@ -39,30 +29,11 @@ import io.helidon.webserver.Service;
 import static io.helidon.webserver.examples.streaming.Main.LARGE_FILE_RESOURCE;
 
 /**
- * StreamingService class. Uses a {@code Subscriber<DataChunk>} and a
- * {@code Publisher<DataChunk>} for uploading and downloading files.
+ * StreamingService class. Uses a {@code Subscriber<RequestChunk>} and a
+ * {@code Publisher<ResponseChunk>} for uploading and downloading files.
  */
 public class StreamingService implements Service {
-
-    private static final Logger LOGGER =
-            Logger.getLogger(StreamingService.class.getName());
-
-    private static final JsonBuilderFactory JSON =
-            Json.createBuilderFactory(Collections.emptyMap());
-
-    private static final JsonWriterFactory JSON_WRITER_FACTORY =
-            Json.createWriterFactory(Collections.emptyMap());
-
-    private static final JsonProcessing JSON_PROCESSING = JsonProcessing
-            .builder()
-            .jsonWriterFactory(JSON_WRITER_FACTORY)
-            .build();
-
-    private static final JsonpArrayBodyStreamWriter ARRAY_WRITER =
-            JSON_PROCESSING.newArrayStreamWriter();
-
-    private static final JsonpLineBodyStreamWriter LINE_WRITER =
-            JSON_PROCESSING.newLineDelimitedStreamWriter();
+    private static final Logger LOGGER = Logger.getLogger(StreamingService.class.getName());
 
     private final Path filePath;
 
@@ -77,67 +48,20 @@ public class StreamingService implements Service {
     @Override
     public void update(Routing.Rules routingRules) {
         routingRules.get("/download", this::download)
-                .post("/upload", this::upload)
-                .get("/downloadJson", this::downloadJson);
+                .post("/upload", this::upload);
     }
 
     private void upload(ServerRequest request, ServerResponse response) {
-        LOGGER.log(Level.INFO, "Entering upload ... {0}", Thread.currentThread());
+        LOGGER.info("Entering upload ... " + Thread.currentThread());
         request.content().subscribe(new ServerFileWriter(response));
         LOGGER.info("Exiting upload ...");
     }
 
     private void download(ServerRequest request, ServerResponse response) {
-        LOGGER.log(Level.INFO, "Entering download ...{0}", Thread.currentThread());
+        LOGGER.info("Entering download ..." + Thread.currentThread());
         long length = filePath.toFile().length();
         response.headers().add("Content-Length", String.valueOf(length));
         response.send(new ServerFileReader(filePath));
         LOGGER.info("Exiting download ...");
-    }
-
-    private void downloadJson(ServerRequest request, ServerResponse response) {
-        // Register stream writers -- should be moved to JsonSupport
-        response.registerWriter(ARRAY_WRITER);
-        response.registerWriter(LINE_WRITER);
-
-        request.content().asStream(JsonObject.class).subscribe(
-                new Flow.Subscriber<JsonObject>() {
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                    }
-
-                    @Override
-                    public void onNext(JsonObject item) {
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                    }
-
-                    @Override
-                    public void onComplete() {
-                    }
-                });
-
-        // Create JSON object
-        JsonObject msg = JSON.createObjectBuilder()
-                .add("message", "This is a message")
-                .build();
-
-        // Produce response as stream of objects
-        response.send(subscriber -> subscriber.onSubscribe(
-                new Flow.Subscription() {
-                    @Override
-                    public void request(long n) {
-                        for (int i = 0; i < 10; i++) {
-                            subscriber.onNext(msg);
-                        }
-                        subscriber.onComplete();
-                    }
-
-                    @Override
-                    public void cancel() {
-                    }
-                }), JsonObject.class);
     }
 }
