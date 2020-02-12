@@ -59,8 +59,4 @@ public class PokemonService extends AbstractPokemonService {
                 .exceptionally(throwable -> sendError(throwable, response));
     }
 
-
-
-
-
 }

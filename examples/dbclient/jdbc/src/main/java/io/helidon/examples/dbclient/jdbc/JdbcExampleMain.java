@@ -22,6 +22,8 @@ import java.util.logging.LogManager;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.health.DbClientHealthCheck;
+import io.helidon.dbclient.jdbc.JdbcDbClientProvider;
+import io.helidon.dbclient.spi.DbClientProvider;
 import io.helidon.dbclient.webserver.jsonp.DbResultSupport;
 import io.helidon.health.HealthSupport;
 import io.helidon.media.jsonb.server.JsonBindingSupport;
@@ -71,7 +73,7 @@ public final class JdbcExampleMain {
         // Get webserver config from the "server" section of application.yaml
         ServerConfiguration serverConfig =
                 ServerConfiguration.builder(config.get("server"))
-                        .tracer(TracerBuilder.create(config.get("tracing")).build())
+//                        .tracer(TracerBuilder.create(config.get("tracing")).build())
                         .build();
 
         // Prepare routing for the server
@@ -102,7 +104,10 @@ public final class JdbcExampleMain {
         Config dbConfig = config.get("db");
 
         // Interceptors are added through a service loader - see mongoDB example for explicit interceptors
-        DbClient dbClient = DbClient.builder(dbConfig)
+        DbClient dbClient = new JdbcDbClientProvider()
+                .builder()
+                .config(dbConfig)
+                .connectionPool(new UCPConnectionPool(dbConfig))
                 .build();
 
         HealthSupport health = HealthSupport.builder()

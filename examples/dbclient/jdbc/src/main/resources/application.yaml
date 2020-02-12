@@ -20,24 +20,17 @@ server:
   features:
     print-details: true
 
-tracing:
-  service: jdbc-db
+#tracing:
+#  service: jdbc-db
 
-# docker run --rm --name mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=pokemon -e MYSQL_USER=user -e MYSQL_PASSWORD=password  mysql:5.7
+# docker container run -it -p 1521:1521 -p 5500:5500 --shm-size=3g --name oracle container-registry.oracle.com/database/standard:latest
+
 db:
+  ucp:
+    url: "jdbc:oracle:thin:@localhost:1521:ORCL"
+    username: "sys as SYSDBA"
+    password: Oracle
   source: jdbc
-  connection:
-    url: jdbc:mysql://127.0.0.1:3306/pokemon?useSSL=false
-    username: user
-    password: password
-    poolName: mysql
-    initializationFailTimeout: -1
-    connectionTimeout: 2000
-    helidon:
-      pool-metrics:
-        enabled: true
-        # name prefix defaults to "db.pool." - if you have more than one client within a JVM, you may want to distinguish between them
-        name-prefix: "hikari."
   interceptors:
     tracing:
       global:

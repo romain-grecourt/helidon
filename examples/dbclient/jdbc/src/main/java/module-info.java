@@ -22,6 +22,9 @@ module io.helidon.examples.dbclient.jdbc {
 
     requires io.helidon.config;
     requires io.helidon.dbclient.health;
+    requires io.helidon.dbclient.jdbc;
+    requires ucp;
+    requires java.sql;
     requires io.helidon.health;
     requires io.helidon.dbclient.webserver.jsonp;
     requires io.helidon.media.jsonb.server;
