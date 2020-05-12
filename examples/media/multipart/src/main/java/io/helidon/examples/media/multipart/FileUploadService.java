@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,23 +29,56 @@ public final class FileUploadService implements Service {
 
     @Override
     public void update(Routing.Rules rules) {
-        rules.post("/plain", this::plain)
-             .post("/", this::test1);
+        rules.post("/raw", this::raw)
+             .post("/buffered", this::buffered)
+             .post("/stream", this::stream);
     }
 
-    private void plain(ServerRequest req, ServerResponse res) {
+    /**
+     * *
+     * Prints the raw request payload to the console output.
+     *
+     * @param req server request
+     * @param res server response
+     */
+    private void raw(ServerRequest req, ServerResponse res) {
         req.content().as(String.class).thenAccept(str -> {
             System.out.println(str);
             res.send();
         });
     }
 
-    private void test1(ServerRequest req, ServerResponse res) {
+    /**
+     * *
+     * Reads the request payload as a buffered multi-part entity and print the content of each part to the console output.
+     *
+     * @param req server request
+     * @param res server response
+     */
+    private void buffered(ServerRequest req, ServerResponse res) {
         req.content().as(ReadableMultiPart.class).thenAccept(multiPart -> {
             for (ReadableBodyPart part : multiPart.bodyParts()) {
                 System.out.println("Headers: " + part.headers().toMap());
                 System.out.println("Content: " + part.as(String.class));
             }
+            res.send();
+        });
+    }
+
+    /**
+     * *
+     * Reads the request payload as a stream of body part entities and print the content of each part to the console output.
+     *
+     * @param req server request
+     * @param res server response
+     */
+    private void stream(ServerRequest req, ServerResponse res) {
+        req.content().asStream(ReadableBodyPart.class).subscribe((part) -> {
+            System.out.println("Headers: " + part.headers().toMap());
+            System.out.println("Content: " + part.as(String.class));
+        }, (error) -> {
+            res.send(error);
+        }, () -> {
             res.send();
         });
     }

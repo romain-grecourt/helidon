@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,13 @@
 package io.helidon.media.multipart.common;
 
 import java.util.LinkedList;
+import java.util.logging.Logger;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.Flow.Processor;
+import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import java.util.logging.Logger;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.OriginThreadPublisher;
@@ -33,9 +34,7 @@ import io.helidon.media.common.MessageBodyReaderContext;
  * This processor is a single use publisher that supports a single subscriber,
  * it is not resumable.
  */
-public final class MultiPartDecoder
-        extends OriginThreadPublisher<ReadableBodyPart, ReadableBodyPart>
-        implements Processor<DataChunk, ReadableBodyPart> {
+public final class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> {
 
     /**
      * Logger.
@@ -93,6 +92,11 @@ public final class MultiPartDecoder
     private final MessageBodyReaderContext context;
 
     /**
+     * The downstream publisher.
+     */
+    private final BodyPartPublisher downstream;
+
+    /**
      * Create a new instance.
      *
      * @param boundary mime message boundary
@@ -104,17 +108,23 @@ public final class MultiPartDecoder
         this.context = context;
         parserEventProcessor = new ParserEventProcessor();
         parser = new MIMEParser(boundary, parserEventProcessor);
+        downstream = new BodyPartPublisher();
         bodyParts = new LinkedList<>();
     }
 
+    /**
+     * Create a new multipart decoder.
+     * @param boundary boundary string
+     * @param context reader context
+     * @return MultiPartDecoder
+     */
+    public static MultiPartDecoder create(String boundary, MessageBodyReaderContext context) {
+        return new MultiPartDecoder(boundary, context);
+    }
+
     @Override
-    protected void hookOnRequested(long n, long result) {
-        // require more raw chunks to decode if the decoding has not
-        // yet started or if more data is required to make progress
-        if (tryAcquire() > 0
-                && (!parserEventProcessor.isStarted() || parserEventProcessor.isDataRequired())) {
-            chunksSubscription.request(1);
-        }
+    public void subscribe(Subscriber<? super ReadableBodyPart> subscriber) {
+        downstream.subscribe(subscriber);
     }
 
     @Override
@@ -135,18 +145,18 @@ public final class MultiPartDecoder
             // feed the parser
             parser.offer(chunk.data());
         } catch (MIMEParser.ParsingException ex) {
-            error(ex);
+            downstream.error(ex);
         }
 
         // submit parsed parts
         while (!bodyParts.isEmpty()) {
             ReadableBodyPart bodyPart = bodyParts.poll();
-            submit(bodyPart);
+            downstream.submit(bodyPart);
         }
 
         // complete the subscriber
         if (parserEventProcessor.isCompleted()) {
-            complete();
+            downstream.complete();
         }
 
         // request more data if not stuck at content
@@ -161,7 +171,7 @@ public final class MultiPartDecoder
 
     @Override
     public void onError(Throwable error) {
-        error(error);
+        downstream.error(error);
     }
 
     @Override
@@ -171,23 +181,29 @@ public final class MultiPartDecoder
         try {
             parser.close();
         } catch (MIMEParser.ParsingException ex) {
-            error(ex);
+            downstream.error(ex);
         }
     }
 
-    @Override
-    protected ReadableBodyPart wrap(ReadableBodyPart data) {
-        return data;
-    }
-
     /**
-     * Create a new multipart decoder.
-     * @param boundary boundary string
-     * @param context reader context
-     * @return MultiPartDecoder
+     * Body part publisher.
      */
-    public static MultiPartDecoder create(String boundary, MessageBodyReaderContext context) {
-        return new MultiPartDecoder(boundary, context);
+    private final class BodyPartPublisher extends OriginThreadPublisher<ReadableBodyPart, ReadableBodyPart> {
+
+        @Override
+        protected void hookOnRequested(long n, long result) {
+            // require more raw chunks to decode if the decoding has not
+            // yet started or if more data is required to make progress
+            if (tryAcquire() > 0
+                    && (!parserEventProcessor.isStarted() || parserEventProcessor.isDataRequired())) {
+                chunksSubscription.request(1);
+            }
+        }
+
+        @Override
+        protected ReadableBodyPart wrap(ReadableBodyPart data) {
+            return data;
+        }
     }
 
     /**

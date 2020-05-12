@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,12 +37,6 @@ import io.helidon.media.common.MessageBodyReaderContext;
 public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
 
     /**
-     * Singleton instance.
-     */
-    private static final MultiPartBodyReader INSTANCE =
-            new MultiPartBodyReader();
-
-    /**
      * Bytes to chunk mapper singleton.
      */
     private static final BytesToChunks BYTES_TO_CHUNKS = new BytesToChunks();
@@ -53,7 +47,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
     private static final PartsCollector COLLECTOR = new PartsCollector();
 
     /**
-     * Private to enforce the use of {@link #get()}.
+     * Private to enforce the use of {@link #create()}.
      */
     private MultiPartBodyReader() {
     }
@@ -85,8 +79,8 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
      * Create a new instance of {@link MultiPartBodyReader}.
      * @return MultiPartReader
      */
-    public static MultiPartBodyReader get() {
-        return INSTANCE;
+    public static MultiPartBodyReader create() {
+        return new MultiPartBodyReader();
     }
 
     /**
@@ -109,7 +103,7 @@ public final class MultiPartBodyReader implements MessageBodyReader<MultiPart> {
             // buffer the data
             Publisher<DataChunk> bufferedData = ContentReaders
                     .readBytes(content)
-                    .mapMany(BYTES_TO_CHUNKS);
+                    .flatMap(BYTES_TO_CHUNKS);
 
             // create a content copy with the buffered data
             MessageBodyReadableContent contentCopy = MessageBodyReadableContent.create(bufferedData, content.readerContext());

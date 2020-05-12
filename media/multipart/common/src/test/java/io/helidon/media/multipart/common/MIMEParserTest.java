@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -720,8 +720,7 @@ public class MIMEParserTest {
                     if (partContent == null) {
                         partContent = Utils.toByteArray(content);
                     } else {
-                        partContent = concat(partContent,
-                                Utils.toByteArray(content));
+                        partContent = concat(partContent, Utils.toByteArray(content));
                     }
                     break;
 

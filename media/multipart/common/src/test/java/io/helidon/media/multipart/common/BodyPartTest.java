@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import io.helidon.media.common.MediaSupport;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.common.MediaContext;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +45,7 @@ import static io.helidon.media.multipart.common.MultiPartDecoderTest.chunksPubli
  */
 public class BodyPartTest {
 
-    static final MediaSupport MEDIA_SUPPORT = MediaSupport.createWithDefaults();
+    static final MediaContext MEDIA_CONTEXT = MediaContext.create();
     static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     @Test
@@ -69,7 +70,7 @@ public class BodyPartTest {
         Publisher<DataChunk> publisher = WriteableBodyPart
                 .create("body part data")
                 .content()
-                .toPublisher(MEDIA_SUPPORT.writerContext());
+                .toPublisher(MEDIA_CONTEXT.writerContext());
         String result = ContentReaders.readString(publisher, DEFAULT_CHARSET).get();
         assertThat(result, is(equalTo("body part data")));
     }
@@ -142,7 +143,7 @@ public class BodyPartTest {
     }
 
     static MessageBodyReadableContent readableContent(Publisher<DataChunk> chunks) {
-        return MessageBodyReadableContent.create(chunks, MEDIA_SUPPORT.readerContext());
+        return MessageBodyReadableContent.create(chunks, MEDIA_CONTEXT.readerContext());
     }
 
     /**

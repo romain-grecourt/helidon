@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,13 +43,12 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
      * Short-hand for creating {@link WriteableMultiPart} instances with the
      * specified entities as body parts.
      *
-     * @param <T> the type of the entities
      * @param entities the body part entities
      * @return created MultiPart
      */
-    public static <T> WriteableMultiPart create(T... entities) {
+    public static WriteableMultiPart create(WriteableBodyPart... entities) {
         Builder builder = builder();
-        for (T entity : entities) {
+        for (WriteableBodyPart entity : entities) {
             builder.bodyPart(WriteableBodyPart.create(entity));
         }
         return builder.build();
@@ -59,13 +58,12 @@ public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
      * Short-hand for creating {@link WriteableMultiPart} instances with the
      * specified entities as body parts.
      *
-     * @param <T> the type of the entities
      * @param entities the body part entities
      * @return created MultiPart
      */
-    public static <T> WriteableMultiPart create(Collection<T> entities) {
+    public static WriteableMultiPart create(Collection<WriteableBodyPart> entities) {
         Builder builder = builder();
-        for (T entity : entities) {
+        for (WriteableBodyPart entity : entities) {
             builder.bodyPart(WriteableBodyPart.create(entity));
         }
         return builder.build();

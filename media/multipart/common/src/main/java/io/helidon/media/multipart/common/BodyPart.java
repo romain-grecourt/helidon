@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.helidon.media.multipart.common;
 import io.helidon.media.common.MessageBodyContent;
 
 /**
- * Body part model.
+ * Body part entity.
  */
 public interface BodyPart {
 
@@ -29,7 +29,7 @@ public interface BodyPart {
     MessageBodyContent content();
 
     /**
-     * Returns http part headers.
+     * Returns HTTP part headers.
      * @return BodyPartHeaders, never {@code null}
      */
     BodyPartHeaders headers();

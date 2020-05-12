@@ -48,10 +48,6 @@
             <groupId>io.helidon.media.multipart</groupId>
             <artifactId>helidon-media-multipart-common</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.helidon.media.multipart</groupId>
-            <artifactId>helidon-media-multipart-server</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

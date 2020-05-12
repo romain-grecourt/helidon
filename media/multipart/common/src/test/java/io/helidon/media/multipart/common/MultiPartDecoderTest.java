@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -41,6 +40,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.fail;
+import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_CONTEXT;
 
 /**
  * Tests {@link MultiPartDecoder}.
@@ -397,7 +397,7 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testUpstreamError() {
-        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_SUPPORT.readerContext());
+        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_CONTEXT.readerContext());
         new Publisher<DataChunk>(){
             @Override
             public void subscribe(Subscriber<? super DataChunk> subscriber) {
@@ -413,7 +413,7 @@ public class MultiPartDecoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_SUPPORT.readerContext());
+        MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_CONTEXT.readerContext());
         chunksPublisher("foo".getBytes()).subscribe(decoder);
         try {
             chunksPublisher("bar".getBytes()).subscribe(decoder);
@@ -490,7 +490,7 @@ public class MultiPartDecoderTest {
      * @return publisher of body parts
      */
     static Publisher<? extends BodyPart> partsPublisher(String boundary, byte[]... chunks) {
-        MultiPartDecoder decoder = MultiPartDecoder.create(boundary, MEDIA_SUPPORT.readerContext());
+        MultiPartDecoder decoder = MultiPartDecoder.create(boundary, MEDIA_CONTEXT.readerContext());
         chunksPublisher(chunks).subscribe(decoder);
         return decoder;
     }

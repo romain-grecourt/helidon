@@ -2,7 +2,7 @@
 <html>
 <!--
 
-    Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 2020 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -21,15 +21,22 @@
     <title>Helidon Examples Media Multipart</title>
   </head>
   <body>
-    <h1>Test MultiPart top-level entity:</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <h1>Test buffered multi-part entity:</h1>
+    <form action="/upload/buffered" method="post" enctype="multipart/form-data">
       Select a file to upload:
       <input id="files" type="file" name="file[]" multiple />
       <input type="submit" value="Upload!" name="submit">
     </form>
 
-    <h1>Dump</h1>
-    <form action="/upload/plain" method="post" enctype="multipart/form-data">
+    <h1>Test stream of body-part entities:</h1>
+    <form action="/upload/stream" method="post" enctype="multipart/form-data">
+      Select a file to upload:
+      <input id="files" type="file" name="file[]" multiple />
+      <input type="submit" value="Upload!" name="submit">
+    </form>
+
+    <h1>Dump the raw request payload</h1>
+    <form action="/upload/raw" method="post" enctype="multipart/form-data">
       Select a file to upload:
       <input id="files" type="file" name="file[]" multiple />
       <input type="submit" value="Upload!" name="submit">

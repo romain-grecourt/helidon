@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,7 @@ import io.helidon.media.common.MessageBodyWriterContext;
  * payload. This processor is a single use publisher that supports a single
  * subscriber, it is not resumable.
  */
-public final class MultiPartEncoder
-        extends OriginThreadPublisher<DataChunk, DataChunk>
-        implements Processor<WriteableBodyPart, DataChunk> {
+public final class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk> {
 
     private Subscription partsSubscription;
     private BodyPartContentSubscriber contentSubscriber;
@@ -56,6 +54,11 @@ public final class MultiPartEncoder
     private volatile boolean complete;
 
     /**
+     * The downstream publisher.
+     */
+    private final MultiPartChunksPublisher downstream;
+
+    /**
      * Create a new multipart encoder.
      * @param boundary boundary string
      * @param context writer context
@@ -65,17 +68,23 @@ public final class MultiPartEncoder
         Objects.requireNonNull(context, "context cannot be null!");
         this.context = context;
         this.boundary = boundary;
+        this.downstream = new MultiPartChunksPublisher();
         this.complete = false;
     }
 
+    /**
+     * Create a new encoder instance.
+     * @param boundary multipart boundary delimiter
+     * @param context writer context
+     * @return MultiPartEncoder
+     */
+    public static MultiPartEncoder create(String boundary, MessageBodyWriterContext context) {
+        return new MultiPartEncoder(boundary, context);
+    }
+
     @Override
-    protected void hookOnRequested(long n, long result) {
-        if (tryAcquire() > 0) {
-            partsSubscription.request(1);
-            if (contentSubscriber != null) {
-                contentSubscriber.request(n);
-            }
-        }
+    public void subscribe(Subscriber<? super DataChunk> subscriber) {
+        downstream.subscribe(subscriber);
     }
 
     @Override
@@ -108,24 +117,16 @@ public final class MultiPartEncoder
 
         // end of headers empty line
         sb.append("\r\n");
-        submit(sb.toString());
-        contentSubscriber = new BodyPartContentSubscriber(this);
+        downstream.submit(sb.toString());
+        contentSubscriber = new BodyPartContentSubscriber();
         bodyPart.content()
                 .toPublisher(context)
                 .subscribe(contentSubscriber);
     }
 
-    /**
-     * Submit the data represented by the specified string.
-     * @param data data to submit
-     */
-    void submit(String data) {
-        submit(DataChunk.create(data.getBytes(StandardCharsets.UTF_8)));
-    }
-
     @Override
     public void onError(Throwable error) {
-        error(error);
+        downstream.error(error);
     }
 
     @Override
@@ -138,9 +139,23 @@ public final class MultiPartEncoder
      */
     void onPartComplete() {
         if (complete) {
-            submit(DataChunk.create(ByteBuffer.wrap(MIMEParser.getBytes("--" + boundary + "--"))));
-            complete();
+            downstream.submit(DataChunk.create(ByteBuffer.wrap(MIMEParser.getBytes("--" + boundary + "--"))));
+            downstream.complete();
         } else {
+            downstream.requestNext();
+        }
+    }
+
+    /**
+     * Publisher of encoded chunks.
+     */
+    private final class MultiPartChunksPublisher extends OriginThreadPublisher<DataChunk, DataChunk> {
+
+        void submit(String data) {
+            downstream.submit(DataChunk.create(data.getBytes(StandardCharsets.UTF_8)));
+        }
+
+        void requestNext() {
             long n = tryAcquire();
             if (n > 0){
                 partsSubscription.request(1);
@@ -149,24 +164,29 @@ public final class MultiPartEncoder
                 }
             }
         }
-    }
 
-    @Override
-    protected DataChunk wrap(DataChunk data) {
-        return data;
+        @Override
+        protected void hookOnRequested(long n, long result) {
+            if (tryAcquire() > 0) {
+                partsSubscription.request(1);
+                if (contentSubscriber != null) {
+                    contentSubscriber.request(n);
+                }
+            }
+        }
+
+        @Override
+        protected DataChunk wrap(DataChunk data) {
+            return data;
+        }
     }
 
     /**
      * Subscriber of part content.
      */
-    private static final class BodyPartContentSubscriber implements Subscriber<DataChunk> {
+    private final class BodyPartContentSubscriber implements Subscriber<DataChunk> {
 
         private Subscription subscription;
-        private final MultiPartEncoder encoder;
-
-        BodyPartContentSubscriber(MultiPartEncoder encoder) {
-            this.encoder = encoder;
-        }
 
         @Override
         public void onSubscribe(Subscription subscription) {
@@ -176,18 +196,18 @@ public final class MultiPartEncoder
         @Override
         public void onNext(DataChunk item) {
             // TODO encode with a charset ?
-            encoder.submit(item);
+            downstream.submit(item);
         }
 
         @Override
         public void onError(Throwable error) {
-            encoder.onError(error);
+            downstream.error(error);
         }
 
         @Override
         public void onComplete() {
-            encoder.submit("\n");
-            encoder.onPartComplete();
+            downstream.submit("\n");
+            onPartComplete();
         }
 
         void request(long n) {
@@ -195,15 +215,5 @@ public final class MultiPartEncoder
                 subscription.request(n);
             }
         }
-    }
-
-    /**
-     * Create a new encoder instance.
-     * @param boundary multipart boundary delimiter
-     * @param context writer context
-     * @return MultiPartEncoder
-     */
-    public static MultiPartEncoder create(String boundary, MessageBodyWriterContext context) {
-        return new MultiPartEncoder(boundary, context);
     }
 }

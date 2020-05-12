@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,12 @@ import io.helidon.media.common.ContentReaders;
 import io.helidon.media.multipart.common.MultiPartDecoderTest.DataChunkSubscriber;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_SUPPORT;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
+import static io.helidon.media.multipart.common.BodyPartTest.MEDIA_CONTEXT;
 
 /**
  * Test {@link MultiPartEncoder}.
@@ -98,7 +98,7 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testSubcribingMoreThanOnce() {
-        MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.just(EMPTY_PARTS).subscribe(encoder);
         try {
             Multi.just(EMPTY_PARTS).subscribe(encoder);
@@ -110,7 +110,7 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testUpstreamError() {
-        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.<WriteableBodyPart>error(new IllegalStateException("oops")).subscribe(decoder);
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         decoder.subscribe(subscriber);
@@ -127,7 +127,7 @@ public class MultiPartEncoderTest {
 
     @Test
     public void testPartContentPublisherError() {
-        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.just(WriteableBodyPart.builder()
                 .publisher((Subscriber<? super DataChunk> subscriber) -> {
                     subscriber.onError(new IllegalStateException("oops"));
@@ -147,7 +147,7 @@ public class MultiPartEncoderTest {
     }
 
     private static String encodeParts(String boundary, WriteableBodyPart... parts) throws Exception {
-        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, MEDIA_SUPPORT.writerContext());
+        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, MEDIA_CONTEXT.writerContext());
         Multi.just(parts).subscribe(encoder);
         return ContentReaders.readString(encoder, StandardCharsets.UTF_8).get(10, TimeUnit.SECONDS);
     }

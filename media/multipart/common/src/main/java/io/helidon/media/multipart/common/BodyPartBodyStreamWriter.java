@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 package io.helidon.media.multipart.common;
 
-import java.util.concurrent.Flow.Publisher;
-
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
@@ -28,11 +26,6 @@ import io.helidon.media.common.MessageBodyWriterContext;
  * {@link WriteableBodyPart} stream writer.
  */
 public final class BodyPartBodyStreamWriter implements MessageBodyStreamWriter<WriteableBodyPart> {
-
-    /**
-     * Singleton instance.
-     */
-    private static final BodyPartBodyStreamWriter INSTANCE = new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
 
     private final String boundary;
 
@@ -60,11 +53,12 @@ public final class BodyPartBodyStreamWriter implements MessageBodyStreamWriter<W
 
     /**
      * Create a new instance of {@link BodyPartBodyStreamWriter} with the default
-     * boundary delimiter ({@link MultiPartBodyWriter#DEFAULT_BOUNDARY}.
+     * boundary delimiter.
+     * @see MultiPartBodyWriter#DEFAULT_BOUNDARY
      * @return BodyPartStreamWriter
      */
-    public static BodyPartBodyStreamWriter get() {
-        return INSTANCE;
+    public static BodyPartBodyStreamWriter create() {
+        return new BodyPartBodyStreamWriter(MultiPartBodyWriter.DEFAULT_BOUNDARY);
     }
 
     /**

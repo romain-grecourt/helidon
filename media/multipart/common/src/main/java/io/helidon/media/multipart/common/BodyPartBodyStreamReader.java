@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +29,7 @@ import io.helidon.media.common.MessageBodyStreamReader;
 public final class BodyPartBodyStreamReader implements MessageBodyStreamReader<ReadableBodyPart> {
 
     /**
-     * Singleton instance.
-     */
-    private static final BodyPartBodyStreamReader INSTANCE = new BodyPartBodyStreamReader();
-
-    /**
-     * Private to enforce the use of {@link #get()}.
+     * Private to enforce the use of {@link #create()}.
      */
     private BodyPartBodyStreamReader() {
     }
@@ -67,7 +62,7 @@ public final class BodyPartBodyStreamReader implements MessageBodyStreamReader<R
      *
      * @return BodyPartBodyStreamReader
      */
-    public static BodyPartBodyStreamReader get() {
-        return INSTANCE;
+    public static BodyPartBodyStreamReader create() {
+        return  new BodyPartBodyStreamReader();
     }
 }

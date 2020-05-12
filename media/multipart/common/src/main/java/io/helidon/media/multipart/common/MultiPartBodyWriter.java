@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,11 +37,6 @@ public final class MultiPartBodyWriter implements MessageBodyWriter<WriteableMul
     public static final String DEFAULT_BOUNDARY = "[^._.^]==>boundary<==[^._.^]";
 
     /**
-     * Singleton instance.
-     */
-    private static final MultiPartBodyWriter INSTANCE = new MultiPartBodyWriter(DEFAULT_BOUNDARY);
-
-    /**
      * The actual boundary string.
      */
     private final String boundary;
@@ -64,7 +59,7 @@ public final class MultiPartBodyWriter implements MessageBodyWriter<WriteableMul
             MessageBodyWriterContext context) {
 
         context.contentType(MediaType.MULTIPART_FORM_DATA);
-        return content.mapMany(new MultiPartToChunks(boundary, context));
+        return content.flatMap(new MultiPartToChunks(boundary, context));
     }
 
     /**
@@ -79,13 +74,13 @@ public final class MultiPartBodyWriter implements MessageBodyWriter<WriteableMul
     }
 
     /**
-     * Get the singleton instance (uses the default boundary delimiter
-     * {@link #DEFAULT_BOUNDARY}).
+     * Create a new writer instance that uses the default boundary delimiter.
      *
+     * @see #DEFAULT_BOUNDARY
      * @return MultiPartWriter
      */
-    public static MultiPartBodyWriter get() {
-        return INSTANCE;
+    public static MultiPartBodyWriter create() {
+        return new MultiPartBodyWriter(DEFAULT_BOUNDARY);
     }
 
     private static final class MultiPartToChunks implements Mapper<WriteableMultiPart, Publisher<DataChunk>> {
