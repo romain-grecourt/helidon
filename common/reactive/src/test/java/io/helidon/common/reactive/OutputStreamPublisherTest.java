@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -43,17 +44,18 @@ public class OutputStreamPublisherTest {
         subscriber.requestMax();
         PrintWriter printer = new PrintWriter(publisher);
         printer.print("foo");
-        publisher.signalCloseComplete(null);
         printer.close();
         assertThat(subscriber.isComplete(), is(equalTo(true)));
         assertThat(subscriber.getLastError(), is(nullValue()));
-        assertThat(subscriber.getItems().size(),is(equalTo(1)));
+        // Filter out any OutputStreamPublisher#FLUSH_BUFFER
+        long size = subscriber.getItems().stream().filter(b -> b.capacity() > 0).count();
+        assertThat(size, is(equalTo(1L)));
         ByteBuffer bb = subscriber.getItems().get(0);
         assertThat(new String(bb.array()), is(equalTo("foo")));
     }
 
     @Test
-    public void testSignalCloseCompleteWithException() {
+    void testSignalCloseCompleteWithException() {
         OutputStreamPublisher publisher = new OutputStreamPublisher();
         publisher.signalCloseComplete(new IllegalStateException("foo!"));
         try {
@@ -62,6 +64,59 @@ public class OutputStreamPublisherTest {
         } catch (IOException ex) {
             assertThat(ex.getCause(), is(not(nullValue())));
             assertThat(ex.getCause(), is(instanceOf(IllegalStateException.class)));
+        }
+    }
+
+    @Test
+    void testCloseOnNoDataWritten() throws IOException {
+        OutputStreamPublisher publisher = new OutputStreamPublisher();
+        TestSubscriber<ByteBuffer> sub = new TestSubscriber<>();
+
+        publisher.subscribe(sub);
+
+        // this should return immediately
+        publisher.close();
+
+        sub.assertComplete();
+        sub.assertItemCount(0);
+    }
+
+    @Test
+    void testCancel() throws IOException {
+        OutputStreamPublisher publisher = new OutputStreamPublisher();
+        TestSubscriber<ByteBuffer> sub = new TestSubscriber<>();
+
+        publisher.subscribe(sub);
+        sub.cancel();
+
+        assertThrows(IOException.class, () -> publisher.write("Test".getBytes()));
+
+        publisher.close();
+
+        sub.assertEmpty();
+    }
+
+    @Test
+    void testError() throws IOException {
+        OutputStreamPublisher publisher = new OutputStreamPublisher();
+        TestSubscriber<ByteBuffer> sub = new TestSubscriber<>() {
+            @Override
+            public void onNext(ByteBuffer item) {
+                throw new UnitTestException();
+            }
+        };
+
+        publisher.subscribe(sub);
+        sub.request(1);
+
+        // need to make sure we do not block any method
+        assertThrows(UnitTestException.class, () -> publisher.write("Test".getBytes()));
+        publisher.close();
+    }
+
+    private static final class UnitTestException extends RuntimeException {
+        private UnitTestException() {
+            super();
         }
     }
 }

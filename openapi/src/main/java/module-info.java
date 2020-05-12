@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019,2020 Oracle and/or its affiliates. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,14 @@ module io.helidon.openapi {
     requires io.helidon.media.common;
     requires io.helidon.media.jsonp.server;
     requires io.helidon.webserver;
+    requires io.helidon.webserver.cors;
 
     requires jandex;
 
     requires smallrye.open.api;
+    requires java.json;
+    requires java.desktop; // for java.beans package
+    requires org.yaml.snakeyaml;
 
     requires microprofile.openapi.api;
 

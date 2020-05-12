@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,10 +22,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -53,6 +55,8 @@ import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
 import io.helidon.webserver.ServerResponse;
 import io.helidon.webserver.Service;
+import io.helidon.webserver.cors.CorsEnabledServiceHelper;
+import io.helidon.webserver.cors.CrossOriginConfig;
 
 import org.eclipse.microprofile.metrics.Counter;
 import org.eclipse.microprofile.metrics.Meter;
@@ -61,6 +65,8 @@ import org.eclipse.microprofile.metrics.MetricID;
 import org.eclipse.microprofile.metrics.MetricRegistry;
 import org.eclipse.microprofile.metrics.MetricType;
 import org.eclipse.microprofile.metrics.MetricUnits;
+
+import static io.helidon.webserver.cors.CorsEnabledServiceHelper.CORS_CONFIG_KEY;
 
 /**
  * Support for metrics for Helidon Web Server.
@@ -96,19 +102,22 @@ public final class MetricsSupport implements Service {
 
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
     private static final String DEFAULT_CONTEXT = "/metrics";
+    private static final String FEATURE_NAME = "Metrics";
 
     static {
-        HelidonFeatures.register(HelidonFlavor.SE, "Metrics");
+        HelidonFeatures.register(HelidonFlavor.SE, FEATURE_NAME);
     }
 
     private final String context;
     private final RegistryFactory rf;
+    private final CorsEnabledServiceHelper corsEnabledServiceHelper;
 
     private static final Logger LOGGER = Logger.getLogger(MetricsSupport.class.getName());
 
     private MetricsSupport(Builder builder) {
         this.rf = builder.registryFactory.get();
         this.context = builder.context;
+        corsEnabledServiceHelper = CorsEnabledServiceHelper.create(FEATURE_NAME, builder.crossOriginConfig);
     }
 
     /**
@@ -187,17 +196,26 @@ public final class MetricsSupport implements Service {
 
     static String toPrometheusData(Registry... registries) {
         return Arrays.stream(registries)
+                .filter(r -> !r.empty())
                 .map(MetricsSupport::toPrometheusData)
                 .collect(Collectors.joining());
     }
 
     static String toPrometheusData(Registry registry) {
-        return registry.stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
-                .collect(StringBuilder::new,
-                        (sb, entry) -> toPrometheusData(sb, entry.getKey(), entry.getValue()),
-                        StringBuilder::append)
-                .toString();
+        StringBuilder builder = new StringBuilder();
+        Set<String> serialized = new HashSet<>();
+        registry.stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> {
+                    String name = entry.getKey().getName();
+                    if (!serialized.contains(name)) {
+                        toPrometheusData(builder, entry.getKey(), entry.getValue(), true);
+                        serialized.add(name);
+                    } else {
+                        toPrometheusData(builder, entry.getKey(), entry.getValue(), false);
+                    }
+                });
+        return builder.toString();
     }
 
     /**
@@ -205,11 +223,12 @@ public final class MetricsSupport implements Service {
      *
      * @param metricID the {@code MetricID} for the metric to be formatted
      * @param metric the {@code Metric} containing the data to be formatted
+     * @param withHelpType flag controlling serialization of HELP and TYPE
      * @return metric info in Prometheus format
      */
-    public static String toPrometheusData(MetricID metricID, Metric metric) {
+    public static String toPrometheusData(MetricID metricID, Metric metric, boolean withHelpType) {
         final StringBuilder sb = new StringBuilder();
-        checkMetricTypeThenRun(sb, metricID, metric);
+        checkMetricTypeThenRun(sb, metricID, metric, withHelpType);
         return sb.toString();
     }
 
@@ -218,10 +237,11 @@ public final class MetricsSupport implements Service {
      *
      * @param name the name of the metric
      * @param metric the {@code Metric} containing the data to be formatted
+     * @param withHelpType flag controlling serialization of HELP and TYPE
      * @return metric info in Prometheus format
      */
-    public static String toPrometheusData(String name, Metric metric) {
-        return toPrometheusData(new MetricID(name), metric);
+    public static String toPrometheusData(String name, Metric metric, boolean withHelpType) {
+        return toPrometheusData(new MetricID(name), metric, withHelpType);
     }
 
     /**
@@ -233,13 +253,15 @@ public final class MetricsSupport implements Service {
      *
      * @param metricID the {@code MetricID} for the metric to convert
      * @param metric the {@code Metric} to convert to Prometheus format
+     * @param withHelpType flag controlling serialization of HELP and TYPE
      * @return {@code String} containing the Prometheus data
      */
-    static void toPrometheusData(StringBuilder sb, MetricID metricID, Metric metric) {
-        checkMetricTypeThenRun(sb, metricID, metric);
+    static void toPrometheusData(StringBuilder sb, MetricID metricID, Metric metric, boolean withHelpType) {
+        checkMetricTypeThenRun(sb, metricID, metric, withHelpType);
     }
 
-    private static void checkMetricTypeThenRun(StringBuilder sb, MetricID metricID, Metric metric) {
+    private static void checkMetricTypeThenRun(StringBuilder sb, MetricID metricID, Metric metric,
+                                               boolean withHelpType) {
         Objects.requireNonNull(metric);
 
         if (!(metric instanceof HelidonMetric)) {
@@ -249,7 +271,7 @@ public final class MetricsSupport implements Service {
                     HelidonMetric.class.getName()));
         }
 
-        ((HelidonMetric) metric).prometheusData(sb, metricID);
+        ((HelidonMetric) metric).prometheusData(sb, metricID, withHelpType);
     }
 
     // unit testable
@@ -366,6 +388,10 @@ public final class MetricsSupport implements Service {
         Registry base = rf.getARegistry(MetricRegistry.Type.BASE);
         Registry vendor = rf.getARegistry(MetricRegistry.Type.VENDOR);
         Registry app = rf.getARegistry(MetricRegistry.Type.APPLICATION);
+
+        // CORS first
+        rules.any(context, corsEnabledServiceHelper.processor());
+
         // register the metric registry and factory to be available to all
         rules.any(new MetricsContextHandler(app, rf));
 
@@ -418,7 +444,7 @@ public final class MetricsSupport implements Service {
                         res.send(builder.build());
                     } else if (mediaType == MediaType.TEXT_PLAIN) {
                         final StringBuilder sb = new StringBuilder();
-                        entry.getValue().prometheusData(sb, entry.getKey());
+                        entry.getValue().prometheusData(sb, entry.getKey(), true);
                         res.send(sb.toString());
                     } else {
                         res.status(Http.Status.NOT_ACCEPTABLE_406);
@@ -458,7 +484,7 @@ public final class MetricsSupport implements Service {
                 .ifPresentOrElse(entry -> {
                     if (req.headers().isAccepted(MediaType.APPLICATION_JSON)) {
                         JsonObjectBuilder builder = JSON.createObjectBuilder();
-                        entry.getKey().jsonMeta(builder, entry.getValue());
+                        HelidonMetric.class.cast(entry.getKey()).jsonMeta(builder, entry.getValue());
                         res.send(builder.build());
                     } else {
                         res.status(Http.Status.NOT_ACCEPTABLE_406);
@@ -478,6 +504,7 @@ public final class MetricsSupport implements Service {
         private Supplier<RegistryFactory> registryFactory;
         private String context = DEFAULT_CONTEXT;
         private Config config = Config.empty();
+        private CrossOriginConfig crossOriginConfig = null;
 
         private Builder() {
 
@@ -504,6 +531,9 @@ public final class MetricsSupport implements Service {
             config.get("web-context").asString().ifPresent(this::context);
             // backward compatibility
             config.get("context").asString().ifPresent(this::context);
+            config.get(CORS_CONFIG_KEY)
+                    .as(CrossOriginConfig::create)
+                    .ifPresent(this::crossOriginConfig);
 
             if (!config.get(BaseRegistry.BASE_ENABLED_KEY).asBoolean().orElse(true)) {
                 LOGGER.finest("Metrics support for base metrics is disabled in configuration");
@@ -557,6 +587,18 @@ public final class MetricsSupport implements Service {
             } else {
                 this.context = "/" + path;
             }
+            return this;
+        }
+
+        /**
+         * Set the CORS config from the specified {@code CrossOriginConfig} object.
+         *
+         * @param crossOriginConfig {@code CrossOriginConfig} containing CORS set-up
+         * @return updated builder instance
+         */
+        public Builder crossOriginConfig(CrossOriginConfig crossOriginConfig) {
+            Objects.requireNonNull(crossOriginConfig, "CrossOriginConfig must be non-null");
+            this.crossOriginConfig = crossOriginConfig;
             return this;
         }
     }

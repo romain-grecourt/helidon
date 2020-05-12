@@ -28,11 +28,6 @@ import io.helidon.common.reactive.Single;
 public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
 
     /**
-     * Singleton instance.
-     */
-    private static final InputStreamBodyReader INSTANCE = new InputStreamBodyReader();
-
-    /**
      * Enforce the use of {@link #get() }.
      */
     private InputStreamBodyReader() {
@@ -48,14 +43,14 @@ public class InputStreamBodyReader implements MessageBodyReader<InputStream> {
     public <U extends InputStream> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
             MessageBodyReaderContext context) {
 
-        return (Single<U>) Single.just(new PublisherInputStream(publisher));
+        return (Single<U>) Single.just(new DataChunkInputStream(publisher));
     }
 
     /**
-     * Get the {@link InputStreamBodyReader} singleton.
-     * @return InputStreamBodyReader
+     * Create a new instance of {@link InputStreamBodyReader}.
+     * @return {@link InputStream} message body reader.
      */
-    public static InputStreamBodyReader get() {
-        return INSTANCE;
+    public static InputStreamBodyReader create() {
+        return new InputStreamBodyReader();
     }
 }

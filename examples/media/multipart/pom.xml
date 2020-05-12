@@ -43,17 +43,14 @@
         <dependency>
             <groupId>io.helidon.webserver</groupId>
             <artifactId>helidon-webserver</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.helidon.media.multipart</groupId>
             <artifactId>helidon-media-multipart-common</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.helidon.media.multipart</groupId>
             <artifactId>helidon-media-multipart-server</artifactId>
-            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

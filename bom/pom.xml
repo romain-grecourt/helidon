@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2017, 2020 Oracle and/or its affiliates. All rights reserved.
+    Copyright (c) 2017, 2020 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -63,6 +63,16 @@
                 <artifactId>helidon-webserver-test-support</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.helidon.webserver</groupId>
+                <artifactId>helidon-webserver-tyrus</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webserver</groupId>
+                <artifactId>helidon-webserver-cors</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
             <!-- Helidon Jersey -->
             <dependency>
                 <groupId>io.helidon.jersey</groupId>
@@ -88,6 +98,26 @@
             <dependency>
                 <groupId>io.helidon.webclient</groupId>
                 <artifactId>helidon-webclient-jaxrs</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webclient</groupId>
+                <artifactId>helidon-webclient</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webclient</groupId>
+                <artifactId>helidon-webclient-metrics</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webclient</groupId>
+                <artifactId>helidon-webclient-tracing</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webclient</groupId>
+                <artifactId>helidon-webclient-security</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
             <!-- gRPC -->
@@ -136,6 +166,11 @@
                 <artifactId>helidon-microprofile-grpc-client</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.helidon.microprofile</groupId>
+                <artifactId>helidon-microprofile-cors</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
             <!-- media -->
             <dependency>
                 <groupId>io.helidon.media</groupId>
@@ -170,6 +205,16 @@
             <dependency>
                 <groupId>io.helidon.media.jsonp</groupId>
                 <artifactId>helidon-media-jsonp-server</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.media.multipart</groupId>
+                <artifactId>helidon-media-multipart-common</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.media.multipart</groupId>
+                <artifactId>helidon-media-multipart-server</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
             <!-- config -->
@@ -211,6 +256,11 @@
             <dependency>
                 <groupId>io.helidon.config</groupId>
                 <artifactId>helidon-config-object-mapping</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.config</groupId>
+                <artifactId>helidon-config-mp</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
             <!-- security -->
@@ -387,9 +437,16 @@
                 <version>${helidon.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.helidon.microprofile</groupId>
+                <groupId>io.helidon.microprofile.weld</groupId>
                 <artifactId>weld-se-core</artifactId>
                 <version>${helidon.version}</version>
+                <exclusions>
+                    <!-- need to exclude javax APIs - we have moved to Jakarta -->
+                    <exclusion>
+                        <groupId>javax.enterprise</groupId>
+                        <artifactId>cdi-api</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>io.helidon.microprofile.cdi</groupId>
@@ -419,6 +476,11 @@
             <dependency>
                 <groupId>io.helidon.microprofile</groupId>
                 <artifactId>helidon-microprofile-access-log</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.microprofile.websocket</groupId>
+                <artifactId>helidon-microprofile-websocket</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
             <!-- metrics -->
@@ -589,6 +651,12 @@
                 <version>${helidon.version}</version>
             </dependency>
             <dependency>
+                <!-- to add TracerResolver support -->
+                <groupId>io.helidon.tracing</groupId>
+                <artifactId>helidon-tracing-tracer-resolver</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
                 <!-- Client support -->
                 <groupId>io.helidon.tracing</groupId>
                 <artifactId>helidon-tracing-jersey-client</artifactId>
@@ -611,6 +679,20 @@
             <dependency>
                 <groupId>io.helidon.microprofile.rest-client</groupId>
                 <artifactId>helidon-microprofile-rest-client</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+
+            <!-- Reactive Streams Operators -->
+            <dependency>
+                <groupId>io.helidon.microprofile.reactive-streams</groupId>
+                <artifactId>helidon-microprofile-reactive-streams</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+
+            <!-- Reactive Messaging -->
+            <dependency>
+                <groupId>io.helidon.microprofile.messaging</groupId>
+                <artifactId>helidon-microprofile-messaging</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
 
@@ -749,6 +831,18 @@
             <dependency>
                 <groupId>io.helidon.microprofile.openapi</groupId>
                 <artifactId>helidon-microprofile-openapi</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <!-- CORS support -->
+            <dependency>
+                <groupId>io.helidon.webserver.cors</groupId>
+                <artifactId>helidon-cors</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <!-- Messaging -->
+            <dependency>
+                <groupId>io.helidon.messaging.connectors.kafka</groupId>
+                <artifactId>helidon-messaging-connectors-kafka</artifactId>
                 <version>${helidon.version}</version>
             </dependency>
         </dependencies>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,14 @@ package io.helidon.config;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
-import java.util.concurrent.Flow;
+import java.util.Optional;
 
-import io.helidon.config.UrlConfigSource.UrlBuilder;
-import io.helidon.config.spi.ConfigContext;
 import io.helidon.config.spi.ConfigSource;
-import io.helidon.config.spi.PollingStrategy;
 
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -66,11 +60,9 @@ public class UrlConfigSourceTest {
                 .url(new URL("http://config-service/application.json"))
                 .optional()
                 .mediaType(TEST_MEDIA_TYPE)
-                .changesExecutor(Runnable::run)
-                .changesMaxBuffer(1)
                 .build();
 
-        assertThat(configSource.mediaType(), is(TEST_MEDIA_TYPE));
+        assertThat(configSource.mediaType(), is(Optional.of(TEST_MEDIA_TYPE)));
     }
 
     @Test
@@ -78,11 +70,9 @@ public class UrlConfigSourceTest {
         UrlConfigSource configSource = (UrlConfigSource) ConfigSources
                 .url(new URL("http://config-service/application.json"))
                 .optional()
-                .changesExecutor(Runnable::run)
-                .changesMaxBuffer(1)
                 .build();
 
-        assertThat(configSource.mediaType(), is(nullValue()));
+        assertThat(configSource.mediaType(), is(Optional.empty()));
     }
 
     @Test
@@ -90,77 +80,38 @@ public class UrlConfigSourceTest {
         UrlConfigSource configSource = (UrlConfigSource) ConfigSources
                 .url(new URL("http://config-service/application.unknown"))
                 .optional()
-                .changesExecutor(Runnable::run)
-                .changesMaxBuffer(1)
                 .build();
 
-        assertThat(configSource.mediaType(), is(nullValue()));
+        assertThat(configSource.mediaType(), is(Optional.empty()));
     }
 
     @Test
     public void testLoadNotExists() throws MalformedURLException {
         UrlConfigSource configSource = (UrlConfigSource) ConfigSources
                 .url(new URL("http://config-service/application.unknown"))
-                .changesExecutor(Runnable::run)
-                .changesMaxBuffer(1)
                 .build();
 
-        ConfigException ex = assertThrows(ConfigException.class, () -> {
-                configSource.init(mock(ConfigContext.class));
-                configSource.load();
-        });
-        assertThat(ex.getCause(), instanceOf(ConfigException.class));
-        assertThat(ex.getMessage(), startsWith("Cannot load data from mandatory source"));
+        BuilderImpl.ConfigContextImpl context = mock(BuilderImpl.ConfigContextImpl.class);
+        ConfigSourceRuntimeImpl runtime = new ConfigSourceRuntimeImpl(context, configSource);
 
+        ConfigException ex = assertThrows(ConfigException.class, runtime::load);
+        assertThat(ex.getMessage(), startsWith("Cannot load data from mandatory source: "));
     }
 
     @Test
     public void testLoadNotExistsWithRetries() throws MalformedURLException {
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL("http://config-service/application.unknown"))
-                .changesExecutor(Runnable::run)
-                .changesMaxBuffer(1)
                 .retryPolicy(RetryPolicies.repeat(2)
                                      .delay(Duration.ofMillis(10))
                                      .delayFactor(2)
                                      .overallTimeout(Duration.ofSeconds(1)))
                 .build();
 
-        ConfigException ex = assertThrows(ConfigException.class, () -> {
-                configSource.init(mock(ConfigContext.class));
-                configSource.load();
-        });
-        assertThat(ex.getCause(), instanceOf(ConfigException.class));
+        BuilderImpl.ConfigContextImpl context = mock(BuilderImpl.ConfigContextImpl.class);
+        ConfigSourceRuntimeImpl runtime = new ConfigSourceRuntimeImpl(context, configSource);
+
+        ConfigException ex = assertThrows(ConfigException.class, runtime::load);
         assertThat(ex.getMessage(), startsWith("Cannot load data from mandatory source"));
     }
-
-    @Test
-    public void testBuilderPollingStrategy() throws MalformedURLException {
-        URL url = new URL("http://config-service/application.unknown");
-        UrlBuilder builder = (UrlBuilder) ConfigSources.url(url)
-                .pollingStrategy(TestingPathPollingStrategy::new);
-
-        assertThat(builder.pollingStrategyInternal(), instanceOf(TestingPathPollingStrategy.class));
-        assertThat(((TestingPathPollingStrategy) builder.pollingStrategyInternal()).getUrl(), is(url));
-    }
-
-    private static class TestingPathPollingStrategy implements PollingStrategy {
-        private final URL url;
-
-        public TestingPathPollingStrategy(URL url) {
-            this.url = url;
-
-            assertThat(url, notNullValue());
-        }
-
-        @Override
-        public Flow.Publisher<PollingEvent> ticks() {
-            return Flow.Subscriber::onComplete;
-        }
-
-        public URL getUrl() {
-            return url;
-        }
-    }
-
 }

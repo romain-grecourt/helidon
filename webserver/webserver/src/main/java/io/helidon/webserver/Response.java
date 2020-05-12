@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,10 +41,6 @@ import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 
-import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONCOMPLETE;
-import static io.helidon.media.common.MessageBodyContext.EventType.AFTER_ONERROR;
-import static io.helidon.media.common.MessageBodyContext.EventType.BEFORE_ONSUBSCRIBE;
-
 /**
  * The basic implementation of {@link ServerResponse}.
  */
@@ -76,7 +72,7 @@ abstract class Response implements ServerResponse {
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
         this.eventListener = new MessageBodyEventListener();
-        this.writerContext = MessageBodyWriterContext.create(webServer.mediaSupport(), eventListener, headers, acceptedTypes);
+        this.writerContext = MessageBodyWriterContext.create(webServer.writerContext(), eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -112,7 +108,8 @@ abstract class Response implements ServerResponse {
 
     @Override
     public Http.ResponseStatus status() {
-        return headers.httpStatus();
+        Http.ResponseStatus status = headers.httpStatus();
+        return (null == status) ? Http.Status.OK_200 : status;
     }
 
     @Override
@@ -154,6 +151,19 @@ abstract class Response implements ServerResponse {
             }
             return spanBuilder.start();
         }
+        return null;
+    }
+
+    @Override
+    public Void send(Throwable content) {
+        if (headers.httpStatus() == null) {
+            if (content instanceof HttpException) {
+                status(((HttpException) content).status());
+            } else {
+                status(Http.Status.INTERNAL_SERVER_ERROR_500);
+            }
+        }
+        send((Object) content);
         return null;
     }
 
@@ -274,21 +284,12 @@ abstract class Response implements ServerResponse {
     private final class MessageBodyEventListener implements MessageBodyContext.EventListener {
 
         private Span span;
+        private volatile boolean sent;
 
-        // Sent switch just once from false to true near the beginning.
-        // It use combination with volatile to faster check.
-        private boolean sent;
-        private volatile boolean sentVolatile;
-
-        private void sendHeadersIfNeeded() {
-            if (headers != null && !sent && !sentVolatile) {
-                synchronized (this) {
-                    if (!sent && !sentVolatile) {
-                        sent = true;
-                        sentVolatile = true;
-                        headers.send();
-                    }
-                }
+        private synchronized void sendHeadersIfNeeded() {
+            if (headers != null && !sent) {
+                sent = true;
+                headers.send();
             }
         }
 

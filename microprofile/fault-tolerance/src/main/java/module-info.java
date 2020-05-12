@@ -20,16 +20,17 @@
 module io.helidon.microprofile.faulttolerance {
     requires java.logging;
     requires java.annotation;
-    requires javax.inject;
-    requires javax.interceptor.api;
+    requires jakarta.inject.api;
+    requires jakarta.interceptor.api;
 
     requires io.helidon.common.context;
     requires io.helidon.common.configurable;
     requires io.helidon.common.metrics;
     requires io.helidon.microprofile.config;
     requires io.helidon.microprofile.server;
+    requires io.helidon.microprofile.metrics;
 
-    requires cdi.api;
+    requires jakarta.enterprise.cdi.api;
     requires hystrix.core;
     requires archaius.core;
     requires commons.configuration;
@@ -38,6 +39,11 @@ module io.helidon.microprofile.faulttolerance {
     requires microprofile.config.api;
     requires microprofile.metrics.api;
     requires microprofile.fault.tolerance.api;
+
+    exports io.helidon.microprofile.faulttolerance;
+
+    // needed when running with modules - to make private methods accessible
+    opens io.helidon.microprofile.faulttolerance to weld.core.impl;
 
     provides javax.enterprise.inject.spi.Extension with io.helidon.microprofile.faulttolerance.FaultToleranceExtension;
 }

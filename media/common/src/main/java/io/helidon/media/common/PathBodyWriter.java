@@ -37,11 +37,6 @@ import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA
 public final class PathBodyWriter implements MessageBodyWriter<Path> {
 
     /**
-     * Singleton instance.
-     */
-    private static final PathBodyWriter INSTANCE = new PathBodyWriter();
-
-    /**
      * Enforces the use of {@link #get()}.
      */
     private PathBodyWriter() {
@@ -54,15 +49,15 @@ public final class PathBodyWriter implements MessageBodyWriter<Path> {
 
     @Override
     public Publisher<DataChunk> write(Single<Path> content, GenericType<? extends Path> type, MessageBodyWriterContext context) {
-        return content.mapMany(new PathToChunks(DEFAULT_RETRY_SCHEMA, context));
+        return content.flatMap(new PathToChunks(DEFAULT_RETRY_SCHEMA, context));
     }
 
     /**
-     * Get the {@link PathBodyWriter} singleton.
-     * @return PathBodyWriter
+     * Create a new of of {@link PathBodyWriter}.
+     * @return new {@link Path} message body writer.
      */
-    public static PathBodyWriter get() {
-        return INSTANCE;
+    public static PathBodyWriter create() {
+        return new PathBodyWriter();
     }
 
     /**

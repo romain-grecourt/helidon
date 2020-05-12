@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import io.helidon.config.etcd.EtcdWatcherProvider;
+
 /**
  * Etcd config source implementation.
  */
@@ -22,16 +24,16 @@ module io.helidon.config.etcd {
     requires java.logging;
     requires transitive io.helidon.config;
     requires etcd4j;
-    requires io.grpc;
     requires grpc.protobuf;
     requires grpc.stub;
     requires com.google.protobuf;
     requires com.google.common;
     requires io.helidon.common;
     requires io.helidon.common.media.type;
+    requires io.grpc;
 
     exports io.helidon.config.etcd;
 
     provides io.helidon.config.spi.ConfigSourceProvider with io.helidon.config.etcd.EtcdConfigSourceProvider;
-    provides io.helidon.config.spi.PollingStrategyProvider with io.helidon.config.etcd.EtcdPollingStrategyProvider;
+    provides io.helidon.config.spi.ChangeWatcherProvider with EtcdWatcherProvider;
 }

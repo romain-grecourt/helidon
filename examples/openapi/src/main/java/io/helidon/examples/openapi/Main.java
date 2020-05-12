@@ -100,12 +100,12 @@ public final class Main {
         MetricsSupport metrics = MetricsSupport.create();
         GreetService greetService = new GreetService(config);
         HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())   // Adds a convenient set of checks
+                .addLiveness(HealthChecks.healthChecks())   // Adds a convenient set of checks
                 .build();
 
         return Routing.builder()
                 .register(JsonSupport.create())
-                .register(OpenAPISupport.create(config))
+                .register(OpenAPISupport.create(config.get(OpenAPISupport.Builder.CONFIG_KEY)))
                 .register(health)                   // Health at "/health"
                 .register(metrics)                  // Metrics at "/metrics"
                 .register("/greet", greetService)

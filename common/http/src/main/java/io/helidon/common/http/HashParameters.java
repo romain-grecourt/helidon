@@ -43,7 +43,7 @@ public class HashParameters implements Parameters {
     /**
      * Creates a new instance.
      */
-    public HashParameters() {
+    protected HashParameters() {
         this((Parameters) null);
     }
 
@@ -53,7 +53,7 @@ public class HashParameters implements Parameters {
      *
      * @param initialContent initial content.
      */
-    public HashParameters(Map<String, List<String>> initialContent) {
+    protected HashParameters(Map<String, List<String>> initialContent) {
         if (initialContent == null) {
             content = new ConcurrentSkipListMap<>(String.CASE_INSENSITIVE_ORDER);
         } else {
@@ -77,21 +77,51 @@ public class HashParameters implements Parameters {
 
     /**
      * Creates a new instance from provided data.
-     * Initial data are copied.
+     * Initial data is copied.
      *
      * @param initialContent initial content.
      */
-    public HashParameters(Parameters initialContent) {
+    protected HashParameters(Parameters initialContent) {
         this(initialContent == null ? null : initialContent.toMap());
     }
 
     /**
-     * Creates new instance of {@link HashParameters} as a concatenation of provided parameters.
+     * Creates a new empty instance {@link HashParameters}.
      *
-     * @param parameters parameters to concat.
-     * @return a concatenation, never {@code null}.
+     * @return a new instance of {@link HashParameters}.
      */
+    public static HashParameters create() {
+        return new HashParameters();
+    }
 
+    /**
+     * Creates a new instance {@link HashParameters} from provided data. Initial data is copied.
+     *
+     * @param initialContent initial content.
+     * @return a new instance of {@link HashParameters} initialized with the given content.
+     */
+    public static HashParameters create(Map<String, List<String>> initialContent) {
+        return new HashParameters(initialContent);
+    }
+
+    /**
+     * Creates a new instance {@link HashParameters} from provided data. Initial data is copied.
+     *
+     * @param initialContent initial content.
+     * @return a new instance of {@link HashParameters} initialized with the given content.
+     */
+    public static HashParameters create(Parameters initialContent) {
+        return new HashParameters(initialContent);
+    }
+
+    /**
+     * Creates new instance of {@link HashParameters} as a concatenation of provided parameters.
+     * Values for keys found across the provided parameters are "concatenated" into a {@link List} entry for their respective key
+     * in the created {@link HashParameters} instance.
+     *
+     * @param parameters parameters to concatenate.
+     * @return a new instance of {@link HashParameters} that represents the concatenation of the provided parameters.
+     */
     public static HashParameters concat(Parameters... parameters) {
         if (parameters == null || parameters.length == 0) {
             return new HashParameters();
@@ -107,9 +137,11 @@ public class HashParameters implements Parameters {
 
     /**
      * Creates new instance of {@link HashParameters} as a concatenation of provided parameters.
+     * Values for keys found across the provided parameters are "concatenated" into a {@link List} entry for their respective key
+     * in the created {@link HashParameters} instance.
      *
-     * @param parameters parameters to concat.
-     * @return a concatenation, never {@code null}.
+     * @param parameters parameters to concatenate.
+     * @return a new instance of {@link HashParameters} that represents the concatenation of the provided parameters.
      */
     public static HashParameters concat(Iterable<Parameters> parameters) {
         ArrayList<Map<String, List<String>>> prms = new ArrayList<>();

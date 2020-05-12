@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package io.helidon.common.http;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * The DataChunk represents a part of the HTTP body content.
@@ -56,19 +58,6 @@ public interface DataChunk {
      */
     static DataChunk create(byte[] bytes) {
         return create(false, ByteBuffer.wrap(bytes));
-    }
-
-    /**
-     * Creates a simple byte array backed data chunk. The resulting
-     * instance doesn't have any kind of a lifecycle and as such, it doesn't need
-     * to be released.
-     *
-     * @param flush a signal that chunk should be written and flushed from any cache if possible
-     * @param bytes a byte array to create the request chunk from
-     * @return a request chunk
-     */
-    static DataChunk create(boolean flush, byte[] bytes) {
-        return create(flush, ByteBuffer.wrap(bytes));
     }
 
     /**
@@ -118,6 +107,7 @@ public interface DataChunk {
     static DataChunk create(boolean flush, ByteBuffer data, Runnable releaseCallback, boolean readOnly) {
         return new DataChunk() {
             private boolean isReleased = false;
+            private CompletableFuture<DataChunk> writeFuture;
 
             @Override
             public ByteBuffer data() {
@@ -143,6 +133,16 @@ public interface DataChunk {
             @Override
             public boolean isReadOnly() {
                 return readOnly;
+            }
+
+            @Override
+            public void writeFuture(CompletableFuture<DataChunk> writeFuture) {
+                this.writeFuture = writeFuture;
+            }
+
+            @Override
+            public Optional<CompletableFuture<DataChunk>> writeFuture() {
+                return Optional.ofNullable(writeFuture);
             }
         };
     }
@@ -248,7 +248,8 @@ public interface DataChunk {
      */
     default DataChunk duplicate() {
         byte[] bytes = new byte[data().limit()];
-        DataChunk dup = DataChunk.create(data().get(bytes));
+        data().get(bytes);
+        DataChunk dup = DataChunk.create(bytes);
         dup.data().position(0);
         return dup;
     }
@@ -271,5 +272,23 @@ public interface DataChunk {
      */
     default boolean isFlushChunk() {
         return flush() && data().limit() == 0;
+    }
+
+    /**
+     * Set a write future that will complete when data chunk has been
+     * written to a connection.
+     *
+     * @param writeFuture Write future.
+     */
+    default void writeFuture(CompletableFuture<DataChunk> writeFuture) {
+    }
+
+    /**
+     * Returns a write future associated with this chunk.
+     *
+     * @return Write future if one has ben set.
+     */
+    default Optional<CompletableFuture<DataChunk>> writeFuture() {
+        return Optional.empty();
     }
 }

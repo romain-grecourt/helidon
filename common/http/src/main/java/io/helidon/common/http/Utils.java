@@ -87,9 +87,6 @@ public final class Utils {
      * @return unwrapped string.
      */
     public static String unwrap(String str) {
-        if (str == null) {
-            return null;
-        }
         if (str.length() >= 2 && '"' == str.charAt(0) && '"' == str.charAt(str.length() - 1)) {
             return str.substring(1, str.length() - 1);
         }
@@ -113,36 +110,15 @@ public final class Utils {
         }
     }
 
-    /**
-     * Gets the content of the underlying {@link ByteBuffer} as an array of bytes.
-     * If the the ByteBuffer was read, the returned array contains only the part of
-     * data that wasn't read yet. On the other hand, calling this method doesn't cause
-     * the underlying {@link ByteBuffer} to be read.
-     * @param byteBuffer the byte buffer to get the content of
-     * @return byte[]
-     */
-    public static byte[] toByteArray(ByteBuffer byteBuffer) {
-        return copyBuffer(byteBuffer, new byte[byteBuffer.remaining()], 0);
-    }
+    static byte[] toByteArray(ByteBuffer byteBuffer) {
+        byte[] buff = new byte[byteBuffer.remaining()];
 
-    /**
-     * Copy the content of the underlying {@link ByteBuffer} into a given array of
-     * bytes starting at the specified position. If the the ByteBuffer was read, the returned array contains only
-     * the part of data that wasn't read yet.On the other hand, calling this
-     * method doesn't cause the underlying {@link ByteBuffer} to be read.
-     *
-     * @param byteBuffer the byte buffer to get the content of
-     * @param buff destination array
-     * @param destPos starting position in the destination array
-     * @return byte[]
-     */
-    public static byte[] copyBuffer(ByteBuffer byteBuffer, byte[] buff, int destPos){
         if (byteBuffer.hasArray()) {
-            System.arraycopy(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(),
-                    buff, destPos, byteBuffer.remaining());
+            System.arraycopy(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), buff, 0, buff.length);
         } else {
             byteBuffer.get(buff);
         }
+
         return buff;
     }
 }

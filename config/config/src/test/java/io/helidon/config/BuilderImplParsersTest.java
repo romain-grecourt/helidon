@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@ package io.helidon.config;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-import io.helidon.config.internal.PropertiesConfigParser;
 import io.helidon.config.spi.ConfigNode.ObjectNode;
 import io.helidon.config.spi.ConfigParser;
+import io.helidon.config.spi.ConfigParser.Content;
 import io.helidon.config.spi.ConfigParserException;
 
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.when;
 public class BuilderImplParsersTest {
 
     private static final String TEST_MEDIA_TYPE = "my/media/type";
+    private final Executor changesExecutor = Executors.newSingleThreadExecutor(new ConfigThreadFactory("unit-tests"));
 
     @Test
     public void testServicesDisabled() {
@@ -67,40 +70,40 @@ public class BuilderImplParsersTest {
 
     @Test
     public void testContextFindParserEmpty() {
-        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(List.of());
+        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(changesExecutor, List.of());
 
         assertThat(context.findParser("_WHATEVER_"), is(Optional.empty()));
     }
 
     @Test
     public void testContextFindParserNotAvailable() {
-        ConfigParser.Content content = mock(ConfigParser.Content.class);
-        when(content.mediaType()).thenReturn(TEST_MEDIA_TYPE);
+        Content content = mock(Content.class);
+        when(content.mediaType()).thenReturn(Optional.of(TEST_MEDIA_TYPE));
 
-        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(List.of(
+        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(changesExecutor, List.of(
                 mockParser("application/hocon", "application/json"),
                 mockParser(),
                 mockParser("application/x-yaml")
         ));
 
-        assertThat(context.findParser(content.mediaType()), is(Optional.empty()));
+        assertThat(context.findParser(content.mediaType().get()), is(Optional.empty()));
     }
 
     @Test
     public void testContextFindParserFindFirst() {
-        ConfigParser.Content content = mock(ConfigParser.Content.class);
-        when(content.mediaType()).thenReturn(TEST_MEDIA_TYPE);
+        Content content = mock(Content.class);
+        when(content.mediaType()).thenReturn(Optional.of(TEST_MEDIA_TYPE));
 
         ConfigParser firstParser = mockParser(TEST_MEDIA_TYPE);
 
-        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(List.of(
+        BuilderImpl.ConfigContextImpl context = new BuilderImpl.ConfigContextImpl(changesExecutor, List.of(
                 mockParser("application/hocon", "application/json"),
                 firstParser,
                 mockParser(TEST_MEDIA_TYPE),
                 mockParser("application/x-yaml")
         ));
 
-        assertThat(context.findParser(content.mediaType()).get(), is(firstParser));
+        assertThat(context.findParser(content.mediaType().get()).get(), is(firstParser));
     }
 
     private ConfigParser mockParser(String... supportedMediaTypes) {

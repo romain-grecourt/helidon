@@ -71,13 +71,13 @@
 
         <!-- Provided-scoped dependencies. -->
         <dependency>
-            <groupId>javax.enterprise</groupId>
-            <artifactId>cdi-api</artifactId>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>javax.transaction</groupId>
-            <artifactId>javax.transaction-api</artifactId>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -91,6 +91,15 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-Xlint:-requires-automatic</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jboss.jandex</groupId>
                 <artifactId>jandex-maven-plugin</artifactId>

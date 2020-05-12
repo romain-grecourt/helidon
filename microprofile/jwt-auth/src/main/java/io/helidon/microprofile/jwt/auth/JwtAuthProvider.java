@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -611,6 +611,13 @@ public class JwtAuthProvider extends SynchronousProvider implements Authenticati
 
             URL url = Thread.currentThread().getContextClassLoader().getResource(uri);
             if (url == null) {
+                // if uri starts with "/", remove it
+                if (uri.startsWith("/")) {
+                    url = Thread.currentThread().getContextClassLoader().getResource(uri.substring(1));
+                }
+            }
+
+            if (url == null) {
                 is = JwtAuthProvider.class.getResourceAsStream(uri);
 
                 if (null == is) {
@@ -874,6 +881,18 @@ public class JwtAuthProvider extends SynchronousProvider implements Authenticati
             mpConfig.getOptionalValue(CONFIG_PUBLIC_KEY_PATH, String.class).ifPresent(this::publicKeyPath);
             mpConfig.getOptionalValue(CONFIG_EXPECTED_ISSUER, String.class).ifPresent(this::expectedIssuer);
 
+            if (null == publicKey && null == publicKeyPath) {
+                // this is a fix for incomplete TCK tests
+                // we will configure this location in our tck configuration
+                String key = "helidon.mp.jwt.verify.publickey.location";
+                mpConfig.getOptionalValue(key, String.class).ifPresent(it -> {
+                    publicKeyPath(it);
+                    LOGGER.warning("You have configured public key for JWT-Auth provider using a property"
+                                           + " reserved for TCK tests (" + key + "). Please use "
+                                           + CONFIG_PUBLIC_KEY_PATH + " instead.");
+                });
+            }
+
             return this;
         }
 
@@ -900,14 +919,24 @@ public class JwtAuthProvider extends SynchronousProvider implements Authenticati
         }
 
         private void verifyKeys(Config config) {
+            config.get("jwk.resource").as(Resource::create).ifPresent(this::verifyJwk);
+
+            // backward compatibility
             Resource.create(config, "jwk")
-                    .map(this::verifyJwk);
+                    .ifPresent(this::verifyJwk);
         }
 
         private void outbound(Config config) {
-            // jwk is optional, we may be propagating existing token
-            Resource.create(config, "jwk").ifPresent(this::signJwk);
             config.get("jwt-issuer").asString().ifPresent(this::issuer);
+
+
+            // jwk is optional, we may be propagating existing token
+            config.get("jwk.resource").as(Resource::create).ifPresent(this::signJwk);
+
+            // backward compatibility
+            Resource.create(config, "jwk")
+                    .ifPresent(this::signJwk);
+
         }
     }
 

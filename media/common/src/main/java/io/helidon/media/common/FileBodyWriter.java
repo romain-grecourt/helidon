@@ -38,11 +38,6 @@ import static io.helidon.media.common.ByteChannelBodyWriter.DEFAULT_RETRY_SCHEMA
 public final class FileBodyWriter implements MessageBodyWriter<File> {
 
     /**
-     * Singleton instance.
-     */
-    private static final FileBodyWriter INSTANCE = new FileBodyWriter();
-
-    /**
      * Enforces the use of {@link #get()}.
      */
     private FileBodyWriter() {
@@ -55,15 +50,15 @@ public final class FileBodyWriter implements MessageBodyWriter<File> {
 
     @Override
     public Publisher<DataChunk> write(Single<File> content, GenericType<? extends File> type, MessageBodyWriterContext context) {
-        return content.mapMany(new FileToChunks(DEFAULT_RETRY_SCHEMA, context));
+        return content.flatMap(new FileToChunks(DEFAULT_RETRY_SCHEMA, context));
     }
 
     /**
-     * Get the {@link FileBodyWriter} singleton.
-     * @return FileBodyWriter
+     * Create a new {@link FileBodyWriter} instance.
+     * @return {@link File} message body writer.
      */
-    public static FileBodyWriter get() {
-        return INSTANCE;
+    public static FileBodyWriter create() {
+        return new FileBodyWriter();
     }
 
     /**

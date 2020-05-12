@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,11 +21,9 @@ import java.net.URL;
 import java.time.Instant;
 import java.util.Optional;
 
-import io.helidon.config.spi.ConfigContext;
-import io.helidon.config.spi.ConfigParser;
+import io.helidon.config.spi.ConfigParser.Content;
 
 import com.xebialabs.restito.server.StubServer;
-import org.glassfish.grizzly.http.Method;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,14 +37,12 @@ import static com.xebialabs.restito.semantics.Action.stringContent;
 import static com.xebialabs.restito.semantics.Condition.get;
 import static com.xebialabs.restito.semantics.Condition.method;
 import static com.xebialabs.restito.semantics.Condition.uri;
-import static io.helidon.config.internal.PropertiesConfigParser.MEDIA_TYPE_TEXT_JAVA_PROPERTIES;
+import static io.helidon.config.PropertiesConfigParser.MEDIA_TYPE_TEXT_JAVA_PROPERTIES;
+import static org.glassfish.grizzly.http.Method.GET;
 import static org.glassfish.grizzly.http.Method.HEAD;
 import static org.glassfish.grizzly.http.util.HttpStatus.OK_200;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests {@link io.helidon.config.UrlConfigSource} with running {@link StubServer Restito Server}.
@@ -59,7 +55,7 @@ public class UrlConfigSourceServerMockTest {
     private StubServer server;
 
     @BeforeEach
-    public void before() throws IOException {
+    public void before() {
         server = new StubServer().run();
     }
 
@@ -70,25 +66,25 @@ public class UrlConfigSourceServerMockTest {
 
     @Test
     public void testDataTimestamp() throws IOException {
-        whenHttp(server).
-                match(method(HEAD), uri("/application.properties")).
-                then(
+        whenHttp(server)
+                .match(method(GET), uri("/application.properties"))
+                .then(
                         status(OK_200),
                         contentType(MEDIA_TYPE_TEXT_JAVA_PROPERTIES),
                         header("Last-Modified", "Sat, 10 Jun 2017 10:14:02 GMT"),
                         stringContent(TEST_CONFIG)
                 );
 
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .build();
 
-        Optional<Instant> dataStamp = configSource.dataStamp();
+        Optional<Instant> dataStamp = configSource.load().flatMap(Content::stamp).map(Instant.class::cast);
 
         assertThat(dataStamp.get(), is(Instant.parse("2017-06-10T10:14:02.00Z")));
 
         verifyHttp(server).once(
-                method(HEAD),
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -114,28 +110,22 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        ConfigContext context = mock(ConfigContext.class);
-        when(context.findParser("text/x-java-properties"))
-                .thenReturn(Optional.of(ConfigParsers.properties()));
-
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .build();
 
-        //INIT
-        configSource.init(context);
-        //HEAD & GET
-        configSource.load();
+        //GET
+        Instant stamp = (Instant) configSource.load().get().stamp().get();
         //just HEAD - same "Last-Modified"
-        configSource.load();
+        assertThat(configSource.isModified(stamp), is(false));
 
         verifyHttp(server).times(
-                2,
+                1,
                 method(HEAD),
                 uri("/application.properties")
         );
         verifyHttp(server).once(
-                method(Method.GET),
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -161,18 +151,13 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        ConfigContext context = mock(ConfigContext.class);
-        when(context.findParser("text/x-java-properties"))
-                .thenReturn(Optional.of(ConfigParsers.properties()));
-
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .build();
 
-        //INIT
-        configSource.init(context);
-        //HEAD & GET
-        configSource.load();
+
+        //GET
+        Instant stamp = (Instant) configSource.load().get().stamp().get();
 
         //HEAD
         whenHttp(server).
@@ -184,17 +169,17 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        //HEAD & GET - "Last-Modified" changed
-        configSource.load();
+        //just HEAD - "Last-Modified" changed
+        assertThat(configSource.isModified(stamp), is(true));
 
         verifyHttp(server).times(
-                2,
+                1,
                 method(HEAD),
                 uri("/application.properties")
         );
         verifyHttp(server).times(
-                2,
-                method(Method.GET),
+                1,
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -209,18 +194,18 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .mediaType(TEST_MEDIA_TYPE)
                 .build();
 
-        ConfigParser.Content content = configSource.content();
+        Content content = configSource.load().get();
 
-        assertThat(content.mediaType(), is(TEST_MEDIA_TYPE));
-        assertThat(ConfigHelperTest.readerToString(content.asReadable()), is(TEST_CONFIG));
+        assertThat(content.mediaType(), is(Optional.of(TEST_MEDIA_TYPE)));
+        assertThat(TestHelper.inputStreamToString(content.data()), is(TEST_CONFIG));
 
         verifyHttp(server).once(
-                method(Method.GET),
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -235,17 +220,17 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .build();
 
-        ConfigParser.Content content = configSource.content();
+        Content content = configSource.load().get();
 
-        assertThat(content.mediaType(), is(MEDIA_TYPE_TEXT_JAVA_PROPERTIES));
-        assertThat(ConfigHelperTest.readerToString(content.asReadable()), is(TEST_CONFIG));
+        assertThat(content.mediaType(), is(Optional.of(MEDIA_TYPE_TEXT_JAVA_PROPERTIES)));
+        assertThat(TestHelper.inputStreamToString(content.data()), is(TEST_CONFIG));
 
         verifyHttp(server).once(
-                method(Method.GET),
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -260,17 +245,17 @@ public class UrlConfigSourceServerMockTest {
                         stringContent(TEST_CONFIG)
                 );
 
-        UrlConfigSource configSource = (UrlConfigSource) ConfigSources
+        UrlConfigSource configSource = ConfigSources
                 .url(new URL(String.format("http://127.0.0.1:%d/application.properties", server.getPort())))
                 .build();
 
-        ConfigParser.Content content = configSource.content();
+        Content content = configSource.load().get();
 
-        assertThat(content.mediaType(), is(TEST_MEDIA_TYPE));
-        assertThat(ConfigHelperTest.readerToString(content.asReadable()), is(TEST_CONFIG));
+        assertThat(content.mediaType(), is(Optional.of(TEST_MEDIA_TYPE)));
+        assertThat(TestHelper.inputStreamToString(content.data()), is(TEST_CONFIG));
 
         verifyHttp(server).once(
-                method(Method.GET),
+                method(GET),
                 uri("/application.properties")
         );
     }
@@ -288,7 +273,7 @@ public class UrlConfigSourceServerMockTest {
                 .url(new URL(String.format("http://127.0.0.1:%d/application.unknown", server.getPort())))
                 .build();
 
-        assertThat(configSource.content().mediaType(), is(nullValue()));
+        assertThat(configSource.load().get().mediaType(), is(Optional.empty()));
     }
 
 }

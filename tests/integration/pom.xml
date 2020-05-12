@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright (c) 2019, 2020 Oracle and/or its affiliates. All rights reserved.
+  Copyright (c) 2019, 2020 Oracle and/or its affiliates.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -34,9 +34,14 @@
 
     <modules>
         <module>zipkin-mp-2.2</module>
+        <module>mp-grpc</module>
         <module>mp-security-client</module>
         <module>health</module>
         <module>mp-ws-services</module>
+        <module>webclient</module>
+        <module>security</module>
+        <module>mp-gh-1538</module>
+        <module>kafka</module>
     </modules>
 
     <profiles>

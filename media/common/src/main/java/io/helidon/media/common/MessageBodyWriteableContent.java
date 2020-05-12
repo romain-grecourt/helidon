@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,12 @@ import java.util.function.Predicate;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
 
 /**
- * Implementation of {@link WriteableContent}.
+ * Implementation of {@code WriteableContent}.
  */
 public final class MessageBodyWriteableContent implements MessageBodyContent, MessageBodyWriters, MessageBodyFilters {
 
@@ -72,7 +71,7 @@ public final class MessageBodyWriteableContent implements MessageBodyContent, Me
         Objects.requireNonNull(type, "type cannot be null!");
         this.stream = stream;
         this.type = (GenericType<Object>) type;
-        this.context = MessageBodyWriterContext.create(new HashParameters());
+        this.context = MessageBodyWriterContext.create(headers);
         this.entity = null;
         this.publisher = null;
     }
