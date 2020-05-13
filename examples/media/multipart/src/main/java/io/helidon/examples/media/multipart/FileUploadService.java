@@ -35,7 +35,7 @@ public final class FileUploadService implements Service {
     }
 
     /**
-     * *
+     *
      * Prints the raw request payload to the console output.
      *
      * @param req server request
@@ -49,7 +49,7 @@ public final class FileUploadService implements Service {
     }
 
     /**
-     * *
+     *
      * Reads the request payload as a buffered multi-part entity and print the content of each part to the console output.
      *
      * @param req server request
@@ -66,7 +66,7 @@ public final class FileUploadService implements Service {
     }
 
     /**
-     * *
+     *
      * Reads the request payload as a stream of body part entities and print the content of each part to the console output.
      *
      * @param req server request
