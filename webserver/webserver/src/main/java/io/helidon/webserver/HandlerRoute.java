@@ -57,7 +57,7 @@ class HandlerRoute implements Route {
         if (methods == null) {
             this.methodPredicate = new HttpMethodPredicate(null);
         } else if (methods instanceof Collection) {
-            this.methodPredicate = new HttpMethodPredicate((Collection<Http.RequestMethod>) methods);
+            this.methodPredicate = new HttpMethodPredicate((Collection) methods);
         } else {
             Collection<Http.RequestMethod> mtds = new ArrayList<>();
             for (Http.RequestMethod method : methods) {
