@@ -19,6 +19,9 @@ import io.helidon.media.common.MessageBodyContent;
 
 /**
  * Body part entity.
+ *
+ * @see ReadableBodyPart
+ * @see WriteableBodyPart
  */
 public interface BodyPart {
 

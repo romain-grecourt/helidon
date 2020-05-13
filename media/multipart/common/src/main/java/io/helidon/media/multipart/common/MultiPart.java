@@ -23,8 +23,11 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Multipart message body.
- * @param <T> BodyPart type
+ * Multipart entity.
+ *
+ * @param <T> body part type
+ * @see ReadableMultiPart
+ * @see WriteableMultiPart
  */
 public interface MultiPart<T extends BodyPart> {
 

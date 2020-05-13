@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 import io.helidon.common.http.Http;
 import io.helidon.webserver.utils.SocketHttpClient;
@@ -65,7 +64,7 @@ public class EncodingTest {
                 .toCompletableFuture()
                 .get(10, TimeUnit.SECONDS);
 
-        LOGGER.log(Level.INFO, "Started server at: https://localhost:{0}", webServer.port());
+        LOGGER.info("Started server at: https://localhost:" + webServer.port());
     }
 
     /**

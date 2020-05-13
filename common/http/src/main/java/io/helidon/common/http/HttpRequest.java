@@ -109,7 +109,6 @@ public interface HttpRequest {
          *
          * @return a path
          */
-        @Override
         String toString();
 
         /**

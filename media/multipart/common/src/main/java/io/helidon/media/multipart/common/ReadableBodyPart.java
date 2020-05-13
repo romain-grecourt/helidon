@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutionException;
 import io.helidon.media.common.MessageBodyReadableContent;
 
 /**
- * Readable body part.
+ * Readable body part entity.
  */
 public final class ReadableBodyPart implements BodyPart {
 

@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Writeable multipart message.
+ * Writeable multipart entity.
  */
 public final class WriteableMultiPart implements MultiPart<WriteableBodyPart> {
 

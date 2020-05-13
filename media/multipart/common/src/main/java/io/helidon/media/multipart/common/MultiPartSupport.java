@@ -23,9 +23,8 @@ import io.helidon.media.common.MessageBodyWriter;
 import java.util.Collection;
 import java.util.List;
 
-
 /**
- * Multi part support service.
+ * Multipart media support.
  */
 public final class MultiPartSupport implements MediaSupport {
 

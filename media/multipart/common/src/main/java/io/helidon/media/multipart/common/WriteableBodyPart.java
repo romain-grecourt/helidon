@@ -21,7 +21,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.media.common.MessageBodyWriteableContent;
 
 /**
- * Writeable body part.
+ * Writeable body part entity.
  */
 public final class WriteableBodyPart implements BodyPart {
 
