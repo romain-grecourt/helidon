@@ -38,6 +38,7 @@ import io.helidon.media.multipart.VirtualBuffer.BufferEntry;
  */
 public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> {
 
+    private int pending;
     private Subscription upstream;
     private Subscriber<? super ReadableBodyPart> downstream;
     private BufferedEmittingPublisher<ReadableBodyPart> emitter;
@@ -66,6 +67,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         initFuture = new CompletableFuture<>();
         bodyParts = new LinkedList<>();
         chunksByIds = new HashMap<>();
+        pending = 0;
     }
 
     /**
@@ -141,8 +143,10 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
                 && parserEventProcessor.isDataRequired()
                 && (!parserEventProcessor.isContentDataRequired() || bodyPartPublisher.hasRequests())) {
 
+            pending++;
             upstream.request(1);
         }
+        pending--;
     }
 
     @Override
@@ -171,7 +175,6 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
             emitter = BufferedEmittingPublisher.create();
             emitter.onRequest(this::onPartRequest);
             emitter.onEmit(this::drainPart);
-            //emitter.onCancel(this::onPartCancel);
             emitter.subscribe(downstream);
             initFuture.complete(emitter);
             downstream = null;
@@ -181,14 +184,22 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     private void onPartRequest(long requested, long total) {
         // require more raw chunks to decode if the decoding has not
         // yet started or if more data is required to make progress
-        if (!parserEventProcessor.isStarted() || parserEventProcessor.isDataRequired()) {
+        if (pending == 0 && (!parserEventProcessor.isStarted() || parserEventProcessor.isDataRequired())) {
+            pending++;
             upstream.request(1);
         }
     }
 
-    private void onPartCancel() {
-        emitter.clearBuffer(this::drainPart);
-        releaseChunks();
+    private void onChunkRequest(long requested, long total) {
+        // require more raw chunks to decode
+        if (pending == 0 && parserEventProcessor.isDataRequired()) {
+            int bufSize = bodyPartPublisher.bufferSize();
+            if ((bufSize == 0 && requested == Long.MAX_VALUE)
+                    || (requested != Long.MAX_VALUE && requested > bufSize)) {
+                pending++;
+                upstream.request(1);
+            }
+        }
     }
 
     private void releaseChunks() {
@@ -264,6 +275,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
             switch (eventType) {
                 case START_PART:
                     bodyPartPublisher = BufferedEmittingPublisher.create();
+                    bodyPartPublisher.onRequest(MultiPartDecoder.this::onChunkRequest);
                     bodyPartHeaderBuilder = ReadableBodyPartHeaders.builder();
                     bodyPartBuilder = ReadableBodyPart.builder();
                     break;

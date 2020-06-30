@@ -53,6 +53,8 @@ public class MultiPartDecoderTest {
                 + "--" + boundary + "--").getBytes();
 
         final CountDownLatch latch = new CountDownLatch(2);
+        final CompletableFuture<Void> testDone = new CompletableFuture<>();
+
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             assertThat(part.headers().values("Content-Id"),
@@ -60,14 +62,20 @@ public class MultiPartDecoderTest {
             DataChunkSubscriber subscriber = new DataChunkSubscriber();
             part.content().subscribe(subscriber);
             subscriber.content().thenAccept(body -> {
-                latch.countDown();
                 assertThat(body, is(equalTo("body 1")));
+                latch.countDown();
+                if (latch.getCount() == 0) {
+                    testDone.complete(null);
+                }
+            }).exceptionally((ex) -> {
+                testDone.completeExceptionally(ex);
+                return null;
             });
         };
         BodyPartSubscriber testSubscriber = new BodyPartSubscriber(
                 SUBSCRIBER_TYPE.INFINITE, consumer);
         partsPublisher(boundary, chunk1).subscribe(testSubscriber);
-        waitOnLatch(latch);
+        testDone.orTimeout(5, TimeUnit.SECONDS).join();
         assertThat(testSubscriber.error, is(nullValue()));
         assertThat(testSubscriber.complete, is(equalTo(true)));
     }
@@ -144,6 +152,42 @@ public class MultiPartDecoderTest {
     }
 
     @Test
+    public void testContentAcrossChunksAsyncRequest() {
+        String boundary = "boundary";
+        final byte[] chunk1 = ("--" + boundary + "\n"
+                + "Content-Id: part1\n"
+                + "\n"
+                + "thi").getBytes();
+        final byte[] chunk11 = ("s-is-the-1st-slice-of-the-body\n").getBytes();
+        final byte[] chunk12 = ("t").getBytes();
+        final byte[] chunk2 = ("his-is-the-2nd-slice-of-the-body\n"
+                + "--" + boundary + "--").getBytes();
+
+        final CountDownLatch latch = new CountDownLatch(2);
+        Consumer<BodyPart> consumer = (part) -> {
+            latch.countDown();
+            assertThat(part.headers().values("Content-Id"), hasItems("part1"));
+            DataChunkSubscriber subscriber = new DataChunkSubscriber();
+            part.content().subscribe(subscriber);
+            subscriber.content().thenAccept(body -> {
+                assertThat(body, is(equalTo(
+                        "this-is-the-1st-slice-of-the-body\n"
+                                + "this-is-the-2nd-slice-of-the-body")));
+            }).exceptionally((ex) -> {
+                ex.printStackTrace();
+                return null;
+            }).thenAccept((_i) -> {
+                latch.countDown();
+            });
+        };
+        BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
+        partsPublisher(boundary, List.of(chunk1, chunk11, chunk12, chunk2)).subscribe(testSubscriber);
+        waitOnLatch(latch);
+        assertThat(testSubscriber.error, is(nullValue()));
+        assertThat(testSubscriber.complete, is(equalTo(true)));
+    }
+
+    @Test
     public void testMultipleChunksBeforeContent() {
         String boundary = "boundary";
         final byte[] chunk1 = ("--" + boundary + "\n"
@@ -176,7 +220,7 @@ public class MultiPartDecoderTest {
     }
 
     @Test
-    public void testMulitiplePartsWithOneByOneSubscriber() {
+    public void testMultiplePartsWithOneByOneSubscriber() {
         String boundary = "boundary";
         final byte[] chunk1 = ("--" + boundary + "\n"
                 + "Content-Id: part1\n"
@@ -328,7 +372,7 @@ public class MultiPartDecoderTest {
     }
 
     @Test
-    public void testSubcribingMoreThanOnce() {
+    public void testSubscribingMoreThanOnce() {
         MultiPartDecoder decoder = MultiPartDecoder.create("boundary", BodyPartTest.MEDIA_CONTEXT.readerContext());
         chunksPublisher("foo".getBytes()).subscribe(decoder);
         try {
@@ -355,7 +399,7 @@ public class MultiPartDecoderTest {
 
         private final SUBSCRIBER_TYPE subscriberType;
         private final Consumer<BodyPart> consumer;
-        private Subscription subcription;
+        private Subscription subscription;
         private Throwable error;
         private boolean complete;
 
@@ -366,7 +410,7 @@ public class MultiPartDecoderTest {
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            this.subcription = subscription;
+            this.subscription = subscription;
             if (subscriberType == SUBSCRIBER_TYPE.INFINITE) {
                 subscription.request(Long.MAX_VALUE);
             } else {
@@ -381,9 +425,9 @@ public class MultiPartDecoderTest {
             }
             consumer.accept(item);
             if (subscriberType == SUBSCRIBER_TYPE.ONE_BY_ONE) {
-                subcription.request(1);
+                subscription.request(1);
             } else if (subscriberType == SUBSCRIBER_TYPE.CANCEL_AFTER_ONE) {
-                subcription.cancel();
+                subscription.cancel();
             }
         }
 
@@ -483,15 +527,26 @@ public class MultiPartDecoderTest {
 
         private final StringBuilder sb = new StringBuilder();
         private final CompletableFuture<String> future = new CompletableFuture<>();
+        private Subscription subscription;
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
+            this.subscription = subscription;
+            subscription.request(1);
         }
 
         @Override
         public void onNext(DataChunk item) {
-            sb.append(item.bytes());
+            String value = new String(item.bytes());
+            sb.append(value);
+            CompletableFuture.supplyAsync(() -> {
+               try {
+                  Thread.sleep(10);
+               } catch(Exception e) {
+               }
+               subscription.request(1);
+               return 0;
+            });
         }
 
         @Override
