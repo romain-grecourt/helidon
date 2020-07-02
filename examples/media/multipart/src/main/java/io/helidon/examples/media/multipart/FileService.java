@@ -31,7 +31,6 @@ import javax.json.JsonBuilderFactory;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.Multi;
 import io.helidon.media.multipart.ContentDisposition;
 import io.helidon.media.multipart.ReadableBodyPart;
 import io.helidon.media.multipart.ReadableMultiPart;
@@ -126,7 +125,7 @@ public final class FileService implements Service {
                 }).forEach((part) -> {
                     if ("file[]".equals(part.name())) {
                         final ByteChannel channel = newByteChannel(storage, part.filename());
-                        Multi.create(part.content()).forEach(chunk -> writeChunk(channel, chunk));
+                        part.content().forEach(chunk -> writeChunk(channel, chunk));
                     }
                 });
     }
