@@ -218,33 +218,6 @@ public interface DataChunk extends Iterable<ByteBuffer> {
     }
 
     /**
-     * Whether this chunk is released and the associated data structures returned
-     * by methods (such as {@link #iterator()} or {@link #bytes()}) should not be used.
-     * The implementations may choose to not implement this optimization and to never mutate
-     * the underlying memory; in such case this method does no-op.
-     * <p>
-     * Note that the methods of this instance are expected to be called by a single
-     * thread; if not, external synchronization must be used.
-     *
-     * @return whether this chunk has been released, defaults to false
-     */
-    default boolean isReleased() {
-        return false;
-    }
-
-    /**
-     * Releases this chunk. The underlying data as well as the data structure instances returned by
-     * methods {@link #bytes()} and {@link #iterator()} may become stale and should not be used
-     * anymore. The implementations may choose to not implement this optimization and to never mutate
-     * the underlying memory; in such case this method does no-op.
-     * <p>
-     * Note that the methods of this instance are expected to be called by a single
-     * thread; if not, external synchronization must be used.
-     */
-    default void release() {
-    }
-
-    /**
      * Returns {@code true} if all caches are requested to flush when this chunk is written.
      * This method is only meaningful when handing data over to
      * Helidon APIs (e.g. for server response and client requests).
