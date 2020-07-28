@@ -50,16 +50,16 @@ public class CompositeBufferTest {
     public void getBytesTest() {
         CompositeBuffer buf = new CompositeBuffer();
         buf.put(ByteBuffer.wrap("foo".getBytes()));
-        assertThat(new String(buf.toByteArray()), is("foo"));
+        assertThat(new String(buf.bytes()), is("foo"));
         assertThat(buf.position(), is(3));
         buf.put(ByteBuffer.wrap("bar".getBytes()));
         assertThat(buf.capacity(), is(6));
         buf.position(0);
-        assertThat(new String(buf.toByteArray()), is("foobar"));
+        assertThat(new String(buf.bytes()), is("foobar"));
         assertThat(buf.position(), is(6));
         buf.position(0);
         buf.limit(3);
-        assertThat(new String(buf.toByteArray()), is("foo"));
+        assertThat(new String(buf.bytes()), is("foo"));
         assertThat(buf.position(), is(3));
     }
 
@@ -73,15 +73,15 @@ public class CompositeBufferTest {
         assertThat(buf.capacity(), is(14));
         buf.position(6);
         assertThat(buf.position(), is(6));
-        assertThat(new String(buf.toByteArray()), is("bobalice"));
+        assertThat(new String(buf.bytes()), is("bobalice"));
         assertThat(buf.position(), is(14));
         buf.position(3);
         assertThat(buf.position(), is(3));
         buf.limit(6);
-        assertThat(new String(buf.toByteArray()), is("bar"));
+        assertThat(new String(buf.bytes()), is("bar"));
         assertThat(buf.position(), is(6));
         buf.limit(14);
-        assertThat(new String(buf.toByteArray()), is("bobalice"));
+        assertThat(new String(buf.bytes()), is("bobalice"));
         assertThat(buf.position(), is(14));
     }
 
@@ -92,14 +92,14 @@ public class CompositeBufferTest {
         assertThat(buf.capacity(), is(6));
         buf.delete(0, 3);
         assertThat(buf.capacity(), is(3));
-        assertThat(new String(buf.toByteArray()), is("foo"));
+        assertThat(new String(buf.bytes()), is("foo"));
         assertThat(buf.position(), is(3));
         buf.put(ByteBuffer.wrap("barxxx".getBytes()));
         assertThat(buf.capacity(), is(9));
         buf.delete(6, 3);
         assertThat(buf.capacity(), is(6));
         assertThat(buf.position(), is(3));
-        assertThat(new String(buf.toByteArray()), is("bar"));
+        assertThat(new String(buf.bytes()), is("bar"));
         buf.delete(0, 6);
         assertThat(buf.capacity(), is(0));
         assertThat(buf.position(), is(0));
@@ -110,7 +110,7 @@ public class CompositeBufferTest {
         assertThat(buf.position(), is(0));
         assertThat(buf.capacity(), is(6));
         assertThat(buf.limit(), is(6));
-        assertThat(new String(buf.toByteArray()), is("foobar"));
+        assertThat(new String(buf.bytes()), is("foobar"));
     }
 
     @Test
@@ -143,7 +143,7 @@ public class CompositeBufferTest {
         assertThat(buf.capacity(), is(6));
         assertThat(buf.limit(), is(6));
         assertThat(buf.nestedCount(), is(2));
-        assertThat(new String(buf.toByteArray()), is("foobar"));
+        assertThat(new String(buf.bytes()), is("foobar"));
         assertThat(buf.position(), is(6));
 
         buf.put(ByteBuffer.wrap("bob".getBytes()), 0);
@@ -171,14 +171,14 @@ public class CompositeBufferTest {
         assertThat(buf.limit(), is(17));
         assertThat(buf.nestedCount(), is(5));
         buf.position(14);
-        assertThat(new String(buf.toByteArray()), is("abz"));
+        assertThat(new String(buf.bytes()), is("abz"));
         assertThat(buf.position(), is(17));
 
         buf.put(ByteBuffer.wrap("cxy".getBytes()), 16);
         assertThat(buf.nestedCount(), is(7));
         assertThat(buf.capacity(), is(20));
         buf.position(14);
-        assertThat(new String(buf.toByteArray()), is("abcxyz"));
+        assertThat(new String(buf.bytes()), is("abcxyz"));
         assertThat(buf.position(), is(20));
     }
 
@@ -194,11 +194,11 @@ public class CompositeBufferTest {
         byte[] dst = new byte[17];
         buf.position(11).get(dst);
         assertThat(new String(dst), is("Content-Id: part1"));
-        assertThat(new String(buf.asReadOnly().position(30).limit(31).toByteArray()), is("b"));
+        assertThat(new String(buf.asReadOnly().position(30).limit(31).bytes()), is("b"));
         buf.delete(0, 31);
         buf.put(ByteBuffer.wrap("body 1.bbbb\n".getBytes()));
         assertThat(buf.capacity(), is(23));
-        assertThat(new String(buf.asReadOnly().position(0).limit(12).toByteArray()), is("ody 1.aaaa\nb"));
+        assertThat(new String(buf.asReadOnly().position(0).limit(12).bytes()), is("ody 1.aaaa\nb"));
 
         buf.put(ByteBuffer.wrap(("body 1.cccc\n"
                 + "--boundary\n"
@@ -211,14 +211,14 @@ public class CompositeBufferTest {
         dst = new byte[17];
         buf.position(34).get(dst);
         assertThat(new String(dst), is("Content-Id: part2"));
-        assertThat(new String(buf.asReadOnly().position(0).limit(22).toByteArray()), is("ody 1.bbbb\nbody 1.cccc"));
-        assertThat(new String(buf.asReadOnly().position(53).limit(57).toByteArray()), is("This"));
+        assertThat(new String(buf.asReadOnly().position(0).limit(22).bytes()), is("ody 1.bbbb\nbody 1.cccc"));
+        assertThat(new String(buf.asReadOnly().position(53).limit(57).bytes()), is("This"));
 
         buf.put(ByteBuffer.wrap((" body.\n"
                 + "--boundary--").getBytes()));
         buf.delete(0, 33);
         assertThat(buf.capacity(), is(54));
         assertThat(buf.nestedCount(), is(2));
-        assertThat(new String(buf.asReadOnly().position(24).limit(41).toByteArray()), is(" is the 2nd body."));
+        assertThat(new String(buf.asReadOnly().position(24).limit(41).bytes()), is(" is the 2nd body."));
     }
 }

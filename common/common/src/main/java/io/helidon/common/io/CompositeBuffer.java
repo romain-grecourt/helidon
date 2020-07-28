@@ -19,25 +19,23 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
 import java.nio.ReadOnlyBufferException;
+import java.util.LinkedList;
 
 /**
  * A virtual buffer to work against multiple {@link Buffer}.
  */
-public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> implements Buffer<CompositeBuffer> {
+public class CompositeBuffer implements Buffer<CompositeBuffer> {
 
-    private BufferEntry head;
-    private BufferEntry tail;
-    private BufferEntry current;
+    private Entry head;
+    private Entry tail;
+    private Entry current;
     private int count;
     private int mark;
     private int position;
     private int capacity;
     private int limit;
 
-    /**
-     * Create a new composite buffer.
-     */
-    public CompositeBuffer() {
+    private CompositeBuffer() {
     }
 
     /**
@@ -45,7 +43,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
      *
      * @param buffer The buffer to copy
      */
-    protected CompositeBuffer(CompositeBuffer buffer) {
+    private CompositeBuffer(CompositeBuffer buffer) {
         head = buffer.head;
         tail = buffer.tail;
         current = buffer.current;
@@ -53,6 +51,15 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         mark = buffer.mark;
         position = buffer.position;
         limit = buffer.limit;
+        capacity = buffer.capacity;
+    }
+
+    /**
+     * Create a new composite buffer.
+     * @return created buffer
+     */
+    public static CompositeBuffer create() {
+        return new CompositeBuffer();
     }
 
     @Override
@@ -63,31 +70,34 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         compositeBuffer.limit = limit;
         compositeBuffer.position = position;
         if (head != null) {
-            BufferEntry previous = null;
-            BufferEntry buf = head.duplicate();
-            compositeBuffer.head = buf;
+            Entry previous = null;
+            Entry entry = new Entry(head.buffer.duplicate());
+            compositeBuffer.head = entry;
             if (current == head) {
-                compositeBuffer.current = buf;
+                compositeBuffer.current = entry;
             }
-            while (buf.next != null) {
-                BufferEntry next = buf.next.duplicate();
-                buf.next = next;
-                if (current == buf.next) {
+            while (entry.next != null) {
+                Entry next = new Entry(entry.next.buffer.duplicate());
+                entry.next = next;
+                if (current == entry.next) {
                     compositeBuffer.current = next;
                 }
                 if (previous != null) {
-                    buf.previous = previous;
+                    entry.previous = previous;
                 }
-                previous = buf;
-                buf = next;
+                previous = entry;
+                entry = next;
             }
-            compositeBuffer.tail = buf;
+            compositeBuffer.tail = entry;
         }
         return compositeBuffer;
     }
 
     @Override
     public CompositeBuffer asReadOnly() {
+        if (isReadOnly()) {
+            return this;
+        }
         return new ReadonlyBuffer(this);
     }
 
@@ -135,6 +145,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         capacity = 0;
         limit = 0;
         position = 0;
+        mark = -1;
         head = null;
         tail = null;
         current = null;
@@ -177,22 +188,15 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
     }
 
     @Override
-    protected void releaseRef() {
-        for (BufferEntry buf = head; buf != null; buf = buf.next) {
-            buf.release();
-        }
-    }
-
-    @Override
     public byte get(int pos) {
         if (pos < 0 | pos >= limit) {
             throw new IndexOutOfBoundsException("Invalid position: " + pos);
         }
         int curPos = 0;
-        for (BufferEntry buf = head; buf != null; buf = buf.next) {
-            int nextPos = curPos + buf.capacity();
+        for (Entry entry = head; entry != null; entry = entry.next) {
+            int nextPos = curPos + entry.buffer.capacity();
             if (nextPos > pos) {
-                return buf.get(pos - curPos + buf.markValue());
+                return entry.buffer.get(pos - curPos + entry.buffer.markValue());
             }
             curPos = nextPos;
         }
@@ -205,13 +209,13 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         if (position >= limit) {
             throw new BufferUnderflowException();
         }
-        while (current != null && current.remaining() == 0) {
+        while (current != null && current.buffer.remaining() == 0) {
             current = current.next;
         }
         if (current == null) {
             throw new BufferUnderflowException();
         }
-        byte b = current.get();
+        byte b = current.buffer.get();
         position++;
         return b;
     }
@@ -227,8 +231,8 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
             throw new BufferUnderflowException();
         }
         int count = 0;
-        for (BufferEntry buf = current; buf != null; buf = buf.next) {
-            int bufRemaining = buf.remaining();
+        for (Entry entry = current; entry != null; entry = entry.next) {
+            int bufRemaining = entry.buffer.remaining();
             int rbytes = length - count;
             int nbytes;
             if (bufRemaining > rbytes) {
@@ -236,7 +240,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
             } else {
                 nbytes = bufRemaining;
             }
-            buf.get(dst, off + count, nbytes);
+            entry.buffer.get(dst, off + count, nbytes);
             count += nbytes;
             position += nbytes;
         }
@@ -258,7 +262,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
 
     @Override
     public CompositeBuffer put(ByteBuffer byteBuffer) {
-        return put(new BufferEntry(byteBuffer), position);
+        return put(new Entry(NioBuffer.create(byteBuffer)), position);
     }
 
     @Override
@@ -267,40 +271,75 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
     }
 
     @Override
-    public CompositeBuffer put(CompositeBuffer buffer) {
-        int offset = 0;
-        for (BufferEntry buf = buffer.head; buf.next != null; buf = buf.next) {
-            put(buf.asReadOnly(), position + offset);
-            offset += buf.remaining();
+    public CompositeBuffer put(Buffer<?> buffer) {
+        if (buffer == this) {
+            throw new IllegalArgumentException("The source buffer is this buffer");
+        }
+        if (buffer instanceof CompositeBuffer) {
+            int offset = 0;
+            for (Entry entry = ((CompositeBuffer)buffer).head; entry.next != null; entry = entry.next) {
+                put(new Entry(entry.buffer.asReadOnly()), position + offset);
+                offset += entry.buffer.remaining();
+            }
+        } else {
+            put(new Entry(buffer.asReadOnly()), position);
         }
         return this;
     }
 
-    /**
-     * Delete n bytes starting at the specified position.
-     *
-     * @param pos    The position from which to start the removal
-     * @param length The number of bytes to remove
-     * @return This buffer
-     */
-    protected CompositeBuffer delete(int pos, int length) {
+    @Override
+    public ByteBuffer[] toNioBuffers() {
+        LinkedList<ByteBuffer> byteBuffers = new LinkedList<>();
+        for (Entry entry = head; entry.next != null; entry = entry.next) {
+            for (ByteBuffer byteBuffer : entry.buffer.toNioBuffers()) {
+                byteBuffers.add(byteBuffer);
+            }
+        }
+        return byteBuffers.toArray(new ByteBuffer[byteBuffers.size()]);
+    }
+
+    @Override
+    public int refCnt() {
+        if (head != null) {
+            return head.buffer.refCnt();
+        }
+        return 0;
+    }
+
+    @Override
+    public CompositeBuffer release(int decrement) {
+        for (Entry entry = head; entry != null; entry = entry.next) {
+            entry.buffer.release(decrement);
+        }
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer retain(int increment) {
+        for (Entry entry = head; entry != null; entry = entry.next) {
+            entry.buffer.retain(increment);
+        }
+        return this;
+    }
+
+    private CompositeBuffer delete(int pos, int length) {
         checkBounds(pos, pos + length);
         int rbytes = length; // nbytes to remove
-        BufferEntry buf;
+        Entry entry;
         int curPos;
         if (position <= pos) {
             curPos = position;
-            buf = current;
+            entry = current;
         } else {
             curPos = 0;
-            buf = head;
+            entry = head;
         }
-        for (; buf.next != null && rbytes > 0; buf = buf.next) {
-            int mark = buf.markValue();
+        for (; entry.next != null && rbytes > 0; entry = entry.next) {
+            int mark = entry.buffer.markValue();
             if (curPos == position) {
-                curPos -= buf.position() - mark;
+                curPos -= entry.buffer.position() - mark;
             }
-            int bufCap = buf.capacity();
+            int bufCap = entry.buffer.capacity();
             int nextPos = curPos + bufCap;
             if (nextPos > pos) {
                 // in-range
@@ -309,21 +348,22 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
                 if (bufAbsPos == mark) {
                     if (bufCap > rbytes) {
                         // shrink left
-                        buf.position(mark + rbytes).mark();
+                        entry.buffer.position(mark + rbytes).mark();
                         nbytes = rbytes;
                     } else {
                         // remove
-                        buf.delete();
+                        entry.delete();
                         nbytes = bufCap;
                     }
-                } else if (bufAbsPos + rbytes < buf.limit()) {
+                } else if (bufAbsPos + rbytes < entry.buffer.limit()) {
                     // split
-                    buf.next(buf.asReadOnly().position(bufAbsPos + rbytes)).limit(bufAbsPos);
+                    Buffer<?> splitBuffer = entry.buffer.asReadOnly().position(bufAbsPos + rbytes).limit(bufAbsPos);
+                    entry.next(new Entry(splitBuffer));
                     nbytes = bufCap;
                 } else {
                     // shrink right
-                    nbytes = buf.limit() - bufAbsPos;
-                    buf.limit(bufAbsPos);
+                    nbytes = entry.buffer.limit() - bufAbsPos;
+                    entry.buffer.limit(bufAbsPos);
                 }
                 nextPos -= nbytes;
                 rbytes -= nbytes;
@@ -342,55 +382,50 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         return this;
     }
 
-    /**
-     * Insert the specified entry at the given position.
-     *
-     * @param newBuffer The buffer to insert
-     * @param pos       The position at which to insert the buffer
-     * @return This buffer
-     */
-    protected CompositeBuffer put(BufferEntry newBuffer, int pos) {
+    private CompositeBuffer put(Entry newEntry, int pos) {
         if (pos < 0 | pos > limit) {
             throw new IndexOutOfBoundsException("Invalid position: " + pos);
         }
         if (pos == 0) {
-            head.previous(newBuffer);
-            head = newBuffer;
+            head.previous(newEntry);
+            head = newEntry;
         } else if (pos == limit) {
-            tail.next(newBuffer);
+            tail.next(newEntry);
         } else {
-            BufferEntry buf;
+            Entry entry;
             int curPos;
             if (position <= pos) {
-                buf = current;
+                entry = current;
                 curPos = position;
             } else {
-                buf = head;
+                entry = head;
                 curPos = 0;
             }
-            for (; buf.next != null; buf = buf.next) {
+            for (; entry.next != null; entry = entry.next) {
                 if (curPos == position) {
-                    curPos -= buf.position() - buf.markValue();
+                    curPos -= entry.buffer.position() - entry.buffer.markValue();
                 }
-                int nextPos = curPos + buf.capacity();
+                int nextPos = curPos + entry.buffer.capacity();
                 if (nextPos > pos) {
                     break;
                 }
                 curPos = nextPos;
             }
-            if (buf == null) {
+            if (entry == null) {
                 throw new IllegalStateException("Unable to find position: " + pos);
             }
             if (curPos == pos) {
                 // insert before current buffer
-                buf.previous(newBuffer);
+                entry.previous(newEntry);
             } else {
                 // split current buffer
-                int splitPos = pos - curPos + buf.markValue();
-                buf.limit(splitPos).next(newBuffer).next(buf.asReadOnly().position(splitPos));
+                int splitPos = pos - curPos + entry.buffer.markValue();
+                entry.buffer.limit(splitPos);
+                Entry splitEntry = new Entry(entry.buffer.asReadOnly().position(splitPos));
+                entry.next(newEntry).next(splitEntry);
             }
         }
-        int remaining = newBuffer.remaining();
+        int remaining = newEntry.buffer.remaining();
         capacity += remaining;
         limit += remaining;
         if (position > pos) {
@@ -399,14 +434,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         return this;
     }
 
-    /**
-     * Check the given inclusive range and throw an exception if the range is invalid.
-     *
-     * @param begin range start
-     * @param end   range end
-     * @throws IndexOutOfBoundsException if the preconditions on the offset and length parameters do not hold
-     */
-    protected void checkBounds(int begin, int end) {
+    private void checkBounds(int begin, int end) {
         if (!(begin >= 0 && begin < limit)
                 || !(end > 0 && end <= limit)
                 || begin > end) {
@@ -416,15 +444,15 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
 
     private CompositeBuffer backwardPosition(int newPosition) {
         int curPos = 0;
-        for (BufferEntry buf = current; buf != null && curPos < position; buf = buf.previous) {
-            int mark = buf.markValue();
-            int nextPos = curPos + buf.limit() - mark;
+        for (Entry entry = current; entry != null && curPos < position; entry = entry.previous) {
+            int mark = entry.buffer.markValue();
+            int nextPos = curPos + entry.buffer.limit() - mark;
             if (nextPos > newPosition) {
                 // in-range
                 if (curPos <= newPosition) {
-                    buf.position(newPosition - curPos + mark);
+                    entry.buffer.position(newPosition - curPos + mark);
                 } else {
-                    buf.reset();
+                    entry.buffer.reset();
                 }
             }
             curPos = nextPos;
@@ -435,14 +463,14 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
 
     private CompositeBuffer forwardPosition(int newPosition) {
         int curPos = current == head ? 0 : position;
-        for (BufferEntry buf = current; buf != null; buf = buf.next) {
-            int mark = buf.markValue();
+        for (Entry entry = current; entry != null; entry = entry.next) {
+            int mark = entry.buffer.markValue();
             if (curPos == position) {
-                curPos -= buf.position() - mark;
+                curPos -= entry.buffer.position() - mark;
             }
-            int nextPos = curPos + buf.capacity();
+            int nextPos = curPos + entry.buffer.capacity();
             if (curPos <= newPosition && nextPos > newPosition) {
-                buf.position(newPosition - curPos + mark);
+                entry.buffer.position(newPosition - curPos + mark);
                 break;
             }
             curPos = nextPos;
@@ -454,46 +482,17 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
     /**
      * Buffer linked list entry.
      */
-    protected static class BufferEntry extends WrappedBuffer<BufferEntry> {
+    private static class Entry {
 
-        protected BufferEntry next;
-        protected BufferEntry previous;
+        private Buffer<?> buffer;
+        private Entry next;
+        private Entry previous;
 
-        /**
-         * Create a new buffer entry.
-         *
-         * @param buffer wrapped buffer
-         */
-        protected BufferEntry(Buffer<?> buffer) {
-            super(buffer);
+        Entry(Buffer<?> buffer) {
+            this.buffer = buffer;
         }
 
-        /**
-         * Create a new buffer entry from a byte buffer.
-         *
-         * @param byteBuffer byte buffer to wrap
-         */
-        protected BufferEntry(ByteBuffer byteBuffer) {
-            this(new ByteBufferAdapter(byteBuffer));
-        }
-
-        @Override
-        public BufferEntry duplicate() {
-            return new BufferEntry(wrappedBuffer().duplicate());
-        }
-
-        @Override
-        public BufferEntry asReadOnly() {
-            return new BufferEntry(wrappedBuffer().asReadOnly());
-        }
-
-        /**
-         * Set the next link.
-         *
-         * @param entry the new next link
-         * @return this entry
-         */
-        protected BufferEntry next(BufferEntry entry) {
+        Entry next(Entry entry) {
             if (next != null) {
                 entry.next = next.next;
             }
@@ -502,13 +501,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
             return this;
         }
 
-        /**
-         * Set the previous link.
-         *
-         * @param entry the new previous link
-         * @return this entry
-         */
-        protected BufferEntry previous(BufferEntry entry) {
+        Entry previous(Entry entry) {
             if (previous != null) {
                 entry.previous = previous.previous;
             }
@@ -517,12 +510,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
             return this;
         }
 
-        /**
-         * Delete this entry. I.e Update the links to remove this entry from the linked list.
-         *
-         * @return this entry
-         */
-        protected BufferEntry delete() {
+        Entry delete() {
             if (next != null) {
                 previous.next = next;
                 next.previous = previous;
@@ -534,14 +522,9 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
     /**
      * Read-only composite buffer.
      */
-    protected static class ReadonlyBuffer extends CompositeBuffer {
+    private static class ReadonlyBuffer extends CompositeBuffer {
 
-        /**
-         * Create a new composite read-only buffer.
-         *
-         * @param buffer The wrapped buffer
-         */
-        protected ReadonlyBuffer(CompositeBuffer buffer) {
+        ReadonlyBuffer(CompositeBuffer buffer) {
             super(buffer);
         }
 
@@ -556,7 +539,7 @@ public class CompositeBuffer extends AbstractReleaseableRef<CompositeBuffer> imp
         }
 
         @Override
-        public CompositeBuffer put(CompositeBuffer buffer) {
+        public CompositeBuffer put(Buffer<?> buffer) {
             throw new ReadOnlyBufferException();
         }
 

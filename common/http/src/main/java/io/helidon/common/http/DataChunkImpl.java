@@ -16,75 +16,37 @@
 package io.helidon.common.http;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
+import io.helidon.common.io.Buffer;
 
 /**
  * Default implementation of {@link DataChunk}.
  */
-final class DataChunkImpl implements DataChunk {
+class DataChunkImpl implements DataChunk {
 
-    private final ByteBuffer[] byteBuffers;
+    private final Buffer<?> buffer;
     private final boolean flush;
-    private final boolean readOnly;
     private final Runnable releaseCallback;
-    private boolean isReleased = false;
     private CompletableFuture<DataChunk> writeFuture;
 
     /**
      * Create a new data chunk.
+     *
      * @param flush           a signal that this chunk should be written and flushed from any cache if possible
-     * @param readOnly        indicates underlying buffers are not reused
-     * @param byteBuffers     the data for this chunk. Should not be reused until {@code releaseCallback} is used
-     */
-    DataChunkImpl(boolean flush, boolean readOnly, ByteBuffer... byteBuffers) {
-        this.flush = flush;
-        this.readOnly = readOnly;
-        this.releaseCallback = null;
-        this.byteBuffers = Objects.requireNonNull(byteBuffers, "byteBuffers is null");
-    }
-
-    /**
-     * Create a new data chunk.
-     * @param flush           a signal that this chunk should be written and flushed from any cache if possible
-     * @param readOnly        indicates underlying buffers are not reused
      * @param releaseCallback a callback which is called when this chunk is completely processed and instance is free for reuse
-     * @param byteBuffers     the data for this chunk. Should not be reused until {@code releaseCallback} is used
+     * @param buffer          the data for this chunk. Should not be reused until {@code releaseCallback} is used
      */
-    DataChunkImpl(boolean flush, boolean readOnly, Runnable releaseCallback, ByteBuffer... byteBuffers) {
+    DataChunkImpl(boolean flush, Runnable releaseCallback, Buffer<?> buffer) {
+        this.buffer = buffer;
         this.flush = flush;
-        this.readOnly = readOnly;
-        this.releaseCallback = Objects.requireNonNull(releaseCallback, "release callback is null");
-        this.byteBuffers = Objects.requireNonNull(byteBuffers, "byteBuffers is null");
+        this.releaseCallback = releaseCallback;
     }
 
     @Override
     public boolean flush() {
         return flush;
-    }
-
-    @Override
-    public ByteBuffer[] data() {
-        return byteBuffers;
-    }
-
-    @Override
-    public boolean isReleased() {
-        return isReleased;
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return readOnly;
-    }
-
-    @Override
-    public void release() {
-        if (releaseCallback != null) {
-            releaseCallback.run();
-        }
-        isReleased = true;
     }
 
     @Override
@@ -95,5 +57,150 @@ final class DataChunkImpl implements DataChunk {
     @Override
     public Optional<CompletableFuture<DataChunk>> writeFuture() {
         return Optional.ofNullable(writeFuture);
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return buffer.isReadOnly();
+    }
+
+    @Override
+    public DataChunk asReadOnly() {
+        if (buffer.isReadOnly()) {
+            return this;
+        }
+        return new DataChunkImpl(flush, null, buffer.asReadOnly());
+    }
+
+    @Override
+    public DataChunk duplicate() {
+        return new DataChunkImpl(flush, null, buffer.duplicate());
+    }
+
+    @Override
+    public DataChunk limit(int newLimit) {
+        buffer.limit(newLimit);
+        return this;
+    }
+
+    @Override
+    public int limit() {
+        return buffer.limit();
+    }
+
+    @Override
+    public DataChunk position(int newPosition) {
+        buffer.position(newPosition);
+        return this;
+    }
+
+    @Override
+    public int position() {
+        return buffer.position();
+    }
+
+    @Override
+    public int remaining() {
+        return buffer.remaining();
+    }
+
+    @Override
+    public int capacity() {
+        return buffer.capacity();
+    }
+
+    @Override
+    public DataChunk reset() {
+        buffer.reset();
+        return this;
+    }
+
+    @Override
+    public DataChunk clear() {
+        buffer.clear();
+        return this;
+    }
+
+    @Override
+    public DataChunk mark() {
+        buffer.mark();
+        return this;
+    }
+
+    @Override
+    public int markValue() {
+        return buffer.markValue();
+    }
+
+    @Override
+    public byte get(int pos) {
+        return buffer.get(pos);
+    }
+
+    @Override
+    public byte get() {
+        return buffer.get();
+    }
+
+    @Override
+    public DataChunk get(byte[] dst) {
+        buffer.get(dst);
+        return this;
+    }
+
+    @Override
+    public DataChunk get(byte[] dst, int off, int length) {
+        buffer.get(dst, off, length);
+        return this;
+    }
+
+    @Override
+    public DataChunk put(ByteBuffer buffer) {
+        buffer.put(buffer);
+        return this;
+    }
+
+    @Override
+    public DataChunk put(byte[] bytes) {
+        buffer.put(bytes);
+        return this;
+    }
+
+    @Override
+    public DataChunk put(Buffer<?> chunk) {
+        if (chunk instanceof DataChunkImpl) {
+            if (chunk == this) {
+                throw new IllegalArgumentException("The source buffer is this buffer");
+            }
+            buffer.put(((DataChunkImpl) chunk).buffer);
+        } else {
+            DataChunk.super.put(chunk);
+        }
+        return this;
+    }
+
+    @Override
+    public ByteBuffer[] toNioBuffers() {
+        return buffer.toNioBuffers();
+    }
+
+    @Override
+    public DataChunk retain(int increment) {
+        buffer.retain(increment);
+        return this;
+    }
+
+    @Override
+    public DataChunk release(int decrement) {
+        buffer.release(decrement);
+        if (isReleased() && releaseCallback != null) {
+            releaseCallback.run();
+        }
+        return this;
+    }
+
+    @Override
+    public int refCnt() {
+        return buffer.refCnt();
     }
 }

@@ -2,13 +2,15 @@ package io.helidon.common.io;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * Common buffer interface.
  *
  * @param <T> buffer type
  */
-public interface Buffer<T extends Buffer> extends ReleaseableRef<T> {
+public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable<ByteBuffer> {
 
     /**
      * Creates a new buffer that shares the content of this buffer.
@@ -165,7 +167,15 @@ public interface Buffer<T extends Buffer> extends ReleaseableRef<T> {
      * @param buffer The buffer to insert
      * @return This buffer
      */
-    T put(T buffer);
+    default T put(Buffer<?> buffer) {
+        if (buffer == this) {
+            throw new IllegalArgumentException("The source buffer is this buffer");
+        }
+        for (ByteBuffer byteBuffer : toNioBuffers()) {
+            buffer.put(byteBuffer);
+        }
+        return (T) this;
+    }
 
     /**
      * Copy the content of this buffer into a byte array.
@@ -173,9 +183,40 @@ public interface Buffer<T extends Buffer> extends ReleaseableRef<T> {
      *
      * @return byte array
      */
-    default byte[] toByteArray() {
+    default byte[] bytes() {
         byte[] dst = new byte[remaining()];
         get(dst);
         return dst;
+    }
+
+    /**
+     * Exposes this buffer readable bytes as an NIO {@link ByteBuffer}.  The returned buffer
+     * shares the content with this buffer, while changing the position and limit of the returned
+     * NIO buffer does not affect the indexes of this buffer.
+     *
+     * @return the nio buffers.
+     * @throws UnsupportedOperationException if this buffer cannot be exposed as a {@link ByteBuffer}
+     */
+    ByteBuffer[] toNioBuffers();
+
+    @Override
+    default Iterator<ByteBuffer> iterator() {
+        final ByteBuffer[] byteBuffers = toNioBuffers();
+        return new Iterator<>() {
+            private int index = 0;
+
+            @Override
+            public boolean hasNext() {
+                return index < byteBuffers.length;
+            }
+
+            @Override
+            public ByteBuffer next() {
+                if (index < byteBuffers.length) {
+                    return byteBuffers[index++];
+                }
+                throw new NoSuchElementException();
+            }
+        };
     }
 }

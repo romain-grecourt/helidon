@@ -20,33 +20,59 @@ import java.nio.ByteBuffer;
 /**
  * Adapter of {@link ByteBuffer} to {@link Buffer}.
  */
-public class ByteBufferAdapter implements Buffer<ByteBufferAdapter> {
+public class NioBuffer implements Buffer<NioBuffer> {
+
+    private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.wrap(new byte[0]);
+    private static final ByteBuffer EMPTY_RO_BYTE_BUFFER = EMPTY_BYTE_BUFFER.asReadOnlyBuffer();
 
     private final ByteBuffer byteBuffer;
     private int mark = -1;
 
-    ByteBufferAdapter(ByteBuffer byteBuffer) {
-        this.byteBuffer = byteBuffer;
+    private NioBuffer(ByteBuffer byteBuffer) {
+        if (byteBuffer == null) {
+            this.byteBuffer = EMPTY_BYTE_BUFFER;
+        } else {
+            this.byteBuffer = byteBuffer;
+        }
+    }
+
+    private NioBuffer(ByteBuffer byteBuffer, boolean readOnly) {
+        if (byteBuffer == null) {
+            this.byteBuffer = readOnly ? EMPTY_RO_BYTE_BUFFER : EMPTY_BYTE_BUFFER;
+        } else {
+            this.byteBuffer = readOnly ? byteBuffer.asReadOnlyBuffer() : byteBuffer;
+        }
     }
 
     /**
-     * Create a new {@link Buffer} backed by a{@link ByteBuffer}.
+     * Create a new {@link Buffer} backed by a {@link ByteBuffer}.
      *
      * @param byteBuffer byte buffer
      * @return created buffer
      */
-    public static ByteBufferAdapter create(ByteBuffer byteBuffer) {
-        return new ByteBufferAdapter(byteBuffer);
+    public static NioBuffer create(ByteBuffer byteBuffer) {
+        return new NioBuffer(byteBuffer);
+    }
+
+    /**
+     * Create a new {@link Buffer} backed by a {@link ByteBuffer}.
+     *
+     * @param byteBuffer byte buffer
+     * @param readOnly {@code true} if the created buffer should be read-only, {@code false} otherwise
+     * @return created buffer
+     */
+    public static NioBuffer create(ByteBuffer byteBuffer, boolean readOnly) {
+        return new NioBuffer(byteBuffer, readOnly);
     }
 
     @Override
-    public ByteBufferAdapter duplicate() {
-        return new ByteBufferAdapter(byteBuffer.duplicate());
+    public NioBuffer duplicate() {
+        return new NioBuffer(byteBuffer.duplicate());
     }
 
     @Override
-    public ByteBufferAdapter asReadOnly() {
-        return new ByteBufferAdapter(byteBuffer.asReadOnlyBuffer());
+    public NioBuffer asReadOnly() {
+        return new NioBuffer(byteBuffer.asReadOnlyBuffer());
     }
 
     @Override
@@ -61,36 +87,44 @@ public class ByteBufferAdapter implements Buffer<ByteBufferAdapter> {
     }
 
     @Override
-    public ByteBufferAdapter get(byte[] dst) {
+    public NioBuffer get(byte[] dst) {
         byteBuffer.get(dst);
         return this;
     }
 
     @Override
-    public ByteBufferAdapter get(byte[] dst, int off, int length) {
+    public NioBuffer get(byte[] dst, int off, int length) {
         byteBuffer.get(dst, off, length);
         return this;
     }
 
     @Override
-    public ByteBufferAdapter put(ByteBuffer buffer) {
+    public NioBuffer put(ByteBuffer buffer) {
         this.byteBuffer.put(buffer);
         return this;
     }
 
     @Override
-    public ByteBufferAdapter put(byte[] bytes) {
+    public NioBuffer put(byte[] bytes) {
         this.byteBuffer.put(bytes);
         return this;
     }
 
     @Override
-    public ByteBufferAdapter put(ByteBufferAdapter buffer) {
-        return put(buffer.byteBuffer);
+    public NioBuffer put(Buffer<?> buffer) {
+        if (buffer instanceof NioBuffer) {
+            if (buffer == this) {
+                throw new IllegalArgumentException("The source buffer is this buffer");
+            }
+            put(((NioBuffer) buffer).byteBuffer);
+        } else {
+            Buffer.super.put(buffer);
+        }
+        return this;
     }
 
     @Override
-    public final ByteBufferAdapter limit(int newLimit) {
+    public final NioBuffer limit(int newLimit) {
         ((java.nio.Buffer) byteBuffer).limit(newLimit);
         return this;
     }
@@ -101,7 +135,7 @@ public class ByteBufferAdapter implements Buffer<ByteBufferAdapter> {
     }
 
     @Override
-    public ByteBufferAdapter position(int newPosition) {
+    public NioBuffer position(int newPosition) {
         ((java.nio.Buffer) byteBuffer).position(newPosition);
         return this;
     }
@@ -112,13 +146,13 @@ public class ByteBufferAdapter implements Buffer<ByteBufferAdapter> {
     }
 
     @Override
-    public final ByteBufferAdapter reset() {
+    public final NioBuffer reset() {
         ((java.nio.Buffer) byteBuffer).reset();
         return this;
     }
 
     @Override
-    public final ByteBufferAdapter mark() {
+    public final NioBuffer mark() {
         ((java.nio.Buffer) byteBuffer).mark();
         mark = byteBuffer.position();
         return this;
@@ -140,8 +174,14 @@ public class ByteBufferAdapter implements Buffer<ByteBufferAdapter> {
     }
 
     @Override
-    public ByteBufferAdapter clear() {
+    public NioBuffer clear() {
         byteBuffer.clear();
+        mark = -1;
         return this;
+    }
+
+    @Override
+    public ByteBuffer[] toNioBuffers() {
+        return new ByteBuffer[] { byteBuffer };
     }
 }

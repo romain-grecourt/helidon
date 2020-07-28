@@ -15,11 +15,6 @@
  */
 
 /**
- * Helidon Common library.
+ * Helidon common IO API.
  */
-module io.helidon.common {
-    requires java.logging;
-
-    exports io.helidon.common;
-    exports io.helidon.common.io;
-}
+package io.helidon.common.io;

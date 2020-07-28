@@ -17,27 +17,28 @@
 package io.helidon.common.http;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+
+import io.helidon.common.io.Buffer;
+import io.helidon.common.io.CompositeBuffer;
+import io.helidon.common.io.NioBuffer;
 
 /**
  * The DataChunk represents a part of the HTTP body content.
  * <p>
  * The DataChunk and the content it carries stay immutable as long as method
  * {@link #release()} is not called. After that, the given instance and the associated
- * data structure instances (e.g., the {@link ByteBuffer} array obtained by {@link #data()})
+ * data structure instances (e.g., the {@link ByteBuffer} array obtained by {@link #toNioBuffers()})
  * should not be used. The idea behind this class is to be able to
  * minimize data copying; ideally, in order to achieve the best performance,
  * to not copy them at all. However, the implementations may choose otherwise.
  * <p>
  * The instances of this class are expected to be accessed by a single thread. Calling
- * the methods of this class (such as {@link #data()}, {@link #release()} from different
- * threads may result in a race condition unless an external synchronization is used.
+ * the methods of this class from different threads may result in a race condition unless an external
+ * synchronization is used.
  */
-@FunctionalInterface
-public interface DataChunk extends Iterable<ByteBuffer> {
+public interface DataChunk extends Buffer<DataChunk> {
 
     /**
      * Creates a simple {@link ByteBuffer} backed data chunk. The resulting
@@ -72,7 +73,7 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      * @return a data chunk
      */
     static DataChunk create(ByteBuffer... byteBuffers) {
-        return new DataChunkImpl(false, false, byteBuffers);
+        return create(false, false, byteBuffers);
     }
 
     /**
@@ -83,7 +84,7 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      * @return a reusable data chunk with no release callback
      */
     static DataChunk create(boolean flush, ByteBuffer... byteBuffers) {
-        return new DataChunkImpl(flush, false, byteBuffers);
+        return create(flush, false, byteBuffers);
     }
 
     /**
@@ -95,7 +96,7 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      * @return a reusable data chunk with no release callback
      */
     static DataChunk create(boolean flush, boolean readOnly, ByteBuffer... byteBuffers) {
-        return new DataChunkImpl(flush, readOnly, byteBuffers);
+        return create(flush, readOnly, null, byteBuffers);
     }
 
     /**
@@ -107,7 +108,7 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      * @return a reusable data chunk with a release callback
      */
     static DataChunk create(boolean flush, Runnable releaseCallback, ByteBuffer... byteBuffers) {
-        return new DataChunkImpl(flush, false, releaseCallback, byteBuffers);
+        return create(flush, false, releaseCallback, byteBuffers);
     }
 
     /**
@@ -120,7 +121,18 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      * @return a reusable data chunk with a release callback
      */
     static DataChunk create(boolean flush, boolean readOnly, Runnable releaseCallback, ByteBuffer... byteBuffers) {
-        return new DataChunkImpl(flush, readOnly, releaseCallback, byteBuffers);
+        Buffer buffer;
+        if (byteBuffers == null) {
+            buffer = NioBuffer.create(null, readOnly);
+        } else if (byteBuffers.length == 1) {
+            buffer = NioBuffer.create(byteBuffers[0], readOnly);
+        } else {
+            buffer = CompositeBuffer.create();
+            for (ByteBuffer byteBuffer : byteBuffers) {
+                ((CompositeBuffer)buffer).put(NioBuffer.create(byteBuffer));
+            }
+        }
+        return new DataChunkImpl(flush, releaseCallback, buffer);
     }
 
     /**
@@ -138,41 +150,11 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      *
      * @return an array of ByteBuffer representing the data of this chunk that are guarantied to stay
      * immutable as long as method {@link #release()} is not called
+     * @deprecated since 2.0.2, use {@link #toNioBuffers()} instead
      */
-    ByteBuffer[] data();
-
-    /**
-     * Returns the sum of elements between the current position and the limit of each of the underlying ByteBuffer.
-     *
-     * @return The number of elements remaining in all underlying buffers
-     */
-    default int remaining() {
-        int remaining = 0;
-        for (ByteBuffer byteBuffer : data()) {
-            remaining += byteBuffer.remaining();
-        }
-        return remaining;
-    }
-
-    @Override
-    default Iterator<ByteBuffer> iterator() {
-        final ByteBuffer[] byteBuffers = data();
-        return new Iterator<ByteBuffer>() {
-            private int index = 0;
-
-            @Override
-            public boolean hasNext() {
-                return index < byteBuffers.length;
-            }
-
-            @Override
-            public ByteBuffer next() {
-                if (index < byteBuffers.length) {
-                    return byteBuffers[index++];
-                }
-                throw new NoSuchElementException();
-            }
-        };
+    @Deprecated(since = "2.0.2")
+    default ByteBuffer[] data() {
+        return toNioBuffers();
     }
 
     /**
@@ -182,39 +164,6 @@ public interface DataChunk extends Iterable<ByteBuffer> {
      */
     default long id() {
         return System.identityHashCode(this);
-    }
-
-    /**
-     * Gets the content of the underlying byte buffers as an array of bytes.
-     * The returned array contains only the part of data that wasn't read yet.
-     * Calling this method doesn't cause the underlying byte buffers to be read.
-     * <p>
-     * It is expected the returned byte array holds a reference to data that
-     * will become stale upon calling method {@link #release()}. (For instance,
-     * the memory segment is pooled by the underlying TCP server and is reused
-     * for a subsequent request chunk.) The idea behind this class is to be able to
-     * minimize data copying; ideally, in order to achieve the best performance,
-     * to not copy them at all. However, the implementations may choose otherwise.
-     * <p>
-     * Note that the methods of this instance are expected to be called by a single
-     * thread; if not, external synchronization must be used.
-     *
-     * @return an array of bytes that is guarantied to stay immutable as long as
-     * method {@link #release()} is not called
-     */
-    default byte[] bytes() {
-        byte[] bytes = null;
-        for (ByteBuffer byteBuffer : data()) {
-            if (bytes == null) {
-                bytes = Utils.toByteArray(byteBuffer.asReadOnlyBuffer());
-            } else {
-                byte[] newBytes = new byte[bytes.length + byteBuffer.remaining()];
-                System.arraycopy(bytes, 0, newBytes, 0, bytes.length);
-                Utils.toByteArray(byteBuffer.asReadOnlyBuffer(), newBytes, bytes.length);
-                bytes = newBytes;
-            }
-        }
-        return bytes == null ? new byte[0] : bytes;
     }
 
     /**
@@ -229,38 +178,8 @@ public interface DataChunk extends Iterable<ByteBuffer> {
     }
 
     /**
-     * Makes a copy of this data chunk including its underlying {@link ByteBuffer}. This
-     * may be necessary for caching in case {@link ByteBuffer#rewind()} is called to
-     * reuse a byte buffer. Note that only the actual bytes used in the data chunk are
-     * copied, the resulting data chunk's capacity may be less than the original.
-     *
-     * @return A copy of this data chunk.
-     */
-    default DataChunk duplicate() {
-        ByteBuffer[] byteBuffers = data();
-        ByteBuffer[] byteBuffersCopy = new ByteBuffer[byteBuffers.length];
-        for (int i = 0; i < byteBuffers.length; i++) {
-            byte[] bytes = new byte[byteBuffers[i].limit()];
-            byteBuffers[i].get(bytes);
-            byteBuffers[i].position(0);
-            byteBuffersCopy[i] = ByteBuffer.wrap(bytes);
-        }
-        return DataChunk.create(byteBuffersCopy);
-    }
-
-    /**
-     * Returns {@code true} if the underlying byte buffer of this chunk is read
-     * only or {@code false} otherwise.
-     *
-     * @return Immutability outcome.
-     */
-    default boolean isReadOnly() {
-        return false;
-    }
-
-    /**
-     * An empty data chunk with a flush flag can be used to force a connection
-     * flush. This method determines if this chunk is used for that purpose.
+     * An empty data chunk with a flush flag can be used to force a connection flush.
+     * This method determines if this chunk is used for that purpose.
      *
      * @return Outcome of test.
      */
@@ -277,8 +196,7 @@ public interface DataChunk extends Iterable<ByteBuffer> {
     }
 
     /**
-     * Set a write future that will complete when data chunk has been
-     * written to a connection.
+     * Set a write future that will complete when data chunk has been written to a connection.
      *
      * @param writeFuture Write future.
      */
