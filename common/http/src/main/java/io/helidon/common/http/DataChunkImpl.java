@@ -155,8 +155,20 @@ class DataChunkImpl implements DataChunk {
     }
 
     @Override
-    public DataChunk put(ByteBuffer buffer) {
-        buffer.put(buffer);
+    public DataChunk put(byte b) {
+        buffer.put(b);
+        return this;
+    }
+
+    @Override
+    public DataChunk put(byte b, int pos) {
+        buffer.put(b, pos);
+        return this;
+    }
+
+    @Override
+    public DataChunk put(byte[] bytes, int offset, int length) {
+        buffer.put(bytes, offset, length);
         return this;
     }
 
@@ -167,14 +179,14 @@ class DataChunkImpl implements DataChunk {
     }
 
     @Override
-    public DataChunk put(Buffer<?> chunk) {
-        if (chunk instanceof DataChunkImpl) {
-            if (chunk == this) {
+    public DataChunk put(Buffer<?> src) {
+        if (src instanceof DataChunkImpl) {
+            if (src == this) {
                 throw new IllegalArgumentException("The source buffer is this buffer");
             }
-            buffer.put(((DataChunkImpl) chunk).buffer);
+            buffer.put(((DataChunkImpl) src).buffer);
         } else {
-            DataChunk.super.put(chunk);
+            DataChunk.super.put(src);
         }
         return this;
     }
@@ -192,8 +204,7 @@ class DataChunkImpl implements DataChunk {
 
     @Override
     public DataChunk release(int decrement) {
-        buffer.release(decrement);
-        if (isReleased() && releaseCallback != null) {
+        if (buffer.refCnt() > 0 && buffer.release(decrement).refCnt() == 0 && releaseCallback != null) {
             releaseCallback.run();
         }
         return this;

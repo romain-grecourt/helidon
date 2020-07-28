@@ -27,8 +27,9 @@ public class NioBuffer implements Buffer<NioBuffer> {
 
     private final ByteBuffer byteBuffer;
     private int mark = -1;
+    private volatile int refCount = 1;
 
-    private NioBuffer(ByteBuffer byteBuffer) {
+    protected NioBuffer(ByteBuffer byteBuffer) {
         if (byteBuffer == null) {
             this.byteBuffer = EMPTY_BYTE_BUFFER;
         } else {
@@ -36,7 +37,7 @@ public class NioBuffer implements Buffer<NioBuffer> {
         }
     }
 
-    private NioBuffer(ByteBuffer byteBuffer, boolean readOnly) {
+    protected NioBuffer(ByteBuffer byteBuffer, boolean readOnly) {
         if (byteBuffer == null) {
             this.byteBuffer = readOnly ? EMPTY_RO_BYTE_BUFFER : EMPTY_BYTE_BUFFER;
         } else {
@@ -99,8 +100,14 @@ public class NioBuffer implements Buffer<NioBuffer> {
     }
 
     @Override
-    public NioBuffer put(ByteBuffer buffer) {
-        this.byteBuffer.put(buffer);
+    public NioBuffer put(byte b) {
+        byteBuffer.put(b);
+        return this;
+    }
+
+    @Override
+    public NioBuffer put(byte b, int pos) {
+        byteBuffer.put(pos, b);
         return this;
     }
 
@@ -111,14 +118,17 @@ public class NioBuffer implements Buffer<NioBuffer> {
     }
 
     @Override
-    public NioBuffer put(Buffer<?> buffer) {
-        if (buffer instanceof NioBuffer) {
-            if (buffer == this) {
-                throw new IllegalArgumentException("The source buffer is this buffer");
-            }
-            put(((NioBuffer) buffer).byteBuffer);
+    public NioBuffer put(byte[] bytes, int offset, int length) {
+        this.byteBuffer.put(bytes, offset, length);
+        return this;
+    }
+
+    @Override
+    public NioBuffer put(Buffer<?> src) {
+        if (src instanceof NioBuffer) {
+            this.byteBuffer.put(((NioBuffer) src).byteBuffer);
         } else {
-            Buffer.super.put(buffer);
+            Buffer.super.put(src);
         }
         return this;
     }
@@ -177,11 +187,33 @@ public class NioBuffer implements Buffer<NioBuffer> {
     public NioBuffer clear() {
         byteBuffer.clear();
         mark = -1;
+        refCount = 1;
         return this;
     }
 
     @Override
     public ByteBuffer[] toNioBuffers() {
         return new ByteBuffer[] { byteBuffer };
+    }
+
+    @Override
+    public int refCnt() {
+        return refCount;
+    }
+
+    @Override
+    public NioBuffer retain(int increment) {
+        if (refCount > 0) {
+            refCount += increment;
+        }
+        return this;
+    }
+
+    @Override
+    public NioBuffer release(int decrement) {
+        if (refCount > 0) {
+            refCount -= decrement;
+        }
+        return this;
     }
 }

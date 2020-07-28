@@ -18,9 +18,8 @@ package io.helidon.common.io;
 /**
  * Releaseable reference.
  * A reference that may be pointing at resources that need to be released in order to be re-used.
- * All the methods exposed by this interface are <b>optional</b>.
  *
- * @param <T> buffer type
+ * @param <T> reference type
  */
 public interface ReleaseableRef<T extends ReleaseableRef> {
 
@@ -53,13 +52,12 @@ public interface ReleaseableRef<T extends ReleaseableRef> {
     }
 
     /**
-     * <i>(optional operation)</i>
      * Get the reference count of this object. If {@code 0}, it means this object has been deallocated.
      *
-     * @return The reference count, defaults to {@code -1}
+     * @return The reference count, defaults to {@code 1}
      */
     default int refCnt() {
-        return -1;
+        return 1;
     }
 
     /**

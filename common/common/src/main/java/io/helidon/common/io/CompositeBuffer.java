@@ -38,11 +38,6 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
     private CompositeBuffer() {
     }
 
-    /**
-     * Copy constructor.
-     *
-     * @param buffer The buffer to copy
-     */
     private CompositeBuffer(CompositeBuffer buffer) {
         head = buffer.head;
         tail = buffer.tail;
@@ -56,10 +51,25 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
 
     /**
      * Create a new composite buffer.
+     *
      * @return created buffer
      */
     public static CompositeBuffer create() {
         return new CompositeBuffer();
+    }
+
+    /**
+     * Create a new composite buffer.
+     *
+     * @param readOnly {@code true} if the created buffer should be read-only, {@code false} otherwise
+     * @return created buffer
+     */
+    public static CompositeBuffer create(boolean readOnly) {
+        CompositeBuffer buffer = new CompositeBuffer();
+        if (readOnly) {
+            buffer = buffer.asReadOnly();
+        }
+        return buffer;
     }
 
     @Override
@@ -120,15 +130,6 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         return limit;
     }
 
-    /**
-     * Count the number of nested buffers.
-     *
-     * @return buffer count
-     */
-    public int nestedCount() {
-        return count;
-    }
-
     @Override
     public int position() {
         return position;
@@ -141,6 +142,11 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
 
     @Override
     public CompositeBuffer clear() {
+        if (head != null) {
+            for (Entry entry = head; entry != null; entry = entry.next) {
+                entry.buffer.clear();
+            }
+        }
         count = 0;
         capacity = 0;
         limit = 0;
@@ -260,69 +266,14 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         return delete(position, length);
     }
 
-    @Override
-    public CompositeBuffer put(ByteBuffer byteBuffer) {
-        return put(new Entry(NioBuffer.create(byteBuffer)), position);
-    }
-
-    @Override
-    public CompositeBuffer put(byte[] bytes) {
-        return put(ByteBuffer.wrap(bytes));
-    }
-
-    @Override
-    public CompositeBuffer put(Buffer<?> buffer) {
-        if (buffer == this) {
-            throw new IllegalArgumentException("The source buffer is this buffer");
-        }
-        if (buffer instanceof CompositeBuffer) {
-            int offset = 0;
-            for (Entry entry = ((CompositeBuffer)buffer).head; entry.next != null; entry = entry.next) {
-                put(new Entry(entry.buffer.asReadOnly()), position + offset);
-                offset += entry.buffer.remaining();
-            }
-        } else {
-            put(new Entry(buffer.asReadOnly()), position);
-        }
-        return this;
-    }
-
-    @Override
-    public ByteBuffer[] toNioBuffers() {
-        LinkedList<ByteBuffer> byteBuffers = new LinkedList<>();
-        for (Entry entry = head; entry.next != null; entry = entry.next) {
-            for (ByteBuffer byteBuffer : entry.buffer.toNioBuffers()) {
-                byteBuffers.add(byteBuffer);
-            }
-        }
-        return byteBuffers.toArray(new ByteBuffer[byteBuffers.size()]);
-    }
-
-    @Override
-    public int refCnt() {
-        if (head != null) {
-            return head.buffer.refCnt();
-        }
-        return 0;
-    }
-
-    @Override
-    public CompositeBuffer release(int decrement) {
-        for (Entry entry = head; entry != null; entry = entry.next) {
-            entry.buffer.release(decrement);
-        }
-        return this;
-    }
-
-    @Override
-    public CompositeBuffer retain(int increment) {
-        for (Entry entry = head; entry != null; entry = entry.next) {
-            entry.buffer.retain(increment);
-        }
-        return this;
-    }
-
-    private CompositeBuffer delete(int pos, int length) {
+    /**
+     * Delete n bytes starting at the specified position.
+     *
+     * @param pos The position at which to start deleting
+     * @param length The number of bytes to remove
+     * @return This buffer
+     */
+    public CompositeBuffer delete(int pos, int length) {
         checkBounds(pos, pos + length);
         int rbytes = length; // nbytes to remove
         Entry entry;
@@ -377,6 +328,126 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
                 position -= length;
             } else {
                 position = pos;
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer put(byte b) {
+        if (current.buffer instanceof ContiguousBytesBuffer) {
+            int entryLimit = current.buffer.limit();
+            if (current.buffer.capacity() > entryLimit) {
+                current.buffer.limit(entryLimit + 1).put(b, entryLimit);
+                position++;
+                return this;
+            }
+        }
+        put(new ContiguousBytesBuffer().put(b).limit(1));
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer put(byte b, int pos) {
+        int entryPos = 0;
+        Entry entry = head;
+        if (entry != null) {
+            int curPos = 0;
+            for (; entry != null; entry = entry.next) {
+                int nextPos = curPos + entry.buffer.capacity();
+                if (nextPos > pos) {
+                    break;
+                }
+                curPos = nextPos;
+            }
+        }
+        if (entry.buffer instanceof ContiguousBytesBuffer) {
+            int entryLimit = entry.buffer.limit();
+            if (entry.buffer.capacity() > entryLimit) {
+                int bufPos = entryPos > entryLimit ? entryPos - entryLimit : entryLimit;
+                entry.buffer.limit(entryLimit + 1).put(b, bufPos);
+                return this;
+            }
+        }
+        put(new Entry(new ContiguousBytesBuffer().put(b).limit(1)), pos);
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer put(byte[] bytes) {
+        return put(bytes, 0, bytes.length);
+    }
+
+    @Override
+    public CompositeBuffer put(byte[] bytes, int offset, int length) {
+        if (current.buffer instanceof ContiguousBytesBuffer) {
+            int curLimit = current.buffer.limit();
+            if (current.buffer.capacity() - curLimit >= length) {
+                current.buffer.limit(curLimit + length).put(bytes, offset, length);
+                return this;
+            }
+        }
+        put(new ContiguousBytesBuffer().limit(length).put(bytes, offset, length));
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer put(Buffer<?> src) {
+        if (src == this) {
+            throw new IllegalArgumentException("The source buffer is this buffer");
+        }
+        if (src instanceof CompositeBuffer) {
+            Entry bufferHead = ((CompositeBuffer) src).head;
+            if (bufferHead == null) {
+                return this;
+            }
+            int offset = 0;
+            for (Entry entry = bufferHead; entry.next != null; entry = entry.next) {
+                put(new Entry(entry.buffer.asReadOnly()), position + offset);
+                offset += entry.buffer.remaining();
+            }
+        } else {
+            put(new Entry(src.asReadOnly()), position);
+        }
+        return this;
+    }
+
+    @Override
+    public ByteBuffer[] toNioBuffers() {
+        LinkedList<ByteBuffer> byteBuffers = new LinkedList<>();
+        if (head != null) {
+            for (Entry entry = head; entry.next != null; entry = entry.next) {
+                for (ByteBuffer byteBuffer : entry.buffer.toNioBuffers()) {
+                    byteBuffers.add(byteBuffer);
+                }
+            }
+        }
+        return byteBuffers.toArray(new ByteBuffer[byteBuffers.size()]);
+    }
+
+    @Override
+    public int refCnt() {
+        if (head != null) {
+            return head.buffer.refCnt();
+        }
+        return 0;
+    }
+
+    @Override
+    public CompositeBuffer release(int decrement) {
+        if (head != null) {
+            for (Entry entry = head; entry != null; entry = entry.next) {
+                entry.buffer.release(decrement);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer retain(int increment) {
+        if (head != null) {
+            for (Entry entry = head; entry != null; entry = entry.next) {
+                entry.buffer.retain(increment);
             }
         }
         return this;
@@ -480,7 +551,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
     }
 
     /**
-     * Buffer linked list entry.
+     * Linked list entry.
      */
     private static class Entry {
 
@@ -539,7 +610,12 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         }
 
         @Override
-        public CompositeBuffer put(Buffer<?> buffer) {
+        public CompositeBuffer put(byte b) {
+            throw new ReadOnlyBufferException();
+        }
+
+        @Override
+        public CompositeBuffer put(byte b, int pos) {
             throw new ReadOnlyBufferException();
         }
 
@@ -549,13 +625,33 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         }
 
         @Override
-        public CompositeBuffer put(ByteBuffer buffer) {
+        public CompositeBuffer put(byte[] bytes, int offset, int length) {
+            throw new ReadOnlyBufferException();
+        }
+
+        @Override
+        public CompositeBuffer put(Buffer<?> src) {
             throw new ReadOnlyBufferException();
         }
 
         @Override
         public CompositeBuffer delete(int length) {
             throw new ReadOnlyBufferException();
+        }
+    }
+
+    /**
+     * Size of each contiguous buffer.
+     */
+    private static final int CONTIGUOUS_BUFFERS_SIZE = 1024;
+
+    /**
+     * Contiguous bytes NIO buffer.
+     */
+    private static class ContiguousBytesBuffer extends NioBuffer {
+
+        ContiguousBytesBuffer() {
+            super(ByteBuffer.allocate(CONTIGUOUS_BUFFERS_SIZE));
         }
     }
 }

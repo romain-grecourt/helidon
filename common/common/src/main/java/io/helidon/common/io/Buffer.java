@@ -1,7 +1,9 @@
 package io.helidon.common.io;
 
+import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.ReadOnlyBufferException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -146,15 +148,26 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
     T get(byte[] dst, int off, int length);
 
     /**
-     * Insert the given buffer at the current position.
+     * Insert the specified byte at the current position (<b>optional operation</b>).
      *
-     * @param buffer buffer to insert
+     * @param b The byte to insert
+
      * @return This buffer
      */
-    T put(ByteBuffer buffer);
+    T put(byte b);
 
     /**
-     * Insert the specified bytes at the current position (<b>optional</b>).
+     * Insert the specified byte at the specified position (<b>optional operation</b>).
+     *
+     * @param b The byte to insert
+     * @param pos The position at which to insert the byte
+
+     * @return This buffer
+     */
+    T put(byte b, int pos);
+
+    /**
+     * Insert the specified bytes at the current position (<b>optional operation</b>).
      *
      * @param bytes The bytes to insert
      * @return This buffer
@@ -162,17 +175,37 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
     T put(byte[] bytes);
 
     /**
-     * Insert the specified buffer at the current position (<b>optional</b>).
+     * Insert the specified bytes at the current position (<b>optional operation</b>).
      *
-     * @param buffer The buffer to insert
+     * @param bytes  byte array from which to read the bytes to insert
+     * @param offset the position in the byte array
+     * @param length the count of bytes
      * @return This buffer
      */
-    default T put(Buffer<?> buffer) {
-        if (buffer == this) {
+    T put(byte[] bytes, int offset, int length);
+
+    /**
+     * Insert the specified buffer at the current position (<b>optional</b>).
+     *
+     * @param src The buffer to insert
+     * @return This buffer
+     */
+    default T put(Buffer<?> src) {
+        if (src == this) {
             throw new IllegalArgumentException("The source buffer is this buffer");
         }
-        for (ByteBuffer byteBuffer : toNioBuffers()) {
-            buffer.put(byteBuffer);
+        if (isReadOnly()) {
+            throw new ReadOnlyBufferException();
+        }
+        int n = src.remaining();
+        if (n > remaining()) {
+            throw new BufferOverflowException();
+        }
+        byte[] buf = new byte[1024];
+        while (n > 0) {
+            int length = n > buf.length ? buf.length : n;
+            src.get(buf, 0, length);
+            put(buf, 0, length);
         }
         return (T) this;
     }
@@ -192,9 +225,9 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
     /**
      * Exposes this buffer readable bytes as an NIO {@link ByteBuffer}.  The returned buffer
      * shares the content with this buffer, while changing the position and limit of the returned
-     * NIO buffer does not affect the indexes of this buffer.
+     * NIO buffer does not affect this buffer.
      *
-     * @return the nio buffers.
+     * @return the nio buffers
      * @throws UnsupportedOperationException if this buffer cannot be exposed as a {@link ByteBuffer}
      */
     ByteBuffer[] toNioBuffers();

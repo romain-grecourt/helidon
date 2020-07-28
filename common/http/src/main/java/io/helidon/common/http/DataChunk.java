@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.helidon.common.http;
 
 import java.nio.ByteBuffer;
@@ -27,62 +26,63 @@ import io.helidon.common.io.NioBuffer;
 /**
  * The DataChunk represents a part of the HTTP body content.
  * <p>
- * The DataChunk and the content it carries stay immutable as long as method
- * {@link #release()} is not called. After that, the given instance and the associated
- * data structure instances (e.g., the {@link ByteBuffer} array obtained by {@link #toNioBuffers()})
- * should not be used. The idea behind this class is to be able to
- * minimize data copying; ideally, in order to achieve the best performance,
- * to not copy them at all. However, the implementations may choose otherwise.
+ * The DataChunk and the content it carries stay immutable as long as it is not released. See {@link #release()}.
+ * When released the data structure of a DataChunk may be reused by a different DataChunk and thus should not used.
  * <p>
- * The instances of this class are expected to be accessed by a single thread. Calling
- * the methods of this class from different threads may result in a race condition unless an external
- * synchronization is used.
+ * The instances of this class are expected to be accessed by a single thread. Calling the methods of this class from
+ * different threads may result in a race condition unless an external synchronization is used.
  */
 public interface DataChunk extends Buffer<DataChunk> {
 
     /**
-     * Creates a simple {@link ByteBuffer} backed data chunk. The resulting
-     * instance doesn't have any kind of a lifecycle and as such, it doesn't need
-     * to be released.
+     * Creates a data chunk.
      *
-     * @param byteBuffer a byte buffer to create the request chunk from
+     * @param byteBuffer the data for the chunk
      * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(ByteBuffer byteBuffer) {
-        return create(false, byteBuffer);
+        return create(NioBuffer.create(byteBuffer));
     }
 
     /**
-     * Creates a simple byte array backed data chunk. The resulting
-     * instance doesn't have any kind of a lifecycle and as such, it doesn't need
-     * to be released.
+     * Creates a data chunk.
      *
-     * @param bytes a byte array to create the request chunk from
+     * @param bytes the data for the chunk
      * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(byte[] bytes) {
-        return create(false, false, ByteBuffer.wrap(bytes));
+        return create(NioBuffer.create(ByteBuffer.wrap(bytes)));
     }
 
     /**
-     * Creates a data chunk backed by one or more ByteBuffer. The resulting
-     * instance doesn't have any kind of a lifecycle and as such, it doesn't need
-     * to be released.
+     * Creates a data chunk.
      *
      * @param byteBuffers the data for the chunk
      * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(ByteBuffer... byteBuffers) {
         return create(false, false, byteBuffers);
     }
 
     /**
-     * Creates a reusable data chunk.
+     * Creates a data chunk.
      *
      * @param flush       a signal that this chunk should be written and flushed from any cache if possible
-     * @param byteBuffers the data for this chunk. Should not be reused until {@code releaseCallback} is used
-     * @return a reusable data chunk with no release callback
+     * @param byteBuffers the data for this chunk
+     * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(boolean, Runnable, Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(boolean flush, ByteBuffer... byteBuffers) {
         return create(flush, false, byteBuffers);
     }
@@ -92,34 +92,42 @@ public interface DataChunk extends Buffer<DataChunk> {
      *
      * @param flush       a signal that this chunk should be written and flushed from any cache if possible
      * @param readOnly    indicates underlying buffers are not reused
-     * @param byteBuffers the data for this chunk. Should not be reused until {@code releaseCallback} is used
-     * @return a reusable data chunk with no release callback
+     * @param byteBuffers the data for this chunk
+     * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(boolean, Runnable, Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(boolean flush, boolean readOnly, ByteBuffer... byteBuffers) {
         return create(flush, readOnly, null, byteBuffers);
     }
 
     /**
-     * Creates a reusable byteBuffers chunk.
+     * Creates a reusable data chunk.
      *
      * @param flush           a signal that this chunk should be written and flushed from any cache if possible
-     * @param releaseCallback a callback which is called when this chunk is completely processed and instance is free for reuse
-     * @param byteBuffers     the data for this chunk. Should not be reused until {@code releaseCallback} is used
-     * @return a reusable data chunk with a release callback
+     * @param releaseCallback a callback which is called when this chunk is released so that the buffer may be re-used
+     * @param byteBuffers     the data for this chunk
+     * @return a data chunk
+     * @see NioBuffer
+     * @deprecated since 2.1.0, use {@link #create(boolean, Runnable, Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(boolean flush, Runnable releaseCallback, ByteBuffer... byteBuffers) {
         return create(flush, false, releaseCallback, byteBuffers);
     }
 
     /**
-     * Creates a reusable byteBuffers chunk.
+     * Creates a data chunk.
      *
      * @param flush           a signal that this chunk should be written and flushed from any cache if possible
      * @param readOnly        indicates underlying buffers are not reused
-     * @param byteBuffers     the data for this chunk. Should not be reused until {@code releaseCallback} is used
-     * @param releaseCallback a callback which is called when this chunk is completely processed and instance is free for reuse
-     * @return a reusable data chunk with a release callback
+     * @param byteBuffers     the data for this chunk
+     * @param releaseCallback a callback which is called when this chunk is released so that the buffer may be re-used
+     * @return a data chunk
+     * @deprecated since 2.1.0, use {@link #create(boolean, Runnable, Buffer)} instead
      */
+    @Deprecated(since = "2.1.0")
     static DataChunk create(boolean flush, boolean readOnly, Runnable releaseCallback, ByteBuffer... byteBuffers) {
         Buffer buffer;
         if (byteBuffers == null) {
@@ -129,38 +137,64 @@ public interface DataChunk extends Buffer<DataChunk> {
         } else {
             buffer = CompositeBuffer.create();
             for (ByteBuffer byteBuffer : byteBuffers) {
-                ((CompositeBuffer)buffer).put(NioBuffer.create(byteBuffer));
+                ((CompositeBuffer) buffer).put(NioBuffer.create(byteBuffer));
             }
         }
         return new DataChunkImpl(flush, releaseCallback, buffer);
     }
 
     /**
-     * Returns a representation of this chunk as an array of ByteBuffer.
-     * <p>
-     * It is expected the returned byte buffers hold references to data that
-     * will become stale upon calling method {@link #release()}. (For instance,
-     * the memory segment is pooled by the underlying TCP server and is reused
-     * for a subsequent request chunk.) The idea behind this class is to be able to
-     * minimize data copying; ideally, in order to achieve the best performance,
-     * to not copy them at all. However, the implementations may choose otherwise.
-     * <p>
-     * Note that the methods of this instance are expected to be called by a single
-     * thread; if not, external synchronization must be used.
+     * Creates a data chunk.
      *
-     * @return an array of ByteBuffer representing the data of this chunk that are guarantied to stay
-     * immutable as long as method {@link #release()} is not called
-     * @deprecated since 2.0.2, use {@link #toNioBuffers()} instead
+     * @param buffer the data for this chunk.
+     * @return a data chunk
      */
-    @Deprecated(since = "2.0.2")
+    static DataChunk create(Buffer buffer) {
+        return new DataChunkImpl(false, null, buffer);
+    }
+
+    /**
+     * Creates a data chunk.
+     *
+     * @param flush  a signal that this chunk should be written and flushed from any cache if possible
+     * @param buffer the data for this chunk.
+     * @return a data chunk
+     */
+    static DataChunk create(boolean flush, Buffer buffer) {
+        return new DataChunkImpl(flush, null, buffer);
+    }
+
+    /**
+     * Creates a data chunk.
+     *
+     * @param flush           a signal that this chunk should be written and flushed from any cache if possible
+     * @param buffer          the data for this chunk.
+     * @param releaseCallback a callback which is called when this chunk is released so that the buffer may be re-used
+     * @return a reusable data chunk with a release callback
+     */
+    static DataChunk create(boolean flush, Runnable releaseCallback, Buffer buffer) {
+        return new DataChunkImpl(flush, releaseCallback, buffer);
+    }
+
+    /**
+     * Returns a representation of this chunk as an array of ByteBuffer.
+     *
+     * <p>
+     * The returned ByteBuffer instances may hold references to data that will become stale upon calling method
+     * {@link #release()}.
+     *
+     * @return an array of ByteBuffer
+     * @deprecated since 2.1.0, use {@link #toNioBuffers()} instead
+     */
+    @Deprecated(since = "2.1.0")
     default ByteBuffer[] data() {
         return toNioBuffers();
     }
 
     /**
-     * The tracing ID of this chunk.
+     * The tracing ID of this data chunk.
      *
-     * @return the tracing ID of this chunk
+     * @return the tracing ID of this data chunk
      */
     default long id() {
         return System.identityHashCode(this);
@@ -168,8 +202,7 @@ public interface DataChunk extends Buffer<DataChunk> {
 
     /**
      * Returns {@code true} if all caches are requested to flush when this chunk is written.
-     * This method is only meaningful when handing data over to
-     * Helidon APIs (e.g. for server response and client requests).
+     * This method is only meaningful when handing data over to Helidon APIs (e.g. for server response and client requests).
      *
      * @return {@code true} if it is requested to flush all caches after this chunk is written, defaults to {@code false}.
      */
@@ -204,7 +237,7 @@ public interface DataChunk extends Buffer<DataChunk> {
     }
 
     /**
-     * Returns a write future associated with this chunk.
+     * Returns a write future associated with this data chunk.
      *
      * @return Write future if one has ben set.
      */
