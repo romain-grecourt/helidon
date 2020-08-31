@@ -47,6 +47,7 @@ public interface ReleaseableRef<T extends ReleaseableRef> {
      * reference count reaches {@code 0}. When released, the underlying resources  may become stale and should not be
      * used anymore.
      */
+    @SuppressWarnings("unchecked")
     default T release(int decrement) {
         return (T) this;
     }
@@ -76,6 +77,7 @@ public interface ReleaseableRef<T extends ReleaseableRef> {
      *
      * @return this buffer
      */
+    @SuppressWarnings("unchecked")
     default T retain(int increment) {
         return (T) this;
     }

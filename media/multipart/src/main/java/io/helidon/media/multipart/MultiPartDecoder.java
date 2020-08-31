@@ -15,8 +15,6 @@
  */
 package io.helidon.media.multipart;
 
-import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,11 +26,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.io.Buffer;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.SubscriptionHelper;
 import io.helidon.media.common.MessageBodyReadableContent;
 import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.multipart.VirtualBuffer.BufferEntry;
 
 /**
  * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
@@ -44,7 +42,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     private static final int DOWNSTREAM_INIT = Integer.MIN_VALUE >>> 1;
     private static final int UPSTREAM_INIT = Integer.MIN_VALUE >>> 2;
     private static final int SUBSCRIPTION_LOCK = Integer.MIN_VALUE >>> 3;
-    private static final Iterator<BufferEntry> EMPTY_BUFFER_ENTRY_ITERATOR = new EmptyIterator<>();
+    private static final Iterator<Buffer<?>> EMPTY_BUFFER_ITERATOR = new EmptyIterator<>();
     private static final Iterator<MimeParser.ParserEvent> EMPTY_PARSER_ITERATOR = new EmptyIterator<>();
 
     private volatile Subscription upstream;
@@ -57,7 +55,6 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     private boolean cancelled;
     private AtomicInteger contenders = new AtomicInteger(Integer.MIN_VALUE);
     private AtomicLong partsRequested = new AtomicLong();
-    private final HashMap<Integer, DataChunk> chunksByIds;
     private final MimeParser parser;
     private final MessageBodyReaderContext context;
 
@@ -72,7 +69,6 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         Objects.requireNonNull(context, "context cannot be null!");
         this.context = context;
         parser = new MimeParser(boundary);
-        chunksByIds = new HashMap<>();
     }
 
     /**
@@ -137,15 +133,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     @Override
     public void onNext(DataChunk chunk) {
         try {
-            ByteBuffer[] byteBuffers = chunk.data();
-            for (int i = 0; i < byteBuffers.length; i++) {
-                int id = parser.offer(byteBuffers[i]);
-                // record the chunk using the id of the last buffer
-                if (i == byteBuffers.length - 1) {
-                    // drain() cannot be invoked concurrently, it is safe to use HashMap
-                    chunksByIds.put(id, chunk);
-                }
-            }
+            parser.offer(chunk);
             parserIterator = parser.parseIterator();
             drain();
         } catch (MimeParser.ParsingException ex) {
@@ -207,7 +195,6 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         bodyPartHeaderBuilder = null;
         bodyPartBuilder = null;
         partsRequested.set(-1);
-        releaseChunks();
         parser.cleanup();
     }
 
@@ -295,8 +282,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
                         // the parser events processing will resume upon inner Subscriber demand
                         return;
                     case BODY:
-                        Iterator<BufferEntry> bodyIterator = event.asBodyEvent().body().iterator();
-                        bodyPartPublisher.nextIterator(bodyIterator);
+                        bodyPartPublisher.buffer(event.asBodyEvent().body());
                         if (!bodyPartPublisher.drain()) {
                             // the body was not fully drained, exit the parser iterator loop
                             // the parser events processing will resume upon inner Subscriber demand
@@ -361,15 +347,6 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         }
     }
 
-    private void releaseChunks() {
-        Iterator<DataChunk> it = chunksByIds.values().iterator();
-        while (it.hasNext()) {
-            DataChunk next = it.next();
-            next.release();
-            it.remove();
-        }
-    }
-
     private ReadableBodyPart createPart() {
         ReadableBodyPartHeaders headers = bodyPartHeaderBuilder.build();
 
@@ -387,29 +364,13 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
                 .build();
     }
 
-    private BodyPartChunk createPartChunk(BufferEntry entry) {
-        ByteBuffer data = entry.buffer();
-        int id = entry.id();
-        DataChunk chunk = chunksByIds.get(id);
-        if (chunk == null) {
-            throw new IllegalStateException("Parent chunk not found, id=" + id);
-        }
-        ByteBuffer[] originalBuffers = chunk.data();
-        // FIXME: the current resource management is not implemented properly and needs to be fixed
-        boolean release = data.limit() == originalBuffers[originalBuffers.length - 1].limit();
-        if (release) {
-            chunksByIds.remove(id);
-        }
-        return new BodyPartChunk(data, release ? chunk : null);
-    }
-
     /**
      * Inner publisher that publishes the body part as {@link DataChunk}.
      */
     protected final class DataChunkPublisher implements Publisher<DataChunk> {
 
         private final AtomicLong chunksRequested = new AtomicLong(Long.MIN_VALUE + 1);
-        private Iterator<BufferEntry> bufferEntryIterator = EMPTY_BUFFER_ENTRY_ITERATOR;
+        private Buffer<?> buffer;
         private boolean cancelled;
         private Subscriber<? super DataChunk> subscriber;
 
@@ -454,15 +415,15 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         }
 
         /**
-         * Set the next buffer entry iterator.
-         * @param iterator the iterator to set
+         * Set the buffer.
+         * @param buffer the new buffer to set
          */
-        void nextIterator(Iterator<BufferEntry> iterator) {
+        void buffer(Buffer<?> buffer) {
             // This is invoked only when the previous bufferEntryIterator has been consumed fully,
             // and chunksRequested > 0, so no one is calling drain() concurrently
             // chunksRequested is modified atomically, so any future invocation of drain() will observe
             // bufferEntryIterator normal store (bufferEntryIterator and all of its content is published safely)
-            bufferEntryIterator = iterator;
+            this.buffer = buffer;
         }
 
         /**
@@ -500,29 +461,27 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
             long requested = chunksRequested.get();
             long chunksEmitted = 0;
 
-            // requested < 0 behaves like cancel, i.e drain bufferEntryIterator
-            while (chunksEmitted < requested && bufferEntryIterator.hasNext()) {
+            // requested < 0 behaves like cancel
+            while (chunksEmitted < requested && buffer != null) {
                 do {
-                    DataChunk chunk = createPartChunk(bufferEntryIterator.next());
+                    DataChunk chunk = DataChunk.create(buffer);
                     subscriber.onNext(chunk);
                     chunk.release();
                     chunksEmitted++;
-                } while (chunksEmitted < requested && bufferEntryIterator.hasNext());
+                } while (chunksEmitted < requested && buffer != null);
 
                 long ce = chunksEmitted;
                 requested = chunksRequested.updateAndGet(v -> v == Long.MAX_VALUE || v < 0 ? v : v - ce);
                 chunksEmitted = 0;
             }
 
-            if (requested < 0) {
-                while (bufferEntryIterator.hasNext()) {
-                    createPartChunk(bufferEntryIterator.next()).release();
-                }
+            if (requested < 0 && buffer != null) {
+                buffer.release();
             }
 
             if (requested != 0) {
-                // bufferEntryIterator is drained, drop the reference
-                bufferEntryIterator = EMPTY_BUFFER_ENTRY_ITERATOR;
+                // drop the reference
+                buffer = null;
                 return true;
             }
             return false;

@@ -175,7 +175,7 @@ public class NioBuffer implements Buffer<NioBuffer> {
 
     @Override
     public final int remaining() {
-        return byteBuffer.position();
+        return byteBuffer.remaining();
     }
 
     @Override
@@ -187,7 +187,13 @@ public class NioBuffer implements Buffer<NioBuffer> {
     public NioBuffer clear() {
         byteBuffer.clear();
         mark = -1;
-        refCount = 1;
+        return this;
+    }
+
+    @Override
+    public NioBuffer rewind() {
+        byteBuffer.rewind();
+        mark = -1;
         return this;
     }
 

@@ -11,32 +11,40 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class CompositeBufferTest {
 
     @Test
-    public void absoluteGetByteTest() {
+    public void absoluteGetTest() {
         CompositeBuffer buf = CompositeBuffer.create();
         buf.put("xxxfoo".getBytes());
         assertThat(buf.capacity(), is(6));
+        assertThat(buf.position(), is(6));
+        assertThat(buf.limit(), is(6));
         assertThat((char) buf.get(3), is('f'));
         assertThat((char) buf.get(4), is('o'));
         assertThat((char) buf.get(5), is('o'));
         buf.put("xxx".getBytes());
         buf.put("bar".getBytes());
         assertThat(buf.capacity(), is(12));
+        assertThat(buf.position(), is(12));
         assertThat((char) buf.get(9), is('b'));
         assertThat((char) buf.get(10), is('a'));
         assertThat((char) buf.get(11), is('r'));
-        assertThat(buf.position(), is(0));
     }
 
     @Test
-    public void getByteTest() {
+    public void getTest() {
         CompositeBuffer buf = CompositeBuffer.create();
         buf.put("foo".getBytes());
+        assertThat(buf.position(), is(3));
+        assertThat(buf.capacity(), is(3));
+        assertThat(buf.limit(), is(3));
+        buf.position(0);
         assertThat((char) buf.get(), is('f'));
         assertThat((char) buf.get(), is('o'));
         assertThat((char) buf.get(), is('o'));
         assertThat(buf.position(), is(3));
         buf.put("xxxbar".getBytes());
         assertThat(buf.capacity(), is(9));
+        assertThat(buf.position(), is(9));
+        assertThat(buf.limit(), is(9));
         buf.position(6);
         assertThat((char) buf.get(), is('b'));
         assertThat((char) buf.get(), is('a'));
@@ -45,7 +53,7 @@ public class CompositeBufferTest {
     }
 
     @Test
-    public void getBytesTest() {
+    public void bytesTest() {
         CompositeBuffer buf = CompositeBuffer.create();
         buf.put("foo".getBytes());
         assertThat(new String(buf.bytes()), is("foo"));
@@ -112,7 +120,7 @@ public class CompositeBufferTest {
     }
 
     @Test
-    public void readOnlyTest() {
+    public void asReadOnlyTest() {
         CompositeBuffer buf = CompositeBuffer.create();
         buf.put("foo".getBytes());
         buf.put("bar".getBytes());
@@ -129,7 +137,7 @@ public class CompositeBufferTest {
     }
 
     @Test
-    public void insertTest() {
+    public void putTest() {
         CompositeBuffer buf = CompositeBuffer.create();
         buf.put("bar".getBytes());
         assertThat(buf.position(), is(0));

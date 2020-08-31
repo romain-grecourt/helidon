@@ -92,8 +92,17 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
 
     /**
      * Clears this buffer. The position is set to zero, the limit is set to the capacity, and the mark is discarded.
+     *
+     * @return  This buffer
      */
     T clear();
+
+    /**
+     * Rewinds this buffer. The position is set to zero and the mark is discarded.
+     *
+     * @return  This buffer
+     */
+    T rewind();
 
     /**
      * Sets this buffer's mark at its position.
@@ -190,6 +199,7 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
      * @param src The buffer to insert
      * @return This buffer
      */
+    @SuppressWarnings("unchecked")
     default T put(Buffer<?> src) {
         if (src == this) {
             throw new IllegalArgumentException("The source buffer is this buffer");
@@ -204,6 +214,7 @@ public interface Buffer<T extends Buffer<T>> extends ReleaseableRef<T>, Iterable
         byte[] buf = new byte[1024];
         while (n > 0) {
             int length = n > buf.length ? buf.length : n;
+            n -= length;
             src.get(buf, 0, length);
             put(buf, 0, length);
         }

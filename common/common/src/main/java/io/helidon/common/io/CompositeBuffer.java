@@ -179,6 +179,17 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
             throw new InvalidMarkException();
         }
         position = m;
+        // TODO set current matching mark
+        // TODO walk backward from tail and and reset buffers
+        return this;
+    }
+
+    @Override
+    public CompositeBuffer rewind() {
+        position = 0;
+        mark = -1;
+        current = head;
+        // TODO rewind all buffers
         return this;
     }
 
@@ -200,9 +211,9 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         }
         int curPos = 0;
         for (Entry entry = head; entry != null; entry = entry.next) {
-            int nextPos = curPos + entry.buffer.capacity();
+            int nextPos = curPos + entry.buffer.limit();
             if (nextPos > pos) {
-                return entry.buffer.get(pos - curPos + entry.buffer.markValue());
+                return entry.buffer.get(pos - curPos + markOf(entry.buffer));
             }
             curPos = nextPos;
         }
@@ -286,7 +297,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
             entry = head;
         }
         for (; entry.next != null && rbytes > 0; entry = entry.next) {
-            int mark = entry.buffer.markValue();
+            int mark = markOf(entry.buffer);
             if (curPos == position) {
                 curPos -= entry.buffer.position() - mark;
             }
@@ -335,7 +346,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
 
     @Override
     public CompositeBuffer put(byte b) {
-        if (current.buffer instanceof ContiguousBytesBuffer) {
+        if (current != null && current.buffer instanceof ContiguousBytesBuffer) {
             int entryLimit = current.buffer.limit();
             if (current.buffer.capacity() > entryLimit) {
                 current.buffer.limit(entryLimit + 1).put(b, entryLimit);
@@ -361,7 +372,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
                 curPos = nextPos;
             }
         }
-        if (entry.buffer instanceof ContiguousBytesBuffer) {
+        if (entry != null && entry.buffer instanceof ContiguousBytesBuffer) {
             int entryLimit = entry.buffer.limit();
             if (entry.buffer.capacity() > entryLimit) {
                 int bufPos = entryPos > entryLimit ? entryPos - entryLimit : entryLimit;
@@ -380,14 +391,17 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
 
     @Override
     public CompositeBuffer put(byte[] bytes, int offset, int length) {
-        if (current.buffer instanceof ContiguousBytesBuffer) {
+        if (current != null && current.buffer instanceof ContiguousBytesBuffer) {
             int curLimit = current.buffer.limit();
             if (current.buffer.capacity() - curLimit >= length) {
                 current.buffer.limit(curLimit + length).put(bytes, offset, length);
+                // TODO update capacity
+                // TODO update position
+                // TODO update limit
                 return this;
             }
         }
-        put(new ContiguousBytesBuffer().limit(length).put(bytes, offset, length));
+        put(new ContiguousBytesBuffer().limit(length).put(bytes, offset, length).rewind().mark());
         return this;
     }
 
@@ -457,11 +471,18 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         if (pos < 0 | pos > limit) {
             throw new IndexOutOfBoundsException("Invalid position: " + pos);
         }
-        if (pos == 0) {
+        if (head == null) {
+            head = newEntry;
+            tail = head;
+            current = head;
+        } else if (pos == 0) {
             head.previous(newEntry);
             head = newEntry;
+            current = head;
         } else if (pos == limit) {
             tail.next(newEntry);
+            tail = newEntry;
+            current = tail;
         } else {
             Entry entry;
             int curPos;
@@ -474,7 +495,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
             }
             for (; entry.next != null; entry = entry.next) {
                 if (curPos == position) {
-                    curPos -= entry.buffer.position() - entry.buffer.markValue();
+                    curPos -= entry.buffer.position() - markOf(entry.buffer);
                 }
                 int nextPos = curPos + entry.buffer.capacity();
                 if (nextPos > pos) {
@@ -490,7 +511,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
                 entry.previous(newEntry);
             } else {
                 // split current buffer
-                int splitPos = pos - curPos + entry.buffer.markValue();
+                int splitPos = pos - curPos + markOf(entry.buffer);
                 entry.buffer.limit(splitPos);
                 Entry splitEntry = new Entry(entry.buffer.asReadOnly().position(splitPos));
                 entry.next(newEntry).next(splitEntry);
@@ -499,9 +520,7 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         int remaining = newEntry.buffer.remaining();
         capacity += remaining;
         limit += remaining;
-        if (position > pos) {
-            position += remaining;
-        }
+        position += remaining;
         return this;
     }
 
@@ -514,28 +533,29 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
     }
 
     private CompositeBuffer backwardPosition(int newPosition) {
-        int curPos = 0;
-        for (Entry entry = current; entry != null && curPos < position; entry = entry.previous) {
-            int mark = entry.buffer.markValue();
-            int nextPos = curPos + entry.buffer.limit() - mark;
-            if (nextPos > newPosition) {
+        int curPos = position;
+        for (Entry entry = current; entry != null; entry = entry.previous) {
+            int mark = markOf(entry.buffer);
+            int previousPos = curPos - entry.buffer.limit() + mark;
+            if (previousPos < newPosition) {
                 // in-range
-                if (curPos <= newPosition) {
-                    entry.buffer.position(newPosition - curPos + mark);
+                if (curPos > newPosition) {
+                    entry.buffer.position(curPos - newPosition  + mark);
+                    break;
                 } else {
                     entry.buffer.reset();
                 }
             }
-            curPos = nextPos;
+            curPos = previousPos;
         }
         this.position = newPosition;
         return this;
     }
 
     private CompositeBuffer forwardPosition(int newPosition) {
-        int curPos = current == head ? 0 : position;
+        int curPos = position;
         for (Entry entry = current; entry != null; entry = entry.next) {
-            int mark = entry.buffer.markValue();
+            int mark = markOf(entry.buffer);
             if (curPos == position) {
                 curPos -= entry.buffer.position() - mark;
             }
@@ -548,6 +568,14 @@ public class CompositeBuffer implements Buffer<CompositeBuffer> {
         }
         this.position = newPosition;
         return this;
+    }
+
+    private static int markOf(Buffer buffer) {
+        int mark = buffer.markValue();
+        if (mark > 0) {
+            return mark;
+        }
+        return 0;
     }
 
     /**
