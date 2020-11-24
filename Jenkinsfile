@@ -50,9 +50,11 @@ pipeline {
           }
         }
       }
-      stage('test-mysql') {
-        steps {
-            sh './etc/scripts/test-integ-mysql.sh'
+      parallel {
+        stage('test-mysql') {
+          steps {
+              sh './etc/scripts/test-integ-mysql.sh'
+          }
         }
       }
     }
