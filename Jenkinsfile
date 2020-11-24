@@ -54,23 +54,24 @@ pipeline {
     stage('test-mysql') {
       agent {
         kubernetes {
+          label 'linux'
           yaml """
-            spec:
-              containers:
-              - name: mysql
-                image: mysql:8
-                command:
-                - cat
-                tty: true
-                envVars:
-                - name: MYSQL_USER
-                  value: user
-                - name: MYSQL_PASSWORD
-                  value: password
-                - name: MYSQL_ROOT_PASSWORD
-                  value: root
-                - name: MYSQL_DATABASE
-                  value: pokemon
+spec:
+  containers:
+  - name: mysql
+    image: mysql:8
+    command:
+    - cat
+    tty: true
+    envVars:
+    - name: MYSQL_USER
+      value: user
+    - name: MYSQL_PASSWORD
+      value: password
+    - name: MYSQL_ROOT_PASSWORD
+    value: root
+    - name: MYSQL_DATABASE
+    value: pokemon
           """
         }
       }
