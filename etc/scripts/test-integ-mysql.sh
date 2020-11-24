@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 #
 # Copyright (c) 2018, 2020 Oracle and/or its affiliates.
 #
@@ -38,6 +38,10 @@ fi
 readonly WS_DIR=$(cd $(dirname -- "${SCRIPT_PATH}") ; cd ../.. ; pwd -P)
 
 source ${WS_DIR}/etc/scripts/pipeline-env.sh
+
+uname -a
+
+env | sort
 
 mvn ${MAVEN_ARGS} --version
 
