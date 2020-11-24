@@ -53,9 +53,8 @@ pipeline {
     }
     stage('test-mysql') {
       agent {
-        label "linux"
         kubernetes {
-          label 'nested-pod'
+          label 'linux'
           yaml """
             spec:
               containers:
