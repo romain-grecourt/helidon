@@ -27,6 +27,7 @@ pipeline {
   stages {
     stage('test-mysql') {
       agent {
+        inheritFrom 'k8s-slave'
         kubernetes {
           inheritFrom 'k8s-slave'
           defaultContainer 'jnlp'
