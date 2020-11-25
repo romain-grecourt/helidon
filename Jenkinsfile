@@ -31,6 +31,7 @@ pipeline {
           inheritFrom 'k8s-slave'
           defaultContainer 'jnlp'
           yamlFile 'etc/pods/mysql.yaml'
+          yamlMergeStrategy merge()
         }
       }
       steps {
