@@ -39,7 +39,7 @@ spec:
     command:
     - cat
     tty: true
-    envVars:
+    env:
     - name: MYSQL_USER
       value: user
     - name: MYSQL_PASSWORD
