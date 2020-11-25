@@ -35,9 +35,7 @@ pipeline {
         }
       }
       steps {
-        container('jnlp') {
-          sh './etc/scripts/test-integ-mysql.sh'
-        }
+        sh './etc/scripts/test-integ-mysql.sh'
       }
     }
   }
