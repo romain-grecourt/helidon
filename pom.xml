@@ -1486,5 +1486,18 @@ helidon-parent,helidon-dependencies,helidon-bom,helidon-se,helidon-mp,io.grpc,he
                 </pluginManagement>
             </build>
         </profile>
+        <profile>
+            <id>pipeline</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.helidon.build-tools</groupId>
+                        <artifactId>helidon-buildstate-maven-extension</artifactId>
+                        <version>2.1.3-SNAPSHOT</version>
+                        <extensions>true</extensions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
