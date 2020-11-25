@@ -28,7 +28,7 @@ pipeline {
     stage('test-mysql') {
       agent {
         kubernetes {
-          label 'linux'
+          label 'mysql-db'
           yaml """
 spec:
   containers:
