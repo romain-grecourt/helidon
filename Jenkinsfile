@@ -30,26 +30,7 @@ pipeline {
         kubernetes {
           inheritFrom 'k8s-slave'
           defaultContainer 'jnlp'
-          yaml """
-spec:
-  containers:
-  - name: mysql
-    image: mysql:8
-    ports:
-    - containerPort: 3306
-    env:
-    - name: MYSQL_USER
-      value: "user"
-    - name: MYSQL_PASSWORD
-      value: "password"
-    - name: MYSQL_ROOT_PASSWORD
-      value: "root"
-    - name: MYSQL_DATABASE
-      value: "pokemon"
-    command:
-    - cat
-    tty: true
-          """
+          yamlFile 'etc/pods/mysql.yaml'
         }
       }
       steps {
