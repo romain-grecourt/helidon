@@ -52,6 +52,7 @@ spec:
         }
       }
       steps {
+        sh './etc/scripts/build.sh'
         sh './etc/scripts/test-integ-mysql.sh'
       }
     }
@@ -67,7 +68,6 @@ spec:
         GPG_PASSPHRASE = credentials('helidon-gpg-passphrase')
       }
       steps {
-        sh './etc/scripts/build.sh'
         sh './etc/scripts/release.sh release_build'
       }
     }
