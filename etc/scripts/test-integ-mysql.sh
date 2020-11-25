@@ -43,6 +43,8 @@ uname -a
 
 env | sort
 
+ps -ax
+
 mvn ${MAVEN_ARGS} --version
 
 (cd tests/integration/jpa && \

@@ -28,8 +28,6 @@ pipeline {
     stage('test-mysql') {
       agent {
         kubernetes {
-          label 'mysql-db'
-          defaultContainer 'jnlp'
           yaml """
 spec:
   containers:
