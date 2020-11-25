@@ -67,6 +67,7 @@ spec:
         GPG_PASSPHRASE = credentials('helidon-gpg-passphrase')
       }
       steps {
+        sh './etc/scripts/build.sh'
         sh './etc/scripts/release.sh release_build'
       }
     }
