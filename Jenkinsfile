@@ -27,8 +27,8 @@ pipeline {
   stages {
     stage('test-mysql') {
       agent {
+        inheritFrom 'linux'
         kubernetes {
-          inheritFrom 'linux'
           yaml """
 spec:
   containers:
@@ -55,21 +55,6 @@ spec:
         container('jnlp') {
           sh './etc/scripts/test-integ-mysql.sh'
         }
-      }
-    }
-    stage('release') {
-      when {
-        branch '**/release-*'
-      }
-      environment {
-        GITHUB_SSH_KEY = credentials('helidonrobot-github-ssh-private-key')
-        MAVEN_SETTINGS_FILE = credentials('helidonrobot-maven-settings-ossrh')
-        GPG_PUBLIC_KEY = credentials('helidon-gpg-public-key')
-        GPG_PRIVATE_KEY = credentials('helidon-gpg-private-key')
-        GPG_PASSPHRASE = credentials('helidon-gpg-passphrase')
-      }
-      steps {
-        sh './etc/scripts/release.sh release_build'
       }
     }
   }
