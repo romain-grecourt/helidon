@@ -27,18 +27,6 @@ pipeline {
   stages {
     stage('default') {
       parallel {
-        stage('build'){
-          steps {
-            script {
-              try {
-                sh './etc/scripts/build.sh'
-              } finally {
-                archiveArtifacts artifacts: "**/target/surefire-reports/*.txt, **/target/failsafe-reports/*.txt"
-                junit testResults: '**/target/surefire-reports/*.xml,**/target/failsafe-reports/*.xml'
-              }
-            }
-          }
-        }
         stage('copyright'){
           steps {
             sh './etc/scripts/copyright.sh'
@@ -69,13 +57,14 @@ spec:
     - name: MYSQL_PASSWORD
       value: password
     - name: MYSQL_ROOT_PASSWORD
-    value: root
+      value: root
     - name: MYSQL_DATABASE
-    value: pokemon
+      value: pokemon
           """
         }
       }
       steps {
+        sh './etc/scripts/build.sh'
         sh './etc/scripts/test-integ-mysql.sh'
       }
     }
