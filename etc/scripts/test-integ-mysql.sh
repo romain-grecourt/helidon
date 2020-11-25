@@ -48,4 +48,4 @@ ps -ax
 mvn ${MAVEN_ARGS} --version
 
 (cd tests/integration/jpa && \
-  mvn ${MAVEN_ARGS} clean install -Dmysql -Ddb.host=mysql -pl model,appl)
+  mvn ${MAVEN_ARGS} clean install -Dmysql -pl model,appl)
