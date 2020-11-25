@@ -43,6 +43,9 @@ uname -a
 
 env | sort
 
+host mysql
+
+
 mvn ${MAVEN_ARGS} --version
 
 (cd tests/integration/jpa && \

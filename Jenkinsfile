@@ -25,20 +25,6 @@ pipeline {
     NPM_CONFIG_REGISTRY = credentials('npm-registry')
   }
   stages {
-    stage('default') {
-      parallel {
-        stage('copyright'){
-          steps {
-            sh './etc/scripts/copyright.sh'
-          }
-        }
-        stage('checkstyle'){
-          steps {
-            sh './etc/scripts/checkstyle.sh'
-          }
-        }
-      }
-    }
     stage('test-mysql') {
       agent {
         kubernetes {
@@ -48,6 +34,8 @@ spec:
   containers:
   - name: mysql
     image: mysql:8
+    ports:
+    - containerPort: 3306
     command:
     - cat
     tty: true
@@ -64,7 +52,6 @@ spec:
         }
       }
       steps {
-        sh './etc/scripts/build.sh'
         sh './etc/scripts/test-integ-mysql.sh'
       }
     }
