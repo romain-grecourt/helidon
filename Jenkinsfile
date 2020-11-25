@@ -29,6 +29,7 @@ pipeline {
       agent {
         kubernetes {
           label 'mysql-db'
+          defaultContainer 'jnlp'
           yaml """
 spec:
   containers:
@@ -52,7 +53,9 @@ spec:
         }
       }
       steps {
-        sh './etc/scripts/test-integ-mysql.sh'
+        container('jnlp') {
+          sh './etc/scripts/test-integ-mysql.sh'
+        }
       }
     }
     stage('release') {
