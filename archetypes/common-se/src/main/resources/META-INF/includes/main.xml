@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (c) 2020 Oracle and/or its affiliates.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<archetype-descriptor modelVersion="1.1" id="main">
+    <template-model>
+        <java-imports>
+            <java-import>java.io.IOException</java-import>
+            <java-import>java.io.InputStream</java-import>
+            <java-import>java.util.logging.LogManager</java-import>
+        </java-imports>
+        <helidon-imports>
+            <helidon-import>io.helidon.config.Config</helidon-import>
+            <helidon-import>io.helidon.health.HealthSupport</helidon-import>
+            <helidon-import>io.helidon.health.checks.HealthChecks</helidon-import>
+            <helidon-import>io.helidon.media.jsonp.JsonpSupport</helidon-import>
+            <helidon-import>io.helidon.metrics.MetricsSupport</helidon-import>
+            <helidon-import>io.helidon.webserver.Routing</helidon-import>
+            <helidon-import>io.helidon.webserver.WebServer</helidon-import>
+        </helidon-imports>
+        <dependencies>
+            <dependency>
+                <groupId>io.helidon.webserver</groupId>
+                <artifactId>helidon-webserver</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.media</groupId>
+                <artifactId>helidon-media-jsonp</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.config</groupId>
+                <artifactId>helidon-config-yaml</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.health</groupId>
+                <artifactId>helidon-health</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.health</groupId>
+                <artifactId>helidon-health-checks</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.metrics</groupId>
+                <artifactId>helidon-metrics</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-api</artifactId>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.helidon.webclient</groupId>
+                <artifactId>helidon-webclient</artifactId>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </template-model>
+</archetype-descriptor>

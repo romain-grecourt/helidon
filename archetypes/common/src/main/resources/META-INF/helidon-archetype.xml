@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (c) 2020 Oracle and/or its affiliates.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<archetype id="common">
+    <input>
+        <text id="name" text="Project name" default="myproject" />
+        <text id="groupId" text="Project groupId" default="com.example" />
+        <text id="artifactId" text="Project artifactId" default="myproject" />
+        <text id="version" text="Java package name" default="1.0-SNAPSHOT" />
+        <text id="package" text="Project name" default="com.example.myproject" />
+        <selection id="build-system" text="Select a build system">
+            <choice value="maven" text="Apache Maven" />
+            <choice value="gradle" text="Gradle" />
+        </selection>
+        <include id="security" />
+        <include id="readme" />
+        <include id="docker" />
+        <include id="kubernetes" />
+    </input>
+    <output>
+        <transformation id="packaged">
+            <replace regex="__pkg__" replacement="${package/\./\/}"/>
+        </transformation>
+        <transformation id="mustache">
+            <replace regex="\.mustache$" replacement=""/>
+        </transformation>
+        <templates transformations="mustache,packaged">
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.mustache</include>
+            </includes>
+        </templates>
+        <templates transformations="mustache,packaged">
+            <directory>src/test/java</directory>
+            <includes>
+                <include>**/*.mustache</include>
+            </includes>
+        </templates>
+        <templates transformations="mustache" if="${build-system} == maven">
+            <directory>.</directory>
+            <includes>
+                <include>pom.xml.mustache</include>
+            </includes>
+        </templates>
+        <files transformations="packaged">
+            <directory>src/main/java</directory>
+            <excludes>
+                <exclude>**/*.mustache</exclude>
+            </excludes>
+        </files>
+        <files>
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>**/*</include>
+            </includes>
+        </files>
+        <file-set transformations="packaged">
+            <directory>src/test/java</directory>
+            <excludes>
+                <exclude>**/*.mustache</exclude>
+            </excludes>
+        </file-set>
+        <file-set>
+            <directory>src/test/resources</directory>
+            <excludes>
+                <exclude>**/*</exclude>
+            </excludes>
+        </file-set>
+    </output>
+</archetype>

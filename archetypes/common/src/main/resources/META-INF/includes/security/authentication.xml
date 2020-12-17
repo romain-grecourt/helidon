@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (c) 2020 Oracle and/or its affiliates.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<archetype id="authentication">
+    <input>
+        <option id="authentication" text="Do you want to configure authentication">
+            <selection id="providers" text="Select authentication provider">
+                <choice value="basic-auth" text="basic authentication">
+                    <include id="basic-auth" />
+                </choice>
+                <choice value="digest-auth" text="digest authentication">
+                    <include id="digest-auth" />
+                </choice>
+                <choice value="google-login" text="Google login">
+                    <include id="google-login" />
+                </choice>
+                <choice value="header" text="Bearer header">
+                    <include id="header" />
+                </choice>
+                <choice value="http-sign" text="HTTP signature header">
+                    <include id="http-sign"/>
+                </choice>
+                <choice value="jwt" text="JSON Web Token">
+                    <include id="jwt"/>
+                </choice>
+                <choice value="oidc" text="OpenID Connect">
+                    <include id="oidc" />
+                </choice>
+            </selection>
+        </option>
+    </input>
+</archetype>

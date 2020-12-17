@@ -26,13 +26,31 @@
         <version>2.1.1-SNAPSHOT</version>
     </parent>
     <packaging>helidon-archetype</packaging>
-    <artifactId>helidon-quickstart-se</artifactId>
-    <name>Helidon SE Quickstart Archetype</name>
+    <artifactId>helidon-bare-se</artifactId>
+    <name>Helidon SE Bare Archetype</name>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.helidon.build-tools.archetype</groupId>
+                <artifactId>helidon-archetype-engine</artifactId>
+                <configuration>
+                    <maven-archetype>
+                        <input>
+                            <define path="flavor" value="se" />
+                            <define path="flavor/base" value="bare" />
+                        </input>
+                    </maven-archetype>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <dependencies>
         <dependency>
             <groupId>io.helidon.archetypes</groupId>
-            <artifactId>helidon-archetype-common-se</artifactId>
+            <artifactId>helidon-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
