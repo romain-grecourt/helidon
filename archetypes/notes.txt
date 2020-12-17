@@ -1,0 +1,112 @@
+All element of the descriptors can be guarded by conditional expressions (if,else).
+They are satisfied when the expression resolves to true.
+They are included in the in-memory model when their condition is satisfied
+
+------
+
+1. Load distribution descriptor
+2. Add *resolved* properties, template-models, template-sets and file-sets to the in-memory model
+3. Repeat #2 for each resolved include (non conditionals and conditionals with expressions resolving to true)
+4. Evaluate the input-flow
+  4.1 If the property of an input-flow node is not set, resolve the value to set by prompting
+  4.2 Evaluate the nested node(s) with the current value
+
+
+TODO
+
+ - think of features mapping of user-flow graph
+   E.g. feature="true" as an attribute
+ - think of integration and input (e.g. jersey needs to ask a question when security is enabled)
+ - think of help-text and code snippets (e.g. flavor split screen)
+ - think of adding rich help content (e.g. images)
+
+-------
+
+TODO
+
+The input controller maintains an in-memory of the graph and sets the values during prompting.
+When the user navigates back to a previous step, the in-memory graph is kept as-is, if the user changes something we resume from the current scope ; this means potentially do new prompt
+
+if we go back to a parent and we change a choice we clear all the children.
+It's hierachy, clearly a node clears all the children.
+
+-------
+
+helidon feature add
+helidon feature remove
+helidon feature diff
+
+-------
+
+./etc/scripts/user-init
+  setup ~/bin/helidon
+  setup ~/.bashrc
+  if .git does not exit, do git setup (git init + git commit)
+
+-------
+
+input -> engine(archetype) = project
+
+-------
+
+bare        |
+quickstart  | - only one archetype now
+database    |
+
+artifactId is a preset
+
+mvn -U archetype:generate -DinteractiveMode=false \
+    -DarchetypeGroupId=io.helidon.archetypes \
+    -DarchetypeArtifactId=helidon-quickstart-se \
+    -DarchetypeVersion=2.1.0
+
+helidon init --flavor se --base quickstart
+
+helidon feature add digest-auth
+
+helidon feature list
+
+Traverse the graph under the "project scope".
+Project scope is defined from the .helidon file that contains the input provided at generation time (i.e --flavor se --base hello-world)
+
+security/atn/providers/basic-auth
+security/atn/providers/google-login
+security/atn/providers/digest-auth
+security/atn/providers/header
+security/atn/providers/http-sign
+security/atn/providers/jwt
+security/atn/providers/oidc
+
+--filter security/**
+
+security
+  |- authentication
+    |- providers
+      |- basic-auth
+      |- google-login
+      |- digest-auth
+      |- header
+      |- http-sign
+      |- jwt
+      |- oidc
+
+-------
+
+Split descriptor into 2 schemas:
+ 1) one for development / maintainance (<archetype>)
+ 2) one for machine processing (generated from #1 at build-time) (<archetype-descriptor>)
+
+Re-organized elements under <input /> and <output />
+Only one input and one output per <archetype> file
+
+Removed top level includes, gated by conditional property values
+Instead scoped them under the input selection graph
+
+Removed "property" attributes from input selection graph nodes, values of resolved graph can be looked using property syntax in conditionals.
+E.g. ${flavor}
+
+Select graph node ids are not unique globally and are scoped within their parent.
+E.g.
+ - flavor[se] -> base[bare|quickstart|database]
+ - flavor[mp] -> base[bare|quickstart|database]
+
