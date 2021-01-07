@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2020 Oracle and/or its affiliates.
+    Copyright (c) 2021 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -28,17 +28,12 @@
     <groupId>io.helidon.archetypes</groupId>
     <artifactId>helidon-archetypes-project</artifactId>
     <name>Helidon Archetypes</name>
-    <packaging>pom</packaging>
+    <packaging>helidon-archetype</packaging>
 
-    <modules>
-        <module>bare-se</module>
-        <module>bare-mp</module>
-        <module>quickstart-se</module>
-        <module>quickstart-mp</module>
-        <module>database-mp</module>
-        <module>database-se</module>
-        <module>catalog</module>
-    </modules>
+    <properties>
+        <!-- support command-line overrides -->
+        <cli.build.tools.version>${version.helidon-cli}</cli.build.tools.version>
+    </properties>
 
     <build>
         <plugins>
@@ -47,6 +42,87 @@
                 <artifactId>helidon-archetype-maven-plugin</artifactId>
                 <version>${version.plugin.helidon-build-tools}</version>
                 <extensions>true</extensions>
+            </plugin>
+            <plugin>
+                <groupId>io.helidon.build-tools</groupId>
+                <artifactId>helidon-stager-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>stage</goal>
+                        </goals>
+                        <configuration>
+                            <directories>
+                                <directory target="${project.build.directory}">
+                                    <archives>
+                                        <archive target="cli-data/${project.version}/cli-data.zip">
+                                            <unpack-artifacts>
+                                                <unpack-artifact groupId="io.helidon.archetypes"
+                                                                 artifactId="helidon-archetype-catalog"
+                                                                 version="${project.version}"
+                                                                 type="zip"
+                                                                 target="."/>
+                                            </unpack-artifacts>
+                                            <templates>
+                                                <template source="cli-metadata.properties.mustache"
+                                                          target="metadata.properties">
+                                                    <variables>
+                                                        <variable name="buildtoolsVersion"
+                                                                  value="${cli.build.tools.version}"/>
+                                                        <variable name="cliVersion"
+                                                                  value="${cli.build.tools.version}"/>
+                                                    </variables>
+                                                </template>
+                                            </templates>
+                                        </archive>
+                                    </archives>
+                                    <files>
+                                        <file target="cli-data/latest">${project.version}</file>
+                                    </files>
+                                </directory>
+                            </directories>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.helidon.build-tools</groupId>
+                <artifactId>helidon-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>log</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <messages>
+                        <message> |</message>
+                        <message> |                      /')    </message>
+                        <message> |               $(cyan! /)$(blue /)$(blue! /)$(magenta /)  /' )'   </message>
+                        <message> |              $(blue @)   \/'  )'    </message>
+                        <message> |  { $(yellow! note) }   $(yellow! &lt;) (  (_...)' </message>
+                        <message> |               \      )      </message>
+                        <message> |                \,,,,/       </message>
+                        <message> |                 $(red _|_)         </message>
+                        <message> |</message>
+                        <message> |  You can test the archetypes locally with the Helidon CLI using the following arguments:</message>
+                        <message> |</message>
+                        <message> |     --reset --url file://${project.build.directory}/cli-data</message>
+                        <message> |</message>
+                        <message> |  For example:</message>
+                        <message> |</message>
+                        <message> |     helidon init --batch --reset --url file://${project.build.directory}/cli-data</message>
+                        <message> |</message>
+                        <message> |  If you also want to test with a local Helidon CLI build, specify the version when building</message>
+                        <message> |  this project, e.g.:</message>
+                        <message> |</message>
+                        <message> |     mvn clean install -Dcli.build.tools.version=2.1.3-SNAPSHOT</message>
+                        <message> |</message>
+                    </messages>
+                </configuration>
             </plugin>
         </plugins>
     </build>
