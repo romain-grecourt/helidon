@@ -363,11 +363,11 @@ If the current step is optional the CONTINUE action is available and can be used
 (3) Media Support
   |
   | [ x ] Media type support
-  |   |- [ x ] JSON (?)
+  |   |- [ x ] JSON
   |        |- [ x ] Jackson
   |        |- [ x ] JSON-B
   |        |- [ x ] JSON-P
-  |   |- [ x ] XML (?)
+  |   |- [ x ] XML
   |        |- [ x ] JAX-B
   |        |- [ x ] JAX-P
   |
