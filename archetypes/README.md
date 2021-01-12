@@ -2,8 +2,39 @@
 
 This document describes the design of Helidon archetype engine V2.
 
-* auto-gen TOC:
-{:toc}
+## Table of Contents
+
+ * [Archetype Engine v2](#archetype-engine-v2)
+ * [Introduction](#introduction)
+ * [Descriptor](#descriptor)
+ * [Decoupling descriptors](#decoupling-descriptors)
+ * [Flow Input](#flow-input)
+ * [Flow Step](#flow-step)
+ * [Optional steps](#optional-steps)
+ * [Continue action](#continue-action)
+ * [Choices graph](#choices-graph)
+ * [Choices path](#choices-path)
+ * [Choice](#choice)
+ * [Choices expressions](#choices-expressions)
+ * [Choices intersection](#choices-intersection)
+ * [Choices mapping](#choices-mapping)
+ * [Help text](#help-text)
+ * [Output](#output)
+ * [Static files](#static-files)
+ * [Templates](#templates)
+ * [Transformations](#transformations)
+ * [Template model](#template-model)
+ * [Pre-processed values](#pre-processed-values)
+ * [Inline values](#inline-values)
+ * [External values](#external-values)
+ * [Merge order](#merge-order)
+ * [Build time processing](#build-time-processing)
+ * [Maven properties](#maven-properties)
+ * [Archive](#archive)
+ * [Maven compatibility](#maven-compatibility)
+ * [Mock-ups](#mock-ups)
+ * [UI wizard](#ui-wizard)
+ * [CLI](#cli)
 
 ## Introduction
 
