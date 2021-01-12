@@ -384,8 +384,8 @@ helidon init \
 
 ## Help text
 
-The step, input and option element support a `label` attribute that is used for description purpose. Label is meant
- to be inline and short. Larger, multi-line description text can be provided with a nested element:
+The step, input and option elements support a `label` attribute that is used for description purpose. Label is meant
+ to be inline and short. Larger, multi-line description text can be provided with a nested `<help>` element.
 
 The `<help>` element supports a limited markdown format:
 - `**bold text**`
@@ -461,7 +461,7 @@ It can be declared under the following elements:
 - `flow-input`
 - `option`
 
-Output is always global, nesting is used to conditional add to the output based on choices. The children of `<output>`
+Output is always global, nesting is used to conditionally add to the output based on choices. The children of `<output>`
  also support choices expressions using the `if` attribute to do the same.
 
 E.g.
@@ -575,7 +575,7 @@ Values may need to be processed by a template engine. This can be done using the
 
 #### Inline values
 
-Pre-formatted values can be declared line using CDATA.
+Pre-formatted values can be declared using CDATA.
 
 E.g.
 ```xml
@@ -594,7 +594,7 @@ E.g.
 
 #### External values
 
-Pre-formatted values may be defined in a separate file entirely. The file is specified using the `file` attribute.
+Values may be defined in a separate file entirely. The file is specified using the `file` attribute.
  Processing using the `template` attribute can also be used.
 
 E.g.
@@ -609,7 +609,7 @@ E.g.
 
 #### Merge order
 
-Keys are not unique, data for a given key can be declared in multiple places and is effectively merged. The default
+Keys are not unique, data for a given key can be declared at different levels and is effectively merged. The default
  order is based on the declaration order, but it can also be controlled using the `order` attribute.
 
 E.g.
@@ -629,10 +629,7 @@ E.g.
 
 ## Build time processing
 
-The archetype is processed at build time to validate the descriptors, create the archive and generate files for the
- Maven archetype compatibility.
-
-The descriptors are validated to check the following:
+The archetype is processed at build time to validate the descriptors:
 - optional steps contain only optional inputs
 - expressions are valid
 - choices paths are valid
@@ -662,9 +659,8 @@ A reserved archive entry name is used to store the root descriptor: `helidon-arc
 
 ### Maven properties
 
-Archetype may need to inject values derived from Maven properties, E.g. `${project.version}`.
- `helidon-archetype-maven-plugin` will expose configuration for `<archetype-flow>` ; Maven will automatically expand
- the Maven properties.
+Archetype may need to inject values derived from Maven properties, E.g. `${project.version}`. This can be
+ done by adding to root descriptor since Maven properties are automatically expanded in plugin configuration.
 
 ```xml
 <build>
