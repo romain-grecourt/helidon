@@ -2,6 +2,9 @@
 
 This document describes the design of Helidon archetype engine V2.
 
+* auto-gen TOC:
+{:toc}
+
 ## Introduction
 
 This new version of the archetype engine will provide the low-level archetype support needed for the project
@@ -29,7 +32,7 @@ The mono archetype is a single project, which provides significant benefits:
 V2 will also use an XML descriptor, it may look similar to the V1 descriptors however it is completely different and
  incompatible. The top-level element is changed to reflect that.
 
-Since the concept of V2 are more advanced, the descriptor is more complex and requires more understand from the
+Since the concept of V2 are more advanced, the descriptor is more complex and requires more understanding from the
  archetype maintainers. To further allow for logical grouping of features, descriptors can be broken up and "included".
 
 An XML schema will be provided for IDE documentation and auto-completion. Some parts of the descriptors are designed
@@ -63,44 +66,42 @@ See below a skeleton of the new XML descriptor:
         <include src="" />
         <output />
     </flow-input>
-    <output>
-        <transformation id="">
+    <output if="">
+        <transformation id="" if="">
             <replace regex="" replacement=""/>
         </transformation>
-        <templates transformations="">
+        <templates transformations="" if="">
             <directory></directory>
             <includes>
                 <include></include>
             </includes>
         </templates>
-        <templates transformations="">
+        <templates transformations="" if="">
             <directory></directory>
             <includes>
                 <include></include>
             </includes>
         </templates>
-        <files transformations="">
+        <files transformations="" if="">
             <directory></directory>
             <excludes>
                 <exclude></exclude>
             </excludes>
         </files>
-        <model>
-            <item id="" order="" if=""></item>
-            <list id="" order="" if="">
-                <item id="" order="" if="">
-                    <map id="" order="" if="">
-                        <entry key=""></entry>
-                    </map>
-                </item>
-            </list>
-            <map id="" order="" if="">
-                <entry key=""></entry>
+        <model if="">
+            <value key="" order="" if=""></value>
+            <list key="" order="" if="">
+                <map order="" if="">
+                    <value key=""></value>
+                </map>
+            <map key="" order="" if="">
+                <value key=""></value>
             </map>
         </model>
     </output>
 </archetype-flow>
 ```
+
 ## Decoupling descriptors
 
 Two directives elements are provided to decouple descriptors:
@@ -133,7 +134,7 @@ An input can be of different types:
 - text: text value
 
 Example of a selection:
-```
+```xml
 <flow-input name="flavor"
             type="select"
             label="Select a flavor">
@@ -144,15 +145,15 @@ Example of a selection:
 ```
 
 Example of an option:
-```
+```xml
 <flow-input name="kubernetes"
             type="option"
             label="Kubernetes Support"
-            question-label="Do you want support for Kubernetes"/>
+            prompt="Do you want support for Kubernetes"/>
 ```
 
 Example of a text value:
-```
+```xml
 <flow-input name="name"
             type="text"
             label="Project name"
@@ -164,7 +165,7 @@ Example of a text value:
 A flow step represents a UX pane or windows that contains certain set of inputs.
 Steps are required by default and can be made optional using the optional attribute (`optional="true`).
 
-```
+```xml
 <flow-step label="Application Type">
     <!-- ... -->
 </flow-step>
@@ -207,23 +208,36 @@ E.g. Parts of the tree may be removed if a user changes a previous choice.
 ```
 |- flavor=se
     |- base=bare
-        |- media-support/provider
+        |- media-support.provider
              |- jackson
         |- security
-            |- authentication/provider
+            |- authentication.provider
                 |- basic-auth
 ```
 
 ## Choices path
 
-A path can be used to point at a node in the choices graph.
+A path can be used to point at a node in the choices graph. Path members are separated with a `.`.
 
 E.g.
-- `flavor/base`
-- `media-support/provider`
-- `security/authentication/provider`
+- `flavor.base`
+- `media-support.provider`
+- `security.authentication.provider`
 
-If relative, the path applies to the current context. An absolute path starts with a `/`.
+If all nodes share common parent nodes, then the path of these common nodes is optional when expressing a path.
+E.g. In the context of the root node, with a common ancestor `flavor.base`, both are equivalent:
+- `flavor.base.media-support.provider`
+- `media-support.provider`
+
+Paths are always relative to their current context, unless they start with `...` or `..`:
+- `...` refers to the root
+- `..` refers to the parent node
+
+E.g. If the context is `flavor.base.security.authentication` and the common ancestor is `flavor.base`, the paths below
+ are equivalent:
+- `${...flavor.base.security.authentication.provider}`
+- `${..security.provider}`
+- `${provider}`
 
 Invalid paths should be validated at build time and reported as errors.
 
@@ -238,18 +252,20 @@ The `flow` attribute is used to specify the path in the choices graph to be fill
 
 The example choices below are effectively "presets".
 
-```
-<choice flow="media-support/json/provider"> <!-- example of a single value choice -->
-    <option value="jackson" />
-</choice>
-<choice flow="security/authentication/provider"> <!-- example of a multi-value choice (i.e a select with multiple values) -->
-    <option value="basic-auth" />
-    <option value="digest-auth" />
-</choice>
-<choice flow="health"> <!-- example of opting out of an option that defaults to true -->
-    <option value="false" />
-</choice>
-<choice flow="project-name">my-super-project</choice> <!-- example of a text choice -->
+```xml
+<archetype-flow>
+    <choice flow="media-support.json.provider"> <!-- example of a single value choice -->
+        <option value="jackson" />
+    </choice>
+    <choice flow="security.authentication.provider"> <!-- example of a multi-value choice (i.e a select with multiple values) -->
+        <option value="basic-auth" />
+        <option value="digest-auth" />
+    </choice>
+    <choice flow="health"> <!-- example of opting out of an option that defaults to true -->
+        <option value="false" />
+    </choice>
+    <choice flow="project-name">my-super-project</choice> <!-- example of a text choice -->
+</archetype-flow>
 ```
 
 ## Choices expressions
@@ -258,9 +274,12 @@ Choices expression are boolean expressions that can be used to query the choices
 
 Operands can use `${}` to specify a path in the choices graph.
 E.g. 
-- `${media-support/json/provider}`
-- `${security/authentication/provider}`
+- `${media-support.json.provider}`
+- `${security.authentication.provider}`
 - `${security}`
+
+Inline search and replace regular expressions are also supported:
+- `${package/\./\/}`
 
 At build time, the expressions are parsed and validated:
 - paths must be valid in the current context
@@ -271,30 +290,30 @@ An expression with a single operand will test if an input is set in the choices 
 
 The operator `==` can be used to test equality:
 - `${security} == true`
-- `${media-support/json/provider} == jackson`
+- `${media-support.json.provider} == jackson`
 
 The operator `!=` can be used to test equality:
-- `${media-support/json/provider} != jackson`
+- `${media-support.json.provider} != jackson`
 
 The operators `&&` and `||` can be used for logical AND / OR:
 - `${security} && ${media-support}`
 - `${security} || ${media-support}`
 
 The operator `contains` can be used to test if a multiple select contains a value:
-- `${security/authentication/provider} contains basic-auth`
+- `${security.authentication.provider} contains basic-auth`
 
 The operator `!` to negate sub expressions, parenthesis can be used to group expressions:
 - `!(${security} && ${media-support}) || ${health}`
 
-Choices expressions are in the following elements:
-- any child of `<model>`
+Choices expressions are supported in the following elements:
+- anything under `<output if="expr">`
 - `<flow-step if="expr">`
 
 ## Choices intersection
 
 The intersections different parts of the choices graph can be done by using choices expressions on a step.
 
-```
+```xml
 <flow-step label="Jersey Security" if="${security}">
     <flow-input name="username"
                 type="text"
@@ -305,27 +324,424 @@ The intersections different parts of the choices graph can be done by using choi
 </flow-step>
 ```
 
-### Choices URI mapping
+### Choices mapping
 
-The example below maps the choices shown above into query parameters.
+Query parameters:
+```
+?media-support.json.provider=jackson&security.authentication.provider=basic-auth,digest-auth&health=false&project-name=my-super-project
+```
+
+Properties:
+```properties
+media-support.json.provider=jackson
+security.authentication.provider=basic-auth,digest
+health=false
+project-name=my-super-project
+```
+
+The `.helidon` file generated with the project will include the user's choices. A prefix need to be used to identify the
+ choices properties, e.g. `input.media-support.json.provider`.
+
+CLI options:
+```
+helidon init \
+    --input media-support.provider=jackson \
+    --input security.authentication.provider=basic-auth,digest
+    --input health=false
+    --input project-name=my-super-project
+```
+
+## Help text
+
+The step, input and option element support a `label` attribute that is used for description purpose. Label is meant
+ to be inline and short. Larger, multi-line description text can be provided with a nested element:
+
+The `<help>` element supports a limited markdown format:
+- `**bold text**`
+- `_italic_`
+- paragraphs
+- `` `code` ``
+- `[Links](https://example.com)`
+
+E.g.
+````xml
+<flow-step label="Media Type Support">
+    <help><![CDATA[
+Configure support for a specific Media Type. E.g. **JSON** or **XML**.
+This is used to consume requests payload or attach payload to responses.
+
+```java
+request.content().as(JsonObject.class).thenAccept(json -> {
+    System.output.println(json);
+    response.send("OK");
+});
+```
+]]></help>
+</flow-step>
+````
+
+This requires a basic markdown parser. The text above is converted to simple HTML for the web scenario:
+ 
+```html
+<p>
+Configure support for a specific Media Type. E.g. <b>JSON</b> or <b>XML</b>.
+This is used to consume requests payload or attach payload to responses.
+</p>
+<pre><code class="language-java">
+request.content().as(JsonObject.class).thenAccept(json -> {
+    System.output.println(json);
+    response.send("OK");
+});
+</code></pre>
+```
+
+The same text can formatted using ANSI escapes. Code formatting with syntax highlighting is do-able with ANSI,
+ using a simplistic approach. See the logic in [JavaHtmlConverter](https://github.com/eclipse-ee4j/glassfish-woodstock/blob/master/woodstock-example/src/main/java/com/sun/webui/jsf/example/util/JavaHtmlConverter.java)
+ and [highlight.js](https://github.com/highlightjs/highlight.js/blob/master/src/languages/java.js) for reference.
+
+Help text should be implemented as tooltips. The web UI could show an icon `(?)` next to an input that
+ expands a help pane.
+ 
+The CLI could implement help by adding an extra option, or by providing a special input that displays help.
+E.g.
+```
+Helidon flavor
+  (1) SE
+  (2) MP
+  (3) Help
+Enter selection (Default: 1): 3
+```
 
 ```
-?media-support|json|provider=jackson&security|authentication|provider=basic-auth,digest-auth&health=false&project-name=my-super-project
-```
+Use 'help OPTION' to display the help of any option.
 
-This will be used to provide standalone links to generate projects.
+Helidon flavor
+  (1) SE
+  (2) MP
+Enter selection (Default: 1): help 1
+```
 
 ## Output
 
-TODO `<output>`
+The `<output>` element contains configuration for the files and template to be included in the processing.
+It can be declared under the following elements:
+- `archetype-flow`
+- `flow-step`
+- `flow-input`
+- `option`
 
-## Output model
+Output is always global, nesting is used to conditional add to the output based on choices. The children of `<output>`
+ also support choices expressions using the `if` attribute to do the same.
 
-TODO
+E.g.
+```xml
+<output>
+    <templates if="${kubernetes}">
+        <directory>files</directory>
+        <includes>
+            <include>app.yaml</include>
+        </includes>
+    </templates>
+</output>
+```
 
------------------
+### Static files
 
-## UI wizard mock-up
+Files can be declared in the output using `<files>`.
+
+```xml
+<files>
+    <directory>files/src/main/java</directory>
+    <includes>
+        <include>**/*.java</include>
+    </includes>
+</files>
+```
+
+### Templates
+
+Templates can be declared in the output using `<templates>`. The attribute `engine` defines the template engine
+ used to process the templates.
+
+```xml
+<templates engine="mustache">
+    <directory>files/src/test/java</directory>
+    <includes>
+        <include>**/*.mustache</include>
+    </includes>
+</templates>
+```
+
+### Transformations
+
+Transformations are used to modify the files paths for included files and templates.
+
+E.g.
+- A mustache template `pom.xml.mustache` needs to create a file called `pom.xml.mustache
+- A java files needs to be expanded with the package name as its directory structure
+
+A transformation is basically is a named search and replace regular expressions:
+
+```xml
+<output>
+    <transformation id="packaged">
+        <replace regex="__pkg__" replacement="${package@\.@\/}"/>
+    </transformation>
+    <files transformations="packaged">
+        <directory>files/src/main/java</directory>
+        <includes>
+            <include>**/*.java</include>
+        </includes>
+    </files>
+</output>
+```
+
+### Template model
+
+The `<model>` element is used to configure the data model for the templates in a given `<output>`.
+
+The following data types are supported: `value`, `list`, `map`. Data entries are declared with a key except for list
+ elements. Data entries also support the `if` attributes to express choices expressions.
+
+E.g.
+```xml
+<model>
+    <value key="readme-title">My Project</value>
+    <list key="dependencies">
+        <map if="${media-support.json.provider} == jackson">
+            <value key="groupId">io.helidon.media</value>
+            <value key="artifactId">helidon-media-jackson</value>
+        </map>
+        <map if="${media-support.json.provider} == jsonb">
+            <value key="groupId">io.helidon.media</value>
+            <value key="artifactId">helidon-media-jsonb</value>
+        </map>
+        <map if="${media-support.json.provider} == jsonp">
+            <value key="groupId">io.helidon.media</value>
+            <value key="artifactId">helidon-media-jsonp</value>
+        </map>
+        <map if="${media-support.xml.provider} == jaxp">
+            <value key="groupId">io.helidon.media</value>
+            <value key="artifactId">helidon-media-jaxp</value>
+        </map>
+        <map if="${media-support.xml.provider} == jaxb">
+            <value key="groupId">io.helidon.media</value>
+            <value key="artifactId">helidon-media-jaxb</value>
+        </map>
+    </list>
+</model>
+```
+
+#### Pre-processed values
+
+Values may need to be processed by a template engine. This can be done using the `template` attribute.
+
+```xml
+<model>
+    <value key="name" template="mustache">{{artifactId}}</value>
+</model>
+```
+
+#### Inline values
+
+Pre-formatted values can be declared line using CDATA.
+
+E.g.
+```xml
+<model>
+    <list id="readme-section">
+        <item>
+            <![CDATA[
+## Build the Docker Image
+
+`docker build -t my-image .`
+]]>
+        </item>
+    </list>
+</model>
+```
+
+#### External values
+
+Pre-formatted values may be defined in a separate file entirely. The file is specified using the `file` attribute.
+ Processing using the `template` attribute can also be used.
+
+E.g.
+
+```xml
+<model>
+    <list key="config">
+        <value file="config.yaml.mustache" template="mustache"/>
+    </list>
+</model>
+```
+
+#### Merge order
+
+Keys are not unique, data for a given key can be declared in multiple places and is effectively merged. The default
+ order is based on the declaration order, but it can also be controlled using the `order` attribute.
+
+E.g.
+```xml
+<model>
+    <list id="readme-section">
+        <value order="50" template="mustache">
+            <![CDATA[
+## Build the Docker Image
+
+`docker build -t {{artifactId}} .`
+]]>
+        </value>
+    </list>
+</model>
+```
+
+## Build time processing
+
+The archetype is processed at build time to validate the descriptors, create the archive and generate files for the
+ Maven archetype compatibility.
+
+The descriptors are validated to check the following:
+- optional steps contain only optional inputs
+- expressions are valid
+- choices paths are valid
+
+The `helidon-archetype-maven-plugin` will also expose configuration for `<archetype-flow>`:
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>io.helidon.build-tools.archetype</groupId>
+            <artifactId>helidon-archetype-maven-plugin</artifactId>
+            <configuration>
+                <sourceDirectory>src/main/archetype</sourceDirectory>
+                <archetype-flow>
+                    <invoke-flow src="my-entry-point.xml" />
+                </archetype-flow>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+The `<archetype-flow>` element defined in the plugin configuration is required and is effectively the root descriptor.
+ It must either have all the required declarations inline or invoke a separate flow descriptor with `<invoke-flow>`.
+
+A reserved archive entry name is used to store the root descriptor: `helidon-archetype.xml`.
+
+### Maven properties
+
+Archetype may need to inject values derived from Maven properties, E.g. `${project.version}`.
+ `helidon-archetype-maven-plugin` will expose configuration for `<archetype-flow>` ; Maven will automatically expand
+ the Maven properties.
+
+```xml
+<build>
+    <plugins>
+        <plugin>
+            <groupId>io.helidon.build-tools.archetype</groupId>
+            <artifactId>helidon-archetype-maven-plugin</artifactId>
+            <configuration>
+                <archetype-flow>
+                    <output>
+                        <model>
+                            <value key="helidon.version">${project.version}</value>
+                        </model>
+                    </output>
+                </archetype-flow>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+With the configuration above, mustache templates can use `{{helidon.version}}` to substitute the value of
+ `${project.version}`.
+
+## Archive
+
+The archetype archive is a JAR archive that contains the `src/main/archetype` directory as well the root descriptor
+ generated by the `helidon-archetype-maven-plugin` (`helidon-archetype.xml`).
+
+The archive could be optimized in the future to contain serialized objects instead of the XML, this would remove the
+ need to parse all descriptors from XML.
+
+## Maven compatibility
+
+In V1 each standalone archetype was Maven compatible, by way of the `archetype-post-generate.groovy` doing the
+ following:
+ - check and enforce Maven version
+ - check and enforce Java version
+ - resolve the Maven installation to use aether
+ - use `aether` to resolve the Helidon archetype engine
+ - invoke the archetype
+
+In V2 these standalone Helidon archetypes do not exist, instead they are implemented as a top-level choice in the mono
+ archetype. In order to keep supporting existing Maven archetypes we will re-create the corresponding artifacts but
+ this time dedicated for the Maven use-case.
+
+In V1 since there was a concern about exposing dependencies needed for the Maven use-case only, so both the Helidon
+ archetype engine and aether were not declared as dependencies. Instead, `aether` was resolved from the Maven
+ installation, and the engine was resolved with `aether`.
+
+Since these old-new artifacts will be dedicated to Maven we can add those dependencies and simplify the groovy logic:
+ - check and enforce Maven version
+ - check and enforce Java version
+ - invoke the engine with groovy
+
+Each Maven compatible archetype is basically a root descriptor that defines presets and invokes the flow of the mono
+ archetype. The `<invoke-flow>` directory will support a `url` attribute, and a custom scheme for Maven will be
+ provided `mvn://`.
+
+E.g. for `quickstart-se`:
+```xml
+<project>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.helidon.build-tools.archetype</groupId>
+                <artifactId>helidon-archetype-maven-plugin</artifactId>
+                <configuration>
+                    <!-- presets for quickstart-se -->
+                    <archetype-flow>
+                        <choices>
+                            <choice flow="flavor"><option value="se" /></choice>
+                            <choice flow="base"><option value="quickstart" /></choice>
+                        </choices>
+                        <invoke-flow url="mvn://io.helidon.archetypes:helidon-archetype/helidon-archetype.xml"/>
+                    </archetype-flow>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <dependencies>
+        <dependencies>
+            <!-- V2 mono archetype -->
+            <dependency>
+                <groupId>io.helidon.archetypes</groupId>
+                <artifactId>helidon-archetype</artifactId>
+            </dependency>
+            <!-- archetype engine -->
+            <dependency>
+                <groupId>io.helidon.build-tools.archetype</groupId>
+                <artifactId>helidon-archetype-engine</artifactId>
+            </dependency>
+            <!-- mvn:// URL support -->
+            <dependency>
+                <groupId>io.helidon.build-tools.archetype</groupId>
+                <artifactId>helidon-archetype-maven-url</artifactId>
+            </dependency>
+        </dependencies>
+    </dependencies>
+</project>
+``` 
+
+Note that it is better to declare the dependencies in the pom rather than resolving them programmatically so that
+ they are resolved by Maven before invoking the maven archetype logic.
+
+## Mock-ups
+
+### UI wizard
 
 ```
 (1) Application Type
@@ -370,17 +786,23 @@ TODO
 [TRY IT!]
 ```
 
-## Build time processing
+### CLI
 
-## Archive
-
-TODO:
-- packaging
-- future optimization (store serialized objects instead of XML)
-
-## Maven compatibility
-
-TODO:
-- Generate artifacts with generated poms.
-- Add dependencies
-- Maybe create a separate maven-compat artifact
+```
+Helidon flavor
+  (1) SE
+  (2) MP
+Enter selection (Default: 1): 
+Select a type of application
+  (1) bare | Minimal Helidon SE project suitable to start from scratch 
+  (2) quickstart | Sample Helidon SE project that includes multiple REST operations 
+  (3) database | Helidon SE application that uses the dbclient API with an in-memory H2 database 
+Enter selection (Default: 1):
+Do you want to configure media type support (yes/no): yes
+Do you want to use JSON (yes/no): yes
+Select a JSON provider
+  (1) jackson | Jackson
+  (2) json-b | JSON Binding
+  (3) json-p | JSON Processing
+Enter selection (Default: 1):
+```

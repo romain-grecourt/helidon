@@ -44,6 +44,6 @@
                     label="Bare Helidon MP project suitable to start from scratch">
                 <include src="bare/bare-mp.xml"/>
             </option>
-        </input>
+        </flow-input>
     </flow-step>
 </archetype-flow>
