@@ -16,49 +16,48 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step optional="true">
+    <step optional="true" label="Docker">
+        <input>
+            <boolean name="docker"
+                     label="Docker support"
+                     prompt="Do you want a Dockerfile">
 
-        <flow-input name="docker"
-                    type="option"
-                    label="Docker support"
-                    prompt="Do you want a Dockerfile">
+                <input>
+                    <boolean name="native-image"
+                             label="Do you want a 'native-image' Dockerfile"/>
 
-            <flow-input name="native-image"
-                        type="option"
-                        label="Do you want a 'native-image' Dockerfile"/>
-
-            <flow-input name="jlink"
-                        type="option"
-                        label="Do you want a 'jlink' Dockerfile"/>
-
-            <output>
-                <templates>
-                    <directory>files</directory>
-                    <includes>
-                        <include>Dockerfile.mustache</include>
-                        <include if="${native-image}">Dockerfile.native.mustache</include>
-                        <include if="${jlink}">Dockerfile.jlink.mustache</include>
-                        <include>.dockerignore</include>
-                    </includes>
-                </templates>
-                <model>
-                    <list id="readme-section">
-                        <item order="50" template="mustache">
-                            <![CDATA[
+                    <boolean name="jlink"
+                             label="Do you want a 'jlink' Dockerfile"/>
+                </input>
+                <output>
+                    <templates>
+                        <directory>files</directory>
+                        <includes>
+                            <include>Dockerfile.mustache</include>
+                            <include if="${native-image}">Dockerfile.native.mustache</include>
+                            <include if="${jlink}">Dockerfile.jlink.mustache</include>
+                            <include>.dockerignore</include>
+                        </includes>
+                    </templates>
+                    <model>
+                        <list id="readme-section">
+                            <item order="50" template="mustache">
+                                <![CDATA[
 ## Build the Docker Image
 
 ```
 docker build -t {{artifactId}} .
 ```
 ]]>
-                        </item>
-                    </list>
-                </model>
-            </output>
-        </flow-input>
-    </flow-step>
-</archetype-flow>
+                            </item>
+                        </list>
+                    </model>
+                </output>
+            </boolean>
+        </input>
+    </step>
+</archetype-script>

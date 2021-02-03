@@ -35,6 +35,14 @@
         <cli.build.tools.version>${version.helidon-cli}</cli.build.tools.version>
     </properties>
 
+    <dependencies>
+        <!-- archetype engine -->
+        <dependency>
+            <groupId>io.helidon.build-tools.archetype</groupId>
+            <artifactId>helidon-archetype-engine</artifactId>
+            <version>${version.plugin.helidon-build-tools}</version>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>
@@ -42,6 +50,17 @@
                 <artifactId>helidon-archetype-maven-plugin</artifactId>
                 <version>${version.plugin.helidon-build-tools}</version>
                 <extensions>true</extensions>
+                <configuration>
+                    <archetype-script>
+                        <!-- execute the entry-point -->
+                        <exec src="flavor.xml"/>
+                        <output>
+                            <model>
+                                <value key="helidon.version">${project.version}</value>
+                            </model>
+                        </output>
+                    </archetype-script>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>io.helidon.build-tools</groupId>
@@ -65,7 +84,7 @@
                                                                  target="."/>
                                             </unpack-artifacts>
                                             <templates>
-                                                <template source="cli-metadata.properties.mustache"
+                                                <template source="etc/cli-metadata.properties.mustache"
                                                           target="metadata.properties">
                                                     <variables>
                                                         <variable name="buildtoolsVersion"

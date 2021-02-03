@@ -16,30 +16,27 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <require flow="docker"/>
+    <step optional="true" label="Kubernetes" if="${docker}">
+        <input>
+            <boolean name="kubernetes"
+                     label="Kubernetes Support"
+                     question-label="Do you want support for Kubernetes">
 
-    <flow-step optional="true" label="Kubernetes">
-
-        <flow-input type="option"
-                    name="kubernetes"
-                    label="Kubernetes Support"
-                    question-label="Do you want support for Kubernetes">
-
-            <output>
-                <templates>
-                    <directory>files</directory>
-                    <includes>
-                        <include>app.yaml.mustache</include>
-                    </includes>
-                </templates>
-                <model>
-                    <list id="readme-sections">
-                        <item order="70" template="mustache">
-                            <![CDATA[
+                <output>
+                    <templates>
+                        <directory>files</directory>
+                        <includes>
+                            <include>app.yaml.mustache</include>
+                        </includes>
+                    </templates>
+                    <model>
+                        <list id="readme-sections">
+                            <item order="70" template="mustache">
+                                <![CDATA[
 ## Deploy the application to Kubernetes
 
 ```
@@ -59,10 +56,11 @@ After you’re done, cleanup.
 kubectl delete -f app.yaml
 ```
 ]]>
-                        </item>
-                    </list>
-                </model>
-            </output>
-        </flow-input>
-    </flow-step>
-</archetype-flow>
+                            </item>
+                        </list>
+                    </model>
+                </output>
+            </boolean>
+        </input>
+    </step>
+</archetype-script>

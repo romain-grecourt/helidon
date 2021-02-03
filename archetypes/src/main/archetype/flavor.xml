@@ -16,21 +16,20 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step label="Helidon Flavor">
-        <flow-input type="select"
-                    name="flavor"
-                    label="Select a flavor">
-
-            <option value="se" label="Helidon SE">
-                <include src="se/se.xml"/>
-            </option>
-            <option value="mp" label="Helidon MP">
-                <include src="mp/mp.xml"/>
-            </option>
-        </flow-input>
-    </flow-step>
-</archetype-flow>
+    <step label="Helidon Flavor">
+        <input>
+            <enum name="flavor" label="Select a flavor">
+                <option value="se" label="Helidon SE">
+                    <source src="se/se.xml"/>
+                </option>
+                <option value="mp" label="Helidon MP">
+                    <source src="mp/mp.xml"/>
+                </option>
+            </enum>
+        </input>
+    </step>
+</archetype-script>

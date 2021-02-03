@@ -16,34 +16,36 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step label="Application Type">
-        <flow-input type="select"
-               name="base"
-               label="Select archetype">
+    <step label="Application Type">
+        <input>
+            <enum name="base"
+                  label="Select archetype">
 
-            <option value="hello-world"
-                    label="Hello World Helidon MP project">
-                <include src="hello-world/hello-world-mp.xml"/>
-            </option>
+                <option value="hello-world"
+                        label="Hello World Helidon MP project">
 
-            <option value="quickstart"
-                    label="Sample Helidon MP project that includes multiple REST operations">
-                <include src="quickstart/quickstart-mp.xml"/>
-            </option>
+                    <source src="hello-world/hello-world-mp.xml"/>
+                </option>
+                <option value="quickstart"
+                        label="Sample Helidon MP project that includes multiple REST operations">
 
-            <option value="database"
-                    label="Helidon MP application that uses JPA with an in-memory H2 database">
-                <include src="database/database-mp.xml"/>
-            </option>
+                    <source src="quickstart/quickstart-mp.xml"/>
+                </option>
+                <option value="database"
+                        label="Helidon MP application that uses JPA with an in-memory H2 database">
 
-            <option value="bare"
-                    label="Bare Helidon MP project suitable to start from scratch">
-                <include src="bare/bare-mp.xml"/>
-            </option>
-        </flow-input>
-    </flow-step>
-</archetype-flow>
+                    <source src="database/database-mp.xml"/>
+                </option>
+                <option value="bare"
+                        label="Bare Helidon MP project suitable to start from scratch">
+
+                    <source src="bare/bare-mp.xml"/>
+                </option>
+            </enum>
+        </input>
+    </step>
+</archetype-script>

@@ -16,18 +16,18 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step label="Jersey Security" if="${security}">
+    <step label="Jersey Security" if="${security}">
 
-        <flow-input name="username"
-                    type="text"
-                    label="Username"
-                    prompt="What username do you want to use"
-                    placeholder="myuser">
-        </flow-input>
+        <input>
+            <text name="username"
+                  label="Username"
+                  prompt="What username do you want to use"
+                  placeholder="myuser" />
+        </input>
 
         <output>
             <model>
@@ -41,5 +41,5 @@
                 </list>
             </model>
         </output>
-    </flow-step>
-</archetype-flow>
+    </step>
+</archetype-script>

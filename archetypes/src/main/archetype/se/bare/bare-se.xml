@@ -16,14 +16,14 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+                xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <include src="../../common/java-files.xml" />
-    <invoke-flow src="../../common/common.xml" />
-    <invoke-flow src="main.xml"/>
-    <invoke-flow src="tracing.xml"/>
-    <invoke-flow src="jersey.xml"/>
-    <invoke-flow src="security.xml"/>
-</archetype-flow>
+    <source src="../../common/java-files.xml" />
+    <exec src="../../common/common.xml" />
+    <exec src="main.xml"/>
+    <exec src="tracing.xml"/>
+    <exec src="jersey.xml"/>
+    <exec src="security.xml"/>
+</archetype-script>

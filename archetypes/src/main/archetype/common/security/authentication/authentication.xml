@@ -16,11 +16,11 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+                xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step optional="true" label="Authentication">
+    <step optional="true" label="Authentication">
 
         <flow-input name="authentication"
                     type="option"
@@ -32,27 +32,27 @@
                         label="Select authentication provider">
 
                 <option value="basic-auth" label="basic authentication">
-                    <invoke-flow src="providers/basic-auth.xml"/>
+                    <exec src="providers/basic-auth.xml"/>
                 </option>
                 <option value="digest-auth" label="digest authentication">
-                    <invoke-flow src="providers/digest-auth.xml"/>
+                    <exec src="providers/digest-auth.xml"/>
                 </option>
                 <option value="google-login" label="Google login">
-                    <invoke-flow src="providers/google-login.xml"/>
+                    <exec src="providers/google-login.xml"/>
                 </option>
                 <option value="header" label="Bearer header">
-                    <invoke-flow src="providers/header.xml"/>
+                    <exec src="providers/header.xml"/>
                 </option>
                 <option value="http-sign" label="HTTP signature header">
-                    <invoke-flow src="providers/http-sign.xml"/>
+                    <exec src="providers/http-sign.xml"/>
                 </option>
                 <option value="jwt" label="JSON Web Token">
-                    <invoke-flow src="providers/jwt.xml"/>
+                    <exec src="providers/jwt.xml"/>
                 </option>
                 <option value="oidc" label="OpenID Connect">
-                    <invoke-flow src="providers/oidc.xml"/>
+                    <exec src="providers/oidc.xml"/>
                 </option>
             </flow-input>
         </flow-input>
-    </flow-step>
-</archetype-flow>
+    </step>
+</archetype-script>

@@ -16,18 +16,18 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+                xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step optional="true" label="Security">
+    <step optional="true" label="Security">
 
         <flow-input name="security"
                     type="option"
                     label="Security support"
                     prompt="Do you want to configure security">
 
-            <invoke-flow src="authentication/authentication.xml"/>
+            <exec src="authentication/authentication.xml"/>
             <output>
                 <model>
                     <list id="config">
@@ -36,5 +36,5 @@
                 </model>
             </output>
         </flow-input>
-    </flow-step>
-</archetype-flow>
+    </step>
+</archetype-script>

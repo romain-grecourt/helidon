@@ -16,35 +16,31 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step optional="true" label="Customize Project">
+    <step optional="true" label="Customize Project">
+        <input>
+            <text name="name"
+                  label="Project name"
+                  placeholder="myproject"/>
 
-        <flow-input type="text"
-                    name="name"
-                    label="Project name"
-                    placeholder="myproject"/>
+            <text name="groupId"
+                  label="Project groupId"
+                  placeholder="com.example"/>
 
-        <flow-input type="text"
-                    name="name"
-                    label="Project groupId"
-                    placeholder="com.example"/>
+            <text name="artifactId"
+                  label="Project artifactId"
+                  placeholder="myproject"/>
 
-        <flow-input name="artifactId"
-                    type="text"
-                    label="Project artifactId"
-                    placeholder="myproject"/>
+            <text name="version"
+                  label="Project version"
+                  placeholder="1.0-SNAPSHOT"/>
 
-        <flow-input name="version"
-                    type="text"
-                    label="Project version"
-                    placeholder="1.0-SNAPSHOT"/>
-
-        <flow-input name="package"
-                    type="text"
-                    label="Java package name"
-                    placeholder="com.example.myproject"/>
-    </flow-step>
-</archetype-flow>
+            <text name="package"
+                  label="Java package name"
+                  placeholder="com.example.myproject"/>
+        </input>
+    </step>
+</archetype-script>

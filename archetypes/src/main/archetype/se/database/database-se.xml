@@ -16,16 +16,14 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+                xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <choice flow="media-support/json/provider">
-        <option value="jackson" />
-    </choice>
-    <choice flow="tracing/provider">
-        <option value="jaeger" />
-    </choice>
-    <include src="../../common/java-files.xml" />
-    <invoke-flow src="../bare/bare-se.xml"/>
-</archetype-flow>
+    <context>
+        <enum path="media-support.json.provider">jackson</enum>
+        <enum path="tracing.provider">jaeger</enum>
+    </context>
+    <source src="../../common/java-files.xml" />
+    <exec src="../bare/bare-se.xml"/>
+</archetype-script>

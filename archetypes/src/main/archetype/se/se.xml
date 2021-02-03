@@ -16,40 +16,40 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-step label="Application Type">
-        <flow-input name="base"
-                    type="select"
-                    label="Select archetype">
+    <step label="Application Type">
+        <input>
+            <list name="base" label="Select archetype">
+                <option value="hello-world"
+                        label="Helidon SE Hello World project">
 
-            <option value="hello-world"
-                    label="Helidon SE Hello World project">
-                <include src="hello-world/hello-world-se.xml"/>
-            </option>
+                    <source src="hello-world/hello-world-se.xml"/>
+                </option>
+                <option value="secure-hello-world"
+                        label="Helidon SE secure Hello World project">
 
-            <option value="secure-hello-world"
-                    label="Helidon SE secure Hello World project">
-                <include src="secure-hello-world/secure-hello-world-se.xml"/>
-            </option>
+                    <source src="secure-hello-world/secure-hello-world-se.xml"/>
+                </option>
+                <option value="quickstart"
+                        label="Sample Helidon SE project that includes multiple REST operations">
 
-            <option value="quickstart"
-                    label="Sample Helidon SE project that includes multiple REST operations">
-                <invoke-flow src="quickstart/quickstart-se.xml"/>
-            </option>
+                    <exec src="quickstart/quickstart-se.xml"/>
+                </option>
+                <option value="database"
+                        label="Helidon SE application that uses the dbclient API with an in-memory H2 database">
 
-            <option value="database"
-                    label="Helidon SE application that uses the dbclient API with an in-memory H2 database">
-                <include src="database/database-se.xml"/>
-            </option>
+                    <source src="database/database-se.xml"/>
+                </option>
+                <option value="bare"
+                        label="Bare Helidon SE project suitable to start from scratch">
 
-            <option value="bare"
-                    label="Bare Helidon SE project suitable to start from scratch">
-                <include src="bare/bare-se.xml"/>
-            </option>
-        </flow-input>
-        <invoke-flow src="../common/customize-project.xml"/>
-    </flow-step>
-</archetype-flow>
+                    <source src="bare/bare-se.xml"/>
+                </option>
+            </list>
+        </input>
+        <exec src="../common/customize-project.xml"/>
+    </step>
+</archetype-script>

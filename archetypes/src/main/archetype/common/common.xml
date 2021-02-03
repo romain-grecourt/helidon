@@ -16,30 +16,31 @@
     limitations under the License.
 
 -->
-<archetype-flow xmlns="https://helidon.io/archetype/1.1"
-                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                xsi:schemaLocation="https://helidon.io/archetype/1.1 https://helidon.io/xsd/archetype-flow-1.1.xsd">
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-script-2.0.xsd">
 
-    <flow-input type="select"
-           name="build-system"
-           label="Select a build system">
 
-        <option value="maven" label="Apache Maven">
-            <output>
-                <templates transformations="mustache">
-                    <directory>.</directory>
-                    <includes>
-                        <include>pom.xml.mustache</include>
-                    </includes>
-                </templates>
-            </output>
-        </option>
-        <option value="gradle" label="Gradle"/>
-    </flow-input>
+    <input>
+        <list name="build-system"
+              label="Select a build system">
+            <option value="maven" label="Apache Maven">
+                <output>
+                    <templates transformations="mustache">
+                        <directory>.</directory>
+                        <includes>
+                            <include>pom.xml.mustache</include>
+                        </includes>
+                    </templates>
+                </output>
+            </option>
+            <option value="gradle" label="Gradle"/>
+        </list>
+    </input>
 
-    <invoke-flow src="security/security.xml"/>
-    <invoke-flow src="readme.xml"/>
-    <invoke-flow src="docker.xml"/>
-    <invoke-flow src="kubernetes.xml"/>
-    <include src="java-files.xml"/>
-</archetype-flow>
+    <exec src="security/security.xml"/>
+    <exec src="readme.xml"/>
+    <exec src="docker.xml"/>
+    <exec src="kubernetes.xml"/>
+    <source src="java-files.xml"/>
+</archetype-script>
