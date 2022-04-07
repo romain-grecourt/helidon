@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -116,7 +116,8 @@ public abstract class HelidonRestCdiExtension<T extends RestServiceSupport> impl
      *
      * @param adv the {@code AfterDeploymentValidation} event
      */
-    protected void clearAnnotationInfo(@Observes AfterDeploymentValidation adv) {
+    // method needs to be public so it is registered for reflection (native image)
+    public void clearAnnotationInfo(@Observes AfterDeploymentValidation adv) {
         if (logger.isLoggable(Level.FINE)) {
             Set<Class<?>> annotatedClassesIgnored = new HashSet<>(annotatedClasses);
             annotatedClassesIgnored.removeAll(annotatedClassesProcessed);
@@ -136,7 +137,8 @@ public abstract class HelidonRestCdiExtension<T extends RestServiceSupport> impl
      *
      * @param pmb event describing the managed bean being processed
      */
-    protected void observeManagedBeans(@Observes ProcessManagedBean<?> pmb) {
+    // method needs to be public so it is registered for reflection (native image)
+    public void observeManagedBeans(@Observes ProcessManagedBean<?> pmb) {
         AnnotatedType<?> type = pmb.getAnnotatedBeanClass();
         Class<?> clazz = type.getJavaClass();
         if (!annotatedClasses.contains(clazz)) {
@@ -234,11 +236,12 @@ public abstract class HelidonRestCdiExtension<T extends RestServiceSupport> impl
      * @param server the ServerCdiExtension
      * @return default routing
      */
-    protected Routing.Builder registerService(
+    // method needs to be public so it is registered for reflection (native image)
+    public Routing.Builder registerService(
             @Observes @Priority(LIBRARY_BEFORE + 10) @Initialized(ApplicationScoped.class) Object adv,
             BeanManager bm, ServerCdiExtension server) {
 
-        Config config = MpConfig.toHelidonConfig(ConfigProvider.getConfig()).get(configPrefix);
+        Config config = seComponentConfig();
         serviceSupport = serviceSupportFactory.apply(config);
 
         RoutingBuilders routingBuilders = RoutingBuilders.create(config);
@@ -248,6 +251,20 @@ public abstract class HelidonRestCdiExtension<T extends RestServiceSupport> impl
         return routingBuilders.defaultRoutingBuilder();
     }
 
+    /**
+     * Returns the SE config to use in setting up the component's SE service.
+     *
+     * @return the SE config node for the component-specific configuration
+     */
+    protected Config seComponentConfig() {
+        return MpConfig.toHelidonConfig(ConfigProvider.getConfig()).get(configPrefix);
+    }
+
+    /**
+     * Returns the SE service instance created during MP service registration.
+     *
+     * @return the SE service support object used by this MP service
+     */
     protected T serviceSupport() {
         return serviceSupport;
     }
