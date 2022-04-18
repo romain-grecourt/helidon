@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2021 Oracle and/or its affiliates.
+    Copyright (c) 2022 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -20,23 +20,20 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Helidon Flavor">
+    <step label="Extra" optional="true">
         <inputs>
-            <enum name="flavor" label="Select a flavor" default="se" global="true">
-                <option value="se" label="Helidon SE">
-                    <exec src="se/se.xml"/>
-                </option>
-                <option value="mp" label="Helidon MP">
-                    <exec src="mp/mp.xml"/>
-                </option>
-            </enum>
+            <list name="extra" label="Select Additional Components" optional="true">
+                <option value="webclient" label="WebClient"/>
+                <option value="fault-tolerance" label="Fault Tolerance"/>
+                <option value="cors" label="CORS"/>
+            </list>
         </inputs>
+        <output>
+            <model>
+                <value key="webclient" if="${extra} contains 'webclient'">true</value>
+                <value key="fault-tolerance" if="${extra} contains 'fault-tolerance'">true</value>
+                <value key="cors" if="${extra} contains 'cors'">true</value>
+            </model>
+        </output>
     </step>
-    <exec src="common/customize-project.xml"/>
-    <output>
-        <model>
-            <value key="helidon-version">${helidon-version}</value>
-            <value key="flavor">${flavor}</value>
-        </model>
-    </output>
 </archetype-script>

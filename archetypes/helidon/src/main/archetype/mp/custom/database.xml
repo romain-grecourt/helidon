@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (c) 2022 Oracle and/or its affiliates.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<archetype-script xmlns="https://helidon.io/archetype/2.0"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
+
+    <step label="Database" optional="true">
+        <inputs>
+            <boolean name="db" label="Database Support" default="false" optional="true">
+                <inputs>
+                    <enum name="jpa-impl" label="Select a JPA Implementation" default="hibernate" optional="true">
+                        <option value="hibernate" label="Hibernate ORM"/>
+                        <option value="eclipselink" label="Eclipse Persistence Services"/>
+                    </enum>
+                    <enum name="Connection Pool" label="Select a Connection Pool" default="hikaricp" optional="true">
+                        <option value="hikaricp" label="HikariCP"/>
+                        <option value="ucp" label="Universal Connection Pool"/>
+                    </enum>
+                    <enum name="Server" label="Select a Database Server" default="h2" optional="true">
+                        <option value="h2" label="H2 (in memory)"/>
+                        <option value="mysql" label="MySQL"/>
+                        <option value="oracledb" label="Oracle Database"/>
+                    </enum>
+                    <text name="pu-name" label="Persistence Unit Name" default="pu1" optional="true"/>
+                    <text name="ds-name" label="Datasource Name" default="ds1" optional="true"/>
+                    <boolean name="auto-ddl" label="Schema Initialization (auto DDL)" optional="true"/>
+                </inputs>
+            </boolean>
+        </inputs>
+    </step>
+</archetype-script>

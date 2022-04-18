@@ -20,7 +20,8 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <source src="../bare/bare-mp.xml"/>
+    <exec src="/common/presets.xml"/>
+    <source src="/mp/custom/custom-mp.xml"/>
     <output>
         <model>
             <value key="readme-description">Sample Helidon MP project that includes multiple REST operations.</value>

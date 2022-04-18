@@ -22,23 +22,22 @@
 
     <step label="Application Type">
         <inputs>
-            <enum name="base" label="Select archetype" default="bare" global="true">
-                <option value="bare" label="Bare Helidon SE project suitable to start from scratch">
-                    <exec src="bare/bare-se.xml"/>
-                </option>
+            <enum name="app-type" label="Select Application Type" default="quickstart" global="true">
                 <option value="quickstart" label="Sample Helidon SE project that includes multiple REST operations">
                     <exec src="quickstart/quickstart-se.xml"/>
                 </option>
-                <option value="database"
-                        label="Helidon SE application that uses the dbclient API with an in-memory H2 database">
+                <option value="database" label="Helidon SE application that uses the dbclient API with an in-memory H2 database">
                     <exec src="database/database-se.xml"/>
+                </option>
+                <option value="custom" label="Custom Helidon SE project">
+                    <exec src="custom/custom-se.xml"/>
                 </option>
             </enum>
         </inputs>
     </step>
     <output>
         <model>
-            <value key="base">${base}</value>
+            <value key="app-type">${app-type}</value>
         </model>
     </output>
 </archetype-script>

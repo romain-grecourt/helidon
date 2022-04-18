@@ -22,13 +22,12 @@
 
     <exec src="../common/common-se.xml"/>
     <source src="/common/project-sources.xml"/>
+    <exec src="/common/media-support.xml"/>
+    <exec src="/common/observability.xml"/>
+    <exec src="/common/security.xml"/>
+    <exec src="/common/extra.xml"/>
+    <exec src="/common/packaging.xml"/>
     <output>
-        <templates engine="xyz">
-            <directory>/xyz-files</directory>
-            <includes>
-                <include>io/helidon/archetype/template/se/GreetService.java</include>
-            </includes>
-        </templates>
         <model>
             <value order="0" key="readme-description">Minimal Helidon SE project suitable to start from scratch.</value>
             <list key="readme-sections">

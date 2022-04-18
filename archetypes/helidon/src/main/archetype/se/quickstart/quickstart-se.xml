@@ -20,7 +20,9 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <source src="../bare/bare-se.xml"/>
+
+    <exec src="/common/presets.xml"/>
+    <source src="/se/custom/custom-se.xml"/>
     <output>
         <model>
             <value key="readme-description">Sample Helidon SE project that includes multiple REST operations.</value>
