@@ -28,11 +28,11 @@
                         <option value="hibernate" label="Hibernate ORM"/>
                         <option value="eclipselink" label="Eclipse Persistence Services"/>
                     </enum>
-                    <enum name="Connection Pool" label="Select a Connection Pool" default="hikaricp" optional="true">
+                    <enum name="cp" label="Select a Connection Pool" default="hikaricp" optional="true">
                         <option value="hikaricp" label="HikariCP"/>
                         <option value="ucp" label="Universal Connection Pool"/>
                     </enum>
-                    <enum name="Server" label="Select a Database Server" default="h2" optional="true">
+                    <enum name="server" label="Select a Database Server" default="h2" optional="true">
                         <option value="h2" label="H2 (in memory)"/>
                         <option value="mysql" label="MySQL"/>
                         <option value="oracledb" label="Oracle Database"/>

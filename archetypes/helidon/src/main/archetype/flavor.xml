@@ -20,9 +20,9 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Helidon Flavor">
+    <step label="Helidon Flavor" optional="true">
         <inputs>
-            <enum name="flavor" label="Select a flavor" default="se" global="true">
+            <enum name="flavor" label="Select a flavor" default="se" global="true" optional="true">
                 <option value="se" label="Helidon SE">
                     <exec src="se/se.xml"/>
                 </option>

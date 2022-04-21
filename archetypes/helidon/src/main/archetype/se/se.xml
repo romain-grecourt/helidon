@@ -20,9 +20,9 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Application Type">
+    <step label="Application Type" optional="true">
         <inputs>
-            <enum name="app-type" label="Select Application Type" default="quickstart" global="true">
+            <enum name="app-type" label="Select Application Type" default="quickstart" global="true" optional="true">
                 <option value="quickstart" label="Sample Helidon SE project that includes multiple REST operations">
                     <exec src="quickstart/quickstart-se.xml"/>
                 </option>
