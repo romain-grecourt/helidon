@@ -22,7 +22,7 @@
 
     <step label="Customize Project">
         <inputs>
-            <enum name="build-system" label="Select a build system" default="maven">
+            <enum name="build-system" label="Select a build system" default="maven" optional="true">
                 <option value="maven" label="Apache Maven">
                     <output>
                         <templates engine="mustache" transformations="mustache">
