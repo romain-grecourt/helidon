@@ -20,7 +20,7 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Customize Project">
+    <step label="Customize Project" optional="true">
         <inputs>
             <enum name="build-system" label="Select a build system" default="maven" optional="true">
                 <option value="maven" label="Apache Maven">
