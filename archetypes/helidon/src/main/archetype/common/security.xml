@@ -20,18 +20,18 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Security" optional="true">
+    <step name="Security" optional="true">
         <inputs>
-            <boolean name="security" label="Secure Application" default="false" optional="true">
+            <boolean id="security" name="Secure Application" description="Authentication and authorization" default="false" optional="true" global="true">
                 <inputs>
-                    <list name="atn" label="Select Authentication Providers" optional="true">
-                        <option value="oidc" label="OpenID Connect"/>
-                        <option value="jwt" label="JSON Web Token"/>
-                        <option value="google" label="Google Login"/>
-                        <option value="http-signature" label="HTTP Signature"/>
+                    <list id="atn" name="Select Authentication Providers" optional="true">
+                        <option value="oidc" name="OIDC" description="OpenID Connect"/>
+                        <option value="jwt" name="JWT" description="JSON Web Token"/>
+                        <option value="google" name="Google Login" description="Google identity"/>
+                        <option value="http-signature" name="HTTP Signature" description="Service to service authentication"/>
                     </list>
-                    <list name="atz" label="Select Authorization Providers" optional="true">
-                        <option value="abac" label="ABAC"/>
+                    <list id="atz" name="Select Authorization Providers" optional="true">
+                        <option value="abac" name="ABAC" description="Attribute Based Access Control"/>
                     </list>
                 </inputs>
             </boolean>

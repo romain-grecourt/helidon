@@ -20,15 +20,20 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Database" optional="true">
+    <step name="Database" optional="true">
         <inputs>
-            <boolean name="db" label="Database Support" default="false" optional="true">
+            <boolean id="db"
+                     name="Database Support"
+                     description="Manage data in your application"
+                     default="false"
+                     optional="true"
+                     global="true">
                 <inputs>
-                    <enum name="server" label="Select a Database Server" default="h2" optional="true">
-                        <option value="h2" label="H2 (in memory)"/>
-                        <option value="mysql" label="MySQL"/>
-                        <option value="oracledb" label="Oracle Database"/>
-                        <option value="mongodb" label="MongoDB"/>
+                    <enum id="server" name="Select a Database Server" default="h2" optional="true">
+                        <option value="h2" name="H2" description="In-memory relational database"/>
+                        <option value="mysql" name="MySQL" description="Relational database"/>
+                        <option value="oracledb" name="Oracle DB" description="Multi-model database"/>
+                        <option value="mongodb" name="MongoDB" description="NoSQL / Document database"/>
                     </enum>
                 </inputs>
             </boolean>

@@ -20,11 +20,21 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Packaging and Deployment" optional="true">
+    <step name="Packaging and Deployment" optional="true">
         <exec src="docker.xml"/>
         <inputs>
-            <boolean name="k8s" label="Kubernetes Support" default="false" optional="true"/>
-            <boolean name="v8o" label="Verrazzano Support" default="false" optional="true"/>
+            <boolean id="k8s"
+                     name="Kubernetes Support"
+                     description="Add Kubernetes manifests to your project"
+                     default="false"
+                     optional="true"
+                     global="true"/>
+            <boolean id="v8o"
+                     name="Verrazzano Support"
+                     description="Add Verrazzano manifests to your project"
+                     default="false"
+                     optional="true"
+                     global="true"/>
         </inputs>
     </step>
 </archetype-script>

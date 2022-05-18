@@ -20,27 +20,65 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Observability" optional="true">
+    <step name="Observability" optional="true">
         <inputs>
-            <boolean name="metrics" label="Metrics" default="false" optional="true">
+
+            <boolean id="metrics"
+                     name="Metrics"
+                     description="Collect application metrics"
+                     default="false"
+                     optional="true"
+                     global="true">
                 <inputs>
-                    <enum name="provider" label="Select a Metrics Provider" default="microprofile" optional="true">
-                        <option value="microprofile" label="MicroProfile"/>
-                        <option value="micrometer" label="Micrometer"/>
+                    <enum id="provider"
+                          name="Select a Metrics Provider"
+                          default="microprofile"
+                          optional="true">
+                        <option value="microprofile"
+                                name="MicroProfile"
+                                description="Expose metrics using the MicroProfile API"/>
+                        <option value="micrometer"
+                                name="Micrometer"
+                                description="Expose metrics using the Micrometer API"/>
                     </enum>
-                    <boolean name="builtin" label="Built-in Metrics" default="true" optional="true"/>
+                    <boolean id="builtin"
+                             name="Built-in Metrics"
+                             description="Expose common metrics"
+                             default="true"
+                             optional="true"/>
                 </inputs>
             </boolean>
-            <boolean name="health" label="Health Checks" default="false" optional="true">
+            <boolean id="health"
+                     name="Health Checks"
+                     description="Monitor your application’s health"
+                     default="false"
+                     optional="true"
+                     global="true">
                 <inputs>
-                    <boolean name="builtin" label="Built-in Health Checks" default="true" optional="true"/>
+                    <boolean id="builtin"
+                             name="Built-in Health Checks"
+                             description="Report common health check statuses"
+                             default="true"
+                             optional="true"/>
                 </inputs>
             </boolean>
-            <boolean name="tracing" label="Tracing" default="false" optional="true">
+            <boolean id="tracing"
+                     name="Tracing"
+                     description="Distributed tracing system"
+                     default="false"
+                     optional="true"
+                     global="true">
                 <inputs>
-                    <enum name="provider" label="Select a Tracing Provider" default="jaeger" optional="true">
-                        <option value="jaeger" label="Jaeger" />
-                        <option value="zipkin" label="Zipkin" />
+                    <enum id="provider"
+                          name="Select a Tracing Provider"
+                          default="jaeger"
+                          optional="true">
+                        <option value="jaeger"
+                                name="Jaeger"
+                                description="Send traces to a Jaeger backend" />
+                        <option value="zipkin"
+                                name="Zipkin"
+                                description="Send traces to a Zipkin backend" />
                     </enum>
                 </inputs>
             </boolean>

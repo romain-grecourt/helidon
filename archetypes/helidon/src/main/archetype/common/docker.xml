@@ -21,10 +21,22 @@
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
     <inputs>
-        <boolean name="docker" label="Docker support" default="false" optional="true">
+        <boolean id="docker"
+                 name="Docker support"
+                 description="Add a Dockerfile to your project"
+                 default="false"
+                 optional="true"
+                 global="true">
             <inputs>
-                <boolean name="native-image" label="GraalVM Native Image Support" default="false" optional="true"/>
-                <boolean name="jlink-image" label="JLink Support" default="false" optional="true"/>
+                <boolean id="native-image"
+                         name="GraalVM Native Image Support"
+                         description="Add a native-image capable Dockerfile to your project"
+                         default="false"
+                         optional="true"/>
+                <boolean id="jlink-image" name="JLink Support"
+                         description="Add a JLink capable Dockerfile to your project"
+                         default="false"
+                         optional="true"/>
             </inputs>
             <output>
                 <files>

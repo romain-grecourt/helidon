@@ -20,16 +20,26 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Application Type" optional="true">
+    <step name="Application Type" optional="true">
         <inputs>
-            <enum name="app-type" label="Select Application Type" default="quickstart" global="true" optional="true">
-                <option value="quickstart" label="Sample Helidon MP project that includes multiple REST operations">
+            <enum id="app-type"
+                  name="Select an Application Type"
+                  default="quickstart"
+                  global="true"
+                  optional="true">
+                <option value="quickstart"
+                        name="Quickstart"
+                        description="Sample Helidon MP project that includes multiple REST operations">
                     <exec src="quickstart/quickstart-mp.xml"/>
                 </option>
-                <option value="database" label="Helidon MP application that uses JPA with an in-memory H2 database">
+                <option value="database"
+                        name="Database"
+                        description="Helidon MP application that uses a database with JPA">
                     <exec src="database/database-mp.xml"/>
                 </option>
-                <option value="custom" label="Custom Helidon MP project">
+                <option value="custom"
+                        name="Custom"
+                        description="Custom Helidon MP project">
                     <exec src="custom/custom-mp.xml"/>
                 </option>
             </enum>

@@ -20,12 +20,12 @@
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                   xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
 
-    <step label="Extra" optional="true">
+    <step name="Extra" optional="true">
         <inputs>
-            <list name="extra" label="Select Additional Components" optional="true">
-                <option value="webclient" label="WebClient"/>
-                <option value="fault-tolerance" label="Fault Tolerance"/>
-                <option value="cors" label="CORS"/>
+            <list id="extra" name="Select Additional Components" optional="true" global="true">
+                <option value="webclient" name="WebClient" description="Reactive HTTP client"/>
+                <option value="fault-tolerance" name="Fault Tolerance" description="System for building resilient applications"/>
+                <option value="cors" name="CORS" description="Cross-Origin Resource Sharing utilities"/>
             </list>
         </inputs>
         <output>

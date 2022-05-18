@@ -22,7 +22,7 @@
 
     <source src="/common/sources.xml"/>
     <exec src="/se/common/common-se.xml"/>
-    <exec src="/common/media-support.xml"/>
+    <exec src="/common/media.xml"/>
     <exec src="/common/observability.xml"/>
     <exec src="/se/custom/database.xml"/>
     <exec src="/common/security.xml"/>
