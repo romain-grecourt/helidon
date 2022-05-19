@@ -22,7 +22,7 @@
 
     <step name="Extra" optional="true">
         <inputs>
-            <list id="extra" name="Select Additional Components" optional="true" global="true">
+            <list id="extra" name="Select Additional Components" optional="true">
                 <option value="webclient" name="WebClient" description="Reactive HTTP client"/>
                 <option value="fault-tolerance" name="Fault Tolerance" description="System for building resilient applications"/>
                 <option value="cors" name="CORS" description="Cross-Origin Resource Sharing utilities"/>

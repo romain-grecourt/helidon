@@ -28,7 +28,7 @@
         </variables>
         <inputs>
             <!-- TODO https://github.com/oracle/helidon-build-tools/issues/699 -->
-            <list id="media" name="Select Media Support" default="json" optional="true" global="true">
+            <list id="media" name="Select Media Support" default="json" optional="true">
                 <option value="json" name="JSON" description="Handle 'application/json' payloads">
                     <inputs>
                         <enum id="json-lib" name="Select a JSON library" default="${default-json-lib}" optional="true">

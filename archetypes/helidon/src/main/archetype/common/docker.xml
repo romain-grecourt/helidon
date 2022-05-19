@@ -25,8 +25,7 @@
                  name="Docker support"
                  description="Add a Dockerfile to your project"
                  default="false"
-                 optional="true"
-                 global="true">
+                 optional="true">
             <inputs>
                 <boolean id="native-image"
                          name="GraalVM Native Image Support"

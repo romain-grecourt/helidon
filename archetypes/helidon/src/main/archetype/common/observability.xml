@@ -22,13 +22,11 @@
 
     <step name="Observability" optional="true">
         <inputs>
-
             <boolean id="metrics"
                      name="Metrics"
                      description="Collect application metrics"
                      default="false"
-                     optional="true"
-                     global="true">
+                     optional="true">
                 <inputs>
                     <enum id="provider"
                           name="Select a Metrics Provider"
@@ -52,8 +50,7 @@
                      name="Health Checks"
                      description="Monitor your application’s health"
                      default="false"
-                     optional="true"
-                     global="true">
+                     optional="true">
                 <inputs>
                     <boolean id="builtin"
                              name="Built-in Health Checks"
@@ -66,8 +63,7 @@
                      name="Tracing"
                      description="Distributed tracing system"
                      default="false"
-                     optional="true"
-                     global="true">
+                     optional="true">
                 <inputs>
                     <enum id="provider"
                           name="Select a Tracing Provider"

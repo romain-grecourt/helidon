@@ -26,8 +26,7 @@
                      name="Database Support"
                      description="Manage data in your application"
                      default="false"
-                     optional="true"
-                     global="true">
+                     optional="true">
                 <inputs>
                     <enum id="jpa-impl" name="Select a JPA Implementation" default="hibernate" optional="true">
                         <option value="hibernate" name="Hibernate" description="Hibernate Object Relational Mapping"/>

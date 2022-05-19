@@ -22,7 +22,11 @@
 
     <step name="Security" optional="true">
         <inputs>
-            <boolean id="security" name="Secure Application" description="Authentication and authorization" default="false" optional="true" global="true">
+            <boolean id="security"
+                     name="Secure Application"
+                     description="Authentication and authorization"
+                     default="false"
+                     optional="true">
                 <inputs>
                     <list id="atn" name="Select Authentication Providers" optional="true">
                         <option value="oidc" name="OIDC" description="OpenID Connect"/>
