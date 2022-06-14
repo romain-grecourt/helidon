@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,22 +22,27 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.http.Reader;
+import io.helidon.common.http.FormParams;
 import io.helidon.common.http.Utils;
-import io.helidon.common.mapper.Mapper;
-import io.helidon.common.reactive.Collector;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 
 /**
- * Utility class that provides standalone mechanisms for reading message body
- * content.
+ * Utility class that provides standalone mechanisms for reading {@link DataChunk} publisher.
  */
 public final class ContentReaders {
+
+    private static final Pattern FORM_URL_ENCODED_PATTERN = Pattern.compile("([^=&$s]+)=?([^&$s]+)?&$s?");
+    private static final Pattern FORM_TEXT_PLAIN_PATTERN =  Pattern.compile("([^=\n$s]+)=?([^\n$s]+)?\n$s?");
 
     /**
      * A utility class constructor.
@@ -54,150 +59,99 @@ public final class ContentReaders {
      * @since 2.0.0
      */
     public static Single<byte[]> readBytes(Publisher<DataChunk> chunks) {
-        return Multi.create(chunks).collect(new BytesCollector());
+        return Multi.create(chunks)
+                    .collect(ByteArrayOutputStream::new, (baos, chunk) -> {
+                        try {
+                            for (ByteBuffer byteBuffer : chunk.data()) {
+                                Utils.write(byteBuffer, baos);
+                            }
+                        } catch (IOException e) {
+                            throw new IllegalArgumentException("Cannot convert byte buffer to a byte array!", e);
+                        } finally {
+                            chunk.release();
+                        }
+                    }).map(ByteArrayOutputStream::toByteArray);
     }
 
     /**
      * Convert the given publisher of {@link DataChunk} into a {@link String}.
-     * @param chunks source publisher
+     *
+     * @param chunks  source publisher
      * @param charset charset to use for decoding the bytes
      * @return Single
      */
     public static Single<String> readString(Publisher<DataChunk> chunks, Charset charset) {
-        return readBytes(chunks).map(new BytesToString(charset));
+        return readBytes(chunks).map(bytes -> new String(bytes, charset));
     }
 
     /**
-     * Convert the publisher of {@link DataChunk} into a {@link String} processed through URL
-     * decoding.
-     * @param chunks source publisher
+     * Convert the publisher of {@link DataChunk} into a {@link String} processed through URL decoding.
+     *
+     * @param chunks  source publisher
      * @param charset charset to use for decoding the input
      * @return Single
      * @since 2.0.0
      */
-    public static Single<String> readURLEncodedString(Publisher<DataChunk> chunks,
-            Charset charset) {
-        return readString(chunks, charset).map(new StringToDecodedString(charset));
+    public static Single<String> readURLEncodedString(Publisher<DataChunk> chunks, Charset charset) {
+        return readString(chunks, charset).map(s -> URLDecoder.decode(s, charset));
     }
 
     /**
-     * Get a reader that converts a {@link DataChunk} publisher to a
-     * {@link String}.
+     * Convert the publisher of {@link DataChunk} into an {@link InputStream}.
      *
-     * @param charset the charset to use with the returned string content reader
-     * @return a string content reader
-     * @deprecated since 2.0.0, use {@link #readString(Publisher, Charset)}}
-     *  or {@link DefaultMediaSupport#stringReader()} instead
+     * @param chunks source publisher
+     * @return InputStream
+     * @see DataChunkInputStream
      */
-    @Deprecated(since = "2.0.0")
-    public static Reader<String> stringReader(Charset charset) {
-        return (chunks, type) -> readString(chunks, charset).toStage();
+    public static InputStream readInputStream(Publisher<DataChunk> chunks) {
+        return new DataChunkInputStream(chunks);
     }
 
     /**
-     * Gets a reader that converts a {@link DataChunk} publisher to a {@link String} processed
-     * through URL decoding.
+     * Convert the publisher of {@link DataChunk} into an {@link FormParams}.
      *
-     * @param charset the charset to use with the returned string content reader
-     * @return the URL-decoded string content reader
-     * @deprecated since 2.0.0, use {@link #readURLEncodedString(Publisher, Charset)} instead
+     * @param chunks source publisher
+     * @param charset charset
+     * @return Single
      */
-    @Deprecated(since = "2.0.0")
-    public static Reader<String> urlEncodedStringReader(Charset charset) {
-        return (chunks, type) -> readURLEncodedString(chunks, charset).toStage();
+    public static Single<FormParams> readURLEncodedFormParams(Publisher<DataChunk> chunks, Charset charset) {
+        return ContentReaders.readString(chunks, charset)
+                      .map(formStr -> {
+                          Map<String, List<String>> params = new HashMap<>();
+                          Matcher m = FORM_URL_ENCODED_PATTERN.matcher(formStr);
+                          while (m.find()) {
+                              String key = URLDecoder.decode(m.group(1), charset);
+                              List<String> list = params.computeIfAbsent(key, k -> new ArrayList<>());
+                              String value = m.group(2);
+                              if (value != null) {
+                                  list.add(URLDecoder.decode(value, charset));
+                              }
+                          }
+                          return FormParams.create(params);
+                      });
     }
 
     /**
-     * Get a reader that converts a {@link DataChunk} publisher to an array of
-     * bytes.
+     * Convert the publisher of {@link DataChunk} into an {@link FormParams}.
      *
-     * @return reader that transforms a publisher of byte buffers to a
-     * completion stage that might end exceptionally with
-     * @deprecated since 2.0.0, use {@link #readBytes(Publisher)} instead
+     * @param chunks source publisher
+     * @param charset charset
+     * @return Single
      */
-    @Deprecated(since = "2.0.0")
-    public static Reader<byte[]> byteArrayReader() {
-        return (publisher, clazz) -> readBytes(publisher).toStage();
-    }
-
-    /**
-     * Get a reader that converts a {@link DataChunk} publisher to a blocking
-     * Java {@link InputStream}. The resulting
-     * {@link java.util.concurrent.CompletionStage} is already completed;
-     * however, the referenced {@link InputStream} in it may not already have
-     * all the data available; in such case, the read method (e.g.,
-     * {@link InputStream#read()}) block.
-     *
-     * @return a input stream content reader
-     * @deprecated since 2.0.0, use {@link DefaultMediaSupport#inputStreamReader()}
-     */
-    @Deprecated(since = "2.0.0")
-    public static Reader<InputStream> inputStreamReader() {
-        return (publisher, clazz) -> CompletableFuture.completedFuture(new DataChunkInputStream(publisher));
-    }
-
-    /**
-     * Implementation of {@link Mapper} that converts a {@code byte[]} into
-     * a {@link String} using a given {@link Charset}.
-     */
-    private static final class BytesToString implements Mapper<byte[], String> {
-
-        private final Charset charset;
-
-        BytesToString(Charset charset) {
-            this.charset = charset;
-        }
-
-        @Override
-        public String map(byte[] bytes) {
-            return new String(bytes, charset);
-        }
-    }
-
-    /**
-     * Mapper that applies URL decoding to a {@code String}.
-     */
-    private static final class StringToDecodedString implements Mapper<String, String> {
-
-        private final Charset charset;
-
-        StringToDecodedString(Charset charset) {
-            this.charset = charset;
-        }
-
-        @Override
-        public String map(String s) {
-            return URLDecoder.decode(s, charset);
-        }
-    }
-    /**
-     * Implementation of {@link Collector} that collects chunks into a single
-     * {@code byte[]}.
-     */
-    private static final class BytesCollector implements Collector<DataChunk, byte[]> {
-
-        private final ByteArrayOutputStream baos;
-
-        BytesCollector() {
-            this.baos = new ByteArrayOutputStream();
-        }
-
-        @Override
-        public void collect(DataChunk chunk) {
-            try {
-                for (ByteBuffer byteBuffer : chunk.data()) {
-                    Utils.write(byteBuffer, baos);
-                }
-            } catch (IOException e) {
-                throw new IllegalArgumentException("Cannot convert byte buffer to a byte array!", e);
-            } finally {
-                chunk.release();
-            }
-        }
-
-        @Override
-        public byte[] value() {
-            return baos.toByteArray();
-        }
+    public static Single<FormParams> readTextPlainFormParams(Publisher<DataChunk> chunks, Charset charset) {
+        return ContentReaders.readString(chunks, charset)
+                             .map(formStr -> {
+                                 Map<String, List<String>> params = new HashMap<>();
+                                 Matcher m = FORM_TEXT_PLAIN_PATTERN.matcher(formStr);
+                                 while (m.find()) {
+                                     String key = m.group(1);
+                                     List<String> list = params.computeIfAbsent(key, k -> new ArrayList<>());
+                                     String value = m.group(2);
+                                     if (value != null) {
+                                         list.add(value);
+                                     }
+                                 }
+                                 return FormParams.create(params);
+                             });
     }
 }

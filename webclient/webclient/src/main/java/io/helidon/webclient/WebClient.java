@@ -30,13 +30,10 @@ import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.config.Config;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
 import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyStreamReader;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
 import io.helidon.media.common.ParentingMediaContextBuilder;
 import io.helidon.webclient.spi.WebClientService;
 import io.helidon.webclient.spi.WebClientServiceProvider;
@@ -217,25 +214,25 @@ public interface WebClient {
         }
 
         @Override
-        public Builder addReader(MessageBodyReader<?> reader) {
+        public Builder addReader(EntitySupport.Reader<?> reader) {
             configuration.addReader(reader);
             return this;
         }
 
         @Override
-        public Builder addStreamReader(MessageBodyStreamReader<?> streamReader) {
+        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
             configuration.addStreamReader(streamReader);
             return this;
         }
 
         @Override
-        public Builder addWriter(MessageBodyWriter<?> writer) {
+        public Builder addWriter(EntitySupport.Writer<?> writer) {
             configuration.addWriter(writer);
             return this;
         }
 
         @Override
-        public Builder addStreamWriter(MessageBodyStreamWriter<?> streamWriter) {
+        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
             configuration.addStreamWriter(streamWriter);
             return this;
         }

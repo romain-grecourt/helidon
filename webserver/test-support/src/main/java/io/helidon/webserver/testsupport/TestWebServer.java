@@ -20,9 +20,8 @@ import java.util.concurrent.CompletableFuture;
 
 import io.helidon.common.context.Context;
 import io.helidon.common.reactive.Single;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.webserver.ServerConfiguration;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerTls;
@@ -88,12 +87,12 @@ class TestWebServer implements WebServer {
     }
 
     @Override
-    public MessageBodyReaderContext readerContext() {
+    public EntitySupport.ReaderContext readerContext() {
         return mediaContext.readerContext();
     }
 
     @Override
-    public MessageBodyWriterContext writerContext() {
+    public EntitySupport.WriterContext writerContext() {
         return mediaContext.writerContext();
     }
 

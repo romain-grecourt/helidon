@@ -55,9 +55,8 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
-import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.ReadableEntity;
 import io.helidon.webclient.spi.WebClientService;
 
 import io.netty.bootstrap.Bootstrap;
@@ -120,8 +119,8 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     private final Http.RequestMethod method;
     private final WebClientRequestHeaders headers;
     private final WebClientQueryParams queryParams;
-    private final MessageBodyReaderContext readerContext;
-    private final MessageBodyWriterContext writerContext;
+    private final EntitySupport.ReaderContext readerContext;
+    private final EntitySupport.WriterContext writerContext;
 
     private URI uri;
     private URI finalUri;
@@ -134,7 +133,7 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     private int redirectionCount;
     private RequestConfiguration requestConfiguration;
     private HttpRequest.Path path;
-    private List<WebClientService> services;
+    private final List<WebClientService> services;
     private Duration readTimeout;
     private Duration connectTimeout;
     private boolean keepAlive;
@@ -158,8 +157,8 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
         this.httpVersion = Http.Version.V1_1;
         this.redirectionCount = 0;
         this.services = configuration.clientServices();
-        this.readerContext = MessageBodyReaderContext.create(configuration.readerContext());
-        this.writerContext = MessageBodyWriterContext.create(configuration.writerContext(), headers);
+        this.readerContext = configuration.readerContext().createChild(null, null, null);
+        this.writerContext = configuration.writerContext().createChild(null, headers, null);
         this.requestId = null;
         Context.Builder contextBuilder = Context.builder().id("webclient-" + requestId);
         configuration.context().ifPresentOrElse(contextBuilder::parent,
@@ -422,10 +421,8 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
 
     @Override
     public <T> Single<T> submit(Object requestEntity, Class<T> responseType) {
-        GenericType<T> responseGenericType = GenericType.create(responseType);
-        Flow.Publisher<DataChunk> dataChunkPublisher = writerContext.marshall(
-                Single.just(requestEntity), GenericType.create(requestEntity));
-        return Contexts.runInContext(context, () -> invokeWithEntity(dataChunkPublisher, responseGenericType));
+        return submit(writerContext.marshall(Single.just(requestEntity), GenericType.create(requestEntity)),
+                responseType);
     }
 
     @Override
@@ -435,23 +432,52 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
 
     @Override
     public Single<WebClientResponse> submit(Object requestEntity) {
-        Flow.Publisher<DataChunk> dataChunkPublisher = writerContext.marshall(
-                Single.just(requestEntity), GenericType.create(requestEntity));
-        return submit(dataChunkPublisher);
+        return submit(requestEntity, GenericType.create(requestEntity));
     }
 
     @Override
-    public Single<WebClientResponse> submit(Function<MessageBodyWriterContext, Flow.Publisher<DataChunk>> function) {
+    public <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType) {
+        return submit(writerContext.marshall(Single.just(requestEntity), entityType));
+    }
+
+    @Override
+    public <T> Single<T> submit(T requestEntity, GenericType<T> entityType, Class<T> responseType) {
+        return submit(writerContext.marshall(Single.just(requestEntity), entityType), responseType);
+    }
+
+    @Override
+    public <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType) {
+        return submitStream(entityStream, GenericType.create(entityType), responseType);
+    }
+
+    @Override
+    public <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, GenericType<U> entityType, Class<T> responseType) {
+        return Contexts.runInContext(context, () -> invokeWithEntity(
+                writerContext.marshallStream(entityStream, entityType), GenericType.create(responseType)));
+    }
+
+    @Override
+    public <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType) {
+        return submit(writerContext.marshallStream(entityStream, entityType));
+    }
+
+    @Override
+    public <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType) {
+        return submit(writerContext.marshallStream(entityStream, entityType));
+    }
+
+    @Override
+    public Single<WebClientResponse> submit(Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> function) {
         return submit(function.apply(writerContext));
     }
 
     @Override
-    public MessageBodyReaderContext readerContext() {
+    public EntitySupport.ReaderContext readerContext() {
         return readerContext;
     }
 
     @Override
-    public MessageBodyWriterContext writerContext() {
+    public EntitySupport.WriterContext writerContext() {
         return writerContext;
     }
 
@@ -662,7 +688,7 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
         }));
     }
 
-    private MessageBodyReadableContent getContentFromClientResponse(WebClientResponse response) {
+    private ReadableEntity getContentFromClientResponse(WebClientResponse response) {
         //If the response status is greater then 300, ask user to change requested entity to ClientResponse
         if (response.status().code() >= Http.Status.MOVED_PERMANENTLY_301.code()) {
             throw new WebClientException("Request failed with code " + response.status().code());

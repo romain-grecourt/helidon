@@ -26,7 +26,7 @@ import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.HttpRequest;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.ReadableEntity;
 
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -113,12 +113,12 @@ public interface ServerRequest extends HttpRequest {
     RequestHeaders headers();
 
     /**
-     * Returns {@link MessageBodyReadableContent} reactive representation of the request content.
+     * Returns {@link ReadableEntity} reactive representation of the request content.
      *
      * @return a request content
-     * @see MessageBodyReadableContent
+     * @see ReadableEntity
      */
-    MessageBodyReadableContent content();
+    ReadableEntity content();
 
     /**
      * A unique correlation ID that is associated with this request and its associated response.

@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.bind.Jsonb;
 
@@ -35,7 +34,7 @@ import jakarta.json.bind.Jsonb;
  * Message body stream writer supporting object binding with JSON-B.
  * This writer is for {@link MediaType#APPLICATION_X_NDJSON} media type.
  */
-class JsonbNdBodyStreamWriter implements MessageBodyStreamWriter<Object> {
+class JsonbNdBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
 
     private static final byte[] NL = "\n".getBytes(StandardCharsets.UTF_8);
 
@@ -50,7 +49,7 @@ class JsonbNdBodyStreamWriter implements MessageBodyStreamWriter<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
@@ -62,7 +61,7 @@ class JsonbNdBodyStreamWriter implements MessageBodyStreamWriter<Object> {
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, MessageBodyWriterContext context) {
+    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
         MediaType contentType = MediaType.APPLICATION_X_NDJSON;
         context.contentType(contentType);
 
@@ -80,7 +79,7 @@ class JsonbNdBodyStreamWriter implements MessageBodyStreamWriter<Object> {
                 });
     }
 
-    private Optional<MediaType> findMediaType(MessageBodyWriterContext context) {
+    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.APPLICATION_X_NDJSON));
         } catch (IllegalStateException ignore) {

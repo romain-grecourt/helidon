@@ -38,8 +38,8 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MessageBodyFilter;
 import io.helidon.webserver.utils.TestUtils;
 
 import org.junit.jupiter.api.Test;
@@ -263,7 +263,7 @@ public class RequestContentTest {
     public void nullFilter() throws Exception {
         Request request = requestTestStub(Single.never());
         assertThrows(NullPointerException.class, () -> {
-            request.content().registerFilter((MessageBodyFilter)null);
+            request.content().registerFilter((EntitySupport.Filter)null);
         });
     }
 

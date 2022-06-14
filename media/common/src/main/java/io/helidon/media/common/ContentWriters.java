@@ -16,23 +16,27 @@
 
 package io.helidon.media.common;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
-import java.util.Objects;
-import java.util.concurrent.Flow.Publisher;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.FormParams;
 import io.helidon.common.reactive.IoMulti;
+import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.RetrySchema;
 import io.helidon.common.reactive.Single;
 
 /**
- * Utility class that provides standalone mechanisms for writing message body
- * content.
+ * Utility class that provides standalone mechanisms for generating publisher of {@link DataChunk}.
  */
 public final class ContentWriters {
 
@@ -43,11 +47,10 @@ public final class ContentWriters {
     }
 
     /**
-     * Create a {@link DataChunk} with the given byte array and return a
-     * {@link Single}.
+     * Create a {@link DataChunk} with the given byte array and return a {@link Single}.
      *
      * @param bytes the byte array
-     * @param copy if {@code true} the byte array is copied
+     * @param copy  if {@code true} the byte array is copied
      * @return Single
      * @since 2.0.0
      */
@@ -63,10 +66,41 @@ public final class ContentWriters {
     }
 
     /**
-     * Create a publisher of {@link DataChunk} with the given
-     * {@link CharSequence} / {@link Charset} and return a {@link Single}.
+     * Create a publisher of {@link DataChunk} with the given {@link ReadableByteChannel}.
      *
-     * @param cs the char sequence
+     * @param channel byte channel
+     * @param schema  retry schema
+     * @return Multi
+     * @since 3.0.0
+     */
+    public static Multi<DataChunk> writeByteChannel(ReadableByteChannel channel, RetrySchema schema) {
+        return IoMulti.multiFromByteChannelBuilder(channel)
+                      .retrySchema(schema)
+                      .build()
+                      .map(DataChunk::create);
+    }
+
+    /**
+     * Create a publisher of {@link DataChunk} with the given {@link Path}.
+     *
+     * @param path file
+     * @return Multi
+     * @since 3.0.0
+     */
+    public static Multi<DataChunk> writeFile(Path path) {
+        try {
+            FileChannel fc = FileChannel.open(path, StandardOpenOption.READ);
+            return IoMulti.multiFromByteChannel(fc).map(DataChunk::create);
+        } catch (IOException ex) {
+            return Multi.error(ex);
+        }
+    }
+
+    /**
+     * Create a publisher of {@link DataChunk} with the given {@link CharSequence} / {@link Charset} and return a
+     * {@link Single}.
+     *
+     * @param cs      the char sequence
      * @param charset the charset to use to encode the char sequence
      * @return Single
      * @since 2.0.0
@@ -79,7 +113,7 @@ public final class ContentWriters {
      * Create a a publisher {@link DataChunk} with the given
      * {@link CharBuffer} / {@link Charset} and return a {@link Single}.
      *
-     * @param buffer the char buffer
+     * @param buffer  the char buffer
      * @param charset the charset to use to encode the char sequence
      * @return Single
      * @since 2.0.0
@@ -89,11 +123,11 @@ public final class ContentWriters {
     }
 
     /**
-     * Create a a publisher {@link DataChunk} with the given
-     * {@link Throwable} / {@link Charset} and return a {@link Single}.
+     * Create a a publisher {@link DataChunk} with the given {@link Throwable} / {@link Charset} and return
+     * a {@link Single}.
      *
      * @param throwable the {@link Throwable}
-     * @param charset the charset to use to encode the stack trace
+     * @param charset   the charset to use to encode the stack trace
      * @return Single
      * @since 2.0.0
      */
@@ -117,86 +151,48 @@ public final class ContentWriters {
     }
 
     /**
-     * Returns a writer function for {@code byte[]}.
-     * <p>
-     * The {@code copy} variant is by default registered in
-     * {@code ServerResponse}.
+     * Create a a publisher {@link DataChunk} with the given {@link FormParams} / {@link Charset} and return
+     * a {@link Single}.
      *
-     * @param copy a signal if byte array should be copied - set it {@code true}
-     * if {@code byte[]} will be immediately reused.
-     * @return a {@code byte[]} writer
-     *
-     * @deprecated since 2.0.0, use {@link #writeBytes(byte[], boolean)} instead
+     * @param formParams the {@link FormParams}
+     * @param charset    the charset to use
+     * @return Single
      */
-    @Deprecated(since = "2.0.0")
-    public static Function<byte[], Publisher<DataChunk>> byteArrayWriter(boolean copy) {
-        return (bytes) -> writeBytes(bytes, copy);
+    public static Single<DataChunk> writeURLEncodedFormParams(FormParams formParams, Charset charset) {
+        return writeCharSequence(writeFormParams(formParams, '\n', s -> URLEncoder.encode(s, charset)), charset);
     }
 
     /**
-     * Returns a writer function for {@link CharSequence} using provided
-     * standard {@code charset}.
-     * <p>
-     * An instance is by default registered in {@code ServerResponse} for all
-     * standard charsets.
+     * Create a a publisher {@link DataChunk} with the given {@link FormParams} / {@link Charset} and return
+     * a {@link Single}.
      *
-     * @param charset a standard charset to use
-     * @return a {@link String} writer
-     * @throws NullPointerException if parameter {@code charset} is {@code null}
-     * @deprecated since 2.0.0, use {@link #writeCharSequence(CharSequence, Charset)}
-     *  or {@link DefaultMediaSupport#charSequenceWriter()} instead
+     * @param formParams the {@link FormParams}
+     * @param charset    the charset to use
+     * @return Single
      */
-    @Deprecated(since = "2.0.0")
-    public static Function<CharSequence, Publisher<DataChunk>> charSequenceWriter(Charset charset) {
-        return (cs) -> writeCharSequence(cs, charset);
+    public static Single<DataChunk> writePlainTextFormParams(FormParams formParams, Charset charset) {
+        return writeCharSequence(writeFormParams(formParams, '\n', Function.identity()), charset);
     }
 
-    /**
-     * Returns a writer function for {@link CharBuffer} using provided standard
-     * {@code charset}.
-     * <p>
-     * An instance is by default registered in {@code ServerResponse} for all
-     * standard charsets.
-     *
-     * @param charset a standard charset to use
-     * @return a {@link String} writer
-     * @throws NullPointerException if parameter {@code charset} is {@code null}
-     * @deprecated since 2.0.0, use {@link #writeCharBuffer(CharBuffer, Charset)} instead
-     */
-    @Deprecated(since = "2.0.0")
-    public static Function<CharBuffer, Publisher<DataChunk>> charBufferWriter(Charset charset) {
-        return (buffer) -> writeCharBuffer(buffer, charset);
+    private static String writeFormParams(FormParams formParams, char sep, Function<String, String> encoder) {
+        StringBuilder result = new StringBuilder();
+        formParams.toMap().forEach((key, values) -> {
+            if (values.size() == 0) {
+                if (result.length() > 0) {
+                    result.append(sep);
+                }
+                result.append(encoder.apply(key));
+            } else {
+                for (String value : values) {
+                    if (result.length() > 0) {
+                        result.append(sep);
+                    }
+                    result.append(encoder.apply(key));
+                    result.append("=");
+                    result.append(encoder.apply(value));
+                }
+            }
+        });
+        return result.toString();
     }
-
-    /**
-     * Returns a writer function for {@link ReadableByteChannel}. Created
-     * publisher use provided {@link RetrySchema} to define delay between
-     * unsuccessful read attempts.
-     *
-     * @param retrySchema a retry schema to use in case when {@code read}
-     * operation reads {@code 0 bytes}
-     * @return a {@link ReadableByteChannel} writer
-     * @deprecated since 2.0.0, use {@link DefaultMediaSupport#byteChannelWriter(RetrySchema)}} instead
-     */
-    @Deprecated(since = "2.0.0")
-    public static Function<ReadableByteChannel, Publisher<DataChunk>> byteChannelWriter(RetrySchema retrySchema) {
-        Objects.requireNonNull(retrySchema);
-
-        return channel -> IoMulti.multiFromByteChannelBuilder(channel)
-                .retrySchema(retrySchema)
-                .build()
-                .map(DataChunk::create);
-    }
-
-    /**
-     * Returns a writer function for {@link ReadableByteChannel}.
-     *
-     * @return a {@link ReadableByteChannel} writer
-     * @deprecated since 2.0.0, use {@link DefaultMediaSupport#byteChannelWriter()}} instead
-     */
-    @Deprecated(since = "2.0.0")
-    public static Function<ReadableByteChannel, Publisher<DataChunk>> byteChannelWriter() {
-        return channel -> IoMulti.multiFromByteChannel(channel).map(DataChunk::create);
-    }
-
 }

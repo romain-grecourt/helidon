@@ -28,8 +28,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.configurable.ServerThreadPoolSupplier;
 import io.helidon.common.http.Parameters;
 import io.helidon.config.Config;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonb.JsonbSupport;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -55,8 +54,8 @@ public class GraphQlSupport implements Service {
                                 .setProperty(ZERO_TIME_PARSE_DEFAULTING, true)
                                 .withNullValues(true).withAdapters())
             .build();
-    private static final MessageBodyWriter<Object> JSONB_WRITER = JsonbSupport.writer(JSONB);
-    private static final MessageBodyReader<Object> JSONB_READER = JsonbSupport.reader(JSONB);
+    private static final EntitySupport.Writer<Object> JSONB_WRITER = JsonbSupport.writer(JSONB);
+    private static final EntitySupport.Reader<Object> JSONB_READER = JsonbSupport.reader(JSONB);
     @SuppressWarnings("rawtypes")
     private static final GenericType<LinkedHashMap> LINKED_HASH_MAP_GENERIC_TYPE = GenericType.create(LinkedHashMap.class);
 

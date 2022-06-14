@@ -28,7 +28,7 @@ import org.testng.annotations.Test;
 
 import static io.helidon.media.multipart.BodyPartTest.MEDIA_CONTEXT;
 
-public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxVerification<WriteableBodyPart> {
+public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxVerification<BodyPart> {
 
     protected MultiPartEncoderSubsWhiteBoxTckTest() {
         super(new TestEnvironment(200));
@@ -42,7 +42,7 @@ public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxV
     }
 
     @Override
-    protected Flow.Subscriber<WriteableBodyPart> createFlowSubscriber(final WhiteboxSubscriberProbe<WriteableBodyPart> probe) {
+    protected Flow.Subscriber<BodyPart> createFlowSubscriber(final WhiteboxSubscriberProbe<BodyPart> probe) {
         CompletableFuture<Void> future = new CompletableFuture<>();
         MultiPartEncoder encoder = new MultiPartEncoder("boundary", MEDIA_CONTEXT.writerContext()){
             @Override
@@ -63,7 +63,7 @@ public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxV
             }
 
             @Override
-            public void onNext(final WriteableBodyPart bodyPart) {
+            public void onNext(final BodyPart bodyPart) {
                 super.onNext(bodyPart);
                 probe.registerOnNext(bodyPart);
             }

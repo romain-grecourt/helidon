@@ -39,8 +39,15 @@
     <h1>Upload</h1>
     <form action="/api" method="post" enctype="multipart/form-data">
       Select a file to upload:
-      <input id="files" type="file" name="file[]" multiple />
+      <input id="files1" type="file" name="file[]" multiple />
       <input type="submit" value="Upload!" name="submit">
+    </form>
+
+    <h1>Upload (re-uploaded to /api using webClient)</h1>
+    <form action="/api/re-upload" method="post" enctype="multipart/form-data">
+        Select a file to upload:
+        <input id="files2" type="file" name="file[]" multiple />
+        <input type="submit" value="Upload!" name="submit">
     </form>
 
     <script type="text/javascript">

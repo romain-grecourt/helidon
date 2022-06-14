@@ -26,14 +26,14 @@ import org.testng.annotations.Test;
 
 import static io.helidon.media.multipart.BodyPartTest.MEDIA_CONTEXT;
 
-public class MultiPartEncoderSubsBlackBoxTckTest extends FlowSubscriberBlackboxVerification<WriteableBodyPart> {
+public class MultiPartEncoderSubsBlackBoxTckTest extends FlowSubscriberBlackboxVerification<BodyPart> {
 
     protected MultiPartEncoderSubsBlackBoxTckTest() {
         super(new TestEnvironment(200));
     }
 
     @Override
-    public Flow.Subscriber<WriteableBodyPart> createFlowSubscriber() {
+    public Flow.Subscriber<BodyPart> createFlowSubscriber() {
         MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.create(encoder).forEach(ch -> {});
         return encoder;

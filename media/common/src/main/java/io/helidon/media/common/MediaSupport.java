@@ -43,7 +43,7 @@ import java.util.Collections;
  * <pre><code>
  * Routing.builder()
  *        .get("/foo", (res, req) -&gt; {
- *            MessageBodyReadableContent content = req.content();
+ *            ReadableEntity content = req.content();
  *            content.registerReader(JsonbSupport.create())
  *            content.as(String.class)
  *                   .thenAccept(System.out::print);
@@ -53,7 +53,7 @@ import java.util.Collections;
  * <pre><code>
  * Routing.builder()
  *        .get("/foo", (res, req) -&gt; {
- *           MessageBodyWriterContext writerContext = res.writerContext();
+ *           EntitySupport.WriterContext writerContext = res.writerContext();
  *           writerContext.registerWriter(JsonbSupport.create())
  *           res.send("Example entity");
  *        })
@@ -67,7 +67,7 @@ public interface MediaSupport {
      * @param readerContext reader context
      * @param writerContext writer context
      */
-    default void register(MessageBodyReaderContext readerContext, MessageBodyWriterContext writerContext) {
+    default void register(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
         readers().forEach(readerContext::registerReader);
         writers().forEach(writerContext::registerWriter);
         streamReaders().forEach(readerContext::registerReader);
@@ -79,7 +79,7 @@ public interface MediaSupport {
      *
      * @return readers
      */
-    default Collection<MessageBodyReader<?>> readers() {
+    default Collection<EntitySupport.Reader<?>> readers() {
         return Collections.emptyList();
     }
 
@@ -88,7 +88,7 @@ public interface MediaSupport {
      *
      * @return writers
      */
-    default Collection<MessageBodyWriter<?>> writers() {
+    default Collection<EntitySupport.Writer<?>> writers() {
         return Collections.emptyList();
     }
 
@@ -97,7 +97,7 @@ public interface MediaSupport {
      *
      * @return stream readers
      */
-    default Collection<MessageBodyStreamReader<?>> streamReaders() {
+    default Collection<EntitySupport.StreamReader<?>> streamReaders() {
         return Collections.emptyList();
     }
 
@@ -106,7 +106,7 @@ public interface MediaSupport {
      *
      * @return stream writers
      */
-    default Collection<MessageBodyStreamWriter<?>> streamWriters() {
+    default Collection<EntitySupport.StreamWriter<?>> streamWriters() {
         return Collections.emptyList();
     }
 

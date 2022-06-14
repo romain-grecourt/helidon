@@ -22,13 +22,12 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 /**
  * Reader for the custom media type.
  */
-public class NameReader implements MessageBodyReader<Name> {
+public class NameReader implements EntitySupport.Reader<Name> {
 
     private static final MediaType TYPE = MediaType.parse("application/name");
 
@@ -41,12 +40,12 @@ public class NameReader implements MessageBodyReader<Name> {
 
     @Override
     public <U extends Name> Single<U> read(Flow.Publisher<DataChunk> publisher, GenericType<U> type,
-                                           MessageBodyReaderContext context) {
+                                           EntitySupport.ReaderContext context) {
         return (Single<U>) ContentReaders.readString(publisher, context.charset()).map(Name::new);
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyReaderContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         return context.contentType()
                 .filter(TYPE::equals)
                 .map(it -> PredicateResult.supports(Name.class, type))

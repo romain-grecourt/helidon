@@ -32,8 +32,7 @@ import io.helidon.common.http.HttpRequest;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.webclient.spi.WebClientService;
 
 /**
@@ -214,14 +213,14 @@ public interface WebClientRequestBuilder {
      *
      * @return request reader context
      */
-    MessageBodyReaderContext readerContext();
+    EntitySupport.ReaderContext readerContext();
 
     /**
      * Returns writer context of the request builder.
      *
      * @return request writer context
      */
-    MessageBodyWriterContext writerContext();
+    EntitySupport.WriterContext writerContext();
 
     /**
      * Sets http version.
@@ -409,6 +408,84 @@ public interface WebClientRequestBuilder {
     Single<WebClientResponse> submit(Object requestEntity);
 
     /**
+     * Performs prepared request and submitting request entity.
+     * <p>
+     * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param requestEntity request entity
+     * @param entityType    entity type
+     * @return request completion stage
+     */
+    <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType);
+
+    /**
+     * Performs prepared request and submitting request entity.
+     * <p>
+     * When response is received, it is converted to response type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param requestEntity request entity
+     * @param entityType    entity type
+     * @param responseType  requested response type
+     * @param <T>           response type
+     * @return request completion stage
+     */
+    <T> Single<T> submit(T requestEntity, GenericType<T> entityType, Class<T> responseType);
+
+    /**
+     * Performs prepared request and submitting request entity stream.
+     * <p>
+     * When response is received, it is converted to response type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param entityStream request entity stream
+     * @param entityType   class representing the entity type
+     * @param responseType requested response type
+     * @param <T>          response type
+     * @return request completion stage
+     */
+    <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType);
+
+    /**
+     * Performs prepared request and submitting request entity stream.
+     * <p>
+     * When response is received, it is converted to response type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param entityStream request entity stream
+     * @param entityType   class representing the entity type
+     * @param responseType requested response type
+     * @param <T>          response type
+     * @return request completion stage
+     */
+    <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, GenericType<U> entityType, Class<T> responseType);
+
+    /**
+     * Performs prepared request and submitting request entity stream.
+     * <p>
+     * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param entityStream request entity stream
+     * @param entityType   class representing the entity type
+     * @return request completion stage
+     */
+    <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType);
+
+    /**
+     * Performs prepared request and submitting request entity stream.
+     * <p>
+     * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param entityStream request entity stream
+     * @param entityType   class representing the entity type
+     * @return request completion stage
+     */
+    <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType);
+
+    /**
      * Performs prepared request and submitting request entity using a marshalling function.
      *
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
@@ -417,7 +494,7 @@ public interface WebClientRequestBuilder {
      * @param function marshalling function
      * @return request completion stage
      */
-    Single<WebClientResponse> submit(Function<MessageBodyWriterContext, Flow.Publisher<DataChunk>> function);
+    Single<WebClientResponse> submit(Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> function);
 
     /**
      * Request to a server. Contains all information about used request headers, configuration etc.

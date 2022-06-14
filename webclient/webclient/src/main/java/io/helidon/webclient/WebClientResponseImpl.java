@@ -19,16 +19,14 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.Flow;
 import java.util.logging.Logger;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.ReadableEntity;
 
 /**
  * Immutable implementation of the {@link WebClientResponse}.
@@ -41,7 +39,7 @@ final class WebClientResponseImpl implements WebClientResponse {
     private final Flow.Publisher<DataChunk> publisher;
     private final Http.ResponseStatus status;
     private final Http.Version version;
-    private final MessageBodyReaderContext readerContext;
+    private final EntitySupport.ReaderContext readerContext;
     private final NettyClientHandler.ResponseCloser responseCloser;
     private final URI lastEndpointUri;
 
@@ -85,10 +83,10 @@ final class WebClientResponseImpl implements WebClientResponse {
     }
 
     @Override
-    public MessageBodyReadableContent content() {
-        Optional<MediaType> mediaType = headers.contentType();
-        MessageBodyReaderContext readerContext = MessageBodyReaderContext.create(this.readerContext, null, headers, mediaType);
-        return MessageBodyReadableContent.create(publisher, readerContext);
+    public ReadableEntity content() {
+        EntitySupport.ReaderContext readerContext = this.readerContext.createChild(null, headers,
+                headers.contentType().orElse(null));
+        return ReadableEntity.create(publisher, readerContext);
     }
 
     @Override
@@ -107,7 +105,7 @@ final class WebClientResponseImpl implements WebClientResponse {
         private Http.ResponseStatus status = Http.Status.INTERNAL_SERVER_ERROR_500;
         private Http.Version version = Http.Version.V1_1;
         private NettyClientHandler.ResponseCloser responseCloser;
-        private MessageBodyReaderContext readerContext;
+        private EntitySupport.ReaderContext readerContext;
         private URI lastEndpointUri;
 
         @Override
@@ -132,7 +130,7 @@ final class WebClientResponseImpl implements WebClientResponse {
          * @param readerContext message body reader
          * @return updated builder instance
          */
-        Builder readerContext(MessageBodyReaderContext readerContext) {
+        Builder readerContext(EntitySupport.ReaderContext readerContext) {
             this.readerContext = readerContext;
             return this;
         }

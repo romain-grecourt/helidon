@@ -21,10 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 import io.helidon.common.LazyValue;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
 
 import jakarta.json.Json;
 import jakarta.json.JsonReaderFactory;
@@ -88,7 +86,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return default JSON-P body reader instance
      */
-    public static MessageBodyReader<JsonStructure> reader() {
+    public static EntitySupport.Reader<JsonStructure> reader() {
         return DEFAULT.get().reader;
     }
 
@@ -98,7 +96,7 @@ public final class JsonpSupport implements MediaSupport {
      * @param readerFactory json reader factory
      * @return new JSON-P body reader instance
      */
-    public static MessageBodyReader<JsonStructure> reader(JsonReaderFactory readerFactory) {
+    public static EntitySupport.Reader<JsonStructure> reader(JsonReaderFactory readerFactory) {
         return new JsonpBodyReader(readerFactory);
     }
 
@@ -107,7 +105,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return default JSON-P body writer instance
      */
-    public static MessageBodyWriter<JsonStructure> writer() {
+    public static EntitySupport.Writer<JsonStructure> writer() {
         return DEFAULT.get().writer;
     }
 
@@ -117,7 +115,7 @@ public final class JsonpSupport implements MediaSupport {
      * @param writerFactory json writer factory
      * @return new JSON-P body writer instance
      */
-    public static MessageBodyWriter<JsonStructure> writer(JsonWriterFactory writerFactory) {
+    public static EntitySupport.Writer<JsonStructure> writer(JsonWriterFactory writerFactory) {
         return new JsonpBodyWriter(writerFactory);
     }
 
@@ -126,7 +124,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return default JSON-P body stream writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> streamWriter() {
+    public static EntitySupport.StreamWriter<JsonStructure> streamWriter() {
         return DEFAULT.get().streamWriter;
     }
 
@@ -136,7 +134,7 @@ public final class JsonpSupport implements MediaSupport {
      * @param writerFactory json writer factory
      * @return new JSON-P stream body writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> streamWriter(JsonWriterFactory writerFactory) {
+    public static EntitySupport.StreamWriter<JsonStructure> streamWriter(JsonWriterFactory writerFactory) {
         return new JsonpBodyStreamWriter(writerFactory);
     }
 
@@ -146,7 +144,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return new JSON-P body stream writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> eventStreamWriter() {
+    public static EntitySupport.StreamWriter<JsonStructure> eventStreamWriter() {
         return DEFAULT.get().esStreamWriter;
     }
 
@@ -157,7 +155,7 @@ public final class JsonpSupport implements MediaSupport {
      * @param writerFactory json writer factory
      * @return new JSON-P body stream writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> eventStreamWriter(JsonWriterFactory writerFactory) {
+    public static EntitySupport.StreamWriter<JsonStructure> eventStreamWriter(JsonWriterFactory writerFactory) {
         return new JsonpEsBodyStreamWriter(writerFactory);
     }
 
@@ -167,7 +165,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return new JSON-P body stream writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> ndJsonStreamWriter() {
+    public static EntitySupport.StreamWriter<JsonStructure> ndJsonStreamWriter() {
         return DEFAULT.get().ndStreamWriter;
     }
 
@@ -178,7 +176,7 @@ public final class JsonpSupport implements MediaSupport {
      * @param writerFactory json writer factory
      * @return new JSON-P body stream writer instance
      */
-    public static MessageBodyStreamWriter<JsonStructure> ndJsonStreamWriter(JsonWriterFactory writerFactory) {
+    public static EntitySupport.StreamWriter<JsonStructure> ndJsonStreamWriter(JsonWriterFactory writerFactory) {
         return new JsonpNdBodyStreamWriter(writerFactory);
     }
 
@@ -187,7 +185,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return JSON-P reader instance
      */
-    public MessageBodyReader<JsonStructure> readerInstance() {
+    public EntitySupport.Reader<JsonStructure> readerInstance() {
         return reader;
     }
 
@@ -196,7 +194,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return JSON-P writer instance
      */
-    public MessageBodyWriter<JsonStructure> writerInstance() {
+    public EntitySupport.Writer<JsonStructure> writerInstance() {
         return writer;
     }
 
@@ -209,7 +207,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return JSON processing stream writer.
      */
-    public MessageBodyStreamWriter<JsonStructure> streamWriterInstance() {
+    public EntitySupport.StreamWriter<JsonStructure> streamWriterInstance() {
         return streamWriter;
     }
 
@@ -230,7 +228,7 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return JSON processing stream writer.
      */
-    public MessageBodyStreamWriter<JsonStructure> eventStreamWriterInstance() {
+    public EntitySupport.StreamWriter<JsonStructure> eventStreamWriterInstance() {
         return esStreamWriter;
     }
 
@@ -249,22 +247,22 @@ public final class JsonpSupport implements MediaSupport {
      *
      * @return JSON processing stream writer.
      */
-    public MessageBodyStreamWriter<JsonStructure> ndJsonStreamWriterInstance() {
+    public EntitySupport.StreamWriter<JsonStructure> ndJsonStreamWriterInstance() {
         return ndStreamWriter;
     }
 
     @Override
-    public Collection<MessageBodyReader<?>> readers() {
+    public Collection<EntitySupport.Reader<?>> readers() {
         return List.of(reader);
     }
 
     @Override
-    public Collection<MessageBodyWriter<?>> writers() {
+    public Collection<EntitySupport.Writer<?>> writers() {
         return List.of(writer);
     }
 
     @Override
-    public Collection<MessageBodyStreamWriter<?>> streamWriters() {
+    public Collection<EntitySupport.StreamWriter<?>> streamWriters() {
         return List.of(streamWriter, ndStreamWriter, esStreamWriter);
     }
 

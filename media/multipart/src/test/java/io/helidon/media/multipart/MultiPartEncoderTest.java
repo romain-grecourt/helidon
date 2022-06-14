@@ -52,66 +52,66 @@ public class MultiPartEncoderTest {
     public void testEncodeOnePart() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                WriteableBodyPart.builder()
+                BodyPart.builder()
                         .entity("part1")
                         .build());
         assertThat(message, is(equalTo(
                 "--" + boundary + "\r\n"
-                + "\r\n"
-                + "part1\r\n"
-                + "--" + boundary + "--")));
+                        + "\r\n"
+                        + "part1\r\n"
+                        + "--" + boundary + "--")));
     }
 
     @Test
     public void testEncodeOnePartWithHeaders() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                WriteableBodyPart.builder()
-                        .headers(WriteableBodyPartHeaders.builder()
-                                .contentType(MediaType.TEXT_PLAIN)
-                                .build())
+                BodyPart.builder()
+                        .headers(BodyPartHeaders.builder()
+                                                .contentType(MediaType.TEXT_PLAIN)
+                                                .build())
                         .entity("part1")
                         .build());
         assertThat(message, is(equalTo(
                 "--" + boundary + "\r\n"
-                + "Content-Type:text/plain\r\n"
-                + "\r\n"
-                + "part1\r\n"
-                + "--" + boundary + "--")));
+                        + "Content-Type:text/plain\r\n"
+                        + "\r\n"
+                        + "part1\r\n"
+                        + "--" + boundary + "--")));
     }
 
     @Test
     public void testEncodeTwoParts() throws Exception {
         String boundary = "boundary";
         String message = encodeParts(boundary,
-                WriteableBodyPart.builder()
+                BodyPart.builder()
                         .entity("part1")
                         .build(),
-                WriteableBodyPart.builder()
+                BodyPart.builder()
                         .entity("part2")
                         .build());
         assertThat(message, is(equalTo(
                 "--" + boundary + "\r\n"
-                + "\r\n"
-                + "part1\r\n"
-                + "--" + boundary + "\r\n"
-                + "\r\n"
-                + "part2\r\n"
-                + "--" + boundary + "--")));
+                        + "\r\n"
+                        + "part1\r\n"
+                        + "--" + boundary + "\r\n"
+                        + "\r\n"
+                        + "part2\r\n"
+                        + "--" + boundary + "--")));
     }
 
     @Test
-    public void testRequests() throws Exception {
+    public void testRequests() {
         MultiPartEncoder enc = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.create(LongStream.range(1, 500)
-                .mapToObj(i ->
-                        WriteableBodyPart.builder()
-                                .entity("part" + i)
-                                .build()
-                ))
-                .subscribe(enc);
+                               .mapToObj(i ->
+                                       BodyPart.builder()
+                                               .entity("part" + i)
+                                               .build()
+                               ))
+             .subscribe(enc);
         final CountDownLatch latch = new CountDownLatch(3);
-        Subscriber<DataChunk> subscriber = new Subscriber<DataChunk>() {
+        Subscriber<DataChunk> subscriber = new Subscriber<>() {
 
             @Override
             public void onSubscribe(final Flow.Subscription subscription) {
@@ -139,11 +139,11 @@ public class MultiPartEncoderTest {
     @Test
     public void testSubscribingMoreThanOnce() {
         MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
-        Multi.<WriteableBodyPart>just(List.of()).subscribe(encoder);
+        Multi.<BodyPart>just(List.of()).subscribe(encoder);
         try {
-            Multi.<WriteableBodyPart>just(List.of()).subscribe(encoder);
+            Multi.<BodyPart>just(List.of()).subscribe(encoder);
             fail("exception should be thrown");
-        } catch(IllegalStateException ex) {
+        } catch (IllegalStateException ex) {
             assertThat(ex.getMessage(), is(equalTo("Flow.Subscription already set.")));
         }
     }
@@ -151,7 +151,7 @@ public class MultiPartEncoderTest {
     @Test
     public void testUpstreamError() {
         MultiPartEncoder decoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
-        Multi.<WriteableBodyPart>error(new IllegalStateException("oops")).subscribe(decoder);
+        Multi.<BodyPart>error(new IllegalStateException("oops")).subscribe(decoder);
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         decoder.subscribe(subscriber);
         CompletableFuture<String> future = subscriber.content().toCompletableFuture();
@@ -159,7 +159,7 @@ public class MultiPartEncoderTest {
         try {
             future.getNow(null);
             fail("exception should be thrown");
-        } catch(CompletionException ex) {
+        } catch (CompletionException ex) {
             assertThat(ex.getCause(), is(instanceOf(IllegalStateException.class)));
             assertThat(ex.getCause().getMessage(), is(equalTo("oops")));
         }
@@ -170,22 +170,22 @@ public class MultiPartEncoderTest {
         MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         DataChunkSubscriber subscriber = new DataChunkSubscriber();
         encoder.subscribe(subscriber);
-        Multi.just(WriteableBodyPart.builder()
-                .publisher(Multi.<DataChunk>error(new IllegalStateException("oops")))
-                .build())
-                .subscribe(encoder);
+        Multi.just(BodyPart.builder()
+                           .publisher(Multi.error(new IllegalStateException("oops")))
+                           .build())
+             .subscribe(encoder);
         CompletableFuture<String> future = subscriber.content().toCompletableFuture();
         assertThat(future.isCompletedExceptionally(), is(equalTo(true)));
         try {
             future.getNow(null);
             fail("exception should be thrown");
-        } catch(CompletionException ex) {
+        } catch (CompletionException ex) {
             assertThat(ex.getCause(), is(instanceOf(IllegalStateException.class)));
             assertThat(ex.getCause().getMessage(), is(equalTo("oops")));
         }
     }
 
-    private static String encodeParts(String boundary, WriteableBodyPart... parts) throws Exception {
+    private static String encodeParts(String boundary, BodyPart... parts) throws Exception {
         MultiPartEncoder encoder = MultiPartEncoder.create(boundary, MEDIA_CONTEXT.writerContext());
         Multi.just(parts).subscribe(encoder);
         return ContentReaders.readString(encoder, StandardCharsets.UTF_8).get(10, TimeUnit.SECONDS);

@@ -24,15 +24,14 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Message body stream writer supporting object binding with Jackson.
  */
-class JacksonBodyStreamWriter implements MessageBodyStreamWriter<Object> {
+class JacksonBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
 
     private static final byte[] ARRAY_JSON_END_BYTES = "]".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ARRAY_JSON_BEGIN_BYTES = "[".getBytes(StandardCharsets.UTF_8);
@@ -49,14 +48,14 @@ class JacksonBodyStreamWriter implements MessageBodyStreamWriter<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
                 ? PredicateResult.COMPATIBLE
                 : PredicateResult.NOT_SUPPORTED;
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, MessageBodyWriterContext context) {
+    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);

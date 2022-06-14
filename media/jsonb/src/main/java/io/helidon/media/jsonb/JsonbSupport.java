@@ -20,10 +20,8 @@ import java.util.List;
 import java.util.Objects;
 
 import io.helidon.common.LazyValue;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
 
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbBuilder;
@@ -83,7 +81,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return default JSON-B body writer instance
      */
-    public static MessageBodyReader<Object> reader() {
+    public static EntitySupport.Reader<Object> reader() {
         return DEFAULT.get().reader;
     }
 
@@ -93,7 +91,7 @@ public final class JsonbSupport implements MediaSupport {
      * @param jsonb jsonb instance
      * @return new JSON-B body reader instance
      */
-    public static MessageBodyReader<Object> reader(Jsonb jsonb) {
+    public static EntitySupport.Reader<Object> reader(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         return JsonbBodyReader.create(jsonb);
     }
@@ -103,7 +101,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return default JSON-B body writer instance
      */
-    public static MessageBodyWriter<Object> writer() {
+    public static EntitySupport.Writer<Object> writer() {
         return DEFAULT.get().writer;
     }
 
@@ -113,7 +111,7 @@ public final class JsonbSupport implements MediaSupport {
      * @param jsonb jsonb instance
      * @return new JSON-B body writer instance
      */
-    public static MessageBodyWriter<Object> writer(Jsonb jsonb) {
+    public static EntitySupport.Writer<Object> writer(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         return JsonbBodyWriter.create(jsonb);
     }
@@ -123,7 +121,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return default JSON-B body writer stream instance
      */
-    public static MessageBodyStreamWriter<Object> streamWriter() {
+    public static EntitySupport.StreamWriter<Object> streamWriter() {
         return DEFAULT.get().streamWriter;
     }
 
@@ -133,7 +131,7 @@ public final class JsonbSupport implements MediaSupport {
      * @param jsonb jsonb instance
      * @return new JSON-B body stream writer instance
      */
-    public static MessageBodyStreamWriter<Object> streamWriter(Jsonb jsonb) {
+    public static EntitySupport.StreamWriter<Object> streamWriter(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         return JsonbBodyStreamWriter.create(jsonb);
     }
@@ -144,7 +142,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return new JSON-B body stream writer instance
      */
-    public static MessageBodyStreamWriter<Object> eventStreamWriter() {
+    public static EntitySupport.StreamWriter<Object> eventStreamWriter() {
         return DEFAULT.get().esStreamWriter;
     }
 
@@ -155,7 +153,7 @@ public final class JsonbSupport implements MediaSupport {
      * @param jsonb jsonb instance
      * @return new JSON-B body stream writer instance
      */
-    public static MessageBodyStreamWriter<Object> eventStreamWriter(Jsonb jsonb) {
+    public static EntitySupport.StreamWriter<Object> eventStreamWriter(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         return JsonbEsBodyStreamWriter.create(jsonb);
     }
@@ -166,7 +164,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return new JSON-B body stream writer instance
      */
-    public static MessageBodyStreamWriter<Object> ndJsonStreamWriter() {
+    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter() {
         return DEFAULT.get().ndStreamWriter;
     }
 
@@ -177,7 +175,7 @@ public final class JsonbSupport implements MediaSupport {
      * @param jsonb jsonb instance
      * @return new JSON-B body stream writer instance
      */
-    public static MessageBodyStreamWriter<Object> ndJsonStreamWriter(Jsonb jsonb) {
+    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter(Jsonb jsonb) {
         Objects.requireNonNull(jsonb);
         return JsonbNdBodyStreamWriter.create(jsonb);
     }
@@ -187,7 +185,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B reader instance
      */
-    public MessageBodyReader<Object> readerInstance() {
+    public EntitySupport.Reader<Object> readerInstance() {
         return reader;
     }
 
@@ -196,7 +194,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B writer instance
      */
-    public MessageBodyWriter<Object> writerInstance() {
+    public EntitySupport.Writer<Object> writerInstance() {
         return writer;
     }
 
@@ -205,7 +203,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B stream writer instance
      */
-    public MessageBodyStreamWriter<Object> streamWriterInstance() {
+    public EntitySupport.StreamWriter<Object> streamWriterInstance() {
         return streamWriter;
     }
 
@@ -214,7 +212,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B event stream writer instance
      */
-    public MessageBodyStreamWriter<Object> eventStreamWriterInstance() {
+    public EntitySupport.StreamWriter<Object> eventStreamWriterInstance() {
         return esStreamWriter;
     }
 
@@ -223,23 +221,23 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B event stream writer instance
      */
-    public MessageBodyStreamWriter<Object> ndJsonStreamWriterInstance() {
+    public EntitySupport.StreamWriter<Object> ndJsonStreamWriterInstance() {
         return ndStreamWriter;
     }
 
 
     @Override
-    public Collection<MessageBodyReader<?>> readers() {
+    public Collection<EntitySupport.Reader<?>> readers() {
         return List.of(reader);
     }
 
     @Override
-    public Collection<MessageBodyWriter<?>> writers() {
+    public Collection<EntitySupport.Writer<?>> writers() {
         return List.of(writer);
     }
 
     @Override
-    public Collection<MessageBodyStreamWriter<?>> streamWriters() {
+    public Collection<EntitySupport.StreamWriter<?>> streamWriters() {
         return List.of(streamWriter, ndStreamWriter, esStreamWriter);
     }
 

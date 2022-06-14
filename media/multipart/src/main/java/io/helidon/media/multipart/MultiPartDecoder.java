@@ -19,7 +19,6 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Flow.Processor;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -30,16 +29,17 @@ import java.util.concurrent.atomic.AtomicLong;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.SubscriptionHelper;
-import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.Entity;
+import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.ReadableEntity;
 import io.helidon.media.multipart.VirtualBuffer.BufferEntry;
 
 /**
  * Reactive processor that decodes HTTP payload as a stream of {@link BodyPart}.
- *
+ * <p>
  * This implementation is documented here {@code /docs-internal/multipartdecoder.md}.
  */
-public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> {
+public class MultiPartDecoder implements Processor<DataChunk, BodyPart>, Multi<BodyPart> {
 
     private static final int DOWNSTREAM_INIT = Integer.MIN_VALUE >>> 1;
     private static final int UPSTREAM_INIT = Integer.MIN_VALUE >>> 2;
@@ -48,26 +48,26 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     private static final Iterator<MimeParser.ParserEvent> EMPTY_PARSER_ITERATOR = new EmptyIterator<>();
 
     private volatile Subscription upstream;
-    private Subscriber<? super ReadableBodyPart> downstream;
-    private ReadableBodyPart.Builder bodyPartBuilder;
-    private ReadableBodyPartHeaders.Builder bodyPartHeaderBuilder;
+    private Subscriber<? super BodyPart> downstream;
+    private BodyPartBuilder bodyPartBuilder;
+    private ReadOnlyBodyPartHeaders.Builder bodyPartHeaderBuilder;
     private DataChunkPublisher bodyPartPublisher;
     private Iterator<MimeParser.ParserEvent> parserIterator = EMPTY_PARSER_ITERATOR;
     private volatile Throwable error;
     private boolean cancelled;
-    private AtomicInteger contenders = new AtomicInteger(Integer.MIN_VALUE);
-    private AtomicLong partsRequested = new AtomicLong();
+    private final AtomicInteger contenders = new AtomicInteger(Integer.MIN_VALUE);
+    private final AtomicLong partsRequested = new AtomicLong();
     private final HashMap<Integer, DataChunk> chunksByIds;
     private final MimeParser parser;
-    private final MessageBodyReaderContext context;
+    private final ReaderContext context;
 
     /**
      * Create a new multipart decoder.
      *
      * @param boundary boundary delimiter
-     * @param context reader context
+     * @param context  reader context
      */
-    MultiPartDecoder(String boundary, MessageBodyReaderContext context) {
+    MultiPartDecoder(String boundary, ReaderContext context) {
         Objects.requireNonNull(boundary, "boundary cannot be null!");
         Objects.requireNonNull(context, "context cannot be null!");
         this.context = context;
@@ -76,21 +76,32 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
     }
 
     /**
-     * Create a new multipart decoder.
+     * Create a new multipart decoder that uses a given boundary delimiter and a given reader context.
      *
      * @param boundary boundary delimiter
-     * @param context reader context
+     * @param context  reader context
      * @return MultiPartDecoder
      */
-    public static MultiPartDecoder create(String boundary, MessageBodyReaderContext context) {
+    public static MultiPartDecoder create(String boundary, ReaderContext context) {
         return new MultiPartDecoder(boundary, context);
     }
 
+    /**
+     * Create a new multipart decoder that uses a given boundary delimiter and an empty reader context.
+     *
+     * @param boundary boundary delimiter
+     * @return MultiPartDecoder
+     * @see ReaderContext#create()
+     */
+    public static MultiPartDecoder create(String boundary) {
+        return new MultiPartDecoder(boundary, ReaderContext.create());
+    }
+
     @Override
-    public void subscribe(Subscriber<? super ReadableBodyPart> subscriber) {
+    public void subscribe(Subscriber<? super BodyPart> subscriber) {
         Objects.requireNonNull(subscriber);
         if (!halfInit(UPSTREAM_INIT)) {
-            Multi.<ReadableBodyPart>error(new IllegalStateException("Only one Subscriber allowed"))
+            Multi.<BodyPart>error(new IllegalStateException("Only one Subscriber allowed"))
                  .subscribe(subscriber);
             return;
         }
@@ -104,9 +115,9 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
             @Override
             public void request(long n) {
                 long curr = n <= 0
-                            ? partsRequested.getAndSet(-1)
-                            : partsRequested.getAndUpdate(v -> Long.MAX_VALUE - v > n
-                            ? v + n : v < 0 ? v : Long.MAX_VALUE);
+                        ? partsRequested.getAndSet(-1)
+                        : partsRequested.getAndUpdate(v -> Long.MAX_VALUE - v > n
+                        ? v + n : v < 0 ? v : Long.MAX_VALUE);
                 if (curr == 0) {
                     drain();
                 }
@@ -171,6 +182,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private boolean halfInit(int mask) {
         // Attempts to set the given init mask, if contenders is in the right state for that, and
         // reports whether the contenders was in a state where that part of init needed completing.
@@ -277,10 +289,11 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
                 }
 
                 MimeParser.ParserEvent event = parserIterator.next();
+                //noinspection EnhancedSwitchMigration
                 switch (event.type()) {
                     case START_PART:
-                        bodyPartHeaderBuilder = ReadableBodyPartHeaders.builder();
-                        bodyPartBuilder = ReadableBodyPart.builder();
+                        bodyPartHeaderBuilder = BodyPartHeaders.builder().readOnly(true);
+                        bodyPartBuilder = BodyPart.builder();
                         break;
                     case HEADER:
                         MimeParser.HeaderEvent headerEvent = event.asHeaderEvent();
@@ -370,21 +383,18 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
         }
     }
 
-    private ReadableBodyPart createPart() {
-        ReadableBodyPartHeaders headers = bodyPartHeaderBuilder.build();
+    private BodyPart createPart() {
+        BodyPartHeaders headers = bodyPartHeaderBuilder.build();
 
         // create a reader context for the part
-        MessageBodyReaderContext partContext = MessageBodyReaderContext.create(context,
-                /* eventListener */ null, headers, Optional.of(headers.contentType()));
+        ReaderContext partContext = context.createChild(null, headers, headers.contentType());
 
         // create a readable content for the part
-        MessageBodyReadableContent partContent = MessageBodyReadableContent.create(bodyPartPublisher,
-                partContext);
+        ReadableEntity partContent = Entity.create(ctx -> bodyPartPublisher, partContext, null);
 
-        return bodyPartBuilder
-                .headers(headers)
-                .content(partContent)
-                .build();
+        return bodyPartBuilder.headers(headers)
+                              .publisher(partContent)
+                              .build();
     }
 
     private BodyPartChunk createPartChunk(BufferEntry entry) {
@@ -429,9 +439,9 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
                     // Illegal n makes chunksRequested negative, which interacts with drain() to drain the
                     // entire bufferEntryIterator, and signal onError
                     long curr = n <= 0
-                                ? chunksRequested.getAndSet(-1)
-                                : chunksRequested.getAndUpdate(v -> Long.MAX_VALUE - v > n
-                                ? v + n : v < 0 ? v == Long.MIN_VALUE ? n : v : Long.MAX_VALUE);
+                            ? chunksRequested.getAndSet(-1)
+                            : chunksRequested.getAndUpdate(v -> Long.MAX_VALUE - v > n
+                            ? v + n : v < 0 ? v == Long.MIN_VALUE ? n : v : Long.MAX_VALUE);
                     if (curr == 0) {
                         MultiPartDecoder.this.drain();
                     }
@@ -455,6 +465,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
 
         /**
          * Set the next buffer entry iterator.
+         *
          * @param iterator the iterator to set
          */
         void nextIterator(Iterator<BufferEntry> iterator) {
@@ -496,6 +507,7 @@ public class MultiPartDecoder implements Processor<DataChunk, ReadableBodyPart> 
          *
          * @return {@code true} if the iterator was fully drained, {@code false} otherwise
          */
+        @SuppressWarnings("BooleanMethodIsAlwaysInverted")
         boolean drain() {
             long requested = chunksRequested.get();
             long chunksEmitted = 0;

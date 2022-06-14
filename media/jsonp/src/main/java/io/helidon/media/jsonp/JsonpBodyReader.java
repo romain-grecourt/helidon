@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.JsonException;
 import jakarta.json.JsonReader;
@@ -37,7 +36,7 @@ import jakarta.json.JsonStructure;
 /**
  * Message body reader for {@link JsonStructure} sub-classes (JSON-P).
  */
-final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
+final class JsonpBodyReader implements EntitySupport.Reader<JsonStructure> {
 
     private final JsonReaderFactory jsonFactory;
 
@@ -47,13 +46,13 @@ final class JsonpBodyReader implements MessageBodyReader<JsonStructure> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyReaderContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override
     public <U extends JsonStructure> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type,
-            MessageBodyReaderContext context) {
+            EntitySupport.ReaderContext context) {
 
         return ContentReaders.readBytes(publisher)
                 .map(new BytesToJsonStructure<>(jsonFactory, type, context.charset()));

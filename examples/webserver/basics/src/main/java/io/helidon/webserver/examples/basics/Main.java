@@ -25,8 +25,8 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MessageBodyReader;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.webserver.Handler;
 import io.helidon.webserver.HttpException;
@@ -243,7 +243,7 @@ public class Main {
     }
 
     /**
-     * Use a custom {@link MessageBodyReader reader} to convert the request content into an object of a given type.
+     * Use a custom {@link EntitySupport.Reader reader} to convert the request content into an object of a given type.
      */
     public void mediaReader() {
         Routing routing = Routing.builder()

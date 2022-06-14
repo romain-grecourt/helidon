@@ -34,10 +34,10 @@ import io.helidon.media.common.spi.MediaSupportProvider;
  */
 public final class MediaContext {
 
-    private final MessageBodyReaderContext readerContext;
-    private final MessageBodyWriterContext writerContext;
+    private final EntitySupport.ReaderContext readerContext;
+    private final EntitySupport.WriterContext writerContext;
 
-    private MediaContext(MessageBodyReaderContext readerContext, MessageBodyWriterContext writerContext) {
+    private MediaContext(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
         this.readerContext = readerContext;
         this.writerContext = writerContext;
     }
@@ -82,18 +82,18 @@ public final class MediaContext {
     /**
      * Get the configured reader context.
      *
-     * @return MessageBodyReaderContext
+     * @return the reader context
      */
-    public MessageBodyReaderContext readerContext() {
+    public EntitySupport.ReaderContext readerContext() {
         return readerContext;
     }
 
     /**
      * Get the configured writer context.
      *
-     * @return MessageBodyWriterContext
+     * @return the writer context
      */
-    public MessageBodyWriterContext writerContext() {
+    public EntitySupport.WriterContext writerContext() {
         return writerContext;
     }
 
@@ -113,21 +113,21 @@ public final class MediaContext {
         private final HelidonServiceLoader.Builder<MediaSupportProvider> services = HelidonServiceLoader
                 .builder(ServiceLoader.load(MediaSupportProvider.class));
 
-        private final List<MessageBodyReader<?>> builderReaders = new ArrayList<>();
-        private final List<MessageBodyStreamReader<?>> builderStreamReaders = new ArrayList<>();
-        private final List<MessageBodyWriter<?>> builderWriters = new ArrayList<>();
-        private final List<MessageBodyStreamWriter<?>> builderStreamWriter = new ArrayList<>();
+        private final List<EntitySupport.Reader<?>> builderReaders = new ArrayList<>();
+        private final List<EntitySupport.StreamReader<?>> builderStreamReaders = new ArrayList<>();
+        private final List<EntitySupport.Writer<?>> builderWriters = new ArrayList<>();
+        private final List<EntitySupport.StreamWriter<?>> builderStreamWriter = new ArrayList<>();
         private final List<MediaSupport> mediaSupports = new ArrayList<>();
         private final Map<String, Map<String, String>> servicesConfig = new HashMap<>();
-        private final MessageBodyReaderContext readerContext;
-        private final MessageBodyWriterContext writerContext;
+        private final EntitySupport.ReaderContext readerContext;
+        private final EntitySupport.WriterContext writerContext;
         private boolean registerDefaults = true;
         private boolean discoverServices = false;
         private boolean filterServices = false;
 
         private Builder() {
-            this.readerContext = MessageBodyReaderContext.create();
-            this.writerContext = MessageBodyWriterContext.create();
+            this.readerContext = EntitySupport.ReaderContext.create();
+            this.writerContext = EntitySupport.WriterContext.create();
         }
 
         /**
@@ -200,25 +200,25 @@ public final class MediaContext {
         }
 
         @Override
-        public Builder addReader(MessageBodyReader<?> reader) {
+        public Builder addReader(EntitySupport.Reader<?> reader) {
             builderReaders.add(reader);
             return this;
         }
 
         @Override
-        public Builder addStreamReader(MessageBodyStreamReader<?> streamReader) {
+        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
             builderStreamReaders.add(streamReader);
             return this;
         }
 
         @Override
-        public Builder addWriter(MessageBodyWriter<?> writer) {
+        public Builder addWriter(EntitySupport.Writer<?> writer) {
             builderWriters.add(writer);
             return this;
         }
 
         @Override
-        public Builder addStreamWriter(MessageBodyStreamWriter<?> streamWriter) {
+        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
             builderStreamWriter.add(streamWriter);
             return this;
         }
@@ -273,7 +273,7 @@ public final class MediaContext {
             this.services.defaultPriority(LOADER_PRIORITY)
                     .addService(config -> new MediaSupport() {
                         @Override
-                        public void register(MessageBodyReaderContext readerContext, MessageBodyWriterContext writerContext) {
+                        public void register(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
                             builderReaders.forEach(readerContext::registerReader);
                             builderStreamReaders.forEach(readerContext::registerReader);
                             builderWriters.forEach(writerContext::registerWriter);
@@ -282,7 +282,7 @@ public final class MediaContext {
                     }, BUILDER_PRIORITY)
                     .addService(config -> new MediaSupport() {
                         @Override
-                        public void register(MessageBodyReaderContext readerContext, MessageBodyWriterContext writerContext) {
+                        public void register(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
                             mediaSupports.forEach(it -> it.register(readerContext, writerContext));
                         }
                     }, BUILDER_PRIORITY)

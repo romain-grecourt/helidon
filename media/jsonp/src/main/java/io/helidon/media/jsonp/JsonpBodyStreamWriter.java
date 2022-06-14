@@ -23,8 +23,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
 
 import jakarta.json.JsonStructure;
@@ -33,7 +32,7 @@ import jakarta.json.JsonWriterFactory;
 /**
  * Message body writer for {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
  */
-class JsonpBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> {
+class JsonpBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
     private static final byte[] ARRAY_JSON_END_BYTES = "]".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ARRAY_JSON_BEGIN_BYTES = "[".getBytes(StandardCharsets.UTF_8);
     private static final byte[] COMMA_BYTES = ",".getBytes(StandardCharsets.UTF_8);
@@ -45,14 +44,14 @@ class JsonpBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override
     public Multi<DataChunk> write(Publisher<? extends JsonStructure> publisher,
                                   GenericType<? extends JsonStructure> type,
-                                  MessageBodyWriterContext context) {
+                                  EntitySupport.WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.media.common;
+package io.helidon.media.multipart;
 
-import java.util.concurrent.Flow.Publisher;
-
-import io.helidon.common.http.DataChunk;
+import io.helidon.media.common.ReadableEntity;
 
 /**
- * Reactive contract for a message body content.
+ * {@link BodyPart} implementation.
  */
-public interface MessageBodyContent extends Publisher<DataChunk> {
+record BodyPartImpl(ReadableEntity content, BodyPartHeaders headers) implements BodyPart {
 }

@@ -31,15 +31,10 @@ import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
 import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyStreamReader;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.media.common.ParentingMediaContextBuilder;
 
 import io.opentracing.Tracer;
@@ -111,18 +106,18 @@ public interface WebServer {
     Context context();
 
     /**
-     * Get the parent {@link MessageBodyReaderContext} context.
+     * Get the parent {@link EntitySupport.ReaderContext} context.
      *
      * @return media body reader context
      */
-    MessageBodyReaderContext readerContext();
+    EntitySupport.ReaderContext readerContext();
 
     /**
-     * Get the parent {@link MessageBodyWriterContext} context.
+     * Get the parent {@link EntitySupport.WriterContext} context.
      *
      * @return media body writer context
      */
-    MessageBodyWriterContext writerContext();
+    EntitySupport.WriterContext writerContext();
 
     /**
      * Returns a port number the default server socket is bound to and is listening on;
@@ -374,13 +369,13 @@ public interface WebServer {
         @SuppressWarnings("deprecation")
         private ServerConfiguration explicitConfig;
         private Transport transport;
-        private MessageBodyReaderContext readerContext;
-        private MessageBodyWriterContext writerContext;
+        private EntitySupport.ReaderContext readerContext;
+        private EntitySupport.WriterContext writerContext;
         private DirectHandlers.Builder directHandlers = DirectHandlers.builder();
 
         private Builder() {
-            readerContext = MessageBodyReaderContext.create(DEFAULT_MEDIA_SUPPORT.readerContext());
-            writerContext = MessageBodyWriterContext.create(DEFAULT_MEDIA_SUPPORT.writerContext());
+            readerContext = EntitySupport.ReaderContext.create(DEFAULT_MEDIA_SUPPORT.readerContext());
+            writerContext = EntitySupport.WriterContext.create(DEFAULT_MEDIA_SUPPORT.writerContext());
         }
 
         /**
@@ -540,8 +535,8 @@ public interface WebServer {
         @Override
         public Builder mediaContext(MediaContext mediaContext) {
             Objects.requireNonNull(mediaContext);
-            this.readerContext = MessageBodyReaderContext.create(mediaContext.readerContext());
-            this.writerContext = MessageBodyWriterContext.create(mediaContext.writerContext());
+            this.readerContext = EntitySupport.ReaderContext.create(mediaContext.readerContext());
+            this.writerContext = EntitySupport.WriterContext.create(mediaContext.writerContext());
             return this;
         }
 
@@ -553,25 +548,25 @@ public interface WebServer {
         }
 
         @Override
-        public Builder addReader(MessageBodyReader<?> reader) {
+        public Builder addReader(EntitySupport.Reader<?> reader) {
             readerContext.registerReader(reader);
             return this;
         }
 
         @Override
-        public Builder addStreamReader(MessageBodyStreamReader<?> streamReader) {
+        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
             readerContext.registerReader(streamReader);
             return this;
         }
 
         @Override
-        public Builder addWriter(MessageBodyWriter<?> writer) {
+        public Builder addWriter(EntitySupport.Writer<?> writer) {
             writerContext.registerWriter(writer);
             return this;
         }
 
         @Override
-        public Builder addStreamWriter(MessageBodyStreamWriter<?> streamWriter) {
+        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
             writerContext.registerWriter(streamWriter);
             return this;
         }

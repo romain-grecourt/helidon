@@ -19,15 +19,16 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
- * Writeable multipart entity.
+ * Multipart entity.
  */
-public class WriteableMultiPart {
+public class MultiPart {
 
-    private final List<WriteableBodyPart> parts;
+    private final List<BodyPart> parts;
 
-    WriteableMultiPart(List<WriteableBodyPart> parts) {
+    MultiPart(List<BodyPart> parts) {
         this.parts = parts;
     }
 
@@ -36,36 +37,36 @@ public class WriteableMultiPart {
      *
      * @return list of {@link BodyPart}
      */
-    public List<WriteableBodyPart> bodyParts() {
+    public List<BodyPart> bodyParts() {
         return parts;
     }
 
     /**
-     * Short-hand for creating {@link WriteableMultiPart} instances with the
+     * Short-hand for creating {@link MultiPart} instances with the
      * specified entities as body parts.
      *
      * @param entities the body part entities
      * @return created MultiPart
      */
-    public static WriteableMultiPart create(WriteableBodyPart... entities) {
+    public static MultiPart create(BodyPart... entities) {
         Builder builder = builder();
-        for (WriteableBodyPart entity : entities) {
-            builder.bodyPart(WriteableBodyPart.create(entity));
+        for (BodyPart entity : entities) {
+            builder.bodyPart(BodyPart.builder().entity(entity));
         }
         return builder.build();
     }
 
     /**
-     * Short-hand for creating {@link WriteableMultiPart} instances with the
+     * Short-hand for creating {@link MultiPart} instances with the
      * specified entities as body parts.
      *
      * @param entities the body part entities
      * @return created MultiPart
      */
-    public static WriteableMultiPart create(Collection<WriteableBodyPart> entities) {
+    public static MultiPart create(Collection<BodyPart> entities) {
         Builder builder = builder();
-        for (WriteableBodyPart entity : entities) {
-            builder.bodyPart(WriteableBodyPart.create(entity));
+        for (BodyPart entity : entities) {
+            builder.bodyPart(BodyPart.builder().entity(entity));
         }
         return builder.build();
     }
@@ -80,14 +81,14 @@ public class WriteableMultiPart {
     }
 
     /**
-     * Builder class for creating {@link WriteableMultiPart} instances.
+     * Builder class for creating {@link MultiPart} instances.
      */
-    public static final class Builder implements io.helidon.common.Builder<Builder, WriteableMultiPart> {
+    public static final class Builder implements io.helidon.common.Builder<Builder, MultiPart> {
 
-        private final ArrayList<WriteableBodyPart> bodyParts = new ArrayList<>();
+        private final ArrayList<BodyPart> bodyParts = new ArrayList<>();
 
         /**
-         * Force the use of {@link WriteableMultiPart#builder()}.
+         * Force the use of {@link MultiPart#builder()}.
          */
         private Builder() {
         }
@@ -98,48 +99,60 @@ public class WriteableMultiPart {
          * @param bodyPart body part to add
          * @return this builder instance
          */
-        public Builder bodyPart(WriteableBodyPart bodyPart) {
+        public Builder bodyPart(BodyPart bodyPart) {
             bodyParts.add(bodyPart);
+            return this;
+        }
+
+        /**
+         * Add a body part.
+         *
+         * @param supplier body part supplier
+         * @return this builder instance
+         */
+        public Builder bodyPart(Supplier<BodyPart> supplier) {
+            bodyParts.add(supplier.get());
             return this;
         }
 
         /**
          * Add a new body part based on the name entity.
          *
-         * @param name body part name
+         * @param name   body part name
          * @param entity body part entity
          * @return this builder instance
          */
         public Builder bodyPart(String name, Object entity) {
-            return bodyPart(WriteableBodyPart.builder()
-                                    .name(name)
-                                    .entity(entity)
-                                    .build());
+            bodyParts.add(BodyPart.builder()
+                                  .name(name)
+                                  .entity(entity)
+                                  .build());
+            return this;
         }
 
         /**
          * Add a new body part based on the name, filename and {@link Path} to the file.
          *
-         * @param name body part name
+         * @param name     body part name
          * @param filename body part filename
-         * @param file file path
+         * @param file     file path
          * @return this builder instance
          */
         public Builder bodyPart(String name, String filename, Path file) {
-            bodyPart(WriteableBodyPart.builder()
-                             .name(name)
-                             .filename(filename)
-                             .entity(file)
-                             .build());
+            bodyParts.add(BodyPart.builder()
+                                    .name(name)
+                                    .filename(filename)
+                                    .entity(file)
+                                    .build());
             return this;
         }
 
         /**
          * Add a new body part based on the name and {@link Path} to the files.
-         *
+         * <p>
          * Filename for each file is set as actual file name.
          *
-         * @param name body part name
+         * @param name  body part name
          * @param files file path
          * @return this builder instance
          */
@@ -159,14 +172,14 @@ public class WriteableMultiPart {
          * @param bodyParts body parts to add
          * @return this builder instance
          */
-        public Builder bodyParts(Collection<WriteableBodyPart> bodyParts) {
+        public Builder bodyParts(Collection<BodyPart> bodyParts) {
             this.bodyParts.addAll(bodyParts);
             return this;
         }
 
         @Override
-        public WriteableMultiPart build() {
-            return new WriteableMultiPart(bodyParts);
+        public MultiPart build() {
+            return new MultiPart(bodyParts);
         }
     }
 }

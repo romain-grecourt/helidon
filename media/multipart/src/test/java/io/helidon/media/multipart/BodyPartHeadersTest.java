@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,18 +26,18 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Test {@link ReadableBodyPartHeaders}.
+ * Test {@link ReadOnlyBodyPartHeaders}.
  */
 public class BodyPartHeadersTest {
 
     @Test
-    public void testHeaderNameCaseInsensitive(){
-        ReadableBodyPartHeaders headers = ReadableBodyPartHeaders.builder()
-                .header("content-type", "text/plain")
-                .header("Content-ID", "test")
-                .header("my-header", "abc=def; blah; key=value")
-                .header("My-header", "foo=bar")
-                .build();
+    public void testHeaderNameCaseInsensitive() {
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                                                 .header("content-type", "text/plain")
+                                                 .header("Content-ID", "test")
+                                                 .header("my-header", "abc=def; blah; key=value")
+                                                 .header("My-header", "foo=bar")
+                                                 .build();
         assertThat(headers.values("Content-Type"), hasItems("text/plain"));
         assertThat(headers.values("Content-Id"), hasItems("test"));
         assertThat(headers.values("my-header"),
@@ -46,9 +46,9 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testContentType() {
-        ReadableBodyPartHeaders headers = ReadableBodyPartHeaders.builder()
-                .header("content-type", "application/json")
-                .build();
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                                                 .header("content-type", "application/json")
+                                                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(),
                 is(equalTo(MediaType.APPLICATION_JSON)));
@@ -56,9 +56,9 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testBuilderWithContentType() {
-        WriteableBodyPartHeaders headers = WriteableBodyPartHeaders.builder()
-                .contentType(MediaType.APPLICATION_JSON)
-                .build();
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                                                 .contentType(MediaType.APPLICATION_JSON)
+                                                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(),
                 is(equalTo(MediaType.APPLICATION_JSON)));
@@ -66,17 +66,16 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testDefaultContentType() {
-        ReadableBodyPartHeaders headers = ReadableBodyPartHeaders.builder()
-                .build();
+        BodyPartHeaders headers = BodyPartHeaders.builder().build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(), is(equalTo(MediaType.TEXT_PLAIN)));
     }
 
     @Test
     public void testDefaultContentTypeForFile() {
-        ReadableBodyPartHeaders headers = ReadableBodyPartHeaders.builder()
-                .header("Content-Disposition", "form-data; filename=foo")
-                .build();
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                                                 .header("Content-Disposition", "form-data; filename=foo")
+                                                 .build();
         assertThat(headers.contentType(), is(notNullValue()));
         assertThat(headers.contentType(),
                 is(equalTo(MediaType.APPLICATION_OCTET_STREAM)));
@@ -84,9 +83,9 @@ public class BodyPartHeadersTest {
 
     @Test
     public void testContentDisposition() {
-        ReadableBodyPartHeaders headers = ReadableBodyPartHeaders.builder()
-                .header("Content-Disposition", "form-data; name=foo")
-                .build();
+        BodyPartHeaders headers = BodyPartHeaders.builder()
+                                                 .header("Content-Disposition", "form-data; name=foo")
+                                                 .build();
         assertThat(headers.contentDisposition(), is(notNullValue()));
         ContentDisposition cd = headers.contentDisposition();
         assertThat(cd.type(), is(equalTo("form-data")));

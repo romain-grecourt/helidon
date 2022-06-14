@@ -28,19 +28,13 @@ import java.util.Objects;
 public interface FormParams extends Parameters {
 
     /**
-     * Creates a new {@code FormParams} instance using the provided assignment string and media
-     * type.
+     * Create a new instance with the specified parameters map.
      *
-     * @param paramAssignments String containing the parameter assignments, formatted according
-     *                         to the media type specified ({@literal &} separator for
-     *                         URL-encoded, NL for text/plain)
-     * @param mediaType MediaType for which the parameter conversion is occurring
-     * @return the new {@code FormParams} instance
-     * @deprecated use {@link FormParams#builder()} instead or register {@code io.helidon.media.common.FormParamsBodyReader}
+     * @param params parameters map
+     * @return form params
      */
-    @Deprecated(since = "2.0.2")
-    static FormParams create(String paramAssignments, MediaType mediaType) {
-        return FormParamsImpl.create(paramAssignments, mediaType);
+    static FormParams create(Map<String, List<String>> params) {
+        return new FormParamsImpl(params);
     }
 
     /**
@@ -64,7 +58,7 @@ public interface FormParams extends Parameters {
 
         @Override
         public FormParams build() {
-            return new FormParamsImpl(this);
+            return new FormParamsImpl(params);
         }
 
         @Override
@@ -73,11 +67,5 @@ public interface FormParams extends Parameters {
             params.computeIfAbsent(name, k -> new ArrayList<>()).addAll(Arrays.asList(values));
             return this;
         }
-
-        Map<String, List<String>> params() {
-            return params;
-        }
-
     }
-
 }

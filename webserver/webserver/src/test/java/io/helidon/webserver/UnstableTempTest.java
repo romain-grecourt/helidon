@@ -40,7 +40,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -91,7 +91,7 @@ public class UnstableTempTest {
         ServerRequest request = Mockito.mock(ServerRequest.class);
         Mockito.when(request.headers()).thenReturn(headers);
         ServerResponse response = Mockito.mock(ServerResponse.class);
-        MessageBodyWriterContext ctx = MessageBodyWriterContext.create(HashParameters.create());
+        EntitySupport.WriterContext ctx = EntitySupport.WriterContext.create(HashParameters.create());
         ctx.registerFilter(dataChunkPub -> {
             String fileContent = new String(Single.create(dataChunkPub).await().bytes());
             contents.add(fileContent);
@@ -99,10 +99,10 @@ public class UnstableTempTest {
         });
         Mockito.when(response.headers()).thenReturn(responseHeaders);
         @SuppressWarnings("unchecked")
-        Function<MessageBodyWriterContext, Flow.Publisher<DataChunk>> anyFunction =
-            (Function<MessageBodyWriterContext, Flow.Publisher<DataChunk>>) Mockito.any(Function.class);
+        Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> anyFunction =
+            (Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>>) Mockito.any(Function.class);
         Mockito.when(response.send(anyFunction)).then(mock -> {
-            Function<MessageBodyWriterContext, Flow.Publisher<DataChunk>> argument = mock.getArgument(0);
+            Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> argument = mock.getArgument(0);
             return Single.create(argument.apply(ctx)).onError(throwable -> throwable.printStackTrace());
         });
 

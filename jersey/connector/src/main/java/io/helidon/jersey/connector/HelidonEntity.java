@@ -32,8 +32,7 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.OutputStreamMulti;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.webclient.WebClientRequestBuilder;
 import io.helidon.webclient.WebClientResponse;
 
@@ -77,7 +76,7 @@ class HelidonEntity {
      * @param type the type of the entity class that works best for the Http Client request use case.
      * @return possible writer to be registerd by the Helidon Client.
      */
-    static Optional<MessageBodyWriter<?>> helidonWriter(HelidonEntityType type) {
+    static Optional<EntitySupport.Writer<?>> helidonWriter(HelidonEntityType type) {
         switch (type) {
             case BYTE_ARRAY_OUTPUT_STREAM:
                 return Optional.of(new OutputStreamBodyWriter());
@@ -148,7 +147,7 @@ class HelidonEntity {
         }
     }
 
-    private static class OutputStreamBodyWriter implements MessageBodyWriter<ByteArrayOutputStream> {
+    private static class OutputStreamBodyWriter implements EntitySupport.Writer<ByteArrayOutputStream> {
         private OutputStreamBodyWriter() {
         }
 
@@ -156,13 +155,13 @@ class HelidonEntity {
         public Flow.Publisher<DataChunk> write(
                 Single<? extends ByteArrayOutputStream> content,
                 GenericType<? extends ByteArrayOutputStream> type,
-                MessageBodyWriterContext context) {
+                EntitySupport.WriterContext context) {
             context.contentType(MediaType.APPLICATION_OCTET_STREAM);
             return content.flatMap(new ByteArrayOutputStreamToChunks());
         }
 
         @Override
-        public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext messageBodyWriterContext) {
+        public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext messageBodyWriterContext) {
             return PredicateResult.supports(ByteArrayOutputStream.class, type);
         }
 

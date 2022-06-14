@@ -19,7 +19,7 @@ import java.net.URI;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.ReadableEntity;
 
 /**
  * Response from a server that was created for our request.
@@ -42,7 +42,7 @@ public interface WebClientResponse {
      *
      * @return content
      */
-    MessageBodyReadableContent content();
+    ReadableEntity content();
 
     /**
      * Headers of the HTTP response.

@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbException;
@@ -35,7 +34,7 @@ import jakarta.json.bind.JsonbException;
 /**
  * Message body writer supporting object binding with JSON-B.
  */
-class JsonbBodyReader implements MessageBodyReader<Object> {
+class JsonbBodyReader implements EntitySupport.Reader<Object> {
 
     private final Jsonb jsonb;
 
@@ -45,7 +44,7 @@ class JsonbBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyReaderContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
                 ? PredicateResult.COMPATIBLE
                 : PredicateResult.NOT_SUPPORTED;
@@ -53,7 +52,7 @@ class JsonbBodyReader implements MessageBodyReader<Object> {
 
     @Override
     public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, MessageBodyReaderContext context) {
+            GenericType<U> type, EntitySupport.ReaderContext context) {
 
         return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type, jsonb));
     }

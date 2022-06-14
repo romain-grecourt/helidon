@@ -20,9 +20,9 @@ import java.util.List;
 /**
  * Implementation of {@link FileFormParams}.
  */
-class FileFormParamsImpl extends WriteableMultiPart implements FileFormParams {
+class FileFormParamsImpl extends MultiPart implements FileFormParams {
 
-    FileFormParamsImpl(List<WriteableBodyPart> bodyParts) {
+    FileFormParamsImpl(List<BodyPart> bodyParts) {
         super(bodyParts);
     }
 

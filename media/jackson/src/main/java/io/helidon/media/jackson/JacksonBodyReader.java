@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +35,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 /**
  * Message body reader supporting object binding with Jackson.
  */
-final class JacksonBodyReader implements MessageBodyReader<Object> {
+final class JacksonBodyReader implements EntitySupport.Reader<Object> {
 
     private final ObjectMapper objectMapper;
 
@@ -46,7 +45,7 @@ final class JacksonBodyReader implements MessageBodyReader<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyReaderContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         Class<?> clazz = type.rawType();
         return !CharSequence.class.isAssignableFrom(clazz)
                 && objectMapper.canDeserialize(objectMapper.constructType(clazz))
@@ -56,7 +55,7 @@ final class JacksonBodyReader implements MessageBodyReader<Object> {
 
     @Override
     public <U extends Object> Single<U> read(Publisher<DataChunk> publisher,
-            GenericType<U> type, MessageBodyReaderContext context) {
+            GenericType<U> type, EntitySupport.ReaderContext context) {
 
         return ContentReaders.readBytes(publisher).map(new BytesToObject<>(type, objectMapper));
     }

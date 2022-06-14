@@ -29,12 +29,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyFilter;
-import io.helidon.media.common.MessageBodyFilters;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
-import io.helidon.media.common.MessageBodyWriters;
+import io.helidon.media.common.EntitySupport;
 
 /**
  * Represents HTTP Response.
@@ -47,7 +42,7 @@ import io.helidon.media.common.MessageBodyWriters;
  * <p>
  * Response content (body/payload) can be constructed using {@link #send(Object) send(...)} methods.
  */
-public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
+public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Writers {
 
     /**
      * Declares common groups of {@code Cache-Control} settings.
@@ -184,7 +179,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      *
      * @return MessageBodyWriterContext
      */
-    MessageBodyWriterContext writerContext();
+    EntitySupport.WriterContext writerContext();
 
     /**
      * Send a {@link Throwable} and close the response.
@@ -277,7 +272,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param function marshalling function
      * @return a completion stage of the response - completed when response is transferred
      */
-    Single<ServerResponse> send(Function<MessageBodyWriterContext, Publisher<DataChunk>> function);
+    Single<ServerResponse> send(Function<EntitySupport.WriterContext, Publisher<DataChunk>> function);
 
     /**
      * Sends an empty response. Do nothing if response was already send.
@@ -297,7 +292,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param <T>      a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
-     * @deprecated Since 2.0.0, use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
+     * @deprecated Since 2.0.0, use {@link #registerWriter(EntitySupport.Writer)} instead
      */
     @Deprecated(since = "2.0.0")
     <T> ServerResponse registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function);
@@ -316,7 +311,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param <T>         a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
-     * @deprecated since 2.0.0, use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
+     * @deprecated since 2.0.0, use {@link #registerWriter(EntitySupport.Writer)} instead
      */
     @Deprecated(since = "2.0.0")
     <T> ServerResponse registerWriter(Class<T> type,
@@ -334,7 +329,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param <T>      a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
-     * @deprecated since 2.0.0, use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
+     * @deprecated since 2.0.0, use {@link #registerWriter(EntitySupport.Writer)} instead
      */
     @Deprecated
     <T> ServerResponse registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function);
@@ -353,7 +348,7 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      * @param <T>         a type of the content
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if {@code function} parameter is {@code null}
-     * @deprecated since 2.0.0, use {@link #registerWriter(io.helidon.media.common.MessageBodyWriter)} instead
+     * @deprecated since 2.0.0, use {@link #registerWriter(EntitySupport.Writer)} instead
      */
     @Deprecated
     <T> ServerResponse registerWriter(Predicate<?> accept,
@@ -377,19 +372,19 @@ public interface ServerResponse extends MessageBodyFilters, MessageBodyWriters {
      *                 {@code null} then the result will be ignored.
      * @return this instance of {@link ServerResponse}
      * @throws NullPointerException if parameter {@code function} is {@code null}
-     * @deprecated since 2.0.0, use {@link #registerFilter(io.helidon.media.common.MessageBodyFilter)} instead
+     * @deprecated since 2.0.0, use {@link #registerFilter(EntitySupport.Filter)} instead
      */
     @Deprecated
     ServerResponse registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function);
 
     @Override
-    ServerResponse registerFilter(MessageBodyFilter filter);
+    ServerResponse registerFilter(EntitySupport.Filter filter);
 
     @Override
-    ServerResponse registerWriter(MessageBodyWriter<?> writer);
+    ServerResponse registerWriter(EntitySupport.Writer<?> writer);
 
     @Override
-    ServerResponse registerWriter(MessageBodyStreamWriter<?> writer);
+    ServerResponse registerWriter(EntitySupport.StreamWriter<?> writer);
 
     /**
      * Completion stage is completed when response is completed.

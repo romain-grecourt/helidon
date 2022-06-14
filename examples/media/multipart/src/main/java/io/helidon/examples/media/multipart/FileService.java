@@ -16,17 +16,17 @@
 package io.helidon.examples.media.multipart;
 
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import io.helidon.common.configurable.ThreadPoolSupplier;
-import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.common.reactive.IoMulti;
+import io.helidon.media.multipart.BodyPart;
 import io.helidon.media.multipart.ContentDisposition;
-import io.helidon.media.multipart.ReadableBodyPart;
+import io.helidon.media.multipart.MultiPartSupport;
+import io.helidon.webclient.WebClient;
+import io.helidon.webserver.BadRequestException;
 import io.helidon.webserver.ResponseHeaders;
 import io.helidon.webserver.Routing;
 import io.helidon.webserver.ServerRequest;
@@ -44,21 +44,26 @@ public final class FileService implements Service {
 
     private static final JsonBuilderFactory JSON_FACTORY = Json.createBuilderFactory(Map.of());
     private final FileStorage storage;
+    private final WebClient webClient;
     private final ExecutorService executor = ThreadPoolSupplier.create("multipart-thread-pool").get();
-
 
     /**
      * Create a new file upload service instance.
      */
     FileService() {
         storage = new FileStorage();
+        webClient = WebClient.builder()
+                             .baseUri("http://localhost:8080/api")
+                             .addMediaSupport(MultiPartSupport.create())
+                             .build();
     }
 
     @Override
     public void update(Routing.Rules rules) {
         rules.get("/", this::list)
-                .get("/{fname}", this::download)
-                .post("/", this::upload);
+             .get("/{filename}", this::download)
+             .post("/re-upload", this::reUpload)
+             .post("/", this::upload);
     }
 
     private void list(ServerRequest req, ServerResponse res) {
@@ -68,28 +73,38 @@ public final class FileService implements Service {
     }
 
     private void download(ServerRequest req, ServerResponse res) {
-        Path filePath = storage.lookup(req.path().param("fname"));
+        Path filePath = storage.lookup(req.path().param("filename"));
         ResponseHeaders headers = res.headers();
         headers.contentType(MediaType.APPLICATION_OCTET_STREAM);
         headers.put(Http.Header.CONTENT_DISPOSITION, ContentDisposition.builder()
-                .filename(filePath.getFileName().toString())
-                .build()
-                .toString());
+                                                                       .filename(filePath.getFileName().toString())
+                                                                       .build()
+                                                                       .toString());
         res.send(filePath);
     }
 
+    private void reUpload(ServerRequest req, ServerResponse res) {
+        webClient.post()
+                 .path("/")
+                 .submitStream(req.content().asStream(BodyPart.class), BodyPart.class)
+                 .onError(res::send)
+                 .forSingle(clientRes -> res.addHeaders(clientRes.headers())
+                                            .status(clientRes.status())
+                                            .send(clientRes.content()));
+    }
+
     private void upload(ServerRequest req, ServerResponse res) {
-        req.content().asStream(ReadableBodyPart.class)
+        req.content()
+           .asStream(BodyPart.class)
            .forEach(part -> {
-               if ("file[]".equals(part.name())) {
-                   part.content().map(DataChunk::data)
-                       .flatMapIterable(Arrays::asList)
-                       .to(IoMulti.writeToFile(storage.create(part.filename()))
-                                  .executor(executor)
-                                  .build());
+               if (part.isNamed("file[]")) {
+                   part.content()
+                       .writeToFile(part.filename()
+                                        .map(storage::create)
+                                        .orElseThrow(() -> new BadRequestException("no filename")), executor);
                } else {
-                   // when streaming unconsumed parts needs to be drained
-                   part.drain();
+                   // unconsumed parts needs to be drained
+                   part.content().drain();
                }
            })
            .onError(res::send)

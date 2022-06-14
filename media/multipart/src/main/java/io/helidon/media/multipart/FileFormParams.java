@@ -38,7 +38,7 @@ public interface FileFormParams {
      */
     class Builder implements FormBuilder<Builder, FileFormParams> {
 
-        private final WriteableMultiPart.Builder builder = WriteableMultiPart.builder();
+        private final MultiPart.Builder builder = MultiPart.builder();
 
         private Builder() {
         }
@@ -82,7 +82,5 @@ public interface FileFormParams {
             builder.bodyPart(name, files);
             return this;
         }
-
     }
-
 }

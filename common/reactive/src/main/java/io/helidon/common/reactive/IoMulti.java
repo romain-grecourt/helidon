@@ -47,6 +47,11 @@ import io.helidon.common.LazyValue;
 public interface IoMulti {
 
     /**
+     * Default retry schema.
+     */
+    RetrySchema DEFAULT_RETRY_SCHEMA = RetrySchema.linear(0, 10, 250);
+
+    /**
      * Create an {@link java.io.OutputStream} that provides the data written
      * as a {@link Multi}.
      * <p>
@@ -250,8 +255,8 @@ public interface IoMulti {
      * {@link java.nio.channels.ReadableByteChannel}.
      */
     final class MultiFromByteChannelBuilder implements Builder<MultiFromByteChannelBuilder, Multi<ByteBuffer>> {
+
         private static final int DEFAULT_BUFFER_CAPACITY = 1024 * 8;
-        private static final RetrySchema DEFAULT_RETRY_SCHEMA = RetrySchema.linear(0, 10, 250);
         private static final String THREAD_PREFIX = "multi-rbc-";
         private static final AtomicLong COUNTER = new AtomicLong();
         private static final ThreadFactory THREAD_FACTORY = r -> new Thread(r, THREAD_PREFIX + COUNTER.incrementAndGet());

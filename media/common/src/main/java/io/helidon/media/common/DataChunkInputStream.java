@@ -54,23 +54,13 @@ public class DataChunkInputStream extends InputStream {
     private final AtomicBoolean subscribed = new AtomicBoolean(false);
 
     /**
-     * Stores publisher for later subscription. Disables executing thread validation.
-     *
-     * @param originalPublisher The original publisher.
-     */
-    public DataChunkInputStream(Flow.Publisher<DataChunk> originalPublisher) {
-        this(originalPublisher, false);
-    }
-
-    /**
      * Stores publisher for later subscription and sets if executing thread should be validated.
      * If validation is enabled, it asserts if the execution thread is the same as the thread which created this instance and
      * throws an {@link IllegalStateException} if it does.
      *
      * @param originalPublisher The original publisher.
-     * @param validate          executing thread validation
      */
-    public DataChunkInputStream(Flow.Publisher<DataChunk> originalPublisher, boolean validate) {
+    public DataChunkInputStream(Flow.Publisher<DataChunk> originalPublisher) {
         this.originalPublisher = originalPublisher;
     }
 

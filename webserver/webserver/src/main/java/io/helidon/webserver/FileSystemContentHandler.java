@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 import io.helidon.common.http.Http;
 import io.helidon.media.common.DefaultMediaSupport;
-import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.EntitySupport;
 
 /**
  * Serves files from the filesystem as a static WEB content.
@@ -33,7 +33,7 @@ import io.helidon.media.common.MessageBodyWriter;
 @Deprecated
 class FileSystemContentHandler extends StaticContentHandler {
     private static final Logger LOGGER = Logger.getLogger(FileSystemContentHandler.class.getName());
-    private static final MessageBodyWriter<Path> PATH_WRITER = DefaultMediaSupport.pathWriter();
+    private static final EntitySupport.Writer<Path> PATH_WRITER = DefaultMediaSupport.pathWriter();
 
     private final Path root;
 

@@ -24,8 +24,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonWriter;
@@ -34,7 +33,7 @@ import jakarta.json.JsonWriterFactory;
 /**
  * Message body writer for {@link JsonStructure} sub-classes (JSON-P).
  */
-class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
+class JsonpBodyWriter implements EntitySupport.Writer<JsonStructure> {
 
     private final JsonWriterFactory jsonWriterFactory;
 
@@ -43,14 +42,14 @@ class JsonpBodyWriter implements MessageBodyWriter<JsonStructure> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override
     public Publisher<DataChunk> write(Single<? extends JsonStructure> content,
                                       GenericType<? extends JsonStructure> type,
-                                      MessageBodyWriterContext context) {
+                                      EntitySupport.WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);

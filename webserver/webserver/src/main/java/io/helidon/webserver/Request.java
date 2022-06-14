@@ -34,9 +34,8 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyContext;
-import io.helidon.media.common.MessageBodyReadableContent;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.ReadableEntity;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
@@ -48,7 +47,6 @@ import io.opentracing.tag.Tags;
 /**
  * The basic abstract implementation of {@link ServerRequest}.
  */
-@SuppressWarnings("deprecation")
 abstract class Request implements ServerRequest {
 
     private static final String TRACING_CONTENT_READ_NAME = "content-read";
@@ -64,25 +62,26 @@ abstract class Request implements ServerRequest {
     private final Context context;
     private final Parameters queryParams;
     private final HashRequestHeaders headers;
-    private final MessageBodyReadableContent content;
+    private final ReadableEntity content;
     private final MessageBodyEventListener eventListener;
 
     /**
      * Creates new instance.
      *
-     * @param req bare request from HTTP SPI implementation.
+     * @param req       bare request from HTTP SPI implementation.
      * @param webServer relevant server.
      */
     Request(BareRequest req, WebServer webServer, HashRequestHeaders headers) {
         this.bareRequest = req;
         this.webServer = webServer;
         this.headers = headers;
-        this.context = Contexts.context().orElseGet(() -> Context.create(webServer.context()));
+        this.context = Contexts.context().orElseGet(() -> io.helidon.common.context.Context.create(webServer.context()));
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(), true);
         this.eventListener = new MessageBodyEventListener();
-        MessageBodyReaderContext readerContext = MessageBodyReaderContext
-                .create(webServer.readerContext(), eventListener, headers, headers.contentType());
-        this.content = MessageBodyReadableContent.create(req.bodyPublisher(), readerContext);
+        EntitySupport.ReaderContext readerContext =
+                webServer.readerContext()
+                         .createChild(eventListener, headers, headers.contentType().orElse(null));
+        this.content = ReadableEntity.create(req.bodyPublisher(), readerContext);
     }
 
     /**
@@ -108,10 +107,10 @@ abstract class Request implements ServerRequest {
      */
     static Charset contentCharset(ServerRequest request) {
         return request.headers()
-                .contentType()
-                .flatMap(MediaType::charset)
-                .map(Charset::forName)
-                .orElse(DEFAULT_CHARSET);
+                      .contentType()
+                      .flatMap(MediaType::charset)
+                      .map(Charset::forName)
+                      .orElse(DEFAULT_CHARSET);
     }
 
     @Override
@@ -185,7 +184,7 @@ abstract class Request implements ServerRequest {
     }
 
     @Override
-    public MessageBodyReadableContent content() {
+    public ReadableEntity content() {
         return this.content;
     }
 
@@ -199,7 +198,7 @@ abstract class Request implements ServerRequest {
         return this.bareRequest.closeConnection();
     }
 
-    private final class MessageBodyEventListener implements MessageBodyContext.EventListener {
+    private final class MessageBodyEventListener implements EntitySupport.Context.EventListener {
 
         private Span readSpan;
 
@@ -212,8 +211,8 @@ abstract class Request implements ServerRequest {
 
             SpanTracingConfig spanConfig = TracingConfigUtil
                     .spanConfig(NettyWebServer.TRACING_COMPONENT,
-                                TRACING_CONTENT_READ_NAME,
-                                context());
+                            TRACING_CONTENT_READ_NAME,
+                            context());
 
             String spanName = spanConfig.newName().orElse(TRACING_CONTENT_READ_NAME);
 
@@ -232,31 +231,31 @@ abstract class Request implements ServerRequest {
         }
 
         @Override
-        public void onEvent(MessageBodyContext.Event event) {
+        public void onEvent(EntitySupport.Context.Event event) {
             switch (event.eventType()) {
-            case BEFORE_ONSUBSCRIBE:
-                GenericType<?> type = event.entityType().orElse(null);
-                readSpan = createReadSpan(type);
-                break;
+                case BEFORE_ONSUBSCRIBE:
+                    GenericType<?> type = event.entityType().orElse(null);
+                    readSpan = createReadSpan(type);
+                    break;
 
-            case AFTER_ONERROR:
-                if (readSpan != null) {
-                    Tags.ERROR.set(readSpan, Boolean.TRUE);
-                    Throwable ex = event.asErrorEvent().error();
-                    readSpan.log(Map.of("event", "error",
-                                        "error.kind", "Exception",
-                                        "error.object", ex,
-                                        "message", ex.toString()));
-                    readSpan.finish();
-                }
-                break;
-            case AFTER_ONCOMPLETE:
-                if (readSpan != null) {
-                    readSpan.finish();
-                }
-                break;
-            default:
-                // do nothing
+                case AFTER_ONERROR:
+                    if (readSpan != null) {
+                        Tags.ERROR.set(readSpan, Boolean.TRUE);
+                        Throwable ex = event.asErrorEvent().error();
+                        readSpan.log(Map.of("event", "error",
+                                "error.kind", "Exception",
+                                "error.object", ex,
+                                "message", ex.toString()));
+                        readSpan.finish();
+                    }
+                    break;
+                case AFTER_ONCOMPLETE:
+                    if (readSpan != null) {
+                        readSpan.finish();
+                    }
+                    break;
+                default:
+                    // do nothing
             }
         }
     }
@@ -275,9 +274,9 @@ abstract class Request implements ServerRequest {
         /**
          * Creates new instance.
          *
-         * @param path actual relative URI path.
-         * @param rawPath actual relative URI path without any decoding.
-         * @param params resolved path parameters.
+         * @param path         actual relative URI path.
+         * @param rawPath      actual relative URI path without any decoding.
+         * @param params       resolved path parameters.
          * @param absolutePath absolute path.
          */
         Path(String path, String rawPath, Map<String, String> params, Path absolutePath) {

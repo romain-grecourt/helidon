@@ -31,7 +31,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.config.Config;
 import io.helidon.media.common.DefaultMediaSupport;
-import io.helidon.media.common.MessageBodyReader;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.webclient.Proxy;
 import io.helidon.webclient.WebClientResponse;
 import io.helidon.webclient.WebClientTls;
@@ -54,7 +54,7 @@ class HelidonStructures {
         return new ReadOnlyHeaders(data);
     }
 
-    static MessageBodyReader<InputStream> createInputStreamBodyReader() {
+    static EntitySupport.Reader<InputStream> createInputStreamBodyReader() {
         return DefaultMediaSupport.inputStreamReader();
     }
 

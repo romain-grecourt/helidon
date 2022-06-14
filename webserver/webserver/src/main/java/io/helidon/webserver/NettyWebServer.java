@@ -46,8 +46,7 @@ import io.helidon.common.SerializationConfig;
 import io.helidon.common.Version;
 import io.helidon.common.context.Context;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -91,8 +90,8 @@ class NettyWebServer implements WebServer {
     private final Context contextualRegistry;
     private final ConcurrentMap<String, Channel> channels = new ConcurrentHashMap<>();
     private final Map<String, HttpInitializer> initializers = new LinkedHashMap<>();
-    private final MessageBodyWriterContext writerContext;
-    private final MessageBodyReaderContext readerContext;
+    private final EntitySupport.WriterContext writerContext;
+    private final EntitySupport.ReaderContext readerContext;
 
     private volatile boolean started;
     private final AtomicBoolean shutdownThreadGroupsInitiated = new AtomicBoolean(false);
@@ -109,8 +108,8 @@ class NettyWebServer implements WebServer {
     NettyWebServer(ServerConfiguration config,
                    Routing routing,
                    Map<String, Routing> namedRoutings,
-                   MessageBodyWriterContext writerContext,
-                   MessageBodyReaderContext readerContext,
+                   EntitySupport.WriterContext writerContext,
+                   EntitySupport.ReaderContext readerContext,
                    DirectHandlers directHandlers) {
 
         Set<Map.Entry<String, SocketConfiguration>> sockets = config.sockets().entrySet();
@@ -123,8 +122,8 @@ class NettyWebServer implements WebServer {
         this.transport = acquireTransport();
         this.bossGroup = bossGroup();
         this.workerGroup = workerGroup();
-        this.readerContext = MessageBodyReaderContext.create(readerContext);
-        this.writerContext = MessageBodyWriterContext.create(writerContext);
+        this.readerContext = EntitySupport.ReaderContext.create(readerContext);
+        this.writerContext = EntitySupport.WriterContext.create(writerContext);
 
         for (Map.Entry<String, SocketConfiguration> entry : sockets) {
             String name = entry.getKey();
@@ -208,12 +207,12 @@ class NettyWebServer implements WebServer {
     }
 
     @Override
-    public MessageBodyReaderContext readerContext() {
+    public EntitySupport.ReaderContext readerContext() {
         return readerContext;
     }
 
     @Override
-    public MessageBodyWriterContext writerContext() {
+    public EntitySupport.WriterContext writerContext() {
         return writerContext;
     }
 

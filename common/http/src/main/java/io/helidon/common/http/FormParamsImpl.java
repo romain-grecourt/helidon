@@ -39,12 +39,8 @@ class FormParamsImpl extends ReadOnlyParameters implements FormParams {
             MediaType.APPLICATION_FORM_URLENCODED, preparePattern("&"),
             MediaType.TEXT_PLAIN, preparePattern("\n"));
 
-    private FormParamsImpl(Map<String, List<String>> params) {
+    FormParamsImpl(Map<String, List<String>> params) {
         super(params);
-    }
-
-    FormParamsImpl(FormParams.Builder builder) {
-        super(builder.params());
     }
 
     private static Pattern preparePattern(String assignmentSeparator) {

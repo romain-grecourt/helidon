@@ -25,8 +25,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.MessageBodyOperator;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -49,7 +48,7 @@ public class JsonpStreamWriterTest {
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Map.of());
     private static final JsonReaderFactory JSON_PARSER = Json.createReaderFactory(Map.of());
 
-    private static final MessageBodyWriterContext CONTEXT = MessageBodyWriterContext.create(HashParameters.create());
+    private static final EntitySupport.WriterContext CONTEXT = EntitySupport.WriterContext.create(HashParameters.create());
     private static final JsonpBodyStreamWriter WRITER = (JsonpBodyStreamWriter) JsonpSupport.streamWriter();
     private static final GenericType<JsonObject> JSON_OBJECT = GenericType.create(JsonObject.class);
     private static final GenericType<JsonArray> JSON_ARRAY = GenericType.create(JsonArray.class);
@@ -60,13 +59,13 @@ public class JsonpStreamWriterTest {
         assertAll(
                 () -> assertThat("JsonObject accepted",
                                  WRITER.accept(JSON_OBJECT, CONTEXT),
-                                 is(MessageBodyOperator.PredicateResult.SUPPORTED)),
+                                 is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
                 () -> assertThat("JsonArray accepted",
                                  WRITER.accept(JSON_ARRAY, CONTEXT),
-                                 is(MessageBodyOperator.PredicateResult.SUPPORTED)),
+                                 is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
                 () -> assertThat("Pojo not accepted",
                                  WRITER.accept(MY_TYPE, CONTEXT),
-                                 is(MessageBodyOperator.PredicateResult.NOT_SUPPORTED))
+                                 is(EntitySupport.Operator.PredicateResult.NOT_SUPPORTED))
         );
     }
 

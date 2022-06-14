@@ -59,7 +59,7 @@ public class MultiPartDecoderTest {
 
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            assertThat(part.headers().values("Content-Id"),
+            assertThat(part.headers().all("Content-Id"),
                     hasItems("part1"));
             DataChunkSubscriber subscriber = new DataChunkSubscriber();
             part.content().subscribe(subscriber);
@@ -103,7 +103,7 @@ public class MultiPartDecoderTest {
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
             if (latch.getCount() == 3) {
-                assertThat(part.headers().values("Content-Id"), hasItems("part1"));
+                assertThat(part.headers().all("Content-Id"), hasItems("part1"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -111,7 +111,7 @@ public class MultiPartDecoderTest {
                     assertThat(body, is(equalTo("body 1")));
                 });
             } else {
-                assertThat(part.headers().values("Content-Id"), hasItems("part2"));
+                assertThat(part.headers().all("Content-Id"), hasItems("part2"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
                 subscriber.content().thenAccept(body -> {
@@ -180,19 +180,18 @@ public class MultiPartDecoderTest {
         final CountDownLatch latch = new CountDownLatch(2);
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            assertThat(part.headers().values("Content-Id"), hasItems("part1"));
+            assertThat(part.headers().all("Content-Id"), hasItems("part1"));
             DataChunkSubscriber subscriber = new DataChunkSubscriber();
             part.content().subscribe(subscriber);
-            subscriber.content().thenAccept(body -> {
-                assertThat(body, is(equalTo(
-                        "this-is-the-1st-slice-of-the-body\n"
-                        + "this-is-the-2nd-slice-of-the-body")));
-            }).exceptionally((ex) -> {
-                System.out.println("UH-OH... " + ex);
-                return null;
-            }).thenAccept((_i) -> {
-                latch.countDown();
-            });
+            subscriber.content()
+                      .thenAccept(body ->
+                              assertThat(body, is(equalTo(
+                                      "this-is-the-1st-slice-of-the-body\n"
+                                              + "this-is-the-2nd-slice-of-the-body"))))
+                      .exceptionally((ex) -> {
+                          System.out.println("UH-OH... " + ex);
+                          return null;
+                      }).thenAccept((_i) -> latch.countDown());
         };
         BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.ONE_BY_ONE, consumer);
         partsPublisher(boundary, List.of(chunk1, chunk11, chunk12, chunk2)).subscribe(testSubscriber);
@@ -379,7 +378,7 @@ public class MultiPartDecoderTest {
             if (latch.getCount() == 2) {
                 assertThat(part.headers().values("Content-Id"), hasItems("part1"));
             }
-            part.content().subscribe(new Subscriber<DataChunk>() {
+            part.content().subscribe(new Subscriber<>() {
 
                 @Override
                 public void onSubscribe(Subscription subscription) {
@@ -602,6 +601,7 @@ public class MultiPartDecoderTest {
                try {
                   Thread.sleep(10);
                } catch(Exception e) {
+                   // do nothing
                }
                subscription.request(1);
                return 0;

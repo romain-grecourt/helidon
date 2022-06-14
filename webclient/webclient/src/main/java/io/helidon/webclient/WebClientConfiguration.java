@@ -36,15 +36,10 @@ import io.helidon.common.LazyValue;
 import io.helidon.common.context.Context;
 import io.helidon.config.Config;
 import io.helidon.config.DeprecatedConfig;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
 import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
-import io.helidon.media.common.MessageBodyStreamReader;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
 import io.helidon.media.common.ParentingMediaContextBuilder;
 import io.helidon.webclient.spi.WebClientService;
 
@@ -75,8 +70,8 @@ class WebClientConfiguration {
     private final boolean followRedirects;
     private final boolean keepAlive;
     private final int maxRedirects;
-    private final MessageBodyReaderContext readerContext;
-    private final MessageBodyWriterContext writerContext;
+    private final EntitySupport.ReaderContext readerContext;
+    private final EntitySupport.WriterContext writerContext;
     private final WebClientTls webClientTls;
     private final URI uri;
     private final boolean validateHeaders;
@@ -259,11 +254,11 @@ class WebClientConfiguration {
         return clientServices;
     }
 
-    MessageBodyReaderContext readerContext() {
+    EntitySupport.ReaderContext readerContext() {
         return readerContext;
     }
 
-    MessageBodyWriterContext writerContext() {
+    EntitySupport.WriterContext writerContext() {
         return writerContext;
     }
 
@@ -309,8 +304,8 @@ class WebClientConfiguration {
         private boolean keepAlive;
         private WebClientTls webClientTls;
         private URI uri;
-        private MessageBodyReaderContext readerContext;
-        private MessageBodyWriterContext writerContext;
+        private EntitySupport.ReaderContext readerContext;
+        private EntitySupport.WriterContext writerContext;
         private boolean validateHeaders;
         private boolean relativeUris;
         @SuppressWarnings("unchecked")
@@ -530,25 +525,25 @@ class WebClientConfiguration {
         }
 
         @Override
-        public B addReader(MessageBodyReader<?> reader) {
+        public B addReader(EntitySupport.Reader<?> reader) {
             this.readerContext.registerReader(reader);
             return me;
         }
 
         @Override
-        public B addStreamReader(MessageBodyStreamReader<?> streamReader) {
+        public B addStreamReader(EntitySupport.StreamReader<?> streamReader) {
             this.readerContext.registerReader(streamReader);
             return me;
         }
 
         @Override
-        public B addWriter(MessageBodyWriter<?> writer) {
+        public B addWriter(EntitySupport.Writer<?> writer) {
             this.writerContext.registerWriter(writer);
             return me;
         }
 
         @Override
-        public B addStreamWriter(MessageBodyStreamWriter<?> streamWriter) {
+        public B addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
             this.writerContext.registerWriter(streamWriter);
             return me;
         }
@@ -565,22 +560,22 @@ class WebClientConfiguration {
             return me;
         }
 
-        B readerContextParent(MessageBodyReaderContext readerContext) {
-            this.readerContext = MessageBodyReaderContext.create(readerContext);
+        B readerContextParent(EntitySupport.ReaderContext readerContext) {
+            this.readerContext = EntitySupport.ReaderContext.create(readerContext);
             return me;
         }
 
-        B writerContextParent(MessageBodyWriterContext writerContext) {
-            this.writerContext = MessageBodyWriterContext.create(writerContext);
+        B writerContextParent(EntitySupport.WriterContext writerContext) {
+            this.writerContext = EntitySupport.WriterContext.create(writerContext);
             return me;
         }
 
-        B readerContext(MessageBodyReaderContext readerContext) {
+        B readerContext(EntitySupport.ReaderContext readerContext) {
             this.readerContext = readerContext;
             return me;
         }
 
-        B writerContext(MessageBodyWriterContext writerContext) {
+        B writerContext(EntitySupport.WriterContext writerContext) {
             this.writerContext = writerContext;
             return me;
         }

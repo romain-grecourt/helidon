@@ -25,14 +25,13 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 
-class LraStatusReader implements MessageBodyReader<LRAStatus> {
+class LraStatusReader implements EntitySupport.Reader<LRAStatus> {
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyReaderContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         return PredicateResult.supports(LRAStatus.class, type);
     }
 
@@ -40,7 +39,7 @@ class LraStatusReader implements MessageBodyReader<LRAStatus> {
     @SuppressWarnings("unchecked")
     public <U extends LRAStatus> Single<U> read(Flow.Publisher<DataChunk> pub,
                                                 GenericType<U> type,
-                                                MessageBodyReaderContext context) {
+                                                EntitySupport.ReaderContext context) {
         return (Single<U>) Multi.create(pub)
                 .map(DataChunk::data)
                 .flatMapIterable(List::of)

@@ -39,7 +39,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.config.Config;
 import io.helidon.config.DeprecatedConfig;
-import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.metrics.api.KeyPerformanceIndicatorMetricsSettings;
 import io.helidon.metrics.api.MetricsSettings;
@@ -104,7 +104,7 @@ public final class MetricsSupport extends HelidonRestServiceSupport
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
     private static final String SERVICE_NAME = "Metrics";
 
-    private static final MessageBodyWriter<JsonStructure> JSONP_WRITER = JsonpSupport.writer();
+    private static final EntitySupport.Writer<JsonStructure> JSONP_WRITER = JsonpSupport.writer();
 
     private final RegistryFactory rf;
 

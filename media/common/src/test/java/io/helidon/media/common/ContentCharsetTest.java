@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,8 @@ package io.helidon.media.common;
 
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
-import java.util.Optional;
 
 import io.helidon.common.http.MediaType;
-import io.helidon.common.http.ReadOnlyParameters;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,28 +55,23 @@ public class ContentCharsetTest {
     @Test
     public void nonexistentCharset() {
         assertThat(readerContext("application/json").charset(),
-                is(equalTo(MessageBodyReaderContext.DEFAULT_CHARSET)));
+                is(equalTo(EntitySupport.ReaderContext.DEFAULT_CHARSET)));
     }
 
     @Test
     public void missingContentType() {
         assertThat(readerContext(null).charset(),
-                is(equalTo(MessageBodyReaderContext.DEFAULT_CHARSET)));
+                is(equalTo(EntitySupport.ReaderContext.DEFAULT_CHARSET)));
     }
 
     /**
      * Create a reader context with the specified {@code Content-Type} value.
+     *
      * @param contentTypeValue {@code Content-Type} value
      * @return MessageBodyReaderContext
      */
-    private MessageBodyReaderContext readerContext(String contentTypeValue) {
-        Optional<MediaType> contentType;
-        if (contentTypeValue == null) {
-            contentType = Optional.empty();
-        } else {
-            contentType = Optional.of(MediaType.parse(contentTypeValue));
-        }
-        return MessageBodyReaderContext.create((MediaContext) null, null,
-                                               ReadOnlyParameters.empty(), contentType);
+    private EntitySupport.ReaderContext readerContext(String contentTypeValue) {
+        MediaType contentType = contentTypeValue != null ? MediaType.parse(contentTypeValue) : null;
+        return EntitySupport.ReaderContext.create().createChild(null, null, contentType);
     }
 }

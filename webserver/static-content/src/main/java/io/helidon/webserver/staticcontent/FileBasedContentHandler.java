@@ -30,7 +30,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.media.common.DefaultMediaSupport;
-import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.webserver.HttpException;
 import io.helidon.webserver.RequestHeaders;
 import io.helidon.webserver.ResponseHeaders;
@@ -39,7 +39,7 @@ import io.helidon.webserver.ServerResponse;
 
 abstract class FileBasedContentHandler extends StaticContentHandler {
     private static final Logger LOGGER = Logger.getLogger(FileBasedContentHandler.class.getName());
-    private static final MessageBodyWriter<Path> PATH_WRITER = DefaultMediaSupport.pathWriter();
+    private static final EntitySupport.Writer<Path> PATH_WRITER = DefaultMediaSupport.pathWriter();
 
     private final Map<String, MediaType> customMediaTypes;
 

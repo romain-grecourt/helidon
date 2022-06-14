@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
 
 import jakarta.json.JsonStructure;
@@ -37,7 +36,7 @@ import jakarta.json.JsonWriterFactory;
  * Message body writer for {@link JsonStructure} sub-classes (JSON-P).
  * This writer is for {@link MediaType#APPLICATION_X_NDJSON} media type.
  */
-class JsonpNdBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> {
+class JsonpNdBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
 
     private static final byte[] NL = "\n".getBytes(StandardCharsets.UTF_8);
 
@@ -48,7 +47,7 @@ class JsonpNdBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         if (!JsonStructure.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
@@ -62,7 +61,7 @@ class JsonpNdBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
     @Override
     public Multi<DataChunk> write(Flow.Publisher<? extends JsonStructure> publisher,
                                   GenericType<? extends JsonStructure> type,
-                                  MessageBodyWriterContext context) {
+                                  EntitySupport.WriterContext context) {
 
         MediaType contentType = context.contentType()
                 .or(() -> findMediaType(context))
@@ -88,7 +87,7 @@ class JsonpNdBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
                 });
     }
 
-    private Optional<MediaType> findMediaType(MessageBodyWriterContext context) {
+    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.APPLICATION_X_NDJSON));
         } catch (IllegalStateException ignore) {

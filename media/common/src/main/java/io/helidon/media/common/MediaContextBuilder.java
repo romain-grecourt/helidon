@@ -36,7 +36,7 @@ public interface MediaContextBuilder<T> {
      * @param reader reader
      * @return updated instance of the builder
      */
-    T addReader(MessageBodyReader<?> reader);
+    T addReader(EntitySupport.Reader<?> reader);
 
     /**
      * Registers new stream reader.
@@ -44,7 +44,7 @@ public interface MediaContextBuilder<T> {
      * @param streamReader stream reader
      * @return updated instance of the builder
      */
-    T addStreamReader(MessageBodyStreamReader<?> streamReader);
+    T addStreamReader(EntitySupport.StreamReader<?> streamReader);
 
     /**
      * Registers new writer.
@@ -52,7 +52,7 @@ public interface MediaContextBuilder<T> {
      * @param writer writer
      * @return updated instance of the builder
      */
-    T addWriter(MessageBodyWriter<?> writer);
+    T addWriter(EntitySupport.Writer<?> writer);
 
     /**
      * Registers new stream writer.
@@ -60,6 +60,6 @@ public interface MediaContextBuilder<T> {
      * @param streamWriter stream writer
      * @return updated instance of the builder
      */
-    T addStreamWriter(MessageBodyStreamWriter<?> streamWriter);
+    T addStreamWriter(EntitySupport.StreamWriter<?> streamWriter);
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,27 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.media.common.MessageBodyContent;
+import java.util.Objects;
+import java.util.Optional;
+
+import io.helidon.media.common.Entity;
+import io.helidon.media.common.ReadableEntity;
 
 /**
  * Body part entity.
- *
- * @see ReadableBodyPart
- * @see WriteableBodyPart
  */
 public interface BodyPart {
 
     /**
      * Get the reactive representation of the part content.
-     * @return {@link MessageBodyContent}, never {@code null}
+     *
+     * @return {@link Entity}, never {@code null}
      */
-    MessageBodyContent content();
+    ReadableEntity content();
 
     /**
      * Returns HTTP part headers.
+     *
      * @return BodyPartHeaders, never {@code null}
      */
     BodyPartHeaders headers();
@@ -40,20 +43,39 @@ public interface BodyPart {
     /**
      * Get the control name.
      *
-     * @return the {@code name} parameter of the {@code Content-Disposition}
-     * header, or {@code null} if not present.
+     * @return the {@code name} parameter of the {@code Content-Disposition} header
      */
-    default String name() {
-        return headers().contentDisposition().name().orElse(null);
+    default Optional<String> name() {
+        return headers().contentDisposition().name();
+    }
+
+    /**
+     * Test the control name.
+     *
+     * @param name name
+     * @return {@code true} if the control name is equal to the given name, {@code false} otherwise
+     * @throws NullPointerException if the given name is {@code null}
+     */
+    default boolean isNamed(String name) {
+        Objects.requireNonNull(name, "name is null");
+        return name().map(name::equals).orElse(false);
     }
 
     /**
      * Get the file name.
      *
-     * @return the {@code filename} parameter of the {@code Content-Disposition}
-     * header, or {@code null} if not present.
+     * @return the {@code filename} parameter of the {@code Content-Disposition} header
      */
-    default String filename() {
-        return headers().contentDisposition().filename().orElse(null);
+    default Optional<String> filename() {
+        return headers().contentDisposition().filename();
+    }
+
+    /**
+     * Create a new builder.
+     *
+     * @return BodyPartBuilder
+     */
+    static BodyPartBuilder builder() {
+        return new BodyPartBuilder();
     }
 }

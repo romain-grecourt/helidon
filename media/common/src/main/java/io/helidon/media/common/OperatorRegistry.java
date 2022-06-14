@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,23 +25,27 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import io.helidon.common.GenericType;
+import io.helidon.media.common.EntitySupport.Context;
+import io.helidon.media.common.EntitySupport.Operator;
 
 /**
- * Thread-safe hierarchical registry of message body operators.
+ * Thread-safe hierarchical registry of entity operators.
+ *
  * @param <T> operator type
  */
-final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements Iterable<T>, AutoCloseable {
+final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, AutoCloseable {
 
     private final LinkedList<T> operators;
     private final ReadWriteLock lock;
     private final AtomicBoolean readLocked;
-    private MessageBodyOperators<T> parent;
+    private final OperatorRegistry<T> parent;
 
     /**
      * Create a new parented registry.
+     *
      * @param parent parent registry
      */
-    MessageBodyOperators(MessageBodyOperators<T> parent) {
+    OperatorRegistry(OperatorRegistry<T> parent) {
         this.parent = parent;
         this.operators = new LinkedList<>();
         this.lock = new ReentrantReadWriteLock();
@@ -51,12 +55,13 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements It
     /**
      * Create a new standalone (non parented) registry.
      */
-    MessageBodyOperators() {
+    OperatorRegistry() {
         this(null);
     }
 
     /**
      * Register the specified operator at the last position.
+     *
      * @param operator operation to register
      */
     void registerLast(T operator) {
@@ -65,18 +70,13 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements It
 
     /**
      * Register the specified operator at the first position.
+     *
      * @param operator operation to register
      */
     void registerFirst(T operator) {
         register(operator, true);
     }
 
-    /**
-     * Perform the registration of an operator.
-     * @param operator operator to register
-     * @param addFirst {@code true} if the operator should be added first,
-     * {@code false} if last
-     */
     private void register(T operator, boolean addFirst) {
         Objects.requireNonNull(operator, "operator is null!");
         try {
@@ -92,26 +92,27 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements It
     }
 
     /**
-     * Select an operator using {@link MessageBodyOperator#accept}.
-     * @param type the type representation
-     * @param context the message body context
+     * Select an operator using {@link Operator#accept}.
+     *
+     * @param type    the type representation
+     * @param context the context
      * @return operator, or {@code null} or no operator was found
      */
     @SuppressWarnings("unchecked")
-    <U extends MessageBodyOperator<V>, V extends MessageBodyContext> T select(GenericType<?> type, V context) {
+    <U extends Operator<V>, V extends Context> T select(GenericType<?> type, V context) {
         Objects.requireNonNull(type, "type is null!");
         Objects.requireNonNull(context, "context is null!");
         T assignableOperator = null;
-        MessageBodyOperators<T> current = this;
+        OperatorRegistry<T> current = this;
 
         while (current != null) {
             try {
                 current.lock.readLock().lock();
                 for (T operator : current.operators) {
-                    MessageBodyOperator.PredicateResult accept = ((U) operator).accept(type, context);
-                    if (accept == MessageBodyOperator.PredicateResult.COMPATIBLE && assignableOperator == null) {
+                    Operator.PredicateResult accept = ((U) operator).accept(type, context);
+                    if (accept == Operator.PredicateResult.COMPATIBLE && assignableOperator == null) {
                         assignableOperator = operator;
-                    } else if (accept == MessageBodyOperator.PredicateResult.SUPPORTED) {
+                    } else if (accept == Operator.PredicateResult.SUPPORTED) {
                         return operator;
                     }
                 }
@@ -135,12 +136,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements It
         }
     }
 
-    /**
-     * A thread-safe iterator implementation to iterate over a registry
-     * hierarchy.
-     * @param <T> Operator type
-     */
-    private static final class ParentedIterator<T extends MessageBodyOperator<?>> implements Iterator<T> {
+    private static final class ParentedIterator<T extends Operator<?>> implements Iterator<T> {
 
         private final Iterator<T> iterator;
         private final Lock readLock;
@@ -148,7 +144,7 @@ final class MessageBodyOperators<T extends MessageBodyOperator<?>> implements It
         private final AtomicBoolean locked;
         private final AtomicBoolean hasNext;
 
-        ParentedIterator(MessageBodyOperators<T> registry) {
+        ParentedIterator(OperatorRegistry<T> registry) {
             iterator = registry.operators.iterator();
             readLock = registry.lock.readLock();
             if (registry.parent != null) {

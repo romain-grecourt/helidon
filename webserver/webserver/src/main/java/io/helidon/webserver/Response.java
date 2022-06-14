@@ -29,11 +29,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyContext;
-import io.helidon.media.common.MessageBodyFilter;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
 
@@ -57,7 +53,7 @@ abstract class Response implements ServerResponse {
     private final HashResponseHeaders headers;
 
     private final CompletionStage<ServerResponse> completionStage;
-    private final MessageBodyWriterContext writerContext;
+    private final EntitySupport.WriterContext writerContext;
     private final MessageBodyEventListener eventListener;
 
     // Content related
@@ -76,7 +72,7 @@ abstract class Response implements ServerResponse {
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
         this.eventListener = new MessageBodyEventListener();
-        this.writerContext = MessageBodyWriterContext.create(webServer.writerContext(), eventListener, headers, acceptedTypes);
+        this.writerContext = EntitySupport.WriterContext.create(webServer.writerContext(), eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -129,7 +125,7 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public MessageBodyWriterContext writerContext() {
+    public EntitySupport.WriterContext writerContext() {
         return writerContext;
     }
 
@@ -234,24 +230,24 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Single<ServerResponse> send(Function<MessageBodyWriterContext, Publisher<DataChunk>> function) {
+    public Single<ServerResponse> send(Function<EntitySupport.WriterContext, Publisher<DataChunk>> function) {
         return send(function.apply(writerContext), false);
     }
 
     @Override
-    public Response registerWriter(MessageBodyWriter<?> writer) {
+    public Response registerWriter(EntitySupport.Writer<?> writer) {
         writerContext.registerWriter(writer);
         return this;
     }
 
     @Override
-    public Response registerWriter(MessageBodyStreamWriter<?> writer) {
+    public Response registerWriter(EntitySupport.StreamWriter<?> writer) {
         writerContext.registerWriter(writer);
         return this;
     }
 
     @Override
-    public Response registerFilter(MessageBodyFilter filter) {
+    public Response registerFilter(EntitySupport.Filter filter) {
         writerContext.registerFilter(filter);
         return this;
     }
@@ -300,7 +296,7 @@ abstract class Response implements ServerResponse {
         return bareResponse.requestId();
     }
 
-    private final class MessageBodyEventListener implements MessageBodyContext.EventListener {
+    private final class MessageBodyEventListener implements EntitySupport.Context.EventListener {
 
         private Span span;
         private volatile boolean sent;
@@ -330,7 +326,7 @@ abstract class Response implements ServerResponse {
         }
 
         @Override
-        public void onEvent(MessageBodyContext.Event event) {
+        public void onEvent(EntitySupport.Context.Event event) {
             switch (event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
                     GenericType<?> type = event.entityType().orElse(null);

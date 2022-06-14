@@ -29,7 +29,7 @@ import jakarta.json.JsonObject;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
-import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.ReadableEntity;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.webclient.WebClient;
 import io.helidon.webclient.WebClientRequestBuilder;
@@ -150,7 +150,7 @@ class HealthServerTest {
 
             int expectedStatus = expectContent ? Http.Status.OK_200.code() : Http.Status.NO_CONTENT_204.code();
             assertThat("health response status", response.status().code(), is(expectedStatus));
-            MessageBodyReadableContent content = response.content();
+            ReadableEntity content = response.content();
             String textContent = null;
             try {
                 textContent = content.as(String.class).get();

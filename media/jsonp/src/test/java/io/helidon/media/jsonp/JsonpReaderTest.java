@@ -21,8 +21,7 @@ import java.util.concurrent.ExecutionException;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReader;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
@@ -40,9 +39,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class JsonpReaderTest {
 
-    private final static MessageBodyReaderContext CONTEXT = MessageBodyReaderContext.create();
+    private final static EntitySupport.ReaderContext CONTEXT = EntitySupport.ReaderContext.create();
 
-    private final static MessageBodyReader<JsonStructure> READER = JsonpSupport.reader();
+    private final static EntitySupport.Reader<JsonStructure> READER = JsonpSupport.reader();
 
     @Test
     public void simpleJsonObject() throws Exception {

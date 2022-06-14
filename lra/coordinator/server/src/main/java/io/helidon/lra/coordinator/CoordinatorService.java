@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 import io.helidon.common.LazyValue;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.media.common.MessageBodyWriter;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.scheduling.FixedRateInvocation;
 import io.helidon.scheduling.Scheduling;
@@ -72,7 +72,7 @@ public class CoordinatorService implements Service {
     private static final Logger LOGGER = Logger.getLogger(CoordinatorService.class.getName());
     private static final Set<LRAStatus> RECOVERABLE_STATUSES = Set.of(LRAStatus.Cancelling, LRAStatus.Closing, LRAStatus.Active);
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
-    private static final MessageBodyWriter<JsonStructure> JSON_WRITER = JsonpSupport.create().writerInstance();
+    private static final EntitySupport.Writer<JsonStructure> JSON_WRITER = JsonpSupport.create().writerInstance();
 
     private final AtomicReference<CompletableFuture<Void>> completedRecovery = new AtomicReference<>(new CompletableFuture<>());
 

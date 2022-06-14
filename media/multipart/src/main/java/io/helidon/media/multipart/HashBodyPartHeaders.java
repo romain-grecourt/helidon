@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,22 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.media.common.MessageBodyContent;
-import io.helidon.media.common.MessageBodyWriterContext;
+import java.util.List;
+import java.util.Map;
 
+import io.helidon.common.http.HashParameters;
 
 /**
- * Writeable body part content.
+ * Implementation of {@link BodyPartHeaders} based on {@link HashParameters}.
  */
-public interface WriteableBodyPartContent extends MessageBodyContent {
+final class HashBodyPartHeaders extends HashParameters implements BodyPartHeaders {
 
     /**
-     * Initialize the body part content.
-     * @param context writer context to use to initialize the underlying publisher
-     * @return this body part content
+     * Create a new instance.
+     *
+     * @param params headers map
      */
-    WriteableBodyPartContent init(MessageBodyWriterContext context);
+    HashBodyPartHeaders(Map<String, List<String>> params) {
+        super(params);
+    }
 }

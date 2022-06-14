@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,18 +21,16 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Multi;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.ContentWriters;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MessageBodyReadableContent;
+import io.helidon.media.common.Entity;
+import io.helidon.media.common.ReadableEntity;
 
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.multipart.MultiPartDecoderTest.chunksPublisher;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -47,10 +45,10 @@ public class BodyPartTest {
 
     @Test
     public void testContentFromPublisher() {
-        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(ContentWriters
-                        .writeCharSequence("body part data", DEFAULT_CHARSET)))
-                .build();
+        BodyPart bodyPart = BodyPart.builder()
+                                    .entity(readableContent(ContentWriters
+                                            .writeCharSequence("body part data", DEFAULT_CHARSET)))
+                                    .build();
         final AtomicBoolean acceptCalled = new AtomicBoolean(false);
         bodyPart.content().as(String.class).thenAccept(str -> {
             acceptCalled.set(true);
@@ -64,82 +62,56 @@ public class BodyPartTest {
 
     @Test
     public void testContentFromEntity() throws Exception {
-        Publisher<DataChunk> publisher = WriteableBodyPart
-                .create("body part data")
-                .content()
-                .init(MEDIA_CONTEXT.writerContext());
+        ReadableEntity content = BodyPart.builder()
+                                         .entity("body part data")
+                                         .build()
+                                         .content();
+        Publisher<DataChunk> publisher = ((Entity) content).writerContext(MEDIA_CONTEXT.writerContext());
         String result = ContentReaders.readString(publisher, DEFAULT_CHARSET).get();
         assertThat(result, is(equalTo("body part data")));
     }
 
     @Test
-    public void testBufferedPart() {
-        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(chunksPublisher("abc".getBytes())))
-                .buffered()
-                .build();
-        assertThat(bodyPart.isBuffered(), is(equalTo(true)));
-        assertThat(bodyPart.as(String.class), is(equalTo("abc")));
-    }
-
-    @Test
-    public void testNonBufferedPart() {
-        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(chunksPublisher("abc".getBytes())))
-                .build();
-        assertThat(bodyPart.isBuffered(), is(equalTo(false)));
-        assertThrows(IllegalStateException.class, () -> bodyPart.as(String.class));
-    }
-
-    @Test
-    public void testBadBufferedPart() {
-        ReadableBodyPart bodyPart = ReadableBodyPart.builder()
-                .content(readableContent(Multi.never()))
-                .buffered()
-                .build();
-        assertThat(bodyPart.isBuffered(), is(equalTo(true)));
-        try {
-            bodyPart.as(String.class);
-            fail("exception should be thrown");
-        } catch (IllegalStateException ex) {
-            assertThat(ex.getMessage(), is(equalTo("Unable to convert part content synchronously")));
-        }
-    }
-
-    @Test
     public void testBuildingPartWithNoContent() {
-        assertThrows(IllegalStateException.class, () -> ReadableBodyPart.builder().build());
+        assertThrows(IllegalStateException.class, () -> BodyPart.builder().build());
+    }
+
+    @Test
+    public void testIsNamed() {
+        BodyPart bodyPart = BodyPart.builder()
+                                    .headers(BodyPartHeaders.builder()
+                                                            .contentDisposition(ContentDisposition.builder()
+                                                                                                  .name("foo")))
+                                    .entity("abc")
+                                    .build();
+        assertThat(bodyPart.isNamed("foo"), is(true));
     }
 
     @Test
     public void testName() {
-        WriteableBodyPart bodyPart = WriteableBodyPart.builder()
-                .headers(WriteableBodyPartHeaders.builder()
-                        .contentDisposition(ContentDisposition.builder()
-                                .name("foo")
-                                .build())
-                        .build())
-                .entity("abc")
-                .build();
-        assertThat(bodyPart.name(), is(equalTo("foo")));
-        assertThat(bodyPart.filename(), is(nullValue()));
+        BodyPart bodyPart = BodyPart.builder()
+                                    .headers(BodyPartHeaders.builder()
+                                                            .contentDisposition(ContentDisposition.builder()
+                                                                                                  .name("foo")))
+                                    .entity("abc")
+                                    .build();
+        assertThat(bodyPart.name().orElse(null), is(equalTo("foo")));
+        assertThat(bodyPart.filename().isEmpty(), is(true));
     }
 
     @Test
     public void testFilename() {
-        WriteableBodyPart bodyPart = WriteableBodyPart.builder()
-                .headers(WriteableBodyPartHeaders.builder()
-                        .contentDisposition(ContentDisposition.builder()
-                                .filename("foo.txt")
-                                .build())
-                        .build())
-                .entity("abc")
-                .build();
-        assertThat(bodyPart.filename(), is(equalTo("foo.txt")));
-        assertThat(bodyPart.name(), is(nullValue()));
+        BodyPart bodyPart = BodyPart.builder()
+                                    .headers(BodyPartHeaders.builder()
+                                                            .contentDisposition(ContentDisposition.builder()
+                                                                                                  .filename("foo.txt")))
+                                    .entity("abc")
+                                    .build();
+        assertThat(bodyPart.filename().orElse(null), is(equalTo("foo.txt")));
+        assertThat(bodyPart.name().isEmpty(), is(true));
     }
 
-    static MessageBodyReadableContent readableContent(Publisher<DataChunk> chunks) {
-        return MessageBodyReadableContent.create(chunks, MEDIA_CONTEXT.readerContext());
+    static ReadableEntity readableContent(Publisher<DataChunk> chunks) {
+        return Entity.create(ctx -> chunks, MEDIA_CONTEXT.readerContext(), null);
     }
 }

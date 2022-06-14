@@ -24,8 +24,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.MessageBodyStreamWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
 
 import jakarta.json.JsonStructure;
@@ -35,7 +34,7 @@ import jakarta.json.JsonWriterFactory;
  * Message body writer for {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
  * This writer is for {@link MediaType#TEXT_EVENT_STREAM} with no element-type parameter or element-type="application/json".
  */
-class JsonpEsBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> {
+class JsonpEsBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
 
     private static final MediaType TEXT_EVENT_STREAM_JSON = MediaType
             .parse("text/event-stream;element-type=\"application/json\"");
@@ -49,7 +48,7 @@ class JsonpEsBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext context) {
+    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
         if (!JsonStructure.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
@@ -63,7 +62,7 @@ class JsonpEsBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
     @Override
     public Multi<DataChunk> write(Flow.Publisher<? extends JsonStructure> publisher,
                                   GenericType<? extends JsonStructure> type,
-                                  MessageBodyWriterContext context) {
+                                  EntitySupport.WriterContext context) {
 
         MediaType contentType = context.contentType()
                 .or(() -> findMediaType(context))
@@ -83,7 +82,7 @@ class JsonpEsBodyStreamWriter implements MessageBodyStreamWriter<JsonStructure> 
                         DataChunk.create(NL)));
     }
 
-    private Optional<MediaType> findMediaType(MessageBodyWriterContext context) {
+    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.JSON_EVENT_STREAM_PREDICATE, TEXT_EVENT_STREAM_JSON));
         } catch (IllegalStateException ignore) {

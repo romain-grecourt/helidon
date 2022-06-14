@@ -21,7 +21,7 @@ import java.util.List;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyReaderContext;
+import io.helidon.media.common.EntitySupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ public class JacksonBodyReaderTest {
         JacksonBodyReader reader = JacksonBodyReader.create(new ObjectMapper());
         DataChunk dataChunk = DataChunk.create("[{\"title\":\"The Stand\"}]".getBytes(StandardCharsets.UTF_8));
         List<Book> books = reader.read(Single.just(dataChunk), new GenericType<List<Book>>() {
-        }, MessageBodyReaderContext.create())
+        }, EntitySupport.ReaderContext.create())
                 .get();
 
         assertThat(books.size(), is(1));

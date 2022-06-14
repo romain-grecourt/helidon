@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,14 +31,17 @@ import io.helidon.common.reactive.BufferedEmittingPublisher;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.SubscriptionHelper;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.Entity;
+import io.helidon.media.common.EntitySupport.WriterContext;
+
+import static io.helidon.media.multipart.MultiPartSupport.DEFAULT_BOUNDARY;
 
 /**
  * Reactive processor that encodes a stream of {@link BodyPart} into an HTTP payload.
  */
-public class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk> {
+public class MultiPartEncoder implements Processor<BodyPart, DataChunk> {
 
-    private final MessageBodyWriterContext context;
+    private final WriterContext context;
     private final String boundary;
     private final CompletableFuture<BufferedEmittingPublisher<Publisher<DataChunk>>> initFuture;
     private BufferedEmittingPublisher<Publisher<DataChunk>> emitter;
@@ -49,25 +52,58 @@ public class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk>
      * Create a multipart encoder.
      *
      * @param boundary boundary delimiter
-     * @param context writer context
+     * @param context  writer context
      */
-    MultiPartEncoder(String boundary, MessageBodyWriterContext context) {
+    MultiPartEncoder(String boundary, WriterContext context) {
         Objects.requireNonNull(boundary, "boundary cannot be null!");
         Objects.requireNonNull(context, "context cannot be null!");
         this.context = context;
         this.boundary = boundary;
-        initFuture = new CompletableFuture<BufferedEmittingPublisher<Publisher<DataChunk>>>();
+        initFuture = new CompletableFuture<>();
     }
 
     /**
-     * Create a multipart encoder.
+     * Create a multipart encoder that uses a given boundary delimiter and a given writer context.
      *
      * @param boundary boundary delimiter
-     * @param context writer context
+     * @param context  writer context
      * @return MultiPartEncoder
      */
-    public static MultiPartEncoder create(String boundary, MessageBodyWriterContext context) {
+    public static MultiPartEncoder create(String boundary, WriterContext context) {
         return new MultiPartEncoder(boundary, context);
+    }
+
+    /**
+     * Create a multipart encoder that uses a given boundary delimiter and an empty writer context.
+     *
+     * @param boundary boundary delimiter
+     * @return MultiPartEncoder
+     * @see WriterContext#create()
+     */
+    public static MultiPartEncoder create(String boundary) {
+        return new MultiPartEncoder(boundary, WriterContext.create());
+    }
+
+    /**
+     * Create a multipart encoder that uses a given writer context and the default boundary delimiter.
+     *
+     * @param context writer context
+     * @return MultiPartEncoder
+     * @see MultiPartSupport#DEFAULT_BOUNDARY
+     */
+    public static MultiPartEncoder create(WriterContext context) {
+        return new MultiPartEncoder(DEFAULT_BOUNDARY, context);
+    }
+
+    /**
+     * Create a multipart encoder that uses the default boundary delimiter and an empty writer context.
+     *
+     * @return MultiPartEncoder
+     * @see MultiPartSupport#DEFAULT_BOUNDARY
+     * @see WriterContext#create()
+     */
+    public static MultiPartEncoder create() {
+        return new MultiPartEncoder(DEFAULT_BOUNDARY, WriterContext.create());
     }
 
     @Override
@@ -95,16 +131,16 @@ public class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk>
             // relay request to upstream, already reduced by flatmap
             emitter.onRequest((r, t) -> upstream.request(r));
             Multi.create(emitter)
-                    .flatMap(Function.identity())
-                    .onCompleteResume(DataChunk.create(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8)))
-                    .subscribe(downstream);
+                 .flatMap(Function.identity())
+                 .onCompleteResume(DataChunk.create(("--" + boundary + "--").getBytes(StandardCharsets.UTF_8)))
+                 .subscribe(downstream);
             initFuture.complete(emitter);
             downstream = null;
         }
     }
 
     @Override
-    public void onNext(final WriteableBodyPart bodyPart) {
+    public void onNext(final BodyPart bodyPart) {
         emitter.emit(createBodyPartPublisher(bodyPart));
     }
 
@@ -119,7 +155,7 @@ public class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk>
         initFuture.whenComplete((e, t) -> e.complete());
     }
 
-    private Publisher<DataChunk> createBodyPartPublisher(final WriteableBodyPart bodyPart) {
+    private Publisher<DataChunk> createBodyPartPublisher(final BodyPart bodyPart) {
         // start boundary
         StringBuilder sb = new StringBuilder("--").append(boundary).append("\r\n");
 
@@ -129,20 +165,21 @@ public class MultiPartEncoder implements Processor<WriteableBodyPart, DataChunk>
             String headerName = headerEntry.getKey();
             for (String headerValue : headerEntry.getValue()) {
                 sb.append(headerName)
-                        .append(":")
-                        .append(headerValue)
-                        .append("\r\n");
+                  .append(":")
+                  .append(headerValue)
+                  .append("\r\n");
             }
         }
 
         // end of headers empty line
         sb.append("\r\n");
-        return Multi.concat(Multi.concat(
-                // Part prefix
-                Single.just(DataChunk.create(sb.toString().getBytes(StandardCharsets.UTF_8))),
-                // Part body
-                bodyPart.content().init(context)),
-                // Part postfix
-                Single.just(DataChunk.create("\r\n".getBytes(StandardCharsets.UTF_8))));
+
+        Entity content = (Entity) bodyPart.content();
+        content.writerContext(context);
+        return Multi.concat(Multi.concat(Single.just(chunk(sb.toString())), content), Single.just(chunk("\r\n")));
+    }
+
+    private static DataChunk chunk(String s) {
+        return DataChunk.create(s.getBytes(StandardCharsets.UTF_8));
     }
 }

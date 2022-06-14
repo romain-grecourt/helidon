@@ -26,8 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.webserver.utils.SocketHttpClient;
 
 import org.junit.jupiter.api.AfterAll;
@@ -73,18 +72,18 @@ public class FilterTest {
                             res.registerFilter(pub -> Multi.create(pub)
                                     .peek(chunk -> filterItemCounter.incrementAndGet()));
                             res.send(ctx -> {
-                                return ctx.marshall(Single.just("Test"), new MessageBodyWriter<>() {
+                                return ctx.marshall(Single.just("Test"), new EntitySupport.Writer<>() {
 
                                     @Override
                                     public PredicateResult accept(final GenericType<?> type,
-                                                                  final MessageBodyWriterContext context) {
+                                                                  final EntitySupport.WriterContext context) {
                                         return PredicateResult.SUPPORTED;
                                     }
 
                                     @Override
                                     public Flow.Publisher<DataChunk> write(final Single<? extends String> single,
                                                                            final GenericType<? extends String> type,
-                                                                           final MessageBodyWriterContext context) {
+                                                                           final EntitySupport.WriterContext context) {
                                         return single.map(s -> DataChunk.create(s.getBytes()));
                                     }
                                 }, GenericType.create(String.class));

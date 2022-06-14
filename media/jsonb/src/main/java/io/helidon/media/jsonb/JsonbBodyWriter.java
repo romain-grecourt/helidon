@@ -26,8 +26,7 @@ import io.helidon.common.mapper.Mapper;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.media.common.MessageBodyWriter;
-import io.helidon.media.common.MessageBodyWriterContext;
+import io.helidon.media.common.EntitySupport;
 
 import jakarta.json.bind.Jsonb;
 import jakarta.json.bind.JsonbException;
@@ -35,7 +34,7 @@ import jakarta.json.bind.JsonbException;
 /**
  * Message body writer supporting object binding with JSON-B.
  */
-class JsonbBodyWriter implements MessageBodyWriter<Object> {
+class JsonbBodyWriter implements EntitySupport.Writer<Object> {
 
     private final Jsonb jsonb;
 
@@ -46,7 +45,7 @@ class JsonbBodyWriter implements MessageBodyWriter<Object> {
 
     @Override
     public PredicateResult accept(GenericType<?> type,
-                                  MessageBodyWriterContext context) {
+                                  EntitySupport.WriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
                 ? PredicateResult.COMPATIBLE
                 : PredicateResult.NOT_SUPPORTED;
@@ -54,7 +53,7 @@ class JsonbBodyWriter implements MessageBodyWriter<Object> {
 
     @Override
     public Publisher<DataChunk> write(Single<? extends Object> content,  GenericType<? extends Object> type,
-            MessageBodyWriterContext context) {
+            EntitySupport.WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
