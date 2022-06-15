@@ -25,6 +25,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.common.EntitySupport.WriterContext;
 
@@ -48,10 +49,10 @@ class JsonbWriter implements Writer<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, WriterContext context) {
+    public EntitySupport.PredicateResult accept(GenericType<?> type, WriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
-                ? PredicateResult.COMPATIBLE
-                : PredicateResult.NOT_SUPPORTED;
+                ? EntitySupport.PredicateResult.COMPATIBLE
+                : EntitySupport.PredicateResult.NOT_SUPPORTED;
     }
 
     @Override

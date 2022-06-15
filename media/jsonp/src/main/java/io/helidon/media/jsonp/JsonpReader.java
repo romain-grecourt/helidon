@@ -25,6 +25,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.EntitySupport.Reader;
 import io.helidon.media.common.EntitySupport.ReaderContext;
 
@@ -51,8 +52,8 @@ final class JsonpReader implements Reader<JsonStructure> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, ReaderContext context) {
-        return PredicateResult.supports(JsonStructure.class, type);
+    public EntitySupport.PredicateResult accept(GenericType<?> type, ReaderContext context) {
+        return EntitySupport.PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override

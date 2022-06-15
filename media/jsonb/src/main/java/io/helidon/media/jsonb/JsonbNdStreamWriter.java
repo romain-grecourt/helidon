@@ -26,6 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.WriterContext;
 
@@ -51,15 +52,15 @@ class JsonbNdStreamWriter implements StreamWriter<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, WriterContext context) {
+    public EntitySupport.PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
-            return PredicateResult.NOT_SUPPORTED;
+            return EntitySupport.PredicateResult.NOT_SUPPORTED;
         }
         return context.contentType()
                 .or(() -> findMediaType(context))
                 .filter(mediaType -> mediaType.equals(MediaType.APPLICATION_X_NDJSON))
-                .map(it -> PredicateResult.COMPATIBLE)
-                .orElse(PredicateResult.NOT_SUPPORTED);
+                .map(it -> EntitySupport.PredicateResult.COMPATIBLE)
+                .orElse(EntitySupport.PredicateResult.NOT_SUPPORTED);
     }
 
     @Override

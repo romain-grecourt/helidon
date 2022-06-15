@@ -25,10 +25,9 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.PredicateResult;
+import io.helidon.media.common.EntitySupport.Reader;
 import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.SimpleStreamReader;
-import io.helidon.media.common.EntitySupport.SimpleStreamWriter;
 import io.helidon.media.common.EntitySupport.StreamReader;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.Writer;
@@ -36,6 +35,9 @@ import io.helidon.media.common.EntitySupport.WriterContext;
 import io.helidon.media.common.MediaSupport;
 
 import static io.helidon.common.http.MediaType.MULTIPART_FORM_DATA;
+import static io.helidon.media.common.EntitySupport.streamReader;
+import static io.helidon.media.common.EntitySupport.streamWriter;
+import static io.helidon.media.common.EntitySupport.writer;
 
 /**
  * Multipart media support.
@@ -48,27 +50,13 @@ public final class MultiPartSupport implements MediaSupport {
      */
     public static final String DEFAULT_BOUNDARY = "[^._.^]==>boundary<==[^._.^]";
 
-    private static final StreamReader<BodyPart> BODY_PART_STREAM_READER = new SimpleStreamReader<>(BodyPart.class) {
-        @Override
-        public Multi<BodyPart> read(Publisher<DataChunk> publisher, ReaderContext context) {
-            String boundary = null;
-            MediaType contentType = context.contentType().orElse(null);
-            if (contentType != null) {
-                boundary = contentType.parameters().get("boundary");
-            }
-            if (boundary == null) {
-                throw new IllegalStateException("boundary header is missing");
-            }
-            MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
-            publisher.subscribe(decoder);
-            return decoder;
-        }
-    };
+    private static final StreamReader<BodyPart> BODY_PART_STREAM_READER = streamReader(
+            PredicateResult.supports(BodyPart.class), MultiPartSupport::readBodyParts);
 
     private static final StreamWriter<BodyPart> BODY_PART_STREAM_WRITER = bodyPartStreamWriter(DEFAULT_BOUNDARY);
     private static final Writer<MultiPart> MULTIPART_WRITER = multiPartWriter(DEFAULT_BOUNDARY);
 
-    private final Collection<EntitySupport.Reader<?>> readers;
+    private final Collection<Reader<?>> readers;
     private final Collection<Writer<?>> writers;
     private final Collection<StreamReader<?>> streamReaders;
     private final Collection<StreamWriter<?>> streamWriters;
@@ -81,7 +69,7 @@ public final class MultiPartSupport implements MediaSupport {
     }
 
     @Override
-    public Collection<EntitySupport.Reader<?>> readers() {
+    public Collection<Reader<?>> readers() {
         return readers;
     }
 
@@ -125,20 +113,8 @@ public final class MultiPartSupport implements MediaSupport {
      * @return body part stream writer
      */
     public static StreamWriter<BodyPart> bodyPartStreamWriter(String boundary) {
-        return new SimpleStreamWriter<>(BodyPart.class) {
-
-            @Override
-            public Publisher<DataChunk> write(Publisher<BodyPart> publisher, WriterContext context) {
-                context.contentType(MediaType.builder()
-                                             .type(MULTIPART_FORM_DATA.type())
-                                             .subtype(MULTIPART_FORM_DATA.subtype())
-                                             .addParameter("boundary", "\"" + boundary + "\"")
-                                             .build());
-                MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
-                publisher.subscribe(encoder);
-                return encoder;
-            }
-        };
+        return streamWriter(PredicateResult.supports(BodyPart.class),
+                (publisher, ctx) -> writeBodyParts(publisher, ctx, boundary));
     }
 
     /**
@@ -157,33 +133,7 @@ public final class MultiPartSupport implements MediaSupport {
      * @return body part stream writer
      */
     public static Writer<MultiPart> multiPartWriter(String boundary) {
-        return new Writer<>() {
-            @Override
-            public PredicateResult accept(GenericType<?> type, WriterContext context) {
-                return context.contentType()
-                              .or(() -> Optional.of(MULTIPART_FORM_DATA))
-                              .filter(mediaType -> mediaType == MULTIPART_FORM_DATA)
-                              .map(it -> PredicateResult.supports(MultiPart.class, type))
-                              .orElse(PredicateResult.NOT_SUPPORTED);
-            }
-
-            @Override
-            public <U extends MultiPart> Publisher<DataChunk> write(Single<U> content,
-                                                                    GenericType<U> type,
-                                                                    WriterContext context) {
-
-                context.contentType(MediaType.builder()
-                                             .type(MULTIPART_FORM_DATA.type())
-                                             .subtype(MULTIPART_FORM_DATA.subtype())
-                                             .addParameter("boundary", "\"" + boundary + "\"")
-                                             .build());
-                return content.flatMap(multiPart -> {
-                    MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
-                    Multi.just(multiPart.bodyParts()).subscribe(encoder);
-                    return encoder;
-                });
-            }
-        };
+        return writer(MultiPartSupport::acceptsMultiPart, (single, ctx) -> writeMultiPart(single, ctx, boundary));
     }
 
     /**
@@ -193,5 +143,57 @@ public final class MultiPartSupport implements MediaSupport {
      */
     public static MultiPartSupport create() {
         return new MultiPartSupport();
+    }
+
+    private static PredicateResult acceptsMultiPart(GenericType<?> type, WriterContext context) {
+        return context.contentType()
+                      .or(() -> Optional.of(MULTIPART_FORM_DATA))
+                      .filter(mediaType -> mediaType == MULTIPART_FORM_DATA)
+                      .map(it -> PredicateResult.supports(MultiPart.class, type))
+                      .orElse(PredicateResult.NOT_SUPPORTED);
+    }
+
+    private static Publisher<DataChunk> writeBodyParts(Publisher<BodyPart> publisher,
+                                                       WriterContext context,
+                                                       String boundary) {
+
+        context.contentType(contentType(boundary));
+        MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
+        publisher.subscribe(encoder);
+        return encoder;
+    }
+
+    private static Multi<BodyPart> readBodyParts(Publisher<DataChunk> publisher, ReaderContext context) {
+        String boundary = null;
+        MediaType contentType = context.contentType().orElse(null);
+        if (contentType != null) {
+            boundary = contentType.parameters().get("boundary");
+        }
+        if (boundary == null) {
+            throw new IllegalStateException("boundary header is missing");
+        }
+        MultiPartDecoder decoder = MultiPartDecoder.create(boundary, context);
+        publisher.subscribe(decoder);
+        return decoder;
+    }
+
+    private static Publisher<DataChunk> writeMultiPart(Single<MultiPart> single,
+                                                       WriterContext context,
+                                                       String boundary) {
+
+        context.contentType(contentType(boundary));
+        return single.flatMap(multiPart -> {
+            MultiPartEncoder encoder = MultiPartEncoder.create(boundary, context);
+            Multi.just(multiPart.bodyParts()).subscribe(encoder);
+            return encoder;
+        });
+    }
+
+    private static MediaType contentType(String boundary) {
+        return MediaType.builder()
+                        .type(MULTIPART_FORM_DATA.type())
+                        .subtype(MULTIPART_FORM_DATA.subtype())
+                        .addParameter("boundary", "\"" + boundary + "\"")
+                        .build();
     }
 }

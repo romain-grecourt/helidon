@@ -37,6 +37,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.MediaContext;
 import io.helidon.webserver.utils.TestUtils;
 
@@ -154,47 +155,50 @@ public class RequestContentTest {
                        }));
 
         request.content()
-               .registerReader(reader(Iterable.class, publisher1 -> {
-                   fail("Iterable reader should have not been used!");
-                   throw new IllegalStateException("unreachable code");
-               }));
+               .registerReader(reader(
+                       PredicateResult.supports(Iterable.class), publisher1 -> {
+                           fail("Iterable reader should have not been used!");
+                           throw new IllegalStateException("unreachable code");
+                       }));
 
         request.content()
-               .registerReader(reader(ArrayList.class, publisher1 -> {
-                   fail("ArrayList reader should have not been used!");
-                   throw new IllegalStateException("unreachable code");
-               }));
+               .registerReader(reader(
+                       PredicateResult.supports(ArrayList.class), publisher1 -> {
+                           fail("ArrayList reader should have not been used!");
+                           throw new IllegalStateException("unreachable code");
+                       }));
 
         request.content()
-               .registerReader(reader(List.class, publisher1 -> {
+               .registerReader(reader(
+                       PredicateResult.supports(List.class), publisher1 -> {
 
-                   CompletableFuture<List> future = new CompletableFuture<>();
-                   List<String> list = new CopyOnWriteArrayList<>();
+                           CompletableFuture<List> future = new CompletableFuture<>();
+                           List<String> list = new CopyOnWriteArrayList<>();
 
-                   publisher1.subscribe(new Subscriber<>() {
-                       @Override
-                       public void onSubscribe(Subscription subscription) {
-                           subscription.request(Long.MAX_VALUE);
-                           subscribedLatch.countDown();
-                       }
+                           publisher1.subscribe(new Subscriber<>() {
+                               @Override
+                               public void onSubscribe(Subscription subscription) {
+                                   subscription.request(Long.MAX_VALUE);
+                                   subscribedLatch.countDown();
+                               }
 
-                       @Override
-                       public void onNext(DataChunk item) {
-                           list.add(TestUtils.requestChunkAsString(item));
-                       }
+                               @Override
+                               public void onNext(DataChunk item) {
+                                   list.add(TestUtils.requestChunkAsString(item));
+                               }
 
-                       @Override
-                       public void onError(Throwable throwable) {
-                           fail("Received an exception: " + throwable.getMessage());
-                       }
+                               @Override
+                               public void onError(Throwable throwable) {
+                                   fail("Received an exception: " + throwable.getMessage());
+                               }
 
-                       @Override
-                       public void onComplete() {
-                           future.complete(list);
-                       }
-                   });
-                   return Single.create(future);
-               }));
+                               @Override
+                               public void onComplete() {
+                                   future.complete(list);
+                               }
+                           });
+                           return Single.create(future);
+                       }));
 
         List<String> result = (List<String>) request.content()
                                                     .as(List.class)
@@ -212,10 +216,11 @@ public class RequestContentTest {
         });
 
         request.content()
-               .registerReader(reader(Duration.class, publisher -> {
-                   fail("Should not be called");
-                   throw new IllegalStateException("unreachable code");
-               }));
+               .registerReader(reader(
+                       PredicateResult.supports(Duration.class), publisher -> {
+                           fail("Should not be called");
+                           throw new IllegalStateException("unreachable code");
+                       }));
 
         try {
             request.content().as(Duration.class).await(10, TimeUnit.SECONDS);
@@ -234,9 +239,10 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.never());
 
         request.content()
-               .registerReader(reader(Duration.class, publisher -> {
-                   throw new IllegalStateException("failed-read");
-               }));
+               .registerReader(reader(
+                       PredicateResult.supports(Duration.class), publisher -> {
+                           throw new IllegalStateException("failed-read");
+                       }));
 
         try {
             request.content().as(Duration.class).await(10, TimeUnit.SECONDS);
@@ -255,9 +261,10 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.just(DataChunk.create("hello".getBytes())));
 
         request.content()
-               .registerReader(reader(LocalDate.class, publisher -> {
-                   throw new IllegalStateException("Should not be called");
-               }));
+               .registerReader(reader(
+                       PredicateResult.supports(LocalDate.class), publisher -> {
+                           throw new IllegalStateException("Should not be called");
+                       }));
 
         try {
             request.content().as(Duration.class).await(10, TimeUnit.SECONDS);
@@ -298,9 +305,10 @@ public class RequestContentTest {
         Request request = requestTestStub(Multi.singleton(DataChunk.create("2010-01-02".getBytes())));
 
         Single<String> complete = request.content()
-                                         .registerReader(reader(LocalDate.class, (publisher, ctx) ->
-                                                 ContentReaders.readString(publisher, ctx.charset())
-                                                               .map(LocalDate::parse)))
+                                         .registerReader(reader(
+                                                 PredicateResult.supports(LocalDate.class), (publisher, ctx) ->
+                                                         ContentReaders.readString(publisher, ctx.charset())
+                                                                       .map(LocalDate::parse)))
                                          .as(LocalDate.class)
                                          .map(o -> o.getDayOfMonth() + "/" + o.getMonthValue() + "/" + o.getYear());
 
@@ -326,16 +334,18 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.just(DataChunk.create("test-string".getBytes())));
 
         String actual = request.content()
-                               .registerReader(reader(String.class, publisher -> {
-                                   fail("Should not be called");
-                                   throw new IllegalStateException("unreachable code");
-                               }))
-                               .registerReader(reader(String.class, publisher ->
-                                       Multi.create(publisher)
-                                            .map(TestUtils::requestChunkAsString)
-                                            .map(String::toUpperCase)
-                                            .collectList()
-                                            .map((strings -> strings.get(0)))))
+                               .registerReader(reader(
+                                       PredicateResult.supports(String.class), publisher -> {
+                                           fail("Should not be called");
+                                           throw new IllegalStateException("unreachable code");
+                                       }))
+                               .registerReader(reader(
+                                       PredicateResult.supports(String.class), publisher ->
+                                               Multi.create(publisher)
+                                                    .map(TestUtils::requestChunkAsString)
+                                                    .map(String::toUpperCase)
+                                                    .collectList()
+                                                    .map((strings -> strings.get(0)))))
                                .as(String.class)
                                .await(10, TimeUnit.SECONDS);
 

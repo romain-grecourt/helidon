@@ -21,14 +21,18 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Flow;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.IoMulti;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.OutputStreamMulti;
+import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentWriters;
+import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.EntitySupport.Writer;
+import io.helidon.media.common.EntitySupport.WriterContext;
 import io.helidon.webclient.WebClientRequestBuilder;
 import io.helidon.webclient.WebClientResponse;
 
@@ -44,6 +48,9 @@ import static io.helidon.media.common.EntitySupport.writer;
  * and an Entity is provided to be submitted by the Helidon Client.
  */
 class HelidonEntity {
+
+    private static final Writer<ByteArrayOutputStream> BAOS_WRITER = writer(
+            PredicateResult.supports(ByteArrayOutputStream.class), HelidonEntity::writeByteArrayOutputStream);
 
     private HelidonEntity() {
     }
@@ -147,9 +154,10 @@ class HelidonEntity {
         }
     }
 
-    private static final Writer<ByteArrayOutputStream> BAOS_WRITER = writer(ByteArrayOutputStream.class,
-            (single, ctx) -> {
-                ctx.contentType(MediaType.APPLICATION_OCTET_STREAM);
-                return single.flatMap(baos -> ContentWriters.writeBytes(baos.toByteArray(), false));
-            });
+    private static Flow.Publisher<DataChunk> writeByteArrayOutputStream(Single<ByteArrayOutputStream> single,
+                                                                        WriterContext context) {
+
+        context.contentType(MediaType.APPLICATION_OCTET_STREAM);
+        return single.flatMap(baos -> ContentWriters.writeBytes(baos.toByteArray(), false));
+    }
 }

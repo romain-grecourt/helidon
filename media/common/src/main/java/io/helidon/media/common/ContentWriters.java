@@ -165,6 +165,7 @@ public final class ContentWriters {
      * @param formParams the {@link FormParams}
      * @param charset    the charset to use
      * @return Single
+     * @since 3.0.0
      */
     public static Single<DataChunk> writeURLEncodedFormParams(FormParams formParams, Charset charset) {
         return writeCharSequence(FormSupport.writeURLEncoded(formParams, charset), charset);
@@ -177,6 +178,7 @@ public final class ContentWriters {
      * @param formParams the {@link FormParams}
      * @param charset    the charset to use
      * @return Single
+     * @since 3.0.0
      */
     public static Single<DataChunk> writePlainTextFormParams(FormParams formParams, Charset charset) {
         return writeCharSequence(FormSupport.writeTextPlain(formParams), charset);

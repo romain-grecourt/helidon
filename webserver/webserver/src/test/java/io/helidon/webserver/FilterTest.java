@@ -24,6 +24,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
+import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.webserver.utils.SocketHttpClient;
 
@@ -41,8 +42,8 @@ public class FilterTest {
     private static final Logger LOGGER = Logger.getLogger(FilterTest.class.getName());
     private static WebServer webServer;
     private static final AtomicLong filterItemCounter = new AtomicLong(0);
-    private static final Writer<String> STRING_WRITER = writer(String.class,
-            s -> s.map(str -> DataChunk.create(str.getBytes())));
+    private static final Writer<String> STRING_WRITER = writer(
+            PredicateResult.supports(String.class), s -> s.map(str -> DataChunk.create(str.getBytes())));
 
     /**
      * Start the Web Server

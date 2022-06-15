@@ -175,8 +175,8 @@ public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> 
     private record FilterOperator<T>(Filter filter) implements Operator<T>, Filter {
 
         @Override
-        public PredicateResult accept(GenericType<?> type, T context) {
-            return PredicateResult.SUPPORTED;
+        public EntitySupport.PredicateResult accept(GenericType<?> type, T context) {
+            return EntitySupport.PredicateResult.SUPPORTED;
         }
 
         @Override

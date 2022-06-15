@@ -28,7 +28,6 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
@@ -36,13 +35,12 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.SimpleWriter;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
 
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.media.common.EntitySupport.PredicateResult.supports;
+import static io.helidon.media.common.EntitySupport.writer;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -153,10 +151,11 @@ public class ResponseTest {
         assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
                 hasProperty("message", containsString("No writer found for type"))));
 
-        response.registerWriter(writer(CharSequence.class, o -> {
-            sb.append("1");
-            return Single.empty();
-        }));
+        response.registerWriter(writer(
+                supports(CharSequence.class), o -> {
+                    sb.append("1");
+                    return Single.empty();
+                }));
 
         marshall(response, "foo");
         assertThat(sb.toString(), is("1"));
@@ -166,10 +165,11 @@ public class ResponseTest {
         assertThat(sb.toString(), is(""));
 
         sb.setLength(0);
-        response.registerWriter(writer(String.class, o -> {
-            sb.append("2");
-            return Single.empty();
-        }));
+        response.registerWriter(writer(
+                supports(String.class), o -> {
+                    sb.append("2");
+                    return Single.empty();
+                }));
         marshall(response, "foo");
         assertThat(sb.toString(), is("2"));
 
@@ -178,10 +178,11 @@ public class ResponseTest {
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        response.registerWriter(writer(Object.class, o -> {
-            sb.append("3");
-            return Single.empty();
-        }));
+        response.registerWriter(writer(
+                supports(Object.class), o -> {
+                    sb.append("3");
+                    return Single.empty();
+                }));
         marshall(response, 1);
         assertThat(sb.toString(), is("3"));
     }
@@ -190,15 +191,16 @@ public class ResponseTest {
     public void writerByPredicate() throws Exception {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(writer(Integer.class,
-                o -> {
+        response.registerWriter(writer(
+                supports(Integer.class), o -> {
                     sb.append("1");
                     return Single.empty();
                 }));
-        response.registerWriter(writer(Long.class, o -> {
-            sb.append("2");
-            return Single.empty();
-        }));
+        response.registerWriter(writer(
+                supports(Long.class), o -> {
+                    sb.append("2");
+                    return Single.empty();
+                }));
         marshall(response, 1);
         assertThat(sb.toString(), is("1"));
 
@@ -223,16 +225,16 @@ public class ResponseTest {
             return Single.empty();
         };
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(writer(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter));
-        response.registerWriter(writer(Number.class, MediaType.APPLICATION_JSON, numberWriter));
+        response.registerWriter(writer(supports(CharSequence.class, MediaType.TEXT_PLAIN), stringWriter));
+        response.registerWriter(writer(supports(Number.class, MediaType.APPLICATION_JSON), numberWriter));
         marshall(response, "foo");
         assertThat(sb.toString(), is("A"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.TEXT_PLAIN));
 
         sb.setLength(0);
         response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(writer(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter));
-        response.registerWriter(writer(Number.class, MediaType.APPLICATION_JSON, numberWriter));
+        response.registerWriter(writer(supports(CharSequence.class, MediaType.TEXT_PLAIN), stringWriter));
+        response.registerWriter(writer(supports(Number.class, MediaType.APPLICATION_JSON), numberWriter));
         marshall(response, 1);
         assertThat(sb.toString(), is("B"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
@@ -257,40 +259,6 @@ public class ResponseTest {
         assertThat(response.writerContext()
                            .applyFilters(Single.just(DataChunk.create("foo".getBytes()))), notNullValue());
         assertThat(sb.toString(), is("ABC"));
-    }
-
-    private static <T> Writer<T> writer(Class<T> clazz,
-                                        Predicate<MediaType> predicate,
-                                        Function<Single<T>, Publisher<DataChunk>> function) {
-        return new Writer<>() {
-
-            @Override
-            @SuppressWarnings("unchecked")
-            public <U extends T> Publisher<DataChunk> write(Single<U> single,
-                                                            GenericType<U> type,
-                                                            WriterContext context) {
-                return function.apply((Single<T>) single);
-            }
-
-            @Override
-            public PredicateResult accept(GenericType<?> type, WriterContext context) {
-                if (clazz.isAssignableFrom(type.rawType())
-                        && predicate.test(context.contentType().orElse(null))) {
-                    return PredicateResult.SUPPORTED;
-                }
-                return PredicateResult.NOT_SUPPORTED;
-            }
-        };
-    }
-
-    private static <T> Writer<T> writer(Class<T> clazz, Function<Single<T>, Publisher<DataChunk>> function) {
-        return new SimpleWriter<>(clazz) {
-
-            @Override
-            public Publisher<DataChunk> write(Single<T> single, WriterContext context) {
-                return function.apply(single);
-            }
-        };
     }
 
     static class ResponseImpl extends Response {

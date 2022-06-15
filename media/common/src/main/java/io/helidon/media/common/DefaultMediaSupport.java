@@ -33,6 +33,7 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.RetrySchema;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
+import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.EntitySupport.Reader;
 import io.helidon.media.common.EntitySupport.ReaderContext;
 import io.helidon.media.common.EntitySupport.StreamWriter;
@@ -45,99 +46,48 @@ import static io.helidon.media.common.EntitySupport.streamWriter;
 import static io.helidon.media.common.EntitySupport.writer;
 
 /**
- * MediaSupport which registers default readers and writers.
+ * MediaSupport that provides the default readers and writers.
  */
 @SuppressWarnings("unused")
 public class DefaultMediaSupport implements MediaSupport {
 
-    private static final Reader<byte[]> BYTE_ARRAY_READER = reader(byte[].class, ContentReaders::readBytes);
+    private static final Writer<byte[]> BYTE_ARRAY_WRITER = writer(
+            PredicateResult.supports(byte[].class), DefaultMediaSupport::writeBytes);
 
-    private static final Writer<byte[]> BYTE_ARRAY_WRITER = writer(byte[].class,
-            (single) -> Single.create(single).flatMap(ContentWriters::writeBytes));
+    private static final Writer<CharSequence> CHAR_SEQUENCE_WRITER = writer(
+            PredicateResult.supports(CharSequence.class), DefaultMediaSupport::writeCharSequence);
+
+    private static final Writer<File> FILE_WRITER =  writer(
+            PredicateResult.supports(File.class), DefaultMediaSupport::writeFile);
+
+    private static final Writer<Path> PATH_WRITER = writer(
+            PredicateResult.supports(Path.class), DefaultMediaSupport::writePath);
+
+    private static final Writer<Throwable> THROWABLE_WRITER0 = writer(
+            PredicateResult.supports(Throwable.class), DefaultMediaSupport::writeThrowable0);
+
+    private static final Writer<Throwable> THROWABLE_WRITER = writer(
+            PredicateResult.supports(Throwable.class), DefaultMediaSupport::writeThrowable);
+
+    private static final Reader<byte[]> BYTE_ARRAY_READER = reader(
+            PredicateResult.supports(byte[].class), ContentReaders::readBytes);
+
+    private static final Reader<InputStream> IS_READER = reader(
+            PredicateResult.supports(InputStream.class), DefaultMediaSupport::readInputStream);
+
+    private static final Reader<String> STRING_READER = reader(
+            PredicateResult.supports(String.class), DefaultMediaSupport::readString);
+
+    private static final StreamWriter<CharSequence> CHAR_SEQUENCE_STREAM_WRITER = streamWriter(
+            PredicateResult.supports(CharSequence.class), DefaultMediaSupport::writeCharSequences);
 
     private static final Writer<ReadableByteChannel> BYTE_CHANNEL_WRITER = byteChannelWriter(DEFAULT_RETRY_SCHEMA);
 
-    private static final StreamWriter<CharSequence> CS_STREAM_WRITER = streamWriter(CharSequence.class,
-            (publisher, ctx) -> {
-                ctx.contentType(MediaType.TEXT_PLAIN);
-                return Multi.create(publisher).map(s -> DataChunk.create(true, ctx.charset().encode(s.toString())));
-            });
+    private static final Reader<FormParams> FORM_PARAMS_READER = reader(
+            DefaultMediaSupport::acceptsFormParams, DefaultMediaSupport::readFormParams);
 
-    private static final Writer<CharSequence> CS_WRITER = writer(CharSequence.class,
-            (single, ctx) -> {
-                ctx.contentType(MediaType.TEXT_PLAIN);
-                return single.flatMap(cs -> ContentWriters.writeCharSequence(cs, ctx.charset()));
-            });
-
-    private static final Writer<File> FILE_WRITER = writer(File.class,
-            (single) -> single.flatMap(file -> ContentWriters.writeFile(file.toPath())));
-
-    private static final Writer<Path> PATH_WRITER = writer(Path.class,
-            (single) -> single.flatMap(ContentWriters::writeFile));
-
-    private static final Reader<InputStream> IS_READER = reader(InputStream.class,
-            (publisher) -> Single.just(ContentReaders.readInputStream(publisher)));
-
-    private static final Reader<String> STRING_READER = reader(String.class,
-            (publisher, ctx) -> ContentReaders.readString(publisher, ctx.charset()));
-
-    private static final Writer<Throwable> TH_WRITER = writer(Throwable.class, (single, ctx) -> {
-        ctx.contentType(MediaType.TEXT_PLAIN);
-        return ContentWriters.writeCharSequence("Unexpected exception occurred.", ctx.charset());
-    });
-
-    private static final Reader<FormParams> FP_READER = new Reader<>() {
-        @Override
-        public PredicateResult accept(GenericType<?> type, ReaderContext context) {
-            return context.contentType()
-                          .filter(mediaType -> mediaType == MediaType.APPLICATION_FORM_URLENCODED
-                                  || mediaType == MediaType.TEXT_PLAIN)
-                          .map(it -> PredicateResult.supports(FormParams.class, type))
-                          .orElse(PredicateResult.NOT_SUPPORTED);
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <U extends FormParams> Single<U> read(Publisher<DataChunk> publisher,
-                                                     GenericType<U> type,
-                                                     ReaderContext context) {
-
-            MediaType mediaType = context.contentType().orElseThrow();
-            if (mediaType.equals(MediaType.APPLICATION_FORM_URLENCODED)) {
-                return (Single<U>) ContentReaders.readURLEncodedFormParams(publisher, context.charset());
-            }
-            return (Single<U>) ContentReaders.readTextPlainFormParams(publisher, context.charset());
-        }
-    };
-
-    private static final Writer<FormParams> FP_WRITER = new Writer<>() {
-        @Override
-        public PredicateResult accept(GenericType<?> type, WriterContext context) {
-            return context.contentType()
-                          .or(() -> Optional.of(MediaType.APPLICATION_FORM_URLENCODED))
-                          .filter(mediaType -> mediaType == MediaType.APPLICATION_FORM_URLENCODED
-                                  || mediaType == MediaType.TEXT_PLAIN)
-                          .map(it -> PredicateResult.supports(FormParams.class, type))
-                          .orElse(PredicateResult.NOT_SUPPORTED);
-        }
-
-        @Override
-        public <U extends FormParams> Publisher<DataChunk> write(Single<U> single,
-                                                                 GenericType<U> type,
-                                                                 WriterContext context) {
-
-            MediaType mediaType = context.contentType().orElseGet(() -> {
-                context.contentType(MediaType.APPLICATION_FORM_URLENCODED);
-                return MediaType.APPLICATION_FORM_URLENCODED;
-            });
-            if (mediaType.equals(MediaType.APPLICATION_FORM_URLENCODED)) {
-                return single.flatMap(formParams ->
-                        ContentWriters.writeURLEncodedFormParams(formParams, context.charset()));
-            }
-            return single.flatMap(formParams ->
-                    ContentWriters.writePlainTextFormParams(formParams, context.charset()));
-        }
-    };
+    private static final Writer<FormParams> FORM_PARAMS_WRITER = writer(
+            DefaultMediaSupport::acceptsFormParams, DefaultMediaSupport::writeFormParams);
 
     private final Writer<ReadableByteChannel> byteChannelWriter;
     private final Writer<Throwable> throwableWriter;
@@ -211,7 +161,7 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link CharSequence} writer
      */
     public static Writer<CharSequence> charSequenceWriter() {
-        return CS_WRITER;
+        return CHAR_SEQUENCE_WRITER;
     }
 
     /**
@@ -220,7 +170,7 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link CharSequence} writer
      */
     public static StreamWriter<CharSequence> charSequenceStreamWriter() {
-        return CS_STREAM_WRITER;
+        return CHAR_SEQUENCE_STREAM_WRITER;
     }
 
     /**
@@ -239,10 +189,8 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link ReadableByteChannel} writer
      */
     public static Writer<ReadableByteChannel> byteChannelWriter(RetrySchema schema) {
-        return writer(ReadableByteChannel.class, (single, ctx) -> {
-            ctx.contentType(MediaType.APPLICATION_OCTET_STREAM);
-            return single.flatMap(channel -> ContentWriters.writeByteChannel(channel, schema));
-        });
+        return writer(PredicateResult.supports(ReadableByteChannel.class),
+                (single, ctx) -> writeByteChannel(single, ctx, schema));
     }
 
     /**
@@ -269,7 +217,7 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link FormParams} writer
      */
     public static Writer<FormParams> formParamWriter() {
-        return FP_WRITER;
+        return FORM_PARAMS_WRITER;
     }
 
     /**
@@ -278,7 +226,7 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link FormParams} reader
      */
     public static Reader<FormParams> formParamReader() {
-        return FP_READER;
+        return FORM_PARAMS_READER;
     }
 
     /**
@@ -288,13 +236,7 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link Throwable} writer
      */
     public static Writer<Throwable> throwableWriter(boolean includeStackTraces) {
-        if (!includeStackTraces) {
-            return TH_WRITER;
-        }
-        return writer(Throwable.class, (single, ctx) -> {
-            ctx.contentType(MediaType.TEXT_PLAIN);
-            return single.flatMap(throwable -> ContentWriters.writeStackTrace(throwable, ctx.charset()));
-        });
+        return !includeStackTraces ? THROWABLE_WRITER0 : THROWABLE_WRITER;
     }
 
     @Override
@@ -303,25 +245,25 @@ public class DefaultMediaSupport implements MediaSupport {
                 BYTE_ARRAY_READER,
                 STRING_READER,
                 IS_READER,
-                FP_READER);
+                FORM_PARAMS_READER);
     }
 
     @Override
     public Collection<Writer<?>> writers() {
         return List.of(
                 BYTE_ARRAY_WRITER,
-                CS_WRITER,
+                CHAR_SEQUENCE_WRITER,
                 byteChannelWriter,
                 PATH_WRITER,
                 FILE_WRITER,
                 throwableWriter,
-                FP_WRITER);
+                FORM_PARAMS_WRITER);
     }
 
     @Override
     public Collection<StreamWriter<?>> streamWriters() {
         return List.of(
-                CS_STREAM_WRITER);
+                CHAR_SEQUENCE_STREAM_WRITER);
     }
 
     /**
@@ -383,5 +325,90 @@ public class DefaultMediaSupport implements MediaSupport {
             config.get("include-stack-traces").asBoolean().ifPresent(this::includeStackTraces);
             return this;
         }
+    }
+
+    private static Publisher<DataChunk> writeBytes(Single<byte[]> single) {
+        return Single.create(single).flatMap(ContentWriters::writeBytes);
+    }
+
+    private static Publisher<DataChunk> writeCharSequences(Publisher<CharSequence> publisher, WriterContext context) {
+        context.contentType(MediaType.TEXT_PLAIN);
+        return Multi.create(publisher).map(s -> DataChunk.create(true, context.charset().encode(s.toString())));
+    }
+
+    private static Publisher<DataChunk> writeCharSequence(Single<CharSequence> single, WriterContext context) {
+        context.contentType(MediaType.TEXT_PLAIN);
+        return single.flatMap(cs -> ContentWriters.writeCharSequence(cs, context.charset()));
+    }
+
+    private static Publisher<DataChunk> writeFile(Single<File> single) {
+        return single.flatMap(file -> ContentWriters.writeFile(file.toPath()));
+    }
+
+    private static Publisher<DataChunk> writePath(Single<Path> single) {
+        return single.flatMap(ContentWriters::writeFile);
+    }
+
+    private static Publisher<DataChunk> writeThrowable0(Single<Throwable> single, WriterContext context) {
+        context.contentType(MediaType.TEXT_PLAIN);
+        return ContentWriters.writeCharSequence("Unexpected exception occurred.", context.charset());
+    }
+
+    private static Publisher<DataChunk> writeThrowable(Single<Throwable> single, WriterContext context) {
+        context.contentType(MediaType.TEXT_PLAIN);
+        return single.flatMap(throwable -> ContentWriters.writeStackTrace(throwable, context.charset()));
+    }
+
+    private static Publisher<DataChunk> writeByteChannel(Single<ReadableByteChannel> single,
+                                                         WriterContext context,
+                                                         RetrySchema schema) {
+        context.contentType(MediaType.APPLICATION_OCTET_STREAM);
+        return single.flatMap(channel -> ContentWriters.writeByteChannel(channel, schema));
+    }
+
+    private static Single<InputStream> readInputStream(Publisher<DataChunk> publisher) {
+        return Single.just(ContentReaders.readInputStream(publisher));
+    }
+
+    private static Single<String> readString(Publisher<DataChunk> publisher, ReaderContext context) {
+        return ContentReaders.readString(publisher, context.charset());
+    }
+
+    private static PredicateResult acceptsFormParams(GenericType<?> type, ReaderContext context) {
+        return context.contentType()
+                      .filter(mediaType -> mediaType == MediaType.APPLICATION_FORM_URLENCODED
+                              || mediaType == MediaType.TEXT_PLAIN)
+                      .map(it -> PredicateResult.supports(FormParams.class, type))
+                      .orElse(PredicateResult.NOT_SUPPORTED);
+    }
+
+    private static PredicateResult acceptsFormParams(GenericType<?> type, WriterContext context) {
+        return context.contentType()
+                      .or(() -> Optional.of(MediaType.APPLICATION_FORM_URLENCODED))
+                      .filter(mediaType -> mediaType == MediaType.APPLICATION_FORM_URLENCODED
+                              || mediaType == MediaType.TEXT_PLAIN)
+                      .map(it -> PredicateResult.supports(FormParams.class, type))
+                      .orElse(PredicateResult.NOT_SUPPORTED);
+    }
+
+    private static Single<FormParams> readFormParams(Publisher<DataChunk> publisher, ReaderContext context) {
+        MediaType mediaType = context.contentType().orElseThrow();
+        if (mediaType.equals(MediaType.APPLICATION_FORM_URLENCODED)) {
+            return ContentReaders.readURLEncodedFormParams(publisher, context.charset());
+        }
+        return ContentReaders.readTextPlainFormParams(publisher, context.charset());
+    }
+
+    private static Publisher<DataChunk> writeFormParams(Single<FormParams> single, WriterContext context) {
+        MediaType mediaType = context.contentType().orElseGet(() -> {
+            context.contentType(MediaType.APPLICATION_FORM_URLENCODED);
+            return MediaType.APPLICATION_FORM_URLENCODED;
+        });
+        if (mediaType.equals(MediaType.APPLICATION_FORM_URLENCODED)) {
+            return single.flatMap(formParams ->
+                    ContentWriters.writeURLEncodedFormParams(formParams, context.charset()));
+        }
+        return single.flatMap(formParams ->
+                ContentWriters.writePlainTextFormParams(formParams, context.charset()));
     }
 }

@@ -18,6 +18,7 @@ package io.helidon.media.common;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Publisher;
@@ -35,12 +36,72 @@ import io.helidon.common.reactive.Single;
 /**
  * Entity support.
  */
+@SuppressWarnings("unused")
 public interface EntitySupport {
 
     /**
      * The default (fallback) charset.
      */
     Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+
+    /**
+     * Status whether requested class type is supported by the operator.
+     */
+    enum PredicateResult {
+
+        /**
+         * Requested type not supported.
+         */
+        NOT_SUPPORTED,
+
+        /**
+         * Requested type is compatible with this operator, but it is not exact match.
+         */
+        COMPATIBLE,
+
+        /**
+         * Requested type is supported by that specific operator.
+         */
+        SUPPORTED;
+
+        /**
+         * Whether handled class is supported.
+         * Method {@link Class#isAssignableFrom(Class)} is invoked to verify if class under expected parameter is
+         * supported by by the class under actual parameter.
+         *
+         * @param expected expected type
+         * @param actual   actual type
+         * @return if supported or not
+         */
+        public static PredicateResult supports(Class<?> expected, GenericType<?> actual) {
+            return expected.isAssignableFrom(actual.rawType()) ? SUPPORTED : NOT_SUPPORTED;
+        }
+
+        /**
+         * Create a predicate function that tests if the given type is supported.
+         *
+         * @param expected expected type
+         * @return predicate function
+         */
+        public static <U extends Context> BiFunction<GenericType<?>, U, PredicateResult> supports(Class<?> expected) {
+            return (type, ctx) -> supports(expected, type);
+        }
+
+        /**
+         * Create a predicate function that tests if the combination of a given type and content-type is supported.
+         *
+         * @param expected    expected type
+         * @param contentType expected content-type
+         * @return predicate function
+         */
+        public static <U extends Context> BiFunction<GenericType<?>, U, PredicateResult> supports(Class<?> expected,
+                                                                                                  MediaType contentType) {
+            return (type, ctx) -> ctx.contentType()
+                                     .filter(contentType::equals)
+                                     .map(it -> supports(expected, type))
+                                     .orElse(NOT_SUPPORTED);
+        }
+    }
 
     /**
      * Conversion operator that can be selected based on a requested type and a context.
@@ -57,40 +118,6 @@ public interface EntitySupport {
          * @return {@link PredicateResult} result
          */
         PredicateResult accept(GenericType<?> type, T context);
-
-        /**
-         * Status whether requested class type is supported by the operator.
-         */
-        enum PredicateResult {
-
-            /**
-             * Requested type not supported.
-             */
-            NOT_SUPPORTED,
-
-            /**
-             * Requested type is compatible with this operator, but it is not exact match.
-             */
-            COMPATIBLE,
-
-            /**
-             * Requested type is supported by that specific operator.
-             */
-            SUPPORTED;
-
-            /**
-             * Whether handled class is supported.
-             * Method {@link Class#isAssignableFrom(Class)} is invoked to verify if class under expected parameter is
-             * supported by by the class under actual parameter.
-             *
-             * @param expected expected type
-             * @param actual   actual type
-             * @return if supported or not
-             */
-            public static PredicateResult supports(Class<?> expected, GenericType<?> actual) {
-                return expected.isAssignableFrom(actual.rawType()) ? SUPPORTED : NOT_SUPPORTED;
-            }
-        }
     }
 
     /**
@@ -414,6 +441,13 @@ public interface EntitySupport {
         Charset charset() throws IllegalStateException;
 
         /**
+         * Get the {@code Content-Type} header.
+         *
+         * @return Optional, never {@code null}
+         */
+        Optional<MediaType> contentType();
+
+        /**
          * Apply the filters on the given input publisher to form a publisher chain.
          *
          * @param publisher input publisher
@@ -673,13 +707,6 @@ public interface EntitySupport {
                                                              GenericType<T> type);
 
         /**
-         * Get the {@code Content-Type} header.
-         *
-         * @return Optional, never {@code null}
-         */
-        Optional<MediaType> contentType();
-
-        /**
          * Get the inbound {@code Accept} header.
          *
          * @return List never {@code null}
@@ -756,359 +783,256 @@ public interface EntitySupport {
     }
 
     /**
-     * Abstract implementation of {@link Operator}.
-     *
-     * @param <T> supported type
-     * @param <U> context type
-     */
-    abstract class SimpleOperator<T, U> implements Operator<U> {
-
-        private final Class<T> type;
-
-        /**
-         * Create a new instance.
-         *
-         * @param type supported type
-         */
-        protected SimpleOperator(Class<T> type) {
-            this.type = type;
-        }
-
-        @Override
-        public final PredicateResult accept(GenericType<?> type, U context) {
-            return PredicateResult.supports(this.type, type);
-        }
-    }
-
-    /**
-     * Abstract implementation of {@link Writer}.
+     * A functional adapter of {@link Writer}.
      *
      * @param <T> supported type
      */
-    abstract class SimpleWriter<T> extends SimpleOperator<T, WriterContext> implements Writer<T> {
-
-        /**
-         * Create a new instance.
-         *
-         * @param type supported type
-         */
-        protected SimpleWriter(Class<T> type) {
-            super(type);
-        }
-
-        /**
-         * Generate raw payload from the specified single.
-         *
-         * @param single  object to be converted
-         * @param context the writer context
-         * @return {@link DataChunk} publisher
-         */
-        public abstract Publisher<DataChunk> write(Single<T> single, WriterContext context);
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public final <U extends T> Publisher<DataChunk> write(Single<U> single, GenericType<U> type, WriterContext context) {
-            return write((Single<T>) single, context);
-        }
-    }
-
-    /**
-     * Abstract implementation of {@link Reader}.
-     *
-     * @param <T> supported type
-     */
-    abstract class SimpleReader<T> extends SimpleOperator<T, ReaderContext> implements Reader<T> {
-
-        /**
-         * Create a new instance.
-         *
-         * @param type supported type
-         */
-        protected SimpleReader(Class<T> type) {
-            super(type);
-        }
-
-        /**
-         * Convert raw payload into a single.
-         *
-         * @param publisher raw payload
-         * @param context   reader context
-         * @return Single
-         */
-        public abstract Single<T> read(Publisher<DataChunk> publisher, ReaderContext context);
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public final <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context) {
-            return (Single<U>) read(publisher, context);
-        }
-    }
-
-    /**
-     * Abstract implementation of {@link StreamReader}.
-     *
-     * @param <T> supported type
-     */
-    abstract class SimpleStreamReader<T> extends SimpleOperator<T, ReaderContext> implements StreamReader<T> {
-
-        /**
-         * Create a new instance.
-         *
-         * @param type supported type
-         */
-        protected SimpleStreamReader(Class<T> type) {
-            super(type);
-        }
-
-        /**
-         * Convert raw payload into a single.
-         *
-         * @param publisher raw payload
-         * @param context   reader context
-         * @return Single
-         */
-        public abstract Multi<T> read(Publisher<DataChunk> publisher, ReaderContext context);
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public final <U extends T> Multi<U> read(Publisher<DataChunk> publisher,
-                                                 GenericType<U> type,
-                                                 ReaderContext context) {
-
-            return (Multi<U>) read(publisher, context);
-        }
-    }
-
-    /**
-     * Abstract implementation of {@link StreamWriter}.
-     *
-     * @param <T> supported type
-     */
-    abstract class SimpleStreamWriter<T> extends SimpleOperator<T, WriterContext> implements StreamWriter<T> {
-
-        /**
-         * Create a new instance.
-         *
-         * @param type supported type
-         */
-        protected SimpleStreamWriter(Class<T> type) {
-            super(type);
-        }
-
-        /**
-         * Generate raw payload from the specified stream of objects.
-         *
-         * @param publisher stream of objects to be converted
-         * @param context   the writer context
-         * @return {@link DataChunk} publisher
-         */
-        public abstract Publisher<DataChunk> write(Publisher<T> publisher, WriterContext context);
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public final <U extends T> Publisher<DataChunk> write(Publisher<U> publisher,
-                                                              GenericType<U> type,
-                                                              WriterContext context) {
-
-            return write((Publisher<T>) publisher, context);
-        }
-    }
-
-    /**
-     * An implementation of {@link SimpleWriter} backed by a function.
-     *
-     * @param <T> supported type
-     */
-    final class FunctionalWriter<T> extends SimpleWriter<T> {
+    final class FunctionalWriter<T> implements Writer<T> {
 
         private final BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function;
+        private final BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate;
 
         /**
          * Create a new instance.
          *
-         * @param type supported type
+         * @param predicate predicate function
+         * @param function  writer function
          */
-        FunctionalWriter(Class<T> type, BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
-            super(type);
-            this.function = function;
+        FunctionalWriter(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
+                         BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
+
+            this.predicate = Objects.requireNonNull(predicate, "predicate is null!");
+            this.function = Objects.requireNonNull(function, "function is null!");
         }
 
         @Override
-        public Publisher<DataChunk> write(Single<T> single, WriterContext context) {
-            return function.apply(single, context);
+        public PredicateResult accept(GenericType<?> type, WriterContext context) {
+            return predicate.apply(type, context);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <U extends T> Publisher<DataChunk> write(Single<U> single, GenericType<U> type, WriterContext context) {
+            return function.apply((Single<T>) single, context);
         }
     }
 
     /**
-     * An implementation of {@link SimpleReader} backed by a function.
+     * A functional adapter of {@link Reader}.
      *
      * @param <T> supported type
      */
-    final class FunctionalReader<T> extends SimpleReader<T> {
+    final class FunctionalReader<T> implements Reader<T> {
 
+        private final BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate;
         private final BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function;
 
         /**
          * Create a new instance.
          *
-         * @param type supported type
+         * @param predicate predicate function
+         * @param function  reader function
          */
-        FunctionalReader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
-            super(type);
-            this.function = function;
+        FunctionalReader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
+                         BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
+
+            this.predicate = Objects.requireNonNull(predicate, "predicate is null!");
+            this.function = Objects.requireNonNull(function, "function is null!");
         }
 
         @Override
-        public Single<T> read(Publisher<DataChunk> publisher, ReaderContext context) {
-            return function.apply(publisher, context);
+        public PredicateResult accept(GenericType<?> type, ReaderContext context) {
+            return predicate.apply(type, context);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context) {
+            return (Single<U>) function.apply(publisher, context);
         }
     }
 
     /**
-     * An implementation of {@link SimpleStreamReader} backed by a function.
+     * A functional adapter of {@link StreamReader}.
      *
      * @param <T> supported type
      */
-    final class FunctionalStreamReader<T> extends SimpleStreamReader<T> {
+    final class FunctionalStreamReader<T> implements StreamReader<T> {
 
+        private final BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate;
         private final BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function;
 
         /**
          * Create a new instance.
          *
-         * @param type supported type
+         * @param predicate predicate function
+         * @param function  reader function
          */
-        FunctionalStreamReader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function) {
-            super(type);
-            this.function = function;
+        FunctionalStreamReader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
+                               BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function) {
+
+            this.predicate = Objects.requireNonNull(predicate, "predicate is null!");
+            this.function = Objects.requireNonNull(function, "function is null!");
         }
 
         @Override
-        public Multi<T> read(Publisher<DataChunk> publisher, ReaderContext context) {
-            return function.apply(publisher, context);
+        public PredicateResult accept(GenericType<?> type, ReaderContext context) {
+            return predicate.apply(type, context);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <U extends T> Multi<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context) {
+            return (Multi<U>) function.apply(publisher, context);
         }
     }
 
     /**
-     * An implementation of {@link SimpleStreamWriter} backed by a function.
+     * A functional adapter of {@link StreamWriter}.
      *
      * @param <T> supported type
      */
-    final class FunctionalStreamWriter<T> extends SimpleStreamWriter<T> {
+    final class FunctionalStreamWriter<T> implements StreamWriter<T> {
 
+        private final BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate;
         private final BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function;
 
         /**
          * Create a new instance.
          *
-         * @param type supported type
+         * @param predicate predicate function
+         * @param function  writer function
          */
-        FunctionalStreamWriter(Class<T> type, BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function) {
-            super(type);
-            this.function = function;
+        FunctionalStreamWriter(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
+                               BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function) {
+
+            this.predicate = Objects.requireNonNull(predicate, "predicate is null!");
+            this.function = Objects.requireNonNull(function, "function is null!");
         }
 
         @Override
-        public Publisher<DataChunk> write(Publisher<T> publisher, WriterContext context) {
-            return function.apply(publisher, context);
+        public PredicateResult accept(GenericType<?> type, WriterContext context) {
+            return predicate.apply(type, context);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <U extends T> Publisher<DataChunk> write(Publisher<U> publisher,
+                                                        GenericType<U> type,
+                                                        WriterContext context) {
+            return function.apply((Publisher<T>) publisher, context);
         }
     }
 
     /**
-     * Create a new simple writer backed by a function.
+     * Create a new writer backed by a predicate function and a writer function.
      *
-     * @param type     supported type
-     * @param function writer function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  writer function
+     * @param <T>       supported type
      * @return writer
      */
-    static <T> Writer<T> writer(Class<T> type, BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
-        return new FunctionalWriter<>(type, function);
+    static <T> Writer<T> writer(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
+                                BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
+
+        return new FunctionalWriter<>(predicate, function);
     }
 
     /**
-     * Create a new simple writer backed by a function.
+     * Create a new writer backed by a predicate function and a writer function.
      *
-     * @param type     supported type
-     * @param function writer function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  writer function
+     * @param <T>       supported type
      * @return writer
      */
-    static <T> Writer<T> writer(Class<T> type, Function<Single<T>, Publisher<DataChunk>> function) {
-        return new FunctionalWriter<>(type, (single, ctx) -> function.apply(single));
+    static <T> Writer<T> writer(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
+                                Function<Single<T>, Publisher<DataChunk>> function) {
+
+        return new FunctionalWriter<>(predicate, (single, ctx) -> function.apply(single));
     }
 
     /**
-     * Create a new simple stream writer backed by a function.
+     * Create a new stream writer backed by a predicate function and a writer function.
      *
-     * @param type     supported type
-     * @param function writer function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  writer function
+     * @param <T>       supported type
      * @return stream writer
      */
-    static <T> StreamWriter<T> streamWriter(Class<T> type,
+    static <T> StreamWriter<T> streamWriter(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
                                             BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function) {
-        return new FunctionalStreamWriter<>(type, function);
+
+        return new FunctionalStreamWriter<>(predicate, function);
     }
 
     /**
-     * Create a new simple stream writer backed by a function.
+     * Create a new stream writer backed by a predicate function and a writer function.
      *
-     * @param type     supported type
-     * @param function writer function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  writer function
+     * @param <T>       supported type
      * @return stream writer
      */
-    static <T> StreamWriter<T> streamWriter(Class<T> type, Function<Publisher<T>, Publisher<DataChunk>> function) {
-        return new FunctionalStreamWriter<>(type, (publisher, ctx) -> function.apply(publisher));
+    static <T> StreamWriter<T> streamWriter(BiFunction<GenericType<?>, WriterContext, PredicateResult> predicate,
+                                            Function<Publisher<T>, Publisher<DataChunk>> function) {
+
+        return new FunctionalStreamWriter<>(predicate, (publisher, ctx) -> function.apply(publisher));
     }
 
     /**
-     * Create a new simple reader backed by a function.
+     * Create a new reader backed by a predicate function and a reader function.
      *
-     * @param type     supported type
-     * @param function reader function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  reader function
+     * @param <T>       supported type
      * @return reader
      */
-    static <T> Reader<T> reader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
-        return new FunctionalReader<>(type, function);
+    static <T> Reader<T> reader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
+                                BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
+
+        return new FunctionalReader<>(predicate, function);
     }
 
     /**
-     * Create a new simple reader backed by a function.
+     * Create a new reader backed by a predicate function and a reader function.
      *
-     * @param type     supported type
-     * @param function reader function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  reader function
+     * @param <T>       supported type
      * @return reader
      */
-    static <T> Reader<T> reader(Class<T> type, Function<Publisher<DataChunk>, Single<T>> function) {
-        return new FunctionalReader<>(type, (publisher, ctx) -> function.apply(publisher));
+    static <T> Reader<T> reader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
+                                Function<Publisher<DataChunk>, Single<T>> function) {
+
+        return new FunctionalReader<>(predicate, (publisher, ctx) -> function.apply(publisher));
     }
 
     /**
-     * Create a new simple stream reader backed by a function.
+     * Create a new stream reader backed by a predicate function and a reader function.
      *
-     * @param type     supported type
-     * @param function reader function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  reader function
+     * @param <T>       supported type
      * @return stream reader
      */
-    static <T> StreamReader<T> streamReader(Class<T> type,
+    static <T> StreamReader<T> streamReader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
                                             BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function) {
-        return new FunctionalStreamReader<>(type, function);
+
+        return new FunctionalStreamReader<>(predicate, function);
     }
 
     /**
-     * Create a new simple stream reader backed by a function.
+     * Create a new stream reader backed by a predicate function and a reader function.
      *
-     * @param type     supported type
-     * @param function reader function
-     * @param <T>      supported type
+     * @param predicate predicate function
+     * @param function  reader function
+     * @param <T>       supported type
      * @return stream reader
      */
-    static <T> StreamReader<T> streamReader(Class<T> type, Function<Publisher<DataChunk>, Multi<T>> function) {
-        return new FunctionalStreamReader<>(type, (publisher, ctx) -> function.apply(publisher));
+    static <T> StreamReader<T> streamReader(BiFunction<GenericType<?>, ReaderContext, PredicateResult> predicate,
+                                            Function<Publisher<DataChunk>, Multi<T>> function) {
+
+        return new FunctionalStreamReader<>(predicate, (publisher, ctx) -> function.apply(publisher));
     }
 }

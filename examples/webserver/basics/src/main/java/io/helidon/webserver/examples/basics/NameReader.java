@@ -46,11 +46,11 @@ public class NameReader implements EntitySupport.Reader<Name> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
+    public EntitySupport.PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
         return context.contentType()
                 .filter(TYPE::equals)
-                .map(it -> PredicateResult.supports(Name.class, type))
-                .orElse(PredicateResult.NOT_SUPPORTED);
+                .map(it -> EntitySupport.PredicateResult.supports(Name.class, type))
+                .orElse(EntitySupport.PredicateResult.NOT_SUPPORTED);
     }
 }
 

@@ -25,6 +25,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.EntitySupport.Reader;
 import io.helidon.media.common.EntitySupport.ReaderContext;
 
@@ -50,12 +51,12 @@ final class JacksonReader implements Reader<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, ReaderContext context) {
+    public EntitySupport.PredicateResult accept(GenericType<?> type, ReaderContext context) {
         Class<?> clazz = type.rawType();
         return !CharSequence.class.isAssignableFrom(clazz)
                 && objectMapper.canDeserialize(objectMapper.constructType(clazz))
-                ? PredicateResult.COMPATIBLE
-                : PredicateResult.NOT_SUPPORTED;
+                ? EntitySupport.PredicateResult.COMPATIBLE
+                : EntitySupport.PredicateResult.NOT_SUPPORTED;
     }
 
     @Override

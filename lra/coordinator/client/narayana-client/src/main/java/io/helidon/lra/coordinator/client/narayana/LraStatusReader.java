@@ -31,8 +31,8 @@ import org.eclipse.microprofile.lra.annotation.LRAStatus;
 
 class LraStatusReader implements EntitySupport.Reader<LRAStatus> {
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
-        return PredicateResult.supports(LRAStatus.class, type);
+    public EntitySupport.PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
+        return EntitySupport.PredicateResult.supports(LRAStatus.class, type);
     }
 
     @Override

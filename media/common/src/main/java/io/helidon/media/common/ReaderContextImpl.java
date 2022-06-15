@@ -23,6 +23,7 @@ import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
@@ -58,7 +59,15 @@ final class ReaderContextImpl extends AbstractEntityContext<ReaderContextImpl> i
                       MediaType contentType) {
 
         super(parent, eventListener);
-        this.contentType = contentType;
+        if (contentType != null) {
+            this.contentType = contentType;
+        } else if (headers != null) {
+            this.contentType = headers().first(Http.Header.CONTENT_TYPE)
+                                        .map(MediaType::parse)
+                                        .orElse(null);
+        } else {
+            this.contentType = null;
+        }
         this.headers = headers != null ? headers : ReadOnlyParameters.empty();
         if (parent != null) {
             this.readers = new OperatorRegistry<>(parent.readers);

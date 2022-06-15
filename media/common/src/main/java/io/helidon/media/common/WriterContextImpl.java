@@ -47,8 +47,8 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
     private final List<MediaType> acceptedTypes;
     private final OperatorRegistry<Writer<?>> writers;
     private final OperatorRegistry<StreamWriter<?>> swriters;
-    private boolean contentType;
-    private MediaType contentTypeSet;
+    private boolean contentTypeSet;
+    private MediaType contentType;
     private boolean charsetCached;
     private Charset charsetCache;
 
@@ -71,8 +71,8 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
         if (parent != null) {
             this.writers = new OperatorRegistry<>(parent.writers);
             this.swriters = new OperatorRegistry<>(parent.swriters);
-            this.contentTypeSet = parent.contentTypeSet;
             this.contentType = parent.contentType;
+            this.contentTypeSet = parent.contentTypeSet;
             this.charsetCache = parent.charsetCache;
             this.charsetCached = parent.charsetCached;
         } else {
@@ -127,17 +127,20 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
 
     @Override
     public Optional<MediaType> contentType() {
-        if (!contentType) {
-            contentTypeSet = headers().first(Http.Header.CONTENT_TYPE).map(MediaType::parse).orElse(null);
-            contentType = true;
+        if (!contentTypeSet) {
+            contentType = headers().first(Http.Header.CONTENT_TYPE)
+                                   .map(MediaType::parse)
+                                   .orElse(null);
+            contentTypeSet = true;
         }
-        return Optional.ofNullable(contentTypeSet);
+        return Optional.ofNullable(contentType);
     }
 
     @Override
     public void contentType(MediaType contentType) {
         if (contentType != null) {
             headers().putIfAbsent(Http.Header.CONTENT_TYPE, contentType.toString());
+            this.contentType = contentType;
         }
     }
 

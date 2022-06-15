@@ -24,6 +24,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
+import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.WriterContext;
 
@@ -50,10 +51,10 @@ class JacksonStreamWriter implements StreamWriter<Object> {
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, WriterContext context) {
+    public EntitySupport.PredicateResult accept(GenericType<?> type, WriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
-                ? PredicateResult.COMPATIBLE
-                : PredicateResult.NOT_SUPPORTED;
+                ? EntitySupport.PredicateResult.COMPATIBLE
+                : EntitySupport.PredicateResult.NOT_SUPPORTED;
     }
 
     @Override

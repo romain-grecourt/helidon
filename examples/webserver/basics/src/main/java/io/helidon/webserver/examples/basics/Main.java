@@ -20,12 +20,16 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
+import java.util.concurrent.Flow;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
+import io.helidon.common.reactive.Single;
+import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.MediaContext;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.webserver.Handler;
@@ -38,6 +42,8 @@ import io.helidon.webserver.staticcontent.StaticContentSupport;
 
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
+
+import static io.helidon.media.common.EntitySupport.reader;
 
 /**
  * This example consists of few first tutorial steps of WebServer API. Each step is represented by a single method.
@@ -242,6 +248,8 @@ public class Main {
         startServer(routing);
     }
 
+    private static final MediaType NAME_TYPE = MediaType.parse("application/name");
+
     /**
      * Use a custom {@link EntitySupport.Reader reader} to convert the request content into an object of a given type.
      */
@@ -256,10 +264,15 @@ public class Main {
 
         // Create a media support that contains the defaults and our custom Name reader
         MediaContext mediaContext = MediaContext.builder()
-                .addReader(NameReader.create())
+                .addReader(reader(PredicateResult.supports(Name.class, NAME_TYPE), Main::readName))
                 .build();
 
         startServer(routing, mediaContext);
+    }
+
+    private static Single<Name> readName(Flow.Publisher<DataChunk> publisher, EntitySupport.ReaderContext context) {
+        return ContentReaders.readString(publisher, context.charset())
+                             .map(Name::new);
     }
 
     /**

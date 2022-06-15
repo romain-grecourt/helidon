@@ -60,13 +60,13 @@ public class JsonpStreamWriterTest {
         assertAll(
                 () -> assertThat("JsonObject accepted",
                         WRITER.accept(JSON_OBJECT, CONTEXT),
-                        is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
+                        is(EntitySupport.PredicateResult.SUPPORTED)),
                 () -> assertThat("JsonArray accepted",
                         WRITER.accept(JSON_ARRAY, CONTEXT),
-                        is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
+                        is(EntitySupport.PredicateResult.SUPPORTED)),
                 () -> assertThat("Pojo not accepted",
                         WRITER.accept(MY_TYPE, CONTEXT),
-                        is(EntitySupport.Operator.PredicateResult.NOT_SUPPORTED))
+                        is(EntitySupport.PredicateResult.NOT_SUPPORTED))
         );
     }
 

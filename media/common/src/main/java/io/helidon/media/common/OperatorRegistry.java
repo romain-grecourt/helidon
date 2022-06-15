@@ -109,10 +109,10 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
             try {
                 current.lock.readLock().lock();
                 for (T operator : current.operators) {
-                    Operator.PredicateResult accept = ((U) operator).accept(type, context);
-                    if (accept == Operator.PredicateResult.COMPATIBLE && assignableOperator == null) {
+                    EntitySupport.PredicateResult accept = ((U) operator).accept(type, context);
+                    if (accept == EntitySupport.PredicateResult.COMPATIBLE && assignableOperator == null) {
                         assignableOperator = operator;
-                    } else if (accept == Operator.PredicateResult.SUPPORTED) {
+                    } else if (accept == EntitySupport.PredicateResult.SUPPORTED) {
                         return operator;
                     }
                 }
