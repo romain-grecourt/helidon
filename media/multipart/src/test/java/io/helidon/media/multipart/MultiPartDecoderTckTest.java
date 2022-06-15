@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import org.reactivestreams.tck.flow.FlowPublisherVerification;
 
 import static io.helidon.media.multipart.BodyPartTest.MEDIA_CONTEXT;
 
-public class MultiPartDecoderTckTest extends FlowPublisherVerification<ReadableBodyPart> {
+public class MultiPartDecoderTckTest extends FlowPublisherVerification<BodyPart> {
 
     public MultiPartDecoderTckTest() {
         super(new TestEnvironment(200));
@@ -37,37 +37,37 @@ public class MultiPartDecoderTckTest extends FlowPublisherVerification<ReadableB
 
     static Flow.Publisher<DataChunk> upstream(final long l) {
         return Multi.create(LongStream.rangeClosed(1, l)
-                .mapToObj(i -> {
-                            String chunk = "";
-                            if (i == 1L) {
-                                chunk = "--boundary\n";
-                            }
-                            chunk += "Content-Id: part" + l + "\n"
-                                    + "\n"
-                                    + "body " + l + "\n"
-                                    + "--boundary";
-                            if (i == l) {
-                                chunk += "--";
-                            } else {
-                                chunk += "\n";
-                            }
-                            return DataChunk.create(ByteBuffer.wrap(chunk.getBytes(StandardCharsets.UTF_8)));
-                        }
-                ));
+                                      .mapToObj(i -> {
+                                                  String chunk = "";
+                                                  if (i == 1L) {
+                                                      chunk = "--boundary\n";
+                                                  }
+                                                  chunk += "Content-Id: part" + l + "\n"
+                                                          + "\n"
+                                                          + "body " + l + "\n"
+                                                          + "--boundary";
+                                                  if (i == l) {
+                                                      chunk += "--";
+                                                  } else {
+                                                      chunk += "\n";
+                                                  }
+                                                  return DataChunk.create(ByteBuffer.wrap(chunk.getBytes(StandardCharsets.UTF_8)));
+                                              }
+                                      ));
     }
 
     @Override
-    public Flow.Publisher<ReadableBodyPart> createFlowPublisher(final long l) {
+    public Flow.Publisher<BodyPart> createFlowPublisher(final long l) {
         MultiPartDecoder decoder = MultiPartDecoder.create("boundary", MEDIA_CONTEXT.readerContext());
         upstream(l).subscribe(decoder);
-        return Multi.create(decoder).map(part -> {
-            part.content().forEach(chunk -> {});
+        return decoder.map(part -> {
+            part.content().ignoreElements();
             return part;
         });
     }
 
     @Override
-    public Flow.Publisher<ReadableBodyPart> createFailedFlowPublisher() {
+    public Flow.Publisher<BodyPart> createFailedFlowPublisher() {
         return null;
     }
 }

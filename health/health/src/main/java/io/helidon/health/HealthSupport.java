@@ -39,7 +39,7 @@ import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
 import io.helidon.faulttolerance.Async;
 import io.helidon.faulttolerance.Timeout;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.servicecommon.rest.HelidonRestServiceSupport;
 import io.helidon.webserver.Routing;
@@ -79,7 +79,7 @@ public final class HealthSupport extends HelidonRestServiceSupport {
     private final boolean includeAll;
     private final Set<String> includedHealthChecks;
     private final Set<String> excludedHealthChecks;
-    private final EntitySupport.Writer<JsonStructure> jsonpWriter = JsonpSupport.writer();
+    private final Writer<JsonStructure> jsonpWriter = JsonpSupport.writer();
     private final Timeout timeout;
     private final Async async;
 

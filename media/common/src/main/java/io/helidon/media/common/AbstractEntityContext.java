@@ -15,12 +15,6 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.Filter;
-import io.helidon.media.common.EntitySupport.Operator;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Flow.Publisher;
@@ -29,8 +23,16 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import io.helidon.common.GenericType;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.reactive.Single;
+import io.helidon.media.common.EntitySupport.Filter;
+import io.helidon.media.common.EntitySupport.Operator;
+
 /**
- * Base implementation for {@link EntitySupport.Context}
+ * Base implementation for {@link EntitySupport.Context}.
+ *
+ * @param <T> implementation type
  */
 public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> implements EntitySupport.Context {
 

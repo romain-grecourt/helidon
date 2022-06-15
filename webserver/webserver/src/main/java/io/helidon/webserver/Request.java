@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,9 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
+import io.helidon.media.common.Entity;
 import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.ReaderContext;
 import io.helidon.media.common.ReadableEntity;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
@@ -75,13 +77,12 @@ abstract class Request implements ServerRequest {
         this.bareRequest = req;
         this.webServer = webServer;
         this.headers = headers;
-        this.context = Contexts.context().orElseGet(() -> io.helidon.common.context.Context.create(webServer.context()));
+        this.context = Contexts.context().orElseGet(() -> Context.create(webServer.context()));
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(), true);
         this.eventListener = new MessageBodyEventListener();
-        EntitySupport.ReaderContext readerContext =
-                webServer.readerContext()
-                         .createChild(eventListener, headers, headers.contentType().orElse(null));
-        this.content = ReadableEntity.create(req.bodyPublisher(), readerContext);
+        MediaType mediaType = headers.contentType().orElse(null);
+        ReaderContext readerContext = webServer.readerContext().createChild(eventListener, headers, mediaType);
+        this.content = Entity.create(req.bodyPublisher(), readerContext);
     }
 
     /**
@@ -97,20 +98,6 @@ abstract class Request implements ServerRequest {
         this.headers = request.headers;
         this.content = request.content;
         this.eventListener = request.eventListener;
-    }
-
-    /**
-     * Obtain the charset from the request.
-     *
-     * @param request the request to extract the charset from
-     * @return the charset or {@link #DEFAULT_CHARSET} if none found
-     */
-    static Charset contentCharset(ServerRequest request) {
-        return request.headers()
-                      .contentType()
-                      .flatMap(MediaType::charset)
-                      .map(Charset::forName)
-                      .orElse(DEFAULT_CHARSET);
     }
 
     @Override
@@ -242,7 +229,8 @@ abstract class Request implements ServerRequest {
                     if (readSpan != null) {
                         Tags.ERROR.set(readSpan, Boolean.TRUE);
                         Throwable ex = event.asErrorEvent().error();
-                        readSpan.log(Map.of("event", "error",
+                        readSpan.log(Map.of(
+                                "event", "error",
                                 "error.kind", "Exception",
                                 "error.object", ex,
                                 "message", ex.toString()));

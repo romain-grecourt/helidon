@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Publisher;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -52,7 +53,7 @@ public interface EntitySupport {
          * Test if the operator can convert the given type.
          *
          * @param type    the requested type
-         * @param context the context providing the headers abstraction
+         * @param context the operator context
          * @return {@link PredicateResult} result
          */
         PredicateResult accept(GenericType<?> type, T context);
@@ -90,43 +91,6 @@ public interface EntitySupport {
                 return expected.isAssignableFrom(actual.rawType()) ? SUPPORTED : NOT_SUPPORTED;
             }
         }
-
-        /**
-         * Operator that generates raw payload from objects.
-         *
-         * @param <T> type or base type supported by the operator
-         * @param <U> publisher type
-         */
-        interface Writer<T, U extends Publisher<? extends T>> extends Operator<WriterContext> {
-
-            /**
-             * Generate raw payload from the objects of the given type.
-             *
-             * @param publisher objects publisher
-             * @param type      requested type
-             * @param context   the writer context
-             * @return Publisher of objects
-             */
-            Publisher<DataChunk> write(U publisher, GenericType<? extends T> type, WriterContext context);
-        }
-
-        /**
-         * Operator that generates objects from raw payload.
-         *
-         * @param <T> type or base type supported by the operator
-         */
-        interface Reader<T, U extends Publisher<? extends T>> extends Operator<ReaderContext> {
-
-            /**
-             * Convert raw payload into a publisher of the given type.
-             *
-             * @param publisher raw payload
-             * @param type      requested type
-             * @param context   the context providing the headers abstraction
-             * @return Single publisher
-             */
-            U read(Publisher<DataChunk> publisher, GenericType<? extends T> type, ReaderContext context);
-        }
     }
 
     /**
@@ -151,7 +115,7 @@ public interface EntitySupport {
          * @param filter a function to map previously registered or original {@code Publisher} to the new one.
          *               If returns  {@code null} then the result will be ignored.
          * @return this instance of {@link Filters}
-         * @throws NullPointerException if parameter {@code function} is {@code null}
+         * @throws NullPointerException if the supplied {@code filter} is {@code null}
          * @see Context#applyFilters(Publisher)
          */
         Filters registerFilter(Filter filter);
@@ -206,7 +170,27 @@ public interface EntitySupport {
      *
      * @param <T> type or base type supported by the operator
      */
-    interface Writer<T> extends Operator.Writer<T, Single<? extends T>> {
+    interface Writer<T> extends Operator<WriterContext> {
+
+        /**
+         * Generate raw payload from the specified object of the given type.
+         *
+         * @param single  object to be converted
+         * @param type    requested type
+         * @param context the writer context
+         * @return {@link DataChunk} publisher
+         */
+        <U extends T> Publisher<DataChunk> write(Single<U> single, GenericType<U> type, WriterContext context);
+
+        /**
+         * Create a marshalling function that can be used to marshall the given value with a context.
+         *
+         * @param value value to marshall
+         * @return Marshalling function
+         */
+        default Function<WriterContext, Publisher<DataChunk>> marshall(T value) {
+            return ctx -> ctx.marshall(Single.just(value), this, GenericType.create(value));
+        }
     }
 
     /**
@@ -214,7 +198,29 @@ public interface EntitySupport {
      *
      * @param <T> type or base type supported by the operator
      */
-    interface Reader<T> extends Operator.Reader<T, Single<T>> {
+    interface Reader<T> extends Operator<ReaderContext> {
+
+        /**
+         * Convert raw payload into a publisher of the given type.
+         *
+         * @param publisher raw payload
+         * @param type      requested type
+         * @param context   reader context
+         * @param <U>       requested type
+         * @return Single
+         */
+        <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context);
+
+        /**
+         * Unmarshall the given content using this reader.
+         *
+         * @param content readable content to unmarshall
+         * @param type    requested type
+         * @return Single publisher
+         */
+        default Single<T> unmarshall(ReadableEntity content, Class<T> type) {
+            return content.readerContext().unmarshall(content, this, GenericType.create(type));
+        }
     }
 
     /**
@@ -222,7 +228,29 @@ public interface EntitySupport {
      *
      * @param <T> type or base type supported by the operator
      */
-    interface StreamReader<T> extends Operator.Reader<T, Multi<T>> {
+    interface StreamReader<T> extends Operator<ReaderContext> {
+
+        /**
+         * Convert raw payload into a publisher of the given type.
+         *
+         * @param publisher raw payload
+         * @param type      requested type
+         * @param context   reader context
+         * @param <U>       requested type
+         * @return Multi
+         */
+        <U extends T> Multi<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context);
+
+        /**
+         * Unmarshall the given entity using this reader.
+         *
+         * @param content readable content to unmarshall
+         * @param type    requested type
+         * @return publisher
+         */
+        default Publisher<T> unmarshall(ReadableEntity content, Class<T> type) {
+            return content.readerContext().unmarshallStream(content, this, GenericType.create(type));
+        }
     }
 
     /**
@@ -230,7 +258,28 @@ public interface EntitySupport {
      *
      * @param <T> type or base type supported by the operator
      */
-    interface StreamWriter<T> extends Operator.Writer<T, Publisher<? extends T>> {
+    interface StreamWriter<T> extends Operator<WriterContext> {
+
+        /**
+         * Generate raw payload from the specified stream of objects of the given type.
+         *
+         * @param publisher stream of objects to be converted
+         * @param type      requested type
+         * @param context   the writer context
+         * @return {@link DataChunk} publisher
+         */
+        <U extends T> Publisher<DataChunk> write(Publisher<U> publisher, GenericType<U> type, WriterContext context);
+
+        /**
+         * Create a marshalling function that can be used to marshall the publisher with a context.
+         *
+         * @param publisher objects to convert to raw payload
+         * @param type      requested type
+         * @return Marshalling function
+         */
+        default Function<WriterContext, Publisher<DataChunk>> marshall(Publisher<T> publisher, GenericType<T> type) {
+            return ctx -> ctx.marshallStream(publisher, this, type);
+        }
     }
 
     /**
@@ -376,35 +425,37 @@ public interface EntitySupport {
     /**
      * Entity reader context.
      */
+    @SuppressWarnings("unused")
     interface ReaderContext extends Context, Readers, Filters {
 
         /**
-         * Convert a given raw payload into a publisher by selecting a reader that accepts the specified type.
+         * Convert raw data to an object by selecting a reader that accepts the specified type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        default <T> Single<T> unmarshall(Publisher<DataChunk> payload, Class<T> type) {
-            return unmarshall(payload, GenericType.create(type));
+        default <T> Single<T> unmarshall(Publisher<DataChunk> chunks, Class<T> type) {
+            return unmarshall(chunks, GenericType.create(type));
         }
 
         /**
-         * Convert a given raw payload into a publisher by using the specified reader and type.
+         * Convert raw data to an object by using the specified reader and type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param reader  specific reader
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        default <T> Single<T> unmarshall(Publisher<DataChunk> payload, Reader<T> reader, Class<T> type) {
-            return unmarshall(payload, reader, GenericType.create(type));
+        default <U, T extends U> Single<T> unmarshall(Publisher<DataChunk> chunks, Reader<U> reader, Class<T> type) {
+            return unmarshall(chunks, reader, GenericType.create(type));
         }
 
         /**
-         * Convert a given raw payload into a publisher by selecting a stream reader that accepts the specified type.
+         * Convert raw data to a stream of objects by selecting a stream reader that accepts the specified type.
          *
          * @param <T>     entity type
          * @param payload inbound payload
@@ -416,59 +467,67 @@ public interface EntitySupport {
         }
 
         /**
-         * Convert a given raw payload into a publisher by using the specified reader and type.
+         * Convert raw data to a stream of objects by using the specified reader and type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param reader  specific reader
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        default <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, StreamReader<T> reader, Class<T> type) {
-            return unmarshallStream(payload, reader, GenericType.create(type));
+        default <U, T extends U> Multi<T> unmarshallStream(Publisher<DataChunk> chunks,
+                                                           StreamReader<U> reader,
+                                                           Class<T> type) {
+
+            return unmarshallStream(chunks, reader, GenericType.create(type));
         }
 
         /**
-         * Convert a given raw payload into a publisher by selecting a reader that accepts the specified type.
+         * Convert raw data to an object by selecting a reader that accepts the specified type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        <T> Single<T> unmarshall(Publisher<DataChunk> payload, GenericType<T> type);
+        <T> Single<T> unmarshall(Publisher<DataChunk> chunks, GenericType<T> type);
 
         /**
-         * Convert a given raw payload into a publisher by using the specified reader and type.
+         * Convert raw data to an object by using the specified reader and type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param reader  specific reader
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        <T> Single<T> unmarshall(Publisher<DataChunk> payload, Reader<T> reader, GenericType<T> type);
+        <U, T extends U> Single<T> unmarshall(Publisher<DataChunk> chunks, Reader<U> reader, GenericType<T> type);
 
         /**
-         * Convert a given raw payload into a publisher by selecting a stream reader that accepts the specified type.
+         * Convert raw data to a stream of objects by selecting a stream reader that accepts the specified type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, GenericType<T> type);
+        <T> Multi<T> unmarshallStream(Publisher<DataChunk> chunks, GenericType<T> type);
 
         /**
-         * Convert a given raw payload into a publisher by using the specified reader and type.
+         * Convert raw data to a stream of objects by using the specified reader and type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param reader  specific reader
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, StreamReader<T> reader, GenericType<T> type);
+        <U, T extends U> Multi<T> unmarshallStream(Publisher<DataChunk> chunks,
+                                                   StreamReader<U> reader,
+                                                   GenericType<T> type);
 
         /**
          * Get the {@code Content-Type} header.
@@ -488,6 +547,15 @@ public interface EntitySupport {
         ReaderContext createChild(EventListener eventListener, Parameters headers, MediaType contentType);
 
         /**
+         * Create a new child context.
+         *
+         * @return new context
+         */
+        default ReaderContext createChild() {
+            return createChild(null, null, null);
+        }
+
+        /**
          * Create a new reader context.
          *
          * @return reader context
@@ -500,13 +568,13 @@ public interface EntitySupport {
     /**
      * Writer context.
      */
+    @SuppressWarnings("unused")
     interface WriterContext extends Context, Writers, Filters {
 
         /**
-         * Convert an entity publisher into raw payload by selecting a
-         * writer that accepts the specified type and current context.
+         * Convert an object into raw data by selecting a writer that accepts the specified type and current context.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
          * @param entity entity publisher
          * @param type   entity type
          * @return publisher, never {@code null}
@@ -516,22 +584,23 @@ public interface EntitySupport {
         }
 
         /**
-         * Convert an entity publisher into raw payload by selecting a writer with the specified type.
+         * Convert an object into raw data by selecting a writer with the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
+         * @param <U>    writer type
          * @param entity entity publisher
          * @param writer specific writer
          * @param type   entity type
          * @return publisher, never {@code null}
          */
-        default <T> Publisher<DataChunk> marshall(Single<T> entity, Writer<T> writer, Class<T> type) {
+        default <U, T extends U> Publisher<DataChunk> marshall(Single<T> entity, Writer<U> writer, Class<T> type) {
             return marshall(entity, writer, GenericType.create(type));
         }
 
         /**
-         * Convert an entity publisher into raw payload by selecting a stream writer that accepts the specified type.
+         * Convert an object into raw data by selecting a stream writer that accepts the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
          * @param entity entity publisher
          * @param type   entity type
          * @return publisher, never {@code null}
@@ -541,22 +610,26 @@ public interface EntitySupport {
         }
 
         /**
-         * Convert an entity publisher into raw payload by selecting a stream writer with the specified type.
+         * Convert a stream of objects into raw data by selecting a stream writer with the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
+         * @param <U>    writer type
          * @param entity entity publisher
          * @param writer specific writer
          * @param type   entity type
          * @return publisher, never {@code null}
          */
-        default <T> Publisher<DataChunk> marshallStream(Publisher<T> entity, StreamWriter<T> writer, Class<T> type) {
+        default <U, T extends U> Publisher<DataChunk> marshallStream(Publisher<T> entity,
+                                                                     StreamWriter<U> writer,
+                                                                     Class<T> type) {
+
             return marshallStream(entity, writer, GenericType.create(type));
         }
 
         /**
-         * Convert an entity publisher into raw payload by selecting a stream writer that accepts the specified type.
+         * Convert a stream of objects into raw data by selecting a stream writer that accepts the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
          * @param entity entity publisher
          * @param type   entity type
          * @return publisher, never {@code null}
@@ -564,9 +637,9 @@ public interface EntitySupport {
         <T> Publisher<DataChunk> marshallStream(Publisher<T> entity, GenericType<T> type);
 
         /**
-         * Convert an entity publisher into raw payload by selecting a writer that accepts the specified type.
+         * Convert an object into raw data by selecting a writer that accepts the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
          * @param entity entity publisher
          * @param type   entity type
          * @return publisher, never {@code null}
@@ -574,26 +647,30 @@ public interface EntitySupport {
         <T> Publisher<DataChunk> marshall(Single<T> entity, GenericType<T> type);
 
         /**
-         * Convert an entity publisher into raw payload by selecting a writer with the specified type.
+         * Convert an object into raw data by selecting a writer with the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
+         * @param <U>    writer type
          * @param entity entity publisher
          * @param writer specific writer
          * @param type   entity type
          * @return publisher, never {@code null}
          */
-        <T> Publisher<DataChunk> marshall(Single<T> entity, Writer<T> writer, GenericType<T> type);
+        <U, T extends U> Publisher<DataChunk> marshall(Single<T> entity, Writer<U> writer, GenericType<T> type);
 
         /**
-         * Convert an entity publisher into raw payload by selecting a stream writer with the specified type.
+         * Convert a stream of objects into raw data by selecting a stream writer with the specified type.
          *
-         * @param <T>    entity type parameter
+         * @param <T>    entity type
+         * @param <U>    writer type
          * @param entity entity publisher
          * @param writer specific writer
          * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        <T> Publisher<DataChunk> marshallStream(Publisher<T> entity, StreamWriter<T> writer, GenericType<T> type);
+        <U, T extends U> Publisher<DataChunk> marshallStream(Publisher<T> entity,
+                                                             StreamWriter<U> writer,
+                                                             GenericType<T> type);
 
         /**
          * Get the {@code Content-Type} header.
@@ -660,6 +737,15 @@ public interface EntitySupport {
         WriterContext createChild(EventListener eventListener, Parameters headers, List<MediaType> acceptedTypes);
 
         /**
+         * Create a new child context.
+         *
+         * @return new context
+         */
+        default WriterContext createChild() {
+            return createChild(null, null, null);
+        }
+
+        /**
          * Create a new writer context.
          *
          * @return writer context
@@ -709,6 +795,21 @@ public interface EntitySupport {
         protected SimpleWriter(Class<T> type) {
             super(type);
         }
+
+        /**
+         * Generate raw payload from the specified single.
+         *
+         * @param single  object to be converted
+         * @param context the writer context
+         * @return {@link DataChunk} publisher
+         */
+        public abstract Publisher<DataChunk> write(Single<T> single, WriterContext context);
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <U extends T> Publisher<DataChunk> write(Single<U> single, GenericType<U> type, WriterContext context) {
+            return write((Single<T>) single, context);
+        }
     }
 
     /**
@@ -725,6 +826,21 @@ public interface EntitySupport {
          */
         protected SimpleReader(Class<T> type) {
             super(type);
+        }
+
+        /**
+         * Convert raw payload into a single.
+         *
+         * @param publisher raw payload
+         * @param context   reader context
+         * @return Single
+         */
+        public abstract Single<T> read(Publisher<DataChunk> publisher, ReaderContext context);
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context) {
+            return (Single<U>) read(publisher, context);
         }
     }
 
@@ -743,6 +859,24 @@ public interface EntitySupport {
         protected SimpleStreamReader(Class<T> type) {
             super(type);
         }
+
+        /**
+         * Convert raw payload into a single.
+         *
+         * @param publisher raw payload
+         * @param context   reader context
+         * @return Single
+         */
+        public abstract Multi<T> read(Publisher<DataChunk> publisher, ReaderContext context);
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <U extends T> Multi<U> read(Publisher<DataChunk> publisher,
+                                                 GenericType<U> type,
+                                                 ReaderContext context) {
+
+            return (Multi<U>) read(publisher, context);
+        }
     }
 
     /**
@@ -760,5 +894,221 @@ public interface EntitySupport {
         protected SimpleStreamWriter(Class<T> type) {
             super(type);
         }
+
+        /**
+         * Generate raw payload from the specified stream of objects.
+         *
+         * @param publisher stream of objects to be converted
+         * @param context   the writer context
+         * @return {@link DataChunk} publisher
+         */
+        public abstract Publisher<DataChunk> write(Publisher<T> publisher, WriterContext context);
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <U extends T> Publisher<DataChunk> write(Publisher<U> publisher,
+                                                              GenericType<U> type,
+                                                              WriterContext context) {
+
+            return write((Publisher<T>) publisher, context);
+        }
+    }
+
+    /**
+     * An implementation of {@link SimpleWriter} backed by a function.
+     *
+     * @param <T> supported type
+     */
+    final class FunctionalWriter<T> extends SimpleWriter<T> {
+
+        private final BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function;
+
+        /**
+         * Create a new instance.
+         *
+         * @param type supported type
+         */
+        FunctionalWriter(Class<T> type, BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
+            super(type);
+            this.function = function;
+        }
+
+        @Override
+        public Publisher<DataChunk> write(Single<T> single, WriterContext context) {
+            return function.apply(single, context);
+        }
+    }
+
+    /**
+     * An implementation of {@link SimpleReader} backed by a function.
+     *
+     * @param <T> supported type
+     */
+    final class FunctionalReader<T> extends SimpleReader<T> {
+
+        private final BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function;
+
+        /**
+         * Create a new instance.
+         *
+         * @param type supported type
+         */
+        FunctionalReader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
+            super(type);
+            this.function = function;
+        }
+
+        @Override
+        public Single<T> read(Publisher<DataChunk> publisher, ReaderContext context) {
+            return function.apply(publisher, context);
+        }
+    }
+
+    /**
+     * An implementation of {@link SimpleStreamReader} backed by a function.
+     *
+     * @param <T> supported type
+     */
+    final class FunctionalStreamReader<T> extends SimpleStreamReader<T> {
+
+        private final BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function;
+
+        /**
+         * Create a new instance.
+         *
+         * @param type supported type
+         */
+        FunctionalStreamReader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function) {
+            super(type);
+            this.function = function;
+        }
+
+        @Override
+        public Multi<T> read(Publisher<DataChunk> publisher, ReaderContext context) {
+            return function.apply(publisher, context);
+        }
+    }
+
+    /**
+     * An implementation of {@link SimpleStreamWriter} backed by a function.
+     *
+     * @param <T> supported type
+     */
+    final class FunctionalStreamWriter<T> extends SimpleStreamWriter<T> {
+
+        private final BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function;
+
+        /**
+         * Create a new instance.
+         *
+         * @param type supported type
+         */
+        FunctionalStreamWriter(Class<T> type, BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function) {
+            super(type);
+            this.function = function;
+        }
+
+        @Override
+        public Publisher<DataChunk> write(Publisher<T> publisher, WriterContext context) {
+            return function.apply(publisher, context);
+        }
+    }
+
+    /**
+     * Create a new simple writer backed by a function.
+     *
+     * @param type     supported type
+     * @param function writer function
+     * @param <T>      supported type
+     * @return writer
+     */
+    static <T> Writer<T> writer(Class<T> type, BiFunction<Single<T>, WriterContext, Publisher<DataChunk>> function) {
+        return new FunctionalWriter<>(type, function);
+    }
+
+    /**
+     * Create a new simple writer backed by a function.
+     *
+     * @param type     supported type
+     * @param function writer function
+     * @param <T>      supported type
+     * @return writer
+     */
+    static <T> Writer<T> writer(Class<T> type, Function<Single<T>, Publisher<DataChunk>> function) {
+        return new FunctionalWriter<>(type, (single, ctx) -> function.apply(single));
+    }
+
+    /**
+     * Create a new simple stream writer backed by a function.
+     *
+     * @param type     supported type
+     * @param function writer function
+     * @param <T>      supported type
+     * @return stream writer
+     */
+    static <T> StreamWriter<T> streamWriter(Class<T> type,
+                                            BiFunction<Publisher<T>, WriterContext, Publisher<DataChunk>> function) {
+        return new FunctionalStreamWriter<>(type, function);
+    }
+
+    /**
+     * Create a new simple stream writer backed by a function.
+     *
+     * @param type     supported type
+     * @param function writer function
+     * @param <T>      supported type
+     * @return stream writer
+     */
+    static <T> StreamWriter<T> streamWriter(Class<T> type, Function<Publisher<T>, Publisher<DataChunk>> function) {
+        return new FunctionalStreamWriter<>(type, (publisher, ctx) -> function.apply(publisher));
+    }
+
+    /**
+     * Create a new simple reader backed by a function.
+     *
+     * @param type     supported type
+     * @param function reader function
+     * @param <T>      supported type
+     * @return reader
+     */
+    static <T> Reader<T> reader(Class<T> type, BiFunction<Publisher<DataChunk>, ReaderContext, Single<T>> function) {
+        return new FunctionalReader<>(type, function);
+    }
+
+    /**
+     * Create a new simple reader backed by a function.
+     *
+     * @param type     supported type
+     * @param function reader function
+     * @param <T>      supported type
+     * @return reader
+     */
+    static <T> Reader<T> reader(Class<T> type, Function<Publisher<DataChunk>, Single<T>> function) {
+        return new FunctionalReader<>(type, (publisher, ctx) -> function.apply(publisher));
+    }
+
+    /**
+     * Create a new simple stream reader backed by a function.
+     *
+     * @param type     supported type
+     * @param function reader function
+     * @param <T>      supported type
+     * @return stream reader
+     */
+    static <T> StreamReader<T> streamReader(Class<T> type,
+                                            BiFunction<Publisher<DataChunk>, ReaderContext, Multi<T>> function) {
+        return new FunctionalStreamReader<>(type, function);
+    }
+
+    /**
+     * Create a new simple stream reader backed by a function.
+     *
+     * @param type     supported type
+     * @param function reader function
+     * @param <T>      supported type
+     * @return stream reader
+     */
+    static <T> StreamReader<T> streamReader(Class<T> type, Function<Publisher<DataChunk>, Multi<T>> function) {
+        return new FunctionalStreamReader<>(type, (publisher, ctx) -> function.apply(publisher));
     }
 }

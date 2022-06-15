@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
     }
@@ -125,7 +125,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
         waitOnLatch(latch);
@@ -151,7 +151,7 @@ public class MultiPartDecoderTest {
                 latch.countDown();
                 assertThat(body, is(equalTo(
                         "this-is-the-1st-slice-of-the-body\n"
-                        + "this-is-the-2nd-slice-of-the-body")));
+                                + "this-is-the-2nd-slice-of-the-body")));
             });
         };
         BodyPartSubscriber testSubscriber = new BodyPartSubscriber(SUBSCRIBER_TYPE.INFINITE, consumer);
@@ -159,7 +159,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
         waitOnLatch(latch);
@@ -198,7 +198,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
         waitOnLatch(latch);
@@ -234,7 +234,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
         waitOnLatch(latch);
@@ -256,7 +256,7 @@ public class MultiPartDecoderTest {
         final CountDownLatch latch = new CountDownLatch(4);
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            if (latch.getCount()== 3) {
+            if (latch.getCount() == 3) {
                 assertThat(part.headers().values("Content-Id"), hasItems("part1"));
                 DataChunkSubscriber subscriber = new DataChunkSubscriber();
                 part.content().subscribe(subscriber);
@@ -279,7 +279,7 @@ public class MultiPartDecoderTest {
         try {
             boolean b = testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             assertThat(b, is(equalTo(true)));
-        } catch(CompletionException error) {
+        } catch (CompletionException error) {
             assertThat(error, is(nullValue()));
         }
         waitOnLatch(latch);
@@ -301,7 +301,7 @@ public class MultiPartDecoderTest {
         final CountDownLatch latch = new CountDownLatch(2);
         Consumer<BodyPart> consumer = (part) -> {
             latch.countDown();
-            if (latch.getCount()== 1) {
+            if (latch.getCount() == 1) {
                 assertThat(part.headers().values("Content-Id"), hasItems("part1"));
                 DataChunkSubscriber subscriber1 = new DataChunkSubscriber();
                 part.content().subscribe(subscriber1);
@@ -318,7 +318,7 @@ public class MultiPartDecoderTest {
     }
 
     @Test
-    public void testNoClosingBoundary(){
+    public void testNoClosingBoundary() {
         String boundary = "boundary";
         final byte[] chunk1 = ("--" + boundary + "\n"
                 + "Content-Type: text/xml; charset=UTF-8\n"
@@ -332,7 +332,7 @@ public class MultiPartDecoderTest {
         try {
             s1.future.orTimeout(100, TimeUnit.MILLISECONDS).join();
             throw new IllegalStateException("Should have terminated exceptionally");
-        } catch(CompletionException e) {
+        } catch (CompletionException e) {
             Throwable error = e.getCause();
             assertThat(error.getClass(), is(equalTo(MimeParser.ParsingException.class)));
             assertThat(error.getMessage(), is(equalTo("No closing MIME boundary")));
@@ -348,7 +348,7 @@ public class MultiPartDecoderTest {
         try {
             testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             throw new IllegalStateException("Not expecting to terminate normally");
-        } catch(CompletionException e) {
+        } catch (CompletionException e) {
             Throwable error = e.getCause();
             assertThat(error, is(notNullValue()));
             assertThat(error.getClass(), is(equalTo(MimeParser.ParsingException.class)));
@@ -406,7 +406,7 @@ public class MultiPartDecoderTest {
         try {
             testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             throw new IllegalStateException("Not expecting to make progress, unless the part is consumed");
-        } catch(CompletionException e) {
+        } catch (CompletionException e) {
             Throwable error = e.getCause();
             // This is the expected outcome - the testSubcriber is not making progress
             assertThat(error.getClass(), is(equalTo(TimeoutException.class)));
@@ -422,7 +422,7 @@ public class MultiPartDecoderTest {
         try {
             testSubscriber.complete.orTimeout(200, TimeUnit.MILLISECONDS).join();
             throw new IllegalStateException("Normal termination is not expected");
-        } catch(CompletionException e) {
+        } catch (CompletionException e) {
             Throwable error = e.getCause();
             assertThat(error, is(notNullValue()));
             assertThat(error.getMessage(), is(equalTo("oops")));
@@ -436,7 +436,7 @@ public class MultiPartDecoderTest {
         try {
             chunksPublisher("bar".getBytes()).subscribe(decoder);
             fail("exception should be thrown");
-        } catch(IllegalStateException ex) {
+        } catch (IllegalStateException ex) {
             assertThat(ex.getMessage(), is(equalTo("Flow.Subscription already set.")));
         }
     }
@@ -453,7 +453,7 @@ public class MultiPartDecoderTest {
     /**
      * A part test subscriber.
      */
-    static class BodyPartSubscriber implements Subscriber<BodyPart>{
+    static class BodyPartSubscriber implements Subscriber<BodyPart> {
 
         private final SUBSCRIBER_TYPE subscriberType;
         private final Consumer<BodyPart> consumer;
@@ -478,7 +478,7 @@ public class MultiPartDecoderTest {
 
         @Override
         public void onNext(BodyPart item) {
-            if (consumer == null){
+            if (consumer == null) {
                 return;
             }
             consumer.accept(item);
@@ -503,8 +503,9 @@ public class MultiPartDecoderTest {
 
     /**
      * Create the parts publisher for the specified boundary and request chunk.
+     *
      * @param boundary multipart boundary string
-     * @param data data for the chunk
+     * @param data     data for the chunk
      * @return publisher of body parts
      */
     static Publisher<? extends BodyPart> partsPublisher(String boundary, byte[] data) {
@@ -513,8 +514,9 @@ public class MultiPartDecoderTest {
 
     /**
      * Create the parts publisher for the specified boundary and request chunks.
+     *
      * @param boundary multipart boundary string
-     * @param data data for the chunks
+     * @param data     data for the chunks
      * @return publisher of body parts
      */
     static Publisher<? extends BodyPart> partsPublisher(String boundary, List<byte[]> data) {
@@ -543,7 +545,7 @@ public class MultiPartDecoderTest {
      * Wait on the given latch for {@code 5 seconds} and emit an assertion
      * failure if the latch countdown is zero.
      *
-     * @param latch the latch
+     * @param latch   the latch
      * @param failMsg message to the assertion failure
      */
     static void waitOnLatchNegative(CountDownLatch latch, String failMsg) {
@@ -558,6 +560,7 @@ public class MultiPartDecoderTest {
 
     /**
      * Build a publisher of {@link DataChunk} from a single {@code byte[]}.
+     *
      * @param bytes data for the chunk to create
      * @return publisher
      */
@@ -567,6 +570,7 @@ public class MultiPartDecoderTest {
 
     /**
      * Build a publisher of {@link DataChunk} from a list of {@code byte[]}.
+     *
      * @param data data for the chunks to create
      * @return publisher
      */
@@ -598,13 +602,13 @@ public class MultiPartDecoderTest {
         public void onNext(DataChunk item) {
             sb.append(new String(item.bytes()));
             CompletableFuture.supplyAsync(() -> {
-               try {
-                  Thread.sleep(10);
-               } catch(Exception e) {
-                   // do nothing
-               }
-               subscription.request(1);
-               return 0;
+                try {
+                    Thread.sleep(10);
+                } catch (Exception e) {
+                    // do nothing
+                }
+                subscription.request(1);
+                return 0;
             });
         }
 

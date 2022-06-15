@@ -18,7 +18,6 @@ package io.helidon.media.multipart;
 import java.util.List;
 import java.util.Map;
 
-import io.helidon.common.GenericType;
 import io.helidon.common.http.Parameters;
 import io.helidon.media.common.Entity;
 import io.helidon.media.common.EntityBuilder;
@@ -35,17 +34,6 @@ public final class BodyPartBuilder extends EntityBuilder<BodyPartBuilder, BodyPa
      */
     BodyPartBuilder() {
         headersBuilder = BodyPartHeaders.builder();
-    }
-
-    /**
-     * Create a new body part backed by the specified entity.
-     *
-     * @param <T>    entity type
-     * @param entity entity for the body part content
-     * @return this builder instance
-     */
-    public <T> BodyPartBuilder entity(T entity) {
-        return entity(entity, GenericType.<T>create(entity.getClass()));
     }
 
     /**

@@ -47,6 +47,7 @@ import io.helidon.common.Version;
 import io.helidon.common.context.Context;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.ReaderContext;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -91,7 +92,7 @@ class NettyWebServer implements WebServer {
     private final ConcurrentMap<String, Channel> channels = new ConcurrentHashMap<>();
     private final Map<String, HttpInitializer> initializers = new LinkedHashMap<>();
     private final EntitySupport.WriterContext writerContext;
-    private final EntitySupport.ReaderContext readerContext;
+    private final ReaderContext readerContext;
 
     private volatile boolean started;
     private final AtomicBoolean shutdownThreadGroupsInitiated = new AtomicBoolean(false);
@@ -109,7 +110,7 @@ class NettyWebServer implements WebServer {
                    Routing routing,
                    Map<String, Routing> namedRoutings,
                    EntitySupport.WriterContext writerContext,
-                   EntitySupport.ReaderContext readerContext,
+                   ReaderContext readerContext,
                    DirectHandlers directHandlers) {
 
         Set<Map.Entry<String, SocketConfiguration>> sockets = config.sockets().entrySet();
@@ -122,8 +123,8 @@ class NettyWebServer implements WebServer {
         this.transport = acquireTransport();
         this.bossGroup = bossGroup();
         this.workerGroup = workerGroup();
-        this.readerContext = EntitySupport.ReaderContext.create(readerContext);
-        this.writerContext = EntitySupport.WriterContext.create(writerContext);
+        this.readerContext = readerContext.createChild();
+        this.writerContext = writerContext.createChild();
 
         for (Map.Entry<String, SocketConfiguration> entry : sockets) {
             String name = entry.getKey();
@@ -207,7 +208,7 @@ class NettyWebServer implements WebServer {
     }
 
     @Override
-    public EntitySupport.ReaderContext readerContext() {
+    public ReaderContext readerContext() {
         return readerContext;
     }
 

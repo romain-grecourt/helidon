@@ -15,11 +15,6 @@
  */
 package io.helidon.media.common;
 
-import java.util.Objects;
-import java.util.concurrent.Flow.Publisher;
-
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
 import io.helidon.media.common.EntitySupport.ReaderContext;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.Writer;
@@ -27,7 +22,7 @@ import io.helidon.media.common.EntitySupport.WriterContext;
 import io.helidon.media.common.EntitySupport.Writers;
 
 /**
- * Writeable entity.
+ * {@link Payload} that can be generated from objects.
  */
 public interface WriteableEntity extends Payload, Writers {
 
@@ -41,6 +36,7 @@ public interface WriteableEntity extends Payload, Writers {
     /**
      * Set the writer context to use for marshalling.
      *
+     * @param context writer context
      * @return this instance
      */
     WriteableEntity writerContext(WriterContext context);
@@ -48,6 +44,7 @@ public interface WriteableEntity extends Payload, Writers {
     /**
      * Set the reader context to use for unmarshalling.
      *
+     * @param context reader context
      * @return this instance
      */
     WriteableEntity readerContext(ReaderContext context);

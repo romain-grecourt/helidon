@@ -35,123 +35,60 @@ import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.media.common.EntitySupport.Reader;
 import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.SimpleReader;
-import io.helidon.media.common.EntitySupport.SimpleStreamWriter;
-import io.helidon.media.common.EntitySupport.SimpleWriter;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.common.EntitySupport.WriterContext;
 
 import static io.helidon.common.reactive.IoMulti.DEFAULT_RETRY_SCHEMA;
+import static io.helidon.media.common.EntitySupport.reader;
+import static io.helidon.media.common.EntitySupport.streamWriter;
+import static io.helidon.media.common.EntitySupport.writer;
 
 /**
  * MediaSupport which registers default readers and writers.
  */
+@SuppressWarnings("unused")
 public class DefaultMediaSupport implements MediaSupport {
 
-    private static final Reader<byte[]> BYTE_ARRAY_READER = new SimpleReader<>(byte[].class) {
-        @Override
-        public Single<byte[]> read(Publisher<DataChunk> publisher,
-                                   GenericType<? extends byte[]> type,
-                                   ReaderContext context) {
+    private static final Reader<byte[]> BYTE_ARRAY_READER = reader(byte[].class, ContentReaders::readBytes);
 
-            return ContentReaders.readBytes(publisher);
-        }
-    };
-
-    private static final Writer<byte[]> BYTE_ARRAY_WRITER = new SimpleWriter<>(byte[].class) {
-
-        @Override
-        public Publisher<DataChunk> write(Single<? extends byte[]> single,
-                                          GenericType<? extends byte[]> type,
-                                          WriterContext context) {
-
-            return Single.create(single)
-                         .flatMap(bytes -> ContentWriters.writeBytes(bytes, false));
-        }
-    };
+    private static final Writer<byte[]> BYTE_ARRAY_WRITER = writer(byte[].class,
+            (single) -> Single.create(single).flatMap(ContentWriters::writeBytes));
 
     private static final Writer<ReadableByteChannel> BYTE_CHANNEL_WRITER = byteChannelWriter(DEFAULT_RETRY_SCHEMA);
 
-    private static final StreamWriter<CharSequence> CS_STREAM_WRITER = new SimpleStreamWriter<>(CharSequence.class) {
-        @Override
-        public Publisher<DataChunk> write(Publisher<? extends CharSequence> publisher,
-                                          GenericType<? extends CharSequence> type,
-                                          WriterContext context) {
+    private static final StreamWriter<CharSequence> CS_STREAM_WRITER = streamWriter(CharSequence.class,
+            (publisher, ctx) -> {
+                ctx.contentType(MediaType.TEXT_PLAIN);
+                return Multi.create(publisher).map(s -> DataChunk.create(true, ctx.charset().encode(s.toString())));
+            });
 
-            context.contentType(MediaType.TEXT_PLAIN);
-            return Multi.create(publisher)
-                        .map(s -> DataChunk.create(true, context.charset().encode(s.toString())));
-        }
-    };
+    private static final Writer<CharSequence> CS_WRITER = writer(CharSequence.class,
+            (single, ctx) -> {
+                ctx.contentType(MediaType.TEXT_PLAIN);
+                return single.flatMap(cs -> ContentWriters.writeCharSequence(cs, ctx.charset()));
+            });
 
-    private static final Writer<CharSequence> CS_WRITER = new SimpleWriter<>(CharSequence.class) {
-        @Override
-        public Publisher<DataChunk> write(Single<? extends CharSequence> single,
-                                          GenericType<? extends CharSequence> type,
-                                          WriterContext context) {
+    private static final Writer<File> FILE_WRITER = writer(File.class,
+            (single) -> single.flatMap(file -> ContentWriters.writeFile(file.toPath())));
 
-            context.contentType(MediaType.TEXT_PLAIN);
-            return single.flatMap(cs -> ContentWriters.writeCharSequence(cs, context.charset()));
-        }
-    };
+    private static final Writer<Path> PATH_WRITER = writer(Path.class,
+            (single) -> single.flatMap(ContentWriters::writeFile));
 
-    private static final Writer<File> FILE_WRITER = new SimpleWriter<>(File.class) {
-        @Override
-        public Publisher<DataChunk> write(Single<? extends File> single,
-                                          GenericType<? extends File> type,
-                                          WriterContext context) {
+    private static final Reader<InputStream> IS_READER = reader(InputStream.class,
+            (publisher) -> Single.just(ContentReaders.readInputStream(publisher)));
 
-            return single.flatMap(file -> ContentWriters.writeFile(file.toPath()));
-        }
-    };
+    private static final Reader<String> STRING_READER = reader(String.class,
+            (publisher, ctx) -> ContentReaders.readString(publisher, ctx.charset()));
 
-    private static final Writer<Path> PATH_WRITER = new SimpleWriter<>(Path.class) {
-        @Override
-        public Publisher<DataChunk> write(Single<? extends Path> single,
-                                          GenericType<? extends Path> type,
-                                          WriterContext context) {
-
-            return single.flatMap(ContentWriters::writeFile);
-        }
-    };
-
-    private static final Reader<InputStream> IS_READER = new SimpleReader<>(InputStream.class) {
-
-        @Override
-        public Single<InputStream> read(Publisher<DataChunk> publisher,
-                                        GenericType<? extends InputStream> type,
-                                        ReaderContext context) {
-
-            return Single.just(ContentReaders.readInputStream(publisher));
-        }
-    };
-
-    private static final Reader<String> STRING_READER = new SimpleReader<>(String.class) {
-        @Override
-        public Single<String> read(Publisher<DataChunk> publisher,
-                                   GenericType<? extends String> type,
-                                   ReaderContext context) {
-
-            return ContentReaders.readString(publisher, context.charset());
-        }
-    };
-
-    private static final Writer<Throwable> TH_WRITER = new SimpleWriter<>(Throwable.class) {
-
-        @Override
-        public Publisher<DataChunk> write(Single<? extends Throwable> single,
-                                          GenericType<? extends Throwable> type,
-                                          WriterContext context) {
-
-            context.contentType(MediaType.TEXT_PLAIN);
-            return ContentWriters.writeCharSequence("Unexpected exception occurred.", context.charset());
-        }
-    };
+    private static final Writer<Throwable> TH_WRITER = writer(Throwable.class, (single, ctx) -> {
+        ctx.contentType(MediaType.TEXT_PLAIN);
+        return ContentWriters.writeCharSequence("Unexpected exception occurred.", ctx.charset());
+    });
 
     private static final Reader<FormParams> FP_READER = new Reader<>() {
         @Override
-        public PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
+        public PredicateResult accept(GenericType<?> type, ReaderContext context) {
             return context.contentType()
                           .filter(mediaType -> mediaType == MediaType.APPLICATION_FORM_URLENCODED
                                   || mediaType == MediaType.TEXT_PLAIN)
@@ -160,20 +97,20 @@ public class DefaultMediaSupport implements MediaSupport {
         }
 
         @Override
-        public Single<FormParams> read(Publisher<DataChunk> publisher,
-                                       GenericType<? extends FormParams> type,
-                                       EntitySupport.ReaderContext context) {
+        @SuppressWarnings("unchecked")
+        public <U extends FormParams> Single<U> read(Publisher<DataChunk> publisher,
+                                                     GenericType<U> type,
+                                                     ReaderContext context) {
 
             MediaType mediaType = context.contentType().orElseThrow();
             if (mediaType.equals(MediaType.APPLICATION_FORM_URLENCODED)) {
-                return ContentReaders.readURLEncodedFormParams(publisher, context.charset());
+                return (Single<U>) ContentReaders.readURLEncodedFormParams(publisher, context.charset());
             }
-            return ContentReaders.readTextPlainFormParams(publisher, context.charset());
+            return (Single<U>) ContentReaders.readTextPlainFormParams(publisher, context.charset());
         }
     };
 
     private static final Writer<FormParams> FP_WRITER = new Writer<>() {
-
         @Override
         public PredicateResult accept(GenericType<?> type, WriterContext context) {
             return context.contentType()
@@ -185,9 +122,9 @@ public class DefaultMediaSupport implements MediaSupport {
         }
 
         @Override
-        public Publisher<DataChunk> write(Single<? extends FormParams> single,
-                                          GenericType<? extends FormParams> type,
-                                          WriterContext context) {
+        public <U extends FormParams> Publisher<DataChunk> write(Single<U> single,
+                                                                 GenericType<U> type,
+                                                                 WriterContext context) {
 
             MediaType mediaType = context.contentType().orElseGet(() -> {
                 context.contentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -302,16 +239,10 @@ public class DefaultMediaSupport implements MediaSupport {
      * @return {@link ReadableByteChannel} writer
      */
     public static Writer<ReadableByteChannel> byteChannelWriter(RetrySchema schema) {
-        return new SimpleWriter<>(ReadableByteChannel.class) {
-            @Override
-            public Publisher<DataChunk> write(Single<? extends ReadableByteChannel> single,
-                                              GenericType<? extends ReadableByteChannel> type,
-                                              WriterContext context) {
-
-                context.contentType(MediaType.APPLICATION_OCTET_STREAM);
-                return single.flatMap(channel -> ContentWriters.writeByteChannel(channel, schema));
-            }
-        };
+        return writer(ReadableByteChannel.class, (single, ctx) -> {
+            ctx.contentType(MediaType.APPLICATION_OCTET_STREAM);
+            return single.flatMap(channel -> ContentWriters.writeByteChannel(channel, schema));
+        });
     }
 
     /**
@@ -360,16 +291,10 @@ public class DefaultMediaSupport implements MediaSupport {
         if (!includeStackTraces) {
             return TH_WRITER;
         }
-        return new SimpleWriter<>(Throwable.class) {
-            @Override
-            public Publisher<DataChunk> write(Single<? extends Throwable> single,
-                                              GenericType<? extends Throwable> type,
-                                              WriterContext context) {
-
-                context.contentType(MediaType.TEXT_PLAIN);
-                return single.flatMap(throwable -> ContentWriters.writeStackTrace(throwable, context.charset()));
-            }
-        };
+        return writer(Throwable.class, (single, ctx) -> {
+            ctx.contentType(MediaType.TEXT_PLAIN);
+            return single.flatMap(throwable -> ContentWriters.writeStackTrace(throwable, ctx.charset()));
+        });
     }
 
     @Override

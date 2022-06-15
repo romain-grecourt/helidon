@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,12 @@ package io.helidon.media.common;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.function.Function;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.FormParams;
@@ -44,6 +42,16 @@ public final class ContentWriters {
      * A utility class constructor.
      */
     private ContentWriters() {
+    }
+
+    /**
+     * Create a {@link DataChunk} with the given byte array and return a {@link Single}.
+     *
+     * @param bytes the byte array
+     * @return Single
+     */
+    public static Single<DataChunk> writeBytes(byte[] bytes) {
+        return writeBytes(bytes, false);
     }
 
     /**
@@ -134,7 +142,7 @@ public final class ContentWriters {
     public static Single<DataChunk> writeStackTrace(Throwable throwable, Charset charset) {
         final StringWriter stringWriter = new StringWriter();
         final PrintWriter printWriter = new PrintWriter(stringWriter);
-        String stackTraceString = null;
+        String stackTraceString;
         try {
             throwable.printStackTrace(printWriter);
             stackTraceString = stringWriter.toString();
@@ -143,7 +151,7 @@ public final class ContentWriters {
         }
         final Single<DataChunk> returnValue;
         if (stackTraceString.isEmpty()) {
-            returnValue = Single.<DataChunk>empty();
+            returnValue = Single.empty();
         } else {
             returnValue = writeCharSequence(stackTraceString, charset);
         }
@@ -159,7 +167,7 @@ public final class ContentWriters {
      * @return Single
      */
     public static Single<DataChunk> writeURLEncodedFormParams(FormParams formParams, Charset charset) {
-        return writeCharSequence(writeFormParams(formParams, '\n', s -> URLEncoder.encode(s, charset)), charset);
+        return writeCharSequence(FormSupport.writeURLEncoded(formParams, charset), charset);
     }
 
     /**
@@ -171,28 +179,6 @@ public final class ContentWriters {
      * @return Single
      */
     public static Single<DataChunk> writePlainTextFormParams(FormParams formParams, Charset charset) {
-        return writeCharSequence(writeFormParams(formParams, '\n', Function.identity()), charset);
-    }
-
-    private static String writeFormParams(FormParams formParams, char sep, Function<String, String> encoder) {
-        StringBuilder result = new StringBuilder();
-        formParams.toMap().forEach((key, values) -> {
-            if (values.size() == 0) {
-                if (result.length() > 0) {
-                    result.append(sep);
-                }
-                result.append(encoder.apply(key));
-            } else {
-                for (String value : values) {
-                    if (result.length() > 0) {
-                        result.append(sep);
-                    }
-                    result.append(encoder.apply(key));
-                    result.append("=");
-                    result.append(encoder.apply(value));
-                }
-            }
-        });
-        return result.toString();
+        return writeCharSequence(FormSupport.writeTextPlain(formParams), charset);
     }
 }

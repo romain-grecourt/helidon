@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,30 +26,32 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import jakarta.json.bind.Jsonb;
 
 /**
- * Message body stream writer supporting object binding with JSON-B.
+ * {@link StreamWriter} implementation supporting object binding with JSON-B.
  * This writer is for {@link MediaType#APPLICATION_X_NDJSON} media type.
  */
-class JsonbNdBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
+class JsonbNdStreamWriter implements StreamWriter<Object> {
 
     private static final byte[] NL = "\n".getBytes(StandardCharsets.UTF_8);
 
     private final Jsonb jsonb;
 
-    private JsonbNdBodyStreamWriter(Jsonb jsonb) {
+    /**
+     * Create a new instance.
+     *
+     * @param jsonb JSON-B instance
+     */
+    JsonbNdStreamWriter(Jsonb jsonb) {
         this.jsonb = Objects.requireNonNull(jsonb);
     }
 
-    static JsonbNdBodyStreamWriter create(Jsonb jsonb) {
-        return new JsonbNdBodyStreamWriter(jsonb);
-    }
-
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
@@ -61,12 +63,11 @@ class JsonbNdBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
+    public <U> Multi<DataChunk> write(Flow.Publisher<U> publisher, GenericType<U> type, WriterContext context) {
         MediaType contentType = MediaType.APPLICATION_X_NDJSON;
         context.contentType(contentType);
 
         AtomicBoolean first = new AtomicBoolean(true);
-
         return Multi.create(publisher)
                 .map(object -> DataChunk.create(jsonb.toJson(object).getBytes(StandardCharsets.UTF_8)))
                 .flatMap(dataChunk -> {
@@ -79,7 +80,7 @@ class JsonbNdBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
                 });
     }
 
-    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
+    private Optional<MediaType> findMediaType(WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.APPLICATION_X_NDJSON));
         } catch (IllegalStateException ignore) {

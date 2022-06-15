@@ -22,13 +22,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Flow.Publisher;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.FormParams;
@@ -40,9 +34,6 @@ import io.helidon.common.reactive.Single;
  * Utility class that provides standalone mechanisms for reading {@link DataChunk} publisher.
  */
 public final class ContentReaders {
-
-    private static final Pattern FORM_URL_ENCODED_PATTERN = Pattern.compile("([^=&$s]+)=?([^&$s]+)?&$s?");
-    private static final Pattern FORM_TEXT_PLAIN_PATTERN =  Pattern.compile("([^=\n$s]+)=?([^\n$s]+)?\n$s?");
 
     /**
      * A utility class constructor.
@@ -116,19 +107,7 @@ public final class ContentReaders {
      */
     public static Single<FormParams> readURLEncodedFormParams(Publisher<DataChunk> chunks, Charset charset) {
         return ContentReaders.readString(chunks, charset)
-                      .map(formStr -> {
-                          Map<String, List<String>> params = new HashMap<>();
-                          Matcher m = FORM_URL_ENCODED_PATTERN.matcher(formStr);
-                          while (m.find()) {
-                              String key = URLDecoder.decode(m.group(1), charset);
-                              List<String> list = params.computeIfAbsent(key, k -> new ArrayList<>());
-                              String value = m.group(2);
-                              if (value != null) {
-                                  list.add(URLDecoder.decode(value, charset));
-                              }
-                          }
-                          return FormParams.create(params);
-                      });
+                      .map(formStr -> FormSupport.readURLEncoded(formStr, charset));
     }
 
     /**
@@ -139,19 +118,6 @@ public final class ContentReaders {
      * @return Single
      */
     public static Single<FormParams> readTextPlainFormParams(Publisher<DataChunk> chunks, Charset charset) {
-        return ContentReaders.readString(chunks, charset)
-                             .map(formStr -> {
-                                 Map<String, List<String>> params = new HashMap<>();
-                                 Matcher m = FORM_TEXT_PLAIN_PATTERN.matcher(formStr);
-                                 while (m.find()) {
-                                     String key = m.group(1);
-                                     List<String> list = params.computeIfAbsent(key, k -> new ArrayList<>());
-                                     String value = m.group(2);
-                                     if (value != null) {
-                                         list.add(value);
-                                     }
-                                 }
-                                 return FormParams.create(params);
-                             });
+        return ContentReaders.readString(chunks, charset).map(FormSupport::readTextPlain);
     }
 }

@@ -18,7 +18,6 @@ package io.helidon.media.multipart;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Flow;
 import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
@@ -33,6 +32,7 @@ import io.helidon.media.common.EntitySupport.SimpleStreamWriter;
 import io.helidon.media.common.EntitySupport.StreamReader;
 import io.helidon.media.common.EntitySupport.StreamWriter;
 import io.helidon.media.common.EntitySupport.Writer;
+import io.helidon.media.common.EntitySupport.WriterContext;
 import io.helidon.media.common.MediaSupport;
 
 import static io.helidon.common.http.MediaType.MULTIPART_FORM_DATA;
@@ -40,6 +40,7 @@ import static io.helidon.common.http.MediaType.MULTIPART_FORM_DATA;
 /**
  * Multipart media support.
  */
+@SuppressWarnings("unused")
 public final class MultiPartSupport implements MediaSupport {
 
     /**
@@ -49,10 +50,7 @@ public final class MultiPartSupport implements MediaSupport {
 
     private static final StreamReader<BodyPart> BODY_PART_STREAM_READER = new SimpleStreamReader<>(BodyPart.class) {
         @Override
-        public Multi<BodyPart> read(Publisher<DataChunk> publisher,
-                                        GenericType<? extends BodyPart> type,
-                                        ReaderContext context) {
-
+        public Multi<BodyPart> read(Publisher<DataChunk> publisher, ReaderContext context) {
             String boundary = null;
             MediaType contentType = context.contentType().orElse(null);
             if (contentType != null) {
@@ -130,10 +128,7 @@ public final class MultiPartSupport implements MediaSupport {
         return new SimpleStreamWriter<>(BodyPart.class) {
 
             @Override
-            public Publisher<DataChunk> write(Publisher<? extends BodyPart> publisher,
-                                              GenericType<? extends BodyPart> type,
-                                              EntitySupport.WriterContext context) {
-
+            public Publisher<DataChunk> write(Publisher<BodyPart> publisher, WriterContext context) {
                 context.contentType(MediaType.builder()
                                              .type(MULTIPART_FORM_DATA.type())
                                              .subtype(MULTIPART_FORM_DATA.subtype())
@@ -164,7 +159,7 @@ public final class MultiPartSupport implements MediaSupport {
     public static Writer<MultiPart> multiPartWriter(String boundary) {
         return new Writer<>() {
             @Override
-            public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+            public PredicateResult accept(GenericType<?> type, WriterContext context) {
                 return context.contentType()
                               .or(() -> Optional.of(MULTIPART_FORM_DATA))
                               .filter(mediaType -> mediaType == MULTIPART_FORM_DATA)
@@ -173,9 +168,9 @@ public final class MultiPartSupport implements MediaSupport {
             }
 
             @Override
-            public Publisher<DataChunk> write(Single<? extends MultiPart> content,
-                                              GenericType<? extends MultiPart> type,
-                                              EntitySupport.WriterContext context) {
+            public <U extends MultiPart> Publisher<DataChunk> write(Single<U> content,
+                                                                    GenericType<U> type,
+                                                                    WriterContext context) {
 
                 context.contentType(MediaType.builder()
                                              .type(MULTIPART_FORM_DATA.type())

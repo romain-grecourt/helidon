@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.media.jackson;
+package io.helidon.media.jsonb;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -24,33 +24,35 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.bind.Jsonb;
 
 /**
- * Message body stream writer supporting object binding with Jackson.
+ * {@link StreamWriter} implementation supporting object binding with JSON-B.
  * This writer is for {@link MediaType#TEXT_EVENT_STREAM} with no element-type parameter or element-type="application/json".
  */
-class JacksonEsBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
+class JsonbEsStreamWriter implements StreamWriter<Object> {
 
     private static final MediaType TEXT_EVENT_STREAM_JSON = MediaType
             .parse("text/event-stream;element-type=\"application/json\"");
     private static final byte[] DATA = "data: ".getBytes(StandardCharsets.UTF_8);
     private static final byte[] NL = "\n\n".getBytes(StandardCharsets.UTF_8);
 
-    private final ObjectMapper objectMapper;
+    private final Jsonb jsonb;
 
-    private JacksonEsBodyStreamWriter(ObjectMapper objectMapper) {
-        this.objectMapper = Objects.requireNonNull(objectMapper);
-    }
-
-    static JacksonEsBodyStreamWriter create(ObjectMapper objectMapper) {
-        return new JacksonEsBodyStreamWriter(objectMapper);
+    /**
+     * Create a new instance.
+     *
+     * @param jsonb JSON-B instance
+     */
+    JsonbEsStreamWriter(Jsonb jsonb) {
+        this.jsonb = Objects.requireNonNull(jsonb);
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
@@ -62,22 +64,20 @@ class JacksonEsBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
+    public <U> Multi<DataChunk> write(Flow.Publisher<U> publisher, GenericType<U> type, WriterContext context) {
         MediaType contentType = context.contentType()
                 .or(() -> findMediaType(context))
                 .orElse(TEXT_EVENT_STREAM_JSON);
         context.contentType(contentType);
-        JacksonBodyWriter.ObjectToChunks objectToChunks = new JacksonBodyWriter.ObjectToChunks(objectMapper, context.charset());
         return Multi.create(publisher)
-                .flatMap(objectToChunks)
-                .flatMap(chunk -> Multi.just(
+                .flatMap(m -> Multi.just(
                         DataChunk.create(DATA),
-                        chunk,
+                        DataChunk.create(jsonb.toJson(m).getBytes(StandardCharsets.UTF_8)),
                         DataChunk.create(NL))
                 );
     }
 
-    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
+    private Optional<MediaType> findMediaType(WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.JSON_EVENT_STREAM_PREDICATE, TEXT_EVENT_STREAM_JSON));
         } catch (IllegalStateException ignore) {

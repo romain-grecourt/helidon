@@ -157,7 +157,7 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
         this.httpVersion = Http.Version.V1_1;
         this.redirectionCount = 0;
         this.services = configuration.clientServices();
-        this.readerContext = configuration.readerContext().createChild(null, null, null);
+        this.readerContext = configuration.readerContext().createChild();
         this.writerContext = configuration.writerContext().createChild(null, headers, null);
         this.requestId = null;
         Context.Builder contextBuilder = Context.builder().id("webclient-" + requestId);

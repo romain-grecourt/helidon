@@ -105,22 +105,24 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
 
     @Override
     public <T> Publisher<DataChunk> marshall(Single<T> content, GenericType<T> type) {
-        return marshall(content, type, (c, t) -> findWriter(type).write(c, t, this));
+        return marshall(content, type, write(findWriter(type)));
     }
 
     @Override
-    public <T> Publisher<DataChunk> marshall(Single<T> content, Writer<T> writer, GenericType<T> type) {
-        return marshall(content, type, (c, t) -> writer.write(c, t, this));
+    public <U, T extends U> Publisher<DataChunk> marshall(Single<T> content, Writer<U> writer, GenericType<T> type) {
+        return marshall(content, type, write(writer));
     }
 
     @Override
     public <T> Publisher<DataChunk> marshallStream(Publisher<T> content, GenericType<T> type) {
-        return marshall(content, type, (c, t) -> findStreamWriter(type).write(c, t, this));
+        return marshall(content, type, writeStream(findStreamWriter(type)));
     }
 
     @Override
-    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content, StreamWriter<T> writer, GenericType<T> type) {
-        return marshall(content, type, (c, t) -> writer.write(c, t, this));
+    public <U, T extends U> Publisher<DataChunk> marshallStream(Publisher<T> content,
+                                                                StreamWriter<U> writer,
+                                                                GenericType<T> type) {
+        return marshall(content, type, writeStream(writer));
     }
 
     @Override
@@ -208,13 +210,22 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
         return charsetCache;
     }
 
-    private interface W<T, U extends Publisher<T>> {
-        Publisher<DataChunk> write0(U u, GenericType<? extends T> t);
+    // Adapter between Writer and StreamWriter
+    private interface W<T, U extends T, P extends Publisher<U>> {
+        Publisher<DataChunk> write(P u, GenericType<U> t);
     }
 
-    private <T, U extends Publisher<T>> Publisher<DataChunk> marshall(U c, GenericType<? extends T> t, W<T, U> w) {
+    private <T, U extends T> W<T, U, Single<U>> write(Writer<T> writer) {
+        return (Single<U> c, GenericType<U> t) -> writer.write(c, t, this);
+    }
+
+    private <T, U extends T> W<T, U, Publisher<U>> writeStream(StreamWriter<T> writer) {
+        return (Publisher<U> c, GenericType<U> t) -> writer.write(c, t, this);
+    }
+
+    private <T, U extends T, P extends Publisher<U>> Publisher<DataChunk> marshall(P c, GenericType<U> t, W<T, U, P> w) {
         try {
-            return applyFilters(c != null ? w.write0(c, t) : Multi.empty());
+            return applyFilters(c != null ? w.write(c, t) : Multi.empty());
         } catch (Throwable ex) {
             throw new IllegalStateException("Transformation failed!", ex);
         }
@@ -224,8 +235,8 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
     private <T> Writer<T> findWriter(GenericType<T> type) {
         // Flow.Publisher - can only be supported by streaming media
         if (Publisher.class.isAssignableFrom(type.rawType())) {
-            throw new IllegalStateException("This method does not support marshalling of Flow.Publisher." +
-                    " Please use a method that accepts Flow.Publisher and type for stream marshalling.");
+            throw new IllegalStateException("This method does not support marshalling of Flow.Publisher."
+                    + " Please use a method that accepts Flow.Publisher and type for stream marshalling.");
         }
 
         Writer<T> writer = (Writer<T>) writers.select(type, this);

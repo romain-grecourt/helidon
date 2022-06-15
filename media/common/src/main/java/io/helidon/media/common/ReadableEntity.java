@@ -16,17 +16,15 @@
 package io.helidon.media.common;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.Flow.Publisher;
 import java.util.function.Consumer;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.EntitySupport.ReaderContext;
 
 /**
- * Readable {@link Payload}.
+ * {@link Payload} that can be converted to objects.
  */
 public interface ReadableEntity extends Payload, EntitySupport.Readers, EntitySupport.Filters {
 
@@ -93,7 +91,7 @@ public interface ReadableEntity extends Payload, EntitySupport.Readers, EntitySu
      * @param <T>  the requested type
      * @return a completion stage of the requested type
      */
-    <T> Single<T> as(final GenericType<T> type);
+    <T> Single<T> as(GenericType<T> type);
 
     /**
      * Convert the raw payload into a stream of objects of the requested type.

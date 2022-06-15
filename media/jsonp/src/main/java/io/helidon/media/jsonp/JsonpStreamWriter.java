@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,35 +23,40 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonWriterFactory;
 
 /**
- * Message body writer for {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
+ * {@link StreamWriter} implementation support {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
  */
-class JsonpBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
+class JsonpStreamWriter implements StreamWriter<JsonStructure> {
     private static final byte[] ARRAY_JSON_END_BYTES = "]".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ARRAY_JSON_BEGIN_BYTES = "[".getBytes(StandardCharsets.UTF_8);
     private static final byte[] COMMA_BYTES = ",".getBytes(StandardCharsets.UTF_8);
 
     private final JsonWriterFactory jsonWriterFactory;
 
-    JsonpBodyStreamWriter(JsonWriterFactory jsonWriterFactory) {
+    /**
+     * Create a new instance.
+     *
+     * @param jsonWriterFactory json factory
+     */
+    JsonpStreamWriter(JsonWriterFactory jsonWriterFactory) {
         this.jsonWriterFactory = jsonWriterFactory;
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override
-    public Multi<DataChunk> write(Publisher<? extends JsonStructure> publisher,
-                                  GenericType<? extends JsonStructure> type,
-                                  EntitySupport.WriterContext context) {
+    public <U extends JsonStructure> Multi<DataChunk> write(Publisher<U> publisher,
+                                                            GenericType<U> type,
+                                                            WriterContext context) {
 
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
@@ -59,21 +64,17 @@ class JsonpBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure>
         // we do not have join operator
         AtomicBoolean first = new AtomicBoolean(true);
 
-        JsonStructureToChunks jsonToChunks = new JsonStructureToChunks(true,
-                jsonWriterFactory,
-                context.charset());
-
         return Multi.create(publisher)
-                .map(jsonToChunks)
-                .flatMap(it -> {
-                    if (first.getAndSet(false)) {
-                        // first record, do not prepend a comma
-                        return Multi.just(DataChunk.create(ARRAY_JSON_BEGIN_BYTES), it);
-                    } else {
-                        // any subsequent record starts with a comma
-                        return Multi.just(DataChunk.create(COMMA_BYTES), it);
-                    }
-                })
-                .onCompleteResume(DataChunk.create(ARRAY_JSON_END_BYTES));
+                    .flatMap(o -> JsonpWriter.write(jsonWriterFactory, true, o, context.charset()))
+                    .flatMap(it -> {
+                        if (first.getAndSet(false)) {
+                            // first record, do not prepend a comma
+                            return Multi.just(DataChunk.create(ARRAY_JSON_BEGIN_BYTES), it);
+                        } else {
+                            // any subsequent record starts with a comma
+                            return Multi.just(DataChunk.create(COMMA_BYTES), it);
+                        }
+                    })
+                    .onCompleteResume(DataChunk.create(ARRAY_JSON_END_BYTES));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,21 +35,21 @@ public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxV
     }
 
     @Override
-    public WriteableBodyPart createElement(final int element) {
-        return WriteableBodyPart.builder()
-                .entity("part" + element)
-                .build();
+    public BodyPart createElement(final int element) {
+        return BodyPart.builder()
+                       .entity("part" + element)
+                       .build();
     }
 
     @Override
     protected Flow.Subscriber<BodyPart> createFlowSubscriber(final WhiteboxSubscriberProbe<BodyPart> probe) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        MultiPartEncoder encoder = new MultiPartEncoder("boundary", MEDIA_CONTEXT.writerContext()){
+        MultiPartEncoder encoder = new MultiPartEncoder("boundary", MEDIA_CONTEXT.writerContext()) {
             @Override
             public void onSubscribe(final Flow.Subscription subscription) {
                 super.onSubscribe(subscription);
                 future.complete(null);
-                probe.registerOnSubscribe(new SubscriberWhiteboxVerification.SubscriberPuppet(){
+                probe.registerOnSubscribe(new SubscriberWhiteboxVerification.SubscriberPuppet() {
                     @Override
                     public void triggerRequest(final long elements) {
                         subscription.request(elements);
@@ -81,13 +81,14 @@ public class MultiPartEncoderSubsWhiteBoxTckTest extends FlowSubscriberWhiteboxV
             }
         };
 
-        Multi.create(encoder).forEach(ch -> {});
+        Multi.create(encoder).forEach(ch -> {
+        });
         return encoder;
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal() throws Throwable {
+    public void required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal() {
         // not compliant
     }
 }

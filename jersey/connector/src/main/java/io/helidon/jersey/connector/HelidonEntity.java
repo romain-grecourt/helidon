@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,22 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Flow;
-import java.util.function.Function;
 
-import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.IoMulti;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.OutputStreamMulti;
-import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.webclient.WebClientRequestBuilder;
 import io.helidon.webclient.WebClientResponse;
 
 import jakarta.ws.rs.ProcessingException;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientRequest;
+
+import static io.helidon.media.common.EntitySupport.writer;
 
 /**
  * A utility class that converts outbound client entity to a class understandable by Helidon.
@@ -73,13 +71,14 @@ class HelidonEntity {
     /**
      * Get optional entity writer to be registered by the Helidon Client. For some default providers,
      * nothing is needed to be registered.
+     *
      * @param type the type of the entity class that works best for the Http Client request use case.
-     * @return possible writer to be registerd by the Helidon Client.
+     * @return possible writer to be registered by the Helidon Client.
      */
-    static Optional<EntitySupport.Writer<?>> helidonWriter(HelidonEntityType type) {
+    static Optional<Writer<?>> helidonWriter(HelidonEntityType type) {
         switch (type) {
             case BYTE_ARRAY_OUTPUT_STREAM:
-                return Optional.of(new OutputStreamBodyWriter());
+                return Optional.of(BAOS_WRITER);
             case OUTPUT_STREAM_MULTI:
             case READABLE_BYTE_CHANNEL:
             default:
@@ -90,11 +89,12 @@ class HelidonEntity {
     /**
      * Convert Jersey {@code OutputStream} to an entity based on the client request use case and submits to the provided
      * {@code WebClientRequestBuilder}.
-     * @param type the type of the Helidon entity.
-     * @param requestContext Jersey {@link ClientRequest} providing the entity {@code OutputStream}.
-     * @param requestBuilder Helidon {@code WebClientRequestBuilder} which is used to submit the entity
+     *
+     * @param type            the type of the Helidon entity.
+     * @param requestContext  Jersey {@link ClientRequest} providing the entity {@code OutputStream}.
+     * @param requestBuilder  Helidon {@code WebClientRequestBuilder} which is used to submit the entity
      * @param executorService {@link ExecutorService} that fills the entity instance for Helidon with data from Jersey
-     *                      {@code OutputStream}.
+     *                        {@code OutputStream}.
      * @return Helidon Client response completion stage.
      */
     static CompletionStage<WebClientResponse> submit(HelidonEntityType type,
@@ -147,29 +147,9 @@ class HelidonEntity {
         }
     }
 
-    private static class OutputStreamBodyWriter implements EntitySupport.Writer<ByteArrayOutputStream> {
-        private OutputStreamBodyWriter() {
-        }
-
-        @Override
-        public Flow.Publisher<DataChunk> write(
-                Single<? extends ByteArrayOutputStream> content,
-                GenericType<? extends ByteArrayOutputStream> type,
-                EntitySupport.WriterContext context) {
-            context.contentType(MediaType.APPLICATION_OCTET_STREAM);
-            return content.flatMap(new ByteArrayOutputStreamToChunks());
-        }
-
-        @Override
-        public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext messageBodyWriterContext) {
-            return PredicateResult.supports(ByteArrayOutputStream.class, type);
-        }
-
-        private static class ByteArrayOutputStreamToChunks implements Function<ByteArrayOutputStream, Flow.Publisher<DataChunk>> {
-            @Override
-            public Flow.Publisher<DataChunk> apply(ByteArrayOutputStream byteArrayOutputStream) {
-                return ContentWriters.writeBytes(byteArrayOutputStream.toByteArray(), false);
-            }
-        }
-    }
+    private static final Writer<ByteArrayOutputStream> BAOS_WRITER = writer(ByteArrayOutputStream.class,
+            (single, ctx) -> {
+                ctx.contentType(MediaType.APPLICATION_OCTET_STREAM);
+                return single.flatMap(baos -> ContentWriters.writeBytes(baos.toByteArray(), false));
+            });
 }

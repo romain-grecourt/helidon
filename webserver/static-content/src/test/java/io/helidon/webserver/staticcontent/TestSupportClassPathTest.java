@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.webserver.testsupport;
+package io.helidon.webserver.staticcontent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,25 +22,25 @@ import java.util.Optional;
 import java.util.StringTokenizer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.webserver.Routing;
-import io.helidon.webserver.StaticContentSupport;
 
+import io.helidon.webserver.testsupport.TestClient;
+import io.helidon.webserver.testsupport.TestResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Tests {@link io.helidon.webserver.ClassPathContentHandler}.
+ * Tests {@link io.helidon.webserver.testsupport} with {@link ClassPathContentHandler}.
  */
-public class ClassPathContentHandlerTest {
-    
+public class TestSupportClassPathTest {
+
     private String filterResponse(TestResponse response) throws InterruptedException, ExecutionException, TimeoutException {
-        String s = FileSystemContentHandlerTest.responseToString(response);
+        String s = TestSupportFileSystemTest.responseToString(response);
         if (s == null) {
             return s;
         }
@@ -53,7 +53,7 @@ public class ClassPathContentHandlerTest {
                 lines.add(line);
             }
         }
-        return lines.stream().collect(Collectors.joining("\n"));
+        return String.join("\n", lines);
     }
 
     @Test
@@ -107,9 +107,9 @@ public class ClassPathContentHandlerTest {
     @Test
     public void serveFromFilesWithWelcome() throws Exception {
         Routing routing = Routing.builder()
-                .register(StaticContentSupport.builder("content")
-                                              .welcomeFileName("index.txt"))
-                .build();
+                                 .register(StaticContentSupport.builder("content")
+                                                               .welcomeFileName("index.txt"))
+                                 .build();
         // /
         TestResponse response = TestClient.create(routing)
                 .path("/")
@@ -153,9 +153,9 @@ public class ClassPathContentHandlerTest {
     @Test
     public void serveFromJarWithWelcome() throws Exception {
         Routing routing = Routing.builder()
-                .register(StaticContentSupport.builder("/s-internal")
-                                  .welcomeFileName("example-a.txt"))
-                .build();
+                                 .register(StaticContentSupport.builder("/s-internal")
+                                                               .welcomeFileName("example-a.txt"))
+                                 .build();
         // /
         TestResponse response = TestClient.create(routing)
                 .path("/")
@@ -178,9 +178,9 @@ public class ClassPathContentHandlerTest {
 
         // another index
         routing = Routing.builder()
-                .register(StaticContentSupport.builder("/s-internal")
-                                  .welcomeFileName("example-b.txt"))
-                .build();
+                         .register(StaticContentSupport.builder("/s-internal")
+                                                       .welcomeFileName("example-b.txt"))
+                         .build();
         // /a/
         response = TestClient.create(routing)
                 .path("/a/")

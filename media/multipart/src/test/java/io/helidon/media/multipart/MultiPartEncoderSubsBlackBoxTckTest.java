@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ package io.helidon.media.multipart;
 
 import java.util.concurrent.Flow;
 
-import io.helidon.common.reactive.Multi;
-
 import org.reactivestreams.tck.TestEnvironment;
 import org.reactivestreams.tck.flow.FlowSubscriberBlackboxVerification;
 import org.testng.annotations.Test;
@@ -35,20 +33,20 @@ public class MultiPartEncoderSubsBlackBoxTckTest extends FlowSubscriberBlackboxV
     @Override
     public Flow.Subscriber<BodyPart> createFlowSubscriber() {
         MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
-        Multi.create(encoder).forEach(ch -> {});
+        encoder.ignoreElements();
         return encoder;
     }
 
     @Override
-    public WriteableBodyPart createElement(final int element) {
-        return WriteableBodyPart.builder()
-                .entity("part" + element)
-                .build();
+    public BodyPart createElement(final int element) {
+        return BodyPart.builder()
+                       .entity("part" + element)
+                       .build();
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec205_blackbox_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal() throws Exception {
+    public void required_spec205_blackbox_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal() {
         // not compliant
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package io.helidon.webserver;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -33,6 +35,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class TestHttpParseFineTuning {
 
+    private void staticContent(ServerRequest req, ServerResponse res) {
+        String filename = req.path().param("filename");
+        InputStream inputStream = this.getClass().getResourceAsStream("/static/" + filename);
+        if (inputStream == null) {
+            res.status(404).send();
+            return;
+        }
+        try {
+            res.send(inputStream.readAllBytes());
+        } catch (IOException ex) {
+            res.send(ex);
+        }
+    }
+
     @Test
     void testDefaults() {
         // default is 8Kb for headers
@@ -40,7 +56,7 @@ class TestHttpParseFineTuning {
         WebServer ws = WebServer.builder()
                 .host("localhost")
                 .routing(Routing.builder()
-                                 .register("/static", StaticContentSupport.create("/static"))
+                                 .get("/static/{filename}", this::staticContent)
                                  .any((req, res) -> res.send("any"))
                                  .build())
                 .build()
@@ -72,7 +88,7 @@ class TestHttpParseFineTuning {
         WebServer ws = WebServer.builder()
                 .host("localhost")
                 .routing(Routing.builder()
-                                 .register("/static", StaticContentSupport.create("/static"))
+                                .get("/static/{filename}", this::staticContent)
                                  .any((req, res) -> res.send("any"))
                                  .build())
                 .config(config)

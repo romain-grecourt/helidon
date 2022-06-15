@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.media.jsonb;
+package io.helidon.media.jackson;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -24,59 +24,54 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
-import jakarta.json.bind.Jsonb;
-
-import static io.helidon.media.jsonb.JsonbBodyWriter.ObjectToChunks;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Message body stream writer supporting object binding with JSON-B.
+ * {@link StreamWriter} implementation that supports object binding with Jackson.
  */
-class JsonbBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
+class JacksonStreamWriter implements StreamWriter<Object> {
 
     private static final byte[] ARRAY_JSON_END_BYTES = "]".getBytes(StandardCharsets.UTF_8);
     private static final byte[] ARRAY_JSON_BEGIN_BYTES = "[".getBytes(StandardCharsets.UTF_8);
     private static final byte[] COMMA_BYTES = ",".getBytes(StandardCharsets.UTF_8);
 
-    private final Jsonb jsonb;
+    private final ObjectMapper objectMapper;
 
-    private JsonbBodyStreamWriter(Jsonb jsonb) {
-        this.jsonb = Objects.requireNonNull(jsonb);
-    }
-
-    static JsonbBodyStreamWriter create(Jsonb jsonb) {
-        return new JsonbBodyStreamWriter(jsonb);
+    /**
+     * Create a new instance.
+     *
+     * @param objectMapper object mapper to use
+     */
+    JacksonStreamWriter(ObjectMapper objectMapper) {
+        this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         return !CharSequence.class.isAssignableFrom(type.rawType())
                 ? PredicateResult.COMPATIBLE
                 : PredicateResult.NOT_SUPPORTED;
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
-
+    public <U> Multi<DataChunk> write(Flow.Publisher<U> publisher, GenericType<U> type, WriterContext context) {
         MediaType contentType = context.findAccepted(MediaType.JSON_PREDICATE, MediaType.APPLICATION_JSON);
         context.contentType(contentType);
-
         AtomicBoolean first = new AtomicBoolean(true);
-
-        ObjectToChunks jsonToChunks = new ObjectToChunks(jsonb, context.charset());
-
         return Multi.create(publisher)
-                .flatMap(jsonToChunks)
-                .flatMap(it -> {
-                    if (first.getAndSet(false)) {
-                        // first record, do not prepend a comma
-                        return Multi.just(DataChunk.create(ARRAY_JSON_BEGIN_BYTES), it);
-                    } else {
-                        // any subsequent record starts with a comma
-                        return Multi.just(DataChunk.create(COMMA_BYTES), it);
-                    }
-                })
-                .onCompleteResume(DataChunk.create(ARRAY_JSON_END_BYTES));
+                    .flatMap(o -> JacksonWriter.write(objectMapper, o, context.charset()))
+                    .flatMap(it -> {
+                        if (first.getAndSet(false)) {
+                            // first record, do not prepend a comma
+                            return Multi.just(DataChunk.create(ARRAY_JSON_BEGIN_BYTES), it);
+                        } else {
+                            // any subsequent record starts with a comma
+                            return Multi.just(DataChunk.create(COMMA_BYTES), it);
+                        }
+                    })
+                    .onCompleteResume(DataChunk.create(ARRAY_JSON_END_BYTES));
     }
 }

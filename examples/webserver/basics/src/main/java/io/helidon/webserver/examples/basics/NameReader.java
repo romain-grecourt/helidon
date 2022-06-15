@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,8 @@ public class NameReader implements EntitySupport.Reader<Name> {
     }
 
     @Override
-    public <U extends Name> Single<U> read(Flow.Publisher<DataChunk> publisher, GenericType<U> type,
+    public <U extends Name> Single<U> read(Flow.Publisher<DataChunk> publisher,
+                                           GenericType<U> type,
                                            EntitySupport.ReaderContext context) {
         return (Single<U>) ContentReaders.readString(publisher, context.charset()).map(Name::new);
     }

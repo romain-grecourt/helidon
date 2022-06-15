@@ -87,23 +87,25 @@ final class ReaderContextImpl extends AbstractEntityContext<ReaderContextImpl> i
     }
 
     @Override
-    public <T> Single<T> unmarshall(Publisher<DataChunk> payload, GenericType<T> type) {
-        return unmarshall(payload, type, (p, t) -> findReader(t).read(p, t, this));
+    public <T> Single<T> unmarshall(Publisher<DataChunk> chunks, GenericType<T> type) {
+        return unmarshall(chunks, type, read(findReader(type)));
     }
 
     @Override
-    public <T> Single<T> unmarshall(Publisher<DataChunk> payload, Reader<T> reader, GenericType<T> type) {
-        return unmarshall(payload, type, (p, t) -> reader.read(p, t, this));
+    public <U, T extends U> Single<T> unmarshall(Publisher<DataChunk> chunks, Reader<U> reader, GenericType<T> type) {
+        return unmarshall(chunks, type, read(reader));
     }
 
     @Override
-    public <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, GenericType<T> type) {
-        return unmarshall(payload, type, (p, t) -> findStreamReader(t).read(p, t, this));
+    public <T> Multi<T> unmarshallStream(Publisher<DataChunk> chunks, GenericType<T> type) {
+        return unmarshall(chunks, type, readStream(findStreamReader(type)));
     }
 
     @Override
-    public <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, StreamReader<T> reader, GenericType<T> type) {
-        return unmarshall(payload, type, (p, t) -> reader.read(p, t, this));
+    public <U, T extends U> Multi<T> unmarshallStream(Publisher<DataChunk> chunks,
+                                                      StreamReader<U> reader,
+                                                      GenericType<T> type) {
+        return unmarshall(chunks, type, readStream(reader));
     }
 
     @Override
@@ -128,16 +130,27 @@ final class ReaderContextImpl extends AbstractEntityContext<ReaderContextImpl> i
         return new ReaderContextImpl(this, eventListener, headers, contentType);
     }
 
-    private interface R<T, U extends Publisher<T>> {
-        U read0(Publisher<DataChunk> p, GenericType<T> t);
+    // Adapter between Reader and StreamReader
+    private interface R<U, T extends U, P extends Publisher<T>> {
+        P read(Publisher<DataChunk> p, GenericType<T> t);
+    }
+
+    private <U, T extends U> R<U, T, Single<T>> read(Reader<U> reader) {
+        return (Publisher<DataChunk> p, GenericType<T> t) -> reader.read(p, t, this);
+    }
+
+    private <U, T extends U> R<U, T, Multi<T>> readStream(StreamReader<U> reader) {
+        return (Publisher<DataChunk> p, GenericType<T> t) -> reader.read(p, t, this);
     }
 
     @SuppressWarnings("unchecked")
-    private <T, U extends Publisher<T>> U unmarshall(Publisher<DataChunk> p, GenericType<T> t, R<T, U> r) {
+    private <T, U extends T, P extends Publisher<U>> P unmarshall(Publisher<DataChunk> p,
+                                                                  GenericType<U> t,
+                                                                  R<T, U, P> r) {
         try {
-            return p == null ? (U) Single.empty() : r.read0(applyFilters(p, t), t);
+            return (p == null) ? (P) Single.<U>empty() : r.read(applyFilters(p, t), t);
         } catch (Throwable ex) {
-            return (U) Single.<T>error(new IllegalStateException("Transformation failed!", ex));
+            return (P) Single.<T>error(new IllegalStateException("Transformation failed!", ex));
         }
     }
 
@@ -145,8 +158,8 @@ final class ReaderContextImpl extends AbstractEntityContext<ReaderContextImpl> i
     private <T> Reader<T> findReader(GenericType<T> type) {
         // Flow.Publisher - can only be supported by streaming media
         if (Publisher.class.isAssignableFrom(type.rawType())) {
-            throw new IllegalStateException("This method does not support unmarshalling of Flow.Publisher." +
-                    " Please use a stream unmarshalling method.");
+            throw new IllegalStateException("This method does not support unmarshalling of Flow.Publisher."
+                    + " Please use a stream unmarshalling method.");
         }
 
         Reader<T> reader = (Reader<T>) readers.select(type, this);

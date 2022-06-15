@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,11 +38,11 @@ public class MultiPartEncoderTckTest extends FlowPublisherVerification<DataChunk
     public Flow.Publisher<DataChunk> createFlowPublisher(final long l) {
         MultiPartEncoder encoder = MultiPartEncoder.create("boundary", MEDIA_CONTEXT.writerContext());
         Multi.create(LongStream.rangeClosed(1, l)
-                .mapToObj(i ->
-                        WriteableBodyPart.builder()
-                                .entity("part" + i)
-                                .build()
-                )).subscribe(encoder);
+                               .mapToObj(i ->
+                                       BodyPart.builder()
+                                               .entity("part" + i)
+                                               .build()
+                               )).subscribe(encoder);
         return encoder;
     }
 
@@ -58,49 +58,49 @@ public class MultiPartEncoderTckTest extends FlowPublisherVerification<DataChunk
 
     @Test(enabled = false)
     @Override
-    public void required_createPublisher3MustProduceAStreamOfExactly3Elements() throws Throwable {
+    public void required_createPublisher3MustProduceAStreamOfExactly3Elements() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_createPublisher1MustProduceAStreamOfExactly1Element() throws Throwable {
+    public void required_createPublisher1MustProduceAStreamOfExactly1Element() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec102_maySignalLessThanRequestedAndTerminateSubscription() throws Throwable {
+    public void required_spec102_maySignalLessThanRequestedAndTerminateSubscription() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec105_mustSignalOnCompleteWhenFiniteStreamTerminates() throws Throwable {
+    public void required_spec105_mustSignalOnCompleteWhenFiniteStreamTerminates() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec107_mustNotEmitFurtherSignalsOnceOnCompleteHasBeenSignalled() throws Throwable {
+    public void required_spec107_mustNotEmitFurtherSignalsOnceOnCompleteHasBeenSignalled() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue() throws Throwable {
+    public void required_spec317_mustSupportACumulativePendingElementCountUpToLongMaxValue() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void required_spec317_mustSupportAPendingElementCountUpToLongMaxValue() throws Throwable {
+    public void required_spec317_mustSupportAPendingElementCountUpToLongMaxValue() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 
     @Test(enabled = false)
     @Override
-    public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
+    public void stochastic_spec103_mustSignalOnMethodsSequentially() {
         // disabled because the encoder always emits one more item for the closing boundary
     }
 }

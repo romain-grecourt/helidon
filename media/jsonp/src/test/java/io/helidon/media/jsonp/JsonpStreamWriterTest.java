@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.reactive.Multi;
 import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -42,14 +43,14 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 /**
- * The JsonContentReaderTest.
+ * Tests {@link JsonpStreamWriter}.
  */
 public class JsonpStreamWriterTest {
+
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Map.of());
     private static final JsonReaderFactory JSON_PARSER = Json.createReaderFactory(Map.of());
-
-    private static final EntitySupport.WriterContext CONTEXT = EntitySupport.WriterContext.create(HashParameters.create());
-    private static final JsonpBodyStreamWriter WRITER = (JsonpBodyStreamWriter) JsonpSupport.streamWriter();
+    private static final WriterContext CONTEXT = WriterContext.create().createChild(null, HashParameters.create(), null);
+    private static final JsonpStreamWriter WRITER = (JsonpStreamWriter) JsonpSupport.streamWriter();
     private static final GenericType<JsonObject> JSON_OBJECT = GenericType.create(JsonObject.class);
     private static final GenericType<JsonArray> JSON_ARRAY = GenericType.create(JsonArray.class);
     private static final GenericType<JsonpStreamWriterTest> MY_TYPE = GenericType.create(JsonpStreamWriterTest.class);
@@ -58,14 +59,14 @@ public class JsonpStreamWriterTest {
     void testAcceptedTypes() {
         assertAll(
                 () -> assertThat("JsonObject accepted",
-                                 WRITER.accept(JSON_OBJECT, CONTEXT),
-                                 is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
+                        WRITER.accept(JSON_OBJECT, CONTEXT),
+                        is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
                 () -> assertThat("JsonArray accepted",
-                                 WRITER.accept(JSON_ARRAY, CONTEXT),
-                                 is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
+                        WRITER.accept(JSON_ARRAY, CONTEXT),
+                        is(EntitySupport.Operator.PredicateResult.SUPPORTED)),
                 () -> assertThat("Pojo not accepted",
-                                 WRITER.accept(MY_TYPE, CONTEXT),
-                                 is(EntitySupport.Operator.PredicateResult.NOT_SUPPORTED))
+                        WRITER.accept(MY_TYPE, CONTEXT),
+                        is(EntitySupport.Operator.PredicateResult.NOT_SUPPORTED))
         );
     }
 
@@ -115,31 +116,28 @@ public class JsonpStreamWriterTest {
             JsonObject object = array.getJsonObject(0);
             assertThat(object.getString("p"), is("val_" + i + "_" + 0));
         }
-
     }
 
     private static JsonArray[] createArray(int size) {
         JsonArray[] arrays = new JsonArray[size];
-
         for (int i = 0; i < size; i++) {
             JsonArrayBuilder arrayBuilder = JSON.createArrayBuilder();
             arrayBuilder.add(createObject(i, 0));
             arrays[i] = arrayBuilder.build();
         }
-
         return arrays;
     }
 
     private static JsonObject createObject(int arrayIndex, int objectIndex) {
         return JSON.createObjectBuilder()
-                .add("p", "val_" + arrayIndex + "_" + objectIndex)
-                .build();
+                   .add("p", "val_" + arrayIndex + "_" + objectIndex)
+                   .build();
     }
 
     private static JsonObject createObject(int index) {
         return JSON.createObjectBuilder()
-                .add("p", "val_" + index)
-                .build();
+                   .add("p", "val_" + index)
+                   .build();
     }
 
     private JsonArray writeJsonObjects(Multi<JsonObject> publisher) {
@@ -150,18 +148,18 @@ public class JsonpStreamWriterTest {
         return write(publisher, JSON_ARRAY);
     }
 
-    private JsonArray write(Multi<? extends JsonStructure> publisher, GenericType<? extends JsonStructure> type) {
+    private <U extends JsonStructure> JsonArray write(Multi<U> publisher, GenericType<U> type) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         WRITER.write(publisher, type, CONTEXT)
-                .map(DataChunk::bytes)
-                .forEach(it -> {
-                    try {
-                        baos.write(it);
-                    } catch (IOException ignored) {
-                        // ignored
-                    }
-                })
-                .await();
+              .map(DataChunk::bytes)
+              .forEach(it -> {
+                  try {
+                      baos.write(it);
+                  } catch (IOException ignored) {
+                      // ignored
+                  }
+              })
+              .await();
 
         return JSON_PARSER.createReader(new ByteArrayInputStream(baos.toByteArray())).readArray();
     }

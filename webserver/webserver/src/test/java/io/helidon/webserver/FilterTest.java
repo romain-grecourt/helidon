@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,22 @@
 
 package io.helidon.webserver;
 
-import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
-import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.webserver.utils.SocketHttpClient;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.media.common.EntitySupport.writer;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,6 +41,8 @@ public class FilterTest {
     private static final Logger LOGGER = Logger.getLogger(FilterTest.class.getName());
     private static WebServer webServer;
     private static final AtomicLong filterItemCounter = new AtomicLong(0);
+    private static final Writer<String> STRING_WRITER = writer(String.class,
+            s -> s.map(str -> DataChunk.create(str.getBytes())));
 
     /**
      * Start the Web Server
@@ -51,48 +52,39 @@ public class FilterTest {
      * @throws Exception in case of an error
      */
     private static void startServer(int port) {
+        Routing routing =
+                Routing.builder()
+                       .any((req, res) -> {
+                           res.headers().add(Http.Header.TRANSFER_ENCODING, "chunked");
+                           req.next();
+                       })
+                       .get("/dataChunkPublisher", (req, res) -> {
+                           res.registerFilter(pub ->
+                                   Multi.create(pub)
+                                        .peek(chunk -> filterItemCounter.incrementAndGet()));
+                           res.send(Single.just("Test").map(s -> DataChunk.create(s.getBytes())));
+                       })
+                       .get("/dataChunkPublisherNoFilters", (req, res) -> {
+                           res.registerFilter(pub ->
+                                   Multi.create(pub)
+                                        .peek(chunk -> filterItemCounter.incrementAndGet()));
+                           res.send(Single.just("Test")
+                                          .map(s -> DataChunk.create(s.getBytes())), false);
+                       })
+                       .get("/customWriter", (req, res) -> {
+                           res.registerFilter(pub ->
+                                   Multi.create(pub)
+                                        .peek(chunk -> filterItemCounter.incrementAndGet()));
+                           res.send(STRING_WRITER.marshall("Test"));
+                       }).build();
+
         webServer = WebServer.builder()
-                .host("localhost")
-                .port(port)
-                .routing(Routing.builder().any((req, res) -> {
-                    res.headers().add(Http.Header.TRANSFER_ENCODING, "chunked");
-                    req.next();
-                })
-                        .get("/dataChunkPublisher", (req, res) -> {
-                            res.registerFilter(pub -> Multi.create(pub)
-                                    .peek(chunk -> filterItemCounter.incrementAndGet()));
-                            res.send(Single.just("Test").map(s -> DataChunk.create(s.getBytes())));
-                        })
-                        .get("/dataChunkPublisherNoFilters", (req, res) -> {
-                            res.registerFilter(pub -> Multi.create(pub)
-                                    .peek(chunk -> filterItemCounter.incrementAndGet()));
-                            res.send(Single.just("Test").map(s -> DataChunk.create(s.getBytes())), false);
-                        })
-                        .get("/customWriter", (req, res) -> {
-                            res.registerFilter(pub -> Multi.create(pub)
-                                    .peek(chunk -> filterItemCounter.incrementAndGet()));
-                            res.send(ctx -> {
-                                return ctx.marshall(Single.just("Test"), new EntitySupport.Writer<>() {
-
-                                    @Override
-                                    public PredicateResult accept(final GenericType<?> type,
-                                                                  final EntitySupport.WriterContext context) {
-                                        return PredicateResult.SUPPORTED;
-                                    }
-
-                                    @Override
-                                    public Flow.Publisher<DataChunk> write(final Single<? extends String> single,
-                                                                           final GenericType<? extends String> type,
-                                                                           final EntitySupport.WriterContext context) {
-                                        return single.map(s -> DataChunk.create(s.getBytes()));
-                                    }
-                                }, GenericType.create(String.class));
-                            });
-                        })
-                        .build())
-                .build()
-                .start()
-                .await(10, TimeUnit.SECONDS);
+                             .host("localhost")
+                             .port(port)
+                             .routing(routing)
+                             .build()
+                             .start()
+                             .await(10, TimeUnit.SECONDS);
 
         LOGGER.info("Started server at: https://localhost:" + webServer.port());
     }
@@ -107,8 +99,8 @@ public class FilterTest {
     public static void close() throws Exception {
         if (webServer != null) {
             webServer.shutdown()
-                    .toCompletableFuture()
-                    .get(10, TimeUnit.SECONDS);
+                     .toCompletableFuture()
+                     .get(10, TimeUnit.SECONDS);
         }
     }
 

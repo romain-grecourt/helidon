@@ -39,7 +39,7 @@ import static io.helidon.media.multipart.MultiPartSupport.DEFAULT_BOUNDARY;
 /**
  * Reactive processor that encodes a stream of {@link BodyPart} into an HTTP payload.
  */
-public class MultiPartEncoder implements Processor<BodyPart, DataChunk> {
+public class MultiPartEncoder implements Processor<BodyPart, DataChunk>, Multi<DataChunk> {
 
     private final WriterContext context;
     private final String boundary;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -374,8 +374,8 @@ public interface WebServer {
         private DirectHandlers.Builder directHandlers = DirectHandlers.builder();
 
         private Builder() {
-            readerContext = EntitySupport.ReaderContext.create(DEFAULT_MEDIA_SUPPORT.readerContext());
-            writerContext = EntitySupport.WriterContext.create(DEFAULT_MEDIA_SUPPORT.writerContext());
+            readerContext = DEFAULT_MEDIA_SUPPORT.readerContext().createChild();
+            writerContext = DEFAULT_MEDIA_SUPPORT.writerContext().createChild();
         }
 
         /**
@@ -535,8 +535,8 @@ public interface WebServer {
         @Override
         public Builder mediaContext(MediaContext mediaContext) {
             Objects.requireNonNull(mediaContext);
-            this.readerContext = EntitySupport.ReaderContext.create(mediaContext.readerContext());
-            this.writerContext = EntitySupport.WriterContext.create(mediaContext.writerContext());
+            this.readerContext = mediaContext.readerContext().createChild();
+            this.writerContext = mediaContext.writerContext().createChild();
             return this;
         }
 

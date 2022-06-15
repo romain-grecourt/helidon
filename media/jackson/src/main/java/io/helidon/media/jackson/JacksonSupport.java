@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Objects;
 
 import io.helidon.common.LazyValue;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.Reader;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.common.MediaSupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,9 +32,10 @@ import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 /**
  * Support for Jackson integration.
- *
+ * <p>
  * For usage examples navigate to the {@link MediaSupport}.
  */
+@SuppressWarnings("unused")
 public final class JacksonSupport implements MediaSupport {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
@@ -41,18 +44,19 @@ public final class JacksonSupport implements MediaSupport {
             .registerModule(new JavaTimeModule());
     private static final LazyValue<JacksonSupport> DEFAULT = LazyValue.create(() -> new JacksonSupport(MAPPER));
 
-    private final JacksonBodyReader reader;
-    private final JacksonBodyWriter writer;
-    private final JacksonBodyStreamWriter streamWriter;
-    private final JacksonEsBodyStreamWriter esStreamWriter;
-    private final JacksonNdBodyStreamWriter ndStreamWriter;
+    private final JacksonReader reader;
+    private final JacksonWriter writer;
+    private final JacksonStreamWriter streamWriter;
+    private final JacksonEsStreamWriter esStreamWriter;
+    private final JacksonNdStreamWriter ndStreamWriter;
 
     private JacksonSupport(final ObjectMapper objectMapper) {
-        this.reader = JacksonBodyReader.create(objectMapper);
-        this.writer = JacksonBodyWriter.create(objectMapper);
-        this.streamWriter = JacksonBodyStreamWriter.create(objectMapper);
-        this.esStreamWriter = JacksonEsBodyStreamWriter.create(objectMapper);
-        this.ndStreamWriter = JacksonNdBodyStreamWriter.create(objectMapper);
+        Objects.requireNonNull(objectMapper);
+        this.reader = new JacksonReader(objectMapper);
+        this.writer = new JacksonWriter(objectMapper);
+        this.streamWriter = new JacksonStreamWriter(objectMapper);
+        this.esStreamWriter = new JacksonEsStreamWriter(objectMapper);
+        this.ndStreamWriter = new JacksonNdStreamWriter(objectMapper);
     }
 
     /**
@@ -71,16 +75,15 @@ public final class JacksonSupport implements MediaSupport {
      * @return a new {@link JacksonSupport}
      */
     public static JacksonSupport create(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
         return new JacksonSupport(objectMapper);
     }
 
     /**
      * Return a default Jackson entity reader.
      *
-     * @return default Jackson body writer instance
+     * @return default Jackson writer instance
      */
-    public static EntitySupport.Reader<Object> reader() {
+    public static Reader<Object> reader() {
         return DEFAULT.get().reader;
     }
 
@@ -88,19 +91,18 @@ public final class JacksonSupport implements MediaSupport {
      * Create a new Jackson entity reader based on {@link ObjectMapper} instance.
      *
      * @param objectMapper object mapper instance
-     * @return new Jackson body reader instance
+     * @return new Jackson reader instance
      */
-    public static EntitySupport.Reader<Object> reader(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
-        return JacksonBodyReader.create(objectMapper);
+    public static Reader<Object> reader(ObjectMapper objectMapper) {
+        return new JacksonReader(objectMapper);
     }
 
     /**
      * Return a default Jackson entity writer.
      *
-     * @return default Jackson body writer instance
+     * @return default Jackson writer instance
      */
-    public static EntitySupport.Writer<Object> writer() {
+    public static Writer<Object> writer() {
         return DEFAULT.get().writer;
     }
 
@@ -108,19 +110,18 @@ public final class JacksonSupport implements MediaSupport {
      * Create a new Jackson entity writer based on {@link ObjectMapper} instance.
      *
      * @param objectMapper object mapper instance
-     * @return new Jackson body writer instance
+     * @return new Jackson writer instance
      */
-    public static EntitySupport.Writer<Object> writer(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
-        return JacksonBodyWriter.create(objectMapper);
+    public static Writer<Object> writer(ObjectMapper objectMapper) {
+        return new JacksonWriter(objectMapper);
     }
 
     /**
      * Return a default Jackson entity stream writer.
      *
-     * @return default Jackson body writer stream instance
+     * @return default Jackson writer stream instance
      */
-    public static EntitySupport.StreamWriter<Object> streamWriter() {
+    public static StreamWriter<Object> streamWriter() {
         return DEFAULT.get().streamWriter;
     }
 
@@ -128,20 +129,19 @@ public final class JacksonSupport implements MediaSupport {
      * Create a new Jackson entity stream writer based on {@link ObjectMapper} instance.
      *
      * @param objectMapper object mapper instance
-     * @return new Jackson body stream writer instance
+     * @return new Jackson stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> streamWriter(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
-        return JacksonEsBodyStreamWriter.create(objectMapper);
+    public static StreamWriter<Object> streamWriter(ObjectMapper objectMapper) {
+        return new JacksonEsStreamWriter(objectMapper);
     }
 
     /**
      * Return a default Jackson entity event stream writer.
      * This writer is for {@link io.helidon.common.http.MediaType#TEXT_EVENT_STREAM} content type.
      *
-     * @return new Jackson body stream writer instance
+     * @return new Jackson stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> eventStreamWriter() {
+    public static StreamWriter<Object> eventStreamWriter() {
         return DEFAULT.get().esStreamWriter;
     }
 
@@ -150,20 +150,19 @@ public final class JacksonSupport implements MediaSupport {
      * This writer is for {@link io.helidon.common.http.MediaType#TEXT_EVENT_STREAM} content type.
      *
      * @param objectMapper object mapper instance
-     * @return new Jackson body stream writer instance
+     * @return new Jackson stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> eventStreamWriter(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
-        return JacksonEsBodyStreamWriter.create(objectMapper);
+    public static StreamWriter<Object> eventStreamWriter(ObjectMapper objectMapper) {
+        return new JacksonEsStreamWriter(objectMapper);
     }
 
     /**
      * Return a default Jackson entity event stream writer.
      * This writer is for {@link io.helidon.common.http.MediaType#APPLICATION_X_NDJSON} content type.
      *
-     * @return new Jackson body stream writer instance
+     * @return new Jackson stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter() {
+    public static StreamWriter<Object> ndJsonStreamWriter() {
         return DEFAULT.get().ndStreamWriter;
     }
 
@@ -172,11 +171,10 @@ public final class JacksonSupport implements MediaSupport {
      * This writer is for {@link io.helidon.common.http.MediaType#APPLICATION_X_NDJSON} content type.
      *
      * @param objectMapper object mapper instance
-     * @return new Jackson body stream writer instance
+     * @return new Jackson stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter(ObjectMapper objectMapper) {
-        Objects.requireNonNull(objectMapper);
-        return JacksonNdBodyStreamWriter.create(objectMapper);
+    public static StreamWriter<Object> ndJsonStreamWriter(ObjectMapper objectMapper) {
+        return new JacksonNdStreamWriter(objectMapper);
     }
 
     /**
@@ -184,7 +182,7 @@ public final class JacksonSupport implements MediaSupport {
      *
      * @return Jackson reader instance
      */
-    public EntitySupport.Reader<Object> readerInstance() {
+    public Reader<Object> readerInstance() {
         return reader;
     }
 
@@ -193,7 +191,7 @@ public final class JacksonSupport implements MediaSupport {
      *
      * @return Jackson writer instance
      */
-    public EntitySupport.Writer<Object> writerInstance() {
+    public Writer<Object> writerInstance() {
         return writer;
     }
 
@@ -202,7 +200,7 @@ public final class JacksonSupport implements MediaSupport {
      *
      * @return Jackson stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> streamWriterInstance() {
+    public StreamWriter<Object> streamWriterInstance() {
         return streamWriter;
     }
 
@@ -211,7 +209,7 @@ public final class JacksonSupport implements MediaSupport {
      *
      * @return Jackson event stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> eventStreamWriterInstance() {
+    public StreamWriter<Object> eventStreamWriterInstance() {
         return esStreamWriter;
     }
 
@@ -220,22 +218,22 @@ public final class JacksonSupport implements MediaSupport {
      *
      * @return Jackson event stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> ndJsonStreamWriterInstance() {
+    public StreamWriter<Object> ndJsonStreamWriterInstance() {
         return ndStreamWriter;
     }
 
     @Override
-    public Collection<EntitySupport.Reader<?>> readers() {
+    public Collection<Reader<?>> readers() {
         return List.of(reader);
     }
 
     @Override
-    public Collection<EntitySupport.Writer<?>> writers() {
+    public Collection<Writer<?>> writers() {
         return List.of(writer);
     }
 
     @Override
-    public Collection<EntitySupport.StreamWriter<?>> streamWriters() {
+    public Collection<StreamWriter<?>> streamWriters() {
         return List.of(streamWriter, ndStreamWriter, esStreamWriter);
     }
 }

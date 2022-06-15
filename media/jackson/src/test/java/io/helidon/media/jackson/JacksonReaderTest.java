@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import java.util.List;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -30,21 +29,21 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-public class JacksonBodyReaderTest {
+public class JacksonReaderTest {
 
     @Test
-    void testDeserializeWithGenerics() throws Exception {
-        JacksonBodyReader reader = JacksonBodyReader.create(new ObjectMapper());
+    void testDeserializeWithGenerics() {
+        JacksonReader reader = new JacksonReader(new ObjectMapper());
         DataChunk dataChunk = DataChunk.create("[{\"title\":\"The Stand\"}]".getBytes(StandardCharsets.UTF_8));
-        List<Book> books = reader.read(Single.just(dataChunk), new GenericType<List<Book>>() {
-        }, EntitySupport.ReaderContext.create())
-                .get();
+        GenericType<List<Book>> type = new GenericType<>() {};
+        List<Book> books = reader.read(Single.just(dataChunk), type, null).await();
 
         assertThat(books.size(), is(1));
         assertThat(books.get(0), notNullValue());
     }
 
     public static class Book {
+
         private String title;
 
         public String getTitle() {

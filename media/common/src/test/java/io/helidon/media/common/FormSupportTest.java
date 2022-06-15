@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.common.http;
+package io.helidon.media.common;
 
 import java.util.List;
 import java.util.Optional;
 
+import io.helidon.common.http.FormParams;
+
 import org.junit.jupiter.api.Test;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -27,7 +30,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class FormParamsTest {
+/**
+ * Tests {@link FormSupport}.
+ */
+class FormSupportTest {
 
     private static final String KEY1 = "key1";
     private static final String VAL1 = "value1";
@@ -36,20 +42,16 @@ public class FormParamsTest {
     private static final String VAL2_1 = "value2.1";
     private static final String VAL2_2 = "value2.2";
 
-
     @Test
     void testOneLineSingleAssignment() {
-        FormParams fp = FormParams.create(KEY1 + "=" + VAL1, MediaType.TEXT_PLAIN);
-
+        FormParams fp = FormSupport.readTextPlain(KEY1 + "=" + VAL1);
         checkKey1(fp);
     }
 
     @Test
     void testTwoDifferentAssignments() {
-        String assignments = String.format("%s=%s\n%s=%s\n%s=%s", KEY1, VAL1,
-                KEY2, VAL2_1, KEY2, VAL2_2);
-
-        FormParams fp = FormParams.create(assignments, MediaType.TEXT_PLAIN);
+        String data = String.format("%s=%s\n%s=%s\n%s=%s", KEY1, VAL1, KEY2, VAL2_1, KEY2, VAL2_2);
+        FormParams fp = FormSupport.readTextPlain(data);
 
         checkKey1(fp);
         checkKey2(fp);
@@ -57,9 +59,9 @@ public class FormParamsTest {
 
     @Test
     void testTwoDifferentAssignmentsURLEncoded() {
-        String assignments = String.format("%s=%s&%s=%s&%s=%s", KEY1, VAL1, KEY2, VAL2_1, KEY2, VAL2_2);
+        String data = String.format("%s=%s&%s=%s&%s=%s", KEY1, VAL1, KEY2, VAL2_1, KEY2, VAL2_2);
 
-        FormParams fp = FormParams.create(assignments, MediaType.APPLICATION_FORM_URLENCODED);
+        FormParams fp = FormSupport.readURLEncoded(data, UTF_8);
 
         checkKey1(fp);
         checkKey2(fp);
@@ -67,7 +69,7 @@ public class FormParamsTest {
 
     @Test
     void testAbsentKey() {
-        FormParams fp = FormParams.create(KEY1 + "=" + VAL1, MediaType.TEXT_PLAIN);
+        FormParams fp = FormSupport.readTextPlain(KEY1 + "=" + VAL1);
 
         Optional<String> shouldNotExist = fp.first(KEY2);
         assertThat(shouldNotExist.isPresent(), is(false));

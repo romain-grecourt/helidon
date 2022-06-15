@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ import java.util.logging.Logger;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.Entity;
+import io.helidon.media.common.EntitySupport.ReaderContext;
 import io.helidon.media.common.ReadableEntity;
 
 /**
@@ -39,7 +40,7 @@ final class WebClientResponseImpl implements WebClientResponse {
     private final Flow.Publisher<DataChunk> publisher;
     private final Http.ResponseStatus status;
     private final Http.Version version;
-    private final EntitySupport.ReaderContext readerContext;
+    private final ReaderContext readerContext;
     private final NettyClientHandler.ResponseCloser responseCloser;
     private final URI lastEndpointUri;
 
@@ -84,9 +85,8 @@ final class WebClientResponseImpl implements WebClientResponse {
 
     @Override
     public ReadableEntity content() {
-        EntitySupport.ReaderContext readerContext = this.readerContext.createChild(null, headers,
-                headers.contentType().orElse(null));
-        return ReadableEntity.create(publisher, readerContext);
+        ReaderContext readerContext = this.readerContext.createChild(null, headers, headers.contentType().orElse(null));
+        return Entity.create(publisher, readerContext);
     }
 
     @Override
@@ -105,7 +105,7 @@ final class WebClientResponseImpl implements WebClientResponse {
         private Http.ResponseStatus status = Http.Status.INTERNAL_SERVER_ERROR_500;
         private Http.Version version = Http.Version.V1_1;
         private NettyClientHandler.ResponseCloser responseCloser;
-        private EntitySupport.ReaderContext readerContext;
+        private ReaderContext readerContext;
         private URI lastEndpointUri;
 
         @Override
@@ -130,7 +130,7 @@ final class WebClientResponseImpl implements WebClientResponse {
          * @param readerContext message body reader
          * @return updated builder instance
          */
-        Builder readerContext(EntitySupport.ReaderContext readerContext) {
+        Builder readerContext(ReaderContext readerContext) {
             this.readerContext = readerContext;
             return this;
         }

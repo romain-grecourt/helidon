@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
+import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.EntitySupport.WriterContext;
 import io.helidon.media.common.spi.MediaSupportProvider;
 
 /**
@@ -34,10 +36,10 @@ import io.helidon.media.common.spi.MediaSupportProvider;
  */
 public final class MediaContext {
 
-    private final EntitySupport.ReaderContext readerContext;
-    private final EntitySupport.WriterContext writerContext;
+    private final ReaderContext readerContext;
+    private final WriterContext writerContext;
 
-    private MediaContext(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
+    private MediaContext(ReaderContext readerContext, WriterContext writerContext) {
         this.readerContext = readerContext;
         this.writerContext = writerContext;
     }
@@ -84,7 +86,7 @@ public final class MediaContext {
      *
      * @return the reader context
      */
-    public EntitySupport.ReaderContext readerContext() {
+    public ReaderContext readerContext() {
         return readerContext;
     }
 
@@ -93,7 +95,7 @@ public final class MediaContext {
      *
      * @return the writer context
      */
-    public EntitySupport.WriterContext writerContext() {
+    public WriterContext writerContext() {
         return writerContext;
     }
 
@@ -119,15 +121,15 @@ public final class MediaContext {
         private final List<EntitySupport.StreamWriter<?>> builderStreamWriter = new ArrayList<>();
         private final List<MediaSupport> mediaSupports = new ArrayList<>();
         private final Map<String, Map<String, String>> servicesConfig = new HashMap<>();
-        private final EntitySupport.ReaderContext readerContext;
-        private final EntitySupport.WriterContext writerContext;
+        private final ReaderContext readerContext;
+        private final WriterContext writerContext;
         private boolean registerDefaults = true;
         private boolean discoverServices = false;
         private boolean filterServices = false;
 
         private Builder() {
-            this.readerContext = EntitySupport.ReaderContext.create();
-            this.writerContext = EntitySupport.WriterContext.create();
+            this.readerContext = ReaderContext.create();
+            this.writerContext = WriterContext.create();
         }
 
         /**
@@ -273,7 +275,7 @@ public final class MediaContext {
             this.services.defaultPriority(LOADER_PRIORITY)
                     .addService(config -> new MediaSupport() {
                         @Override
-                        public void register(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
+                        public void register(ReaderContext readerContext, WriterContext writerContext) {
                             builderReaders.forEach(readerContext::registerReader);
                             builderStreamReaders.forEach(readerContext::registerReader);
                             builderWriters.forEach(writerContext::registerWriter);
@@ -282,7 +284,7 @@ public final class MediaContext {
                     }, BUILDER_PRIORITY)
                     .addService(config -> new MediaSupport() {
                         @Override
-                        public void register(EntitySupport.ReaderContext readerContext, EntitySupport.WriterContext writerContext) {
+                        public void register(ReaderContext readerContext, WriterContext writerContext) {
                             mediaSupports.forEach(it -> it.register(readerContext, writerContext));
                         }
                     }, BUILDER_PRIORITY)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package io.helidon.media.jsonp;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.helidon.common.GenericType;
@@ -26,68 +26,70 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonWriterFactory;
 
 /**
- * Message body writer for {@link JsonStructure} sub-classes (JSON-P).
+ * {@link StreamWriter} implementation support {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
  * This writer is for {@link MediaType#APPLICATION_X_NDJSON} media type.
  */
-class JsonpNdBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
+class JsonpNdStreamWriter implements StreamWriter<JsonStructure> {
 
     private static final byte[] NL = "\n".getBytes(StandardCharsets.UTF_8);
 
     private final JsonWriterFactory jsonWriterFactory;
 
-    JsonpNdBodyStreamWriter(JsonWriterFactory jsonWriterFactory) {
+    /**
+     * Create a new instance.
+     *
+     * @param jsonWriterFactory json factory
+     */
+    JsonpNdStreamWriter(JsonWriterFactory jsonWriterFactory) {
         this.jsonWriterFactory = Objects.requireNonNull(jsonWriterFactory);
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (!JsonStructure.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
         return context.contentType()
-                .or(() -> findMediaType(context))
-                .filter(mediaType -> mediaType.equals(MediaType.APPLICATION_X_NDJSON))
-                .map(it -> PredicateResult.COMPATIBLE)
-                .orElse(PredicateResult.NOT_SUPPORTED);
+                      .or(() -> findMediaType(context))
+                      .filter(mediaType -> mediaType.equals(MediaType.APPLICATION_X_NDJSON))
+                      .map(it -> PredicateResult.COMPATIBLE)
+                      .orElse(PredicateResult.NOT_SUPPORTED);
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<? extends JsonStructure> publisher,
-                                  GenericType<? extends JsonStructure> type,
-                                  EntitySupport.WriterContext context) {
+    public <U extends JsonStructure> Multi<DataChunk> write(Publisher<U> publisher,
+                                                            GenericType<U> type,
+                                                            WriterContext context) {
 
         MediaType contentType = context.contentType()
-                .or(() -> findMediaType(context))
-                .orElse(MediaType.APPLICATION_X_NDJSON);
+                                       .or(() -> findMediaType(context))
+                                       .orElse(MediaType.APPLICATION_X_NDJSON);
 
         context.contentType(contentType);
 
-        JsonStructureToChunks jsonToChunks = new JsonStructureToChunks(true,
-                                                                       jsonWriterFactory,
-                                                                       context.charset());
-
+        // we do not have join operator
         AtomicBoolean first = new AtomicBoolean(true);
 
         return Multi.create(publisher)
-                .map(jsonToChunks)
-                .flatMap(dataChunk -> {
-                    if (first.getAndSet(false)) {
-                        return Single.just(dataChunk);
-                    } else {
-                        return Multi.just(DataChunk.create(NL),
-                                          dataChunk);
-                    }
-                });
+                    .flatMap(o -> JsonpWriter.write(jsonWriterFactory, true, o, context.charset()))
+                    .flatMap(dataChunk -> {
+                        if (first.getAndSet(false)) {
+                            return Single.just(dataChunk);
+                        } else {
+                            return Multi.just(DataChunk.create(NL),
+                                    dataChunk);
+                        }
+                    });
     }
 
-    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
+    private Optional<MediaType> findMediaType(WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.APPLICATION_X_NDJSON));
         } catch (IllegalStateException ignore) {
@@ -95,5 +97,4 @@ class JsonpNdBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructur
             return Optional.empty();
         }
     }
-
 }

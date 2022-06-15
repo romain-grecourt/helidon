@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,20 +51,20 @@ public class JacksonProvider implements MediaSupportProvider {
 
     private void configureJackson(ObjectMapper objectMapper, Config config) {
         Stream.of(DeserializationFeature.values())
-                .forEach(df -> config.get(configName(df.name())).asBoolean()
-                        .ifPresent(val -> objectMapper.configure(df, val)));
+              .forEach(df -> config.get(configName(df.name())).asBoolean()
+                                   .ifPresent(val -> objectMapper.configure(df, val)));
         Stream.of(SerializationFeature.values())
-                .forEach(sf -> config.get(configName(sf.name())).asBoolean()
-                        .ifPresent(val -> objectMapper.configure(sf, val)));
+              .forEach(sf -> config.get(configName(sf.name())).asBoolean()
+                                   .ifPresent(val -> objectMapper.configure(sf, val)));
         Stream.of(JsonParser.Feature.values())
-                .forEach(jp -> config.get(configName(jp.name())).asBoolean()
-                        .ifPresent(val -> objectMapper.configure(jp, val)));
+              .forEach(jp -> config.get(configName(jp.name())).asBoolean()
+                                   .ifPresent(val -> objectMapper.configure(jp, val)));
         Stream.of(MapperFeature.values())
-                .forEach(mf -> config.get(configName(mf.name())).asBoolean()
-                        .ifPresent(val -> objectMapper.configure(mf, val)));
+              .forEach(mf -> config.get(configName(mf.name())).asBoolean()
+                                   .ifPresent(val -> objectMapper.configure(mf, val)));
         Stream.of(JsonGenerator.Feature.values())
-                .forEach(jgf -> config.get(configName(jgf.name())).asBoolean()
-                        .ifPresent(val -> objectMapper.configure(jgf, val)));
+              .forEach(jgf -> config.get(configName(jgf.name())).asBoolean()
+                                    .ifPresent(val -> objectMapper.configure(jgf, val)));
     }
 
     private String configName(String enumName) {

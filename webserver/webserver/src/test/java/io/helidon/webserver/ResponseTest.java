@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
@@ -35,6 +36,9 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
+import io.helidon.media.common.EntitySupport.SimpleWriter;
+import io.helidon.media.common.EntitySupport.Writer;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
@@ -79,7 +83,7 @@ public class ResponseTest {
     }
 
     @Test
-    public void headersAreCaseInsensitive() throws Exception {
+    public void headersAreCaseInsensitive() {
         StringBuffer sb = new StringBuffer();
         NoOpBareResponse br = new NoOpBareResponse(sb);
         Response response = new ResponseImpl(br);
@@ -92,19 +96,19 @@ public class ResponseTest {
         headers.add("header", "hv2");
         headers.add("heaDer", "hv3");
 
-        assertHeaders(headers, "Set-Cookie","cookie1=cookie-value-1", "cookie2=cookie-value-2");
-        assertHeadersToMap(headers, "Set-Cookie","cookie1=cookie-value-1", "cookie2=cookie-value-2");
-        assertHeaders(headers, "set-cookie","cookie1=cookie-value-1", "cookie2=cookie-value-2");
-        assertHeadersToMap(headers, "set-cookie","cookie1=cookie-value-1", "cookie2=cookie-value-2");
-        assertHeaders(headers, "SET-CooKIE","cookie1=cookie-value-1", "cookie2=cookie-value-2");
-        assertHeadersToMap(headers, "SET-CooKIE","cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeaders(headers, "Set-Cookie", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeadersToMap(headers, "Set-Cookie", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeaders(headers, "set-cookie", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeadersToMap(headers, "set-cookie", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeaders(headers, "SET-CooKIE", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
+        assertHeadersToMap(headers, "SET-CooKIE", "cookie1=cookie-value-1", "cookie2=cookie-value-2");
 
-        assertHeaders(headers, "header","hv1", "hv2", "hv3");
-        assertHeadersToMap(headers, "header","hv1", "hv2", "hv3");
-        assertHeaders(headers, "Header","hv1", "hv2", "hv3");
-        assertHeadersToMap(headers, "Header","hv1", "hv2", "hv3");
-        assertHeaders(headers, "HEADer","hv1", "hv2", "hv3");
-        assertHeadersToMap(headers, "HEADer","hv1", "hv2", "hv3");
+        assertHeaders(headers, "header", "hv1", "hv2", "hv3");
+        assertHeadersToMap(headers, "header", "hv1", "hv2", "hv3");
+        assertHeaders(headers, "Header", "hv1", "hv2", "hv3");
+        assertHeadersToMap(headers, "Header", "hv1", "hv2", "hv3");
+        assertHeaders(headers, "HEADer", "hv1", "hv2", "hv3");
+        assertHeadersToMap(headers, "HEADer", "hv1", "hv2", "hv3");
 
     }
 
@@ -124,15 +128,15 @@ public class ResponseTest {
     private static <T> void marshall(Response rsp, T entity)
             throws InterruptedException, ExecutionException, TimeoutException {
 
-        marshall(rsp, Single.just(entity), (Class<T>)entity.getClass());
+        marshall(rsp, Single.just(entity), (Class<T>) entity.getClass());
     }
 
     private static <T> void marshall(Response rsp, Single<T> entity, Class<T> clazz)
             throws InterruptedException, ExecutionException, TimeoutException {
 
         Multi.create(rsp.writerContext().marshall(entity, GenericType.create(clazz)))
-                .collectList()
-                .get(10, TimeUnit.SECONDS);
+             .collectList()
+             .get(10, TimeUnit.SECONDS);
     }
 
     @Test
@@ -143,29 +147,29 @@ public class ResponseTest {
 
         IllegalStateException e = assertThrows(IllegalStateException.class, () -> marshall(response, "foo"));
         assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
-                                       hasProperty("message", containsString("No writer found for type"))));
+                hasProperty("message", containsString("No writer found for type"))));
 
         e = assertThrows(IllegalStateException.class, () -> marshall(response, Duration.of(1, ChronoUnit.MINUTES)));
         assertThat(e.getCause(), allOf(instanceOf(IllegalStateException.class),
-                    hasProperty("message", containsString("No writer found for type"))));
+                hasProperty("message", containsString("No writer found for type"))));
 
-        response.registerWriter(CharSequence.class, o -> {
+        response.registerWriter(writer(CharSequence.class, o -> {
             sb.append("1");
             return Single.empty();
-        });
+        }));
 
         marshall(response, "foo");
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        marshall(response, Single.empty(),String.class);
+        marshall(response, Single.empty(), String.class);
         assertThat(sb.toString(), is(""));
 
         sb.setLength(0);
-        response.registerWriter(String.class, o -> {
+        response.registerWriter(writer(String.class, o -> {
             sb.append("2");
             return Single.empty();
-        });
+        }));
         marshall(response, "foo");
         assertThat(sb.toString(), is("2"));
 
@@ -174,10 +178,10 @@ public class ResponseTest {
         assertThat(sb.toString(), is("1"));
 
         sb.setLength(0);
-        response.registerWriter(Object.class, o -> {
+        response.registerWriter(writer(Object.class, o -> {
             sb.append("3");
             return Single.empty();
-        });
+        }));
         marshall(response, 1);
         assertThat(sb.toString(), is("3"));
     }
@@ -186,16 +190,15 @@ public class ResponseTest {
     public void writerByPredicate() throws Exception {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(o -> Integer.class.isAssignableFrom((Class<?>)o),
-                                o -> {
-                                    sb.append("1");
-                                    return Single.empty();
-                                });
-        response.registerWriter(o -> Long.class.isAssignableFrom((Class<?>)o),
-                                o -> {
-                                    sb.append("2");
-                                    return Single.empty();
-                                });
+        response.registerWriter(writer(Integer.class,
+                o -> {
+                    sb.append("1");
+                    return Single.empty();
+                }));
+        response.registerWriter(writer(Long.class, o -> {
+            sb.append("2");
+            return Single.empty();
+        }));
         marshall(response, 1);
         assertThat(sb.toString(), is("1"));
 
@@ -211,32 +214,32 @@ public class ResponseTest {
     @Test
     public void writerWithMediaType() throws Exception {
         StringBuilder sb = new StringBuilder();
-        Function<? extends CharSequence, Publisher<DataChunk>> stringWriter = o -> {
+        Function<Single<CharSequence>, Publisher<DataChunk>> stringWriter = o -> {
             sb.append("A");
             return Single.empty();
         };
-        Function<? extends Number, Publisher<DataChunk>> numberWriter = o -> {
+        Function<Single<Number>, Publisher<DataChunk>> numberWriter = o -> {
             sb.append("B");
             return Single.empty();
         };
         Response response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter);
-        response.registerWriter(Number.class, MediaType.APPLICATION_JSON, numberWriter);
+        response.registerWriter(writer(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter));
+        response.registerWriter(writer(Number.class, MediaType.APPLICATION_JSON, numberWriter));
         marshall(response, "foo");
         assertThat(sb.toString(), is("A"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.TEXT_PLAIN));
 
         sb.setLength(0);
         response = new ResponseImpl(new NoOpBareResponse(null));
-        response.registerWriter(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter);
-        response.registerWriter(Number.class, MediaType.APPLICATION_JSON, numberWriter);
+        response.registerWriter(writer(CharSequence.class, MediaType.TEXT_PLAIN, stringWriter));
+        response.registerWriter(writer(Number.class, MediaType.APPLICATION_JSON, numberWriter));
         marshall(response, 1);
         assertThat(sb.toString(), is("B"));
         assertThat(response.headers().contentType().orElse(null), is(MediaType.APPLICATION_JSON));
     }
 
     @Test
-    public void filters() throws Exception {
+    public void filters() {
         StringBuilder sb = new StringBuilder();
         Response response = new ResponseImpl(new NoOpBareResponse(null));
         response.registerFilter(p -> {
@@ -251,8 +254,43 @@ public class ResponseTest {
             sb.append("C");
             return p;
         });
-        assertThat(response.writerContext().applyFilters(Single.just(DataChunk.create("foo".getBytes()))), notNullValue());
+        assertThat(response.writerContext()
+                           .applyFilters(Single.just(DataChunk.create("foo".getBytes()))), notNullValue());
         assertThat(sb.toString(), is("ABC"));
+    }
+
+    private static <T> Writer<T> writer(Class<T> clazz,
+                                        Predicate<MediaType> predicate,
+                                        Function<Single<T>, Publisher<DataChunk>> function) {
+        return new Writer<>() {
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <U extends T> Publisher<DataChunk> write(Single<U> single,
+                                                            GenericType<U> type,
+                                                            WriterContext context) {
+                return function.apply((Single<T>) single);
+            }
+
+            @Override
+            public PredicateResult accept(GenericType<?> type, WriterContext context) {
+                if (clazz.isAssignableFrom(type.rawType())
+                        && predicate.test(context.contentType().orElse(null))) {
+                    return PredicateResult.SUPPORTED;
+                }
+                return PredicateResult.NOT_SUPPORTED;
+            }
+        };
+    }
+
+    private static <T> Writer<T> writer(Class<T> clazz, Function<Single<T>, Publisher<DataChunk>> function) {
+        return new SimpleWriter<>(clazz) {
+
+            @Override
+            public Publisher<DataChunk> write(Single<T> single, WriterContext context) {
+                return function.apply(single);
+            }
+        };
     }
 
     static class ResponseImpl extends Response {

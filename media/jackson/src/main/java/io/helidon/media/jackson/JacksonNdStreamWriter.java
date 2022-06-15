@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,59 +26,60 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Message body stream writer supporting object binding with Jackson.
+ * {@link StreamWriter} implementation supporting object binding with Jackson.
  * This writer is for {@link MediaType#APPLICATION_X_NDJSON} media type.
  */
-class JacksonNdBodyStreamWriter implements EntitySupport.StreamWriter<Object> {
+class JacksonNdStreamWriter implements StreamWriter<Object> {
 
     private static final byte[] NL = "\n".getBytes(StandardCharsets.UTF_8);
 
     private final ObjectMapper objectMapper;
 
-    private JacksonNdBodyStreamWriter(ObjectMapper objectMapper) {
+    /**
+     * Create a new instance.
+     *
+     * @param objectMapper object mapper to use
+     */
+    JacksonNdStreamWriter(ObjectMapper objectMapper) {
         this.objectMapper = Objects.requireNonNull(objectMapper);
     }
 
-    static JacksonNdBodyStreamWriter create(ObjectMapper objectMapper) {
-        return new JacksonNdBodyStreamWriter(objectMapper);
-    }
-
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
         return context.contentType()
-                .or(() -> findMediaType(context))
-                .filter(mediaType -> mediaType.equals(MediaType.APPLICATION_X_NDJSON))
-                .map(it -> PredicateResult.COMPATIBLE)
-                .orElse(PredicateResult.NOT_SUPPORTED);
+                      .or(() -> findMediaType(context))
+                      .filter(mediaType -> mediaType.equals(MediaType.APPLICATION_X_NDJSON))
+                      .map(it -> PredicateResult.COMPATIBLE)
+                      .orElse(PredicateResult.NOT_SUPPORTED);
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<?> publisher, GenericType<?> type, EntitySupport.WriterContext context) {
+    public <U> Multi<DataChunk> write(Flow.Publisher<U> publisher, GenericType<U> type, WriterContext context) {
         MediaType contentType = MediaType.APPLICATION_X_NDJSON;
         context.contentType(contentType);
-        JacksonBodyWriter.ObjectToChunks objectToChunks = new JacksonBodyWriter.ObjectToChunks(objectMapper, context.charset());
         AtomicBoolean first = new AtomicBoolean(true);
         return Multi.create(publisher)
-                .flatMap(objectToChunks)
-                .flatMap(dataChunk -> {
-                    if (first.getAndSet(false)) {
-                        return Single.just(dataChunk);
-                    } else {
-                        return Multi.just(DataChunk.create(NL),
-                                          dataChunk);
-                    }
-                });
+                    .flatMap(o -> JacksonWriter.write(objectMapper, o, context.charset()))
+                    .flatMap(dataChunk -> {
+                        if (first.getAndSet(false)) {
+                            return Single.just(dataChunk);
+                        } else {
+                            return Multi.just(DataChunk.create(NL),
+                                    dataChunk);
+                        }
+                    });
     }
 
-    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
+    private Optional<MediaType> findMediaType(WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.APPLICATION_X_NDJSON));
         } catch (IllegalStateException ignore) {

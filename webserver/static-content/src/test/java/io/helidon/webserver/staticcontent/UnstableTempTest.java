@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.webserver;
+package io.helidon.webserver.staticcontent;
 
 import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
@@ -40,8 +40,12 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
 
+import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.webserver.RequestHeaders;
+import io.helidon.webserver.ResponseHeaders;
+import io.helidon.webserver.ServerRequest;
+import io.helidon.webserver.ServerResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -74,13 +78,13 @@ public class UnstableTempTest {
 
         Path jar = createJar();
         URL jarUrl = new URL("jar:file:" + jar.toUri().getPath() + "!/" + FILE_NAME);
-        LOGGER.fine(() -> "Generated test jar url: " + jarUrl.toString());
-        ClassPathContentHandler classPathContentHandler =
-                new ClassPathContentHandler(null,
-                        new ContentTypeSelector(null),
-                        "/",
-                        tmpDir,
-                        Thread.currentThread().getContextClassLoader());
+        LOGGER.fine(() -> "Generated test jar url: " + jarUrl);
+
+        ClassPathContentHandler classPathContentHandler = new ClassPathContentHandler(
+                new StaticContentSupport.ClassPathBuilder()
+                        .classLoader(Thread.currentThread().getContextClassLoader())
+                        .tmpDir(tmpDir)
+                        .root("/"));
 
         // Empty headers
         RequestHeaders headers = mock(RequestHeaders.class);
@@ -91,7 +95,7 @@ public class UnstableTempTest {
         ServerRequest request = Mockito.mock(ServerRequest.class);
         Mockito.when(request.headers()).thenReturn(headers);
         ServerResponse response = Mockito.mock(ServerResponse.class);
-        EntitySupport.WriterContext ctx = EntitySupport.WriterContext.create(HashParameters.create());
+        WriterContext ctx = WriterContext.create().createChild(null, HashParameters.create(), null);
         ctx.registerFilter(dataChunkPub -> {
             String fileContent = new String(Single.create(dataChunkPub).await().bytes());
             contents.add(fileContent);
@@ -99,11 +103,11 @@ public class UnstableTempTest {
         });
         Mockito.when(response.headers()).thenReturn(responseHeaders);
         @SuppressWarnings("unchecked")
-        Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> anyFunction =
-            (Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>>) Mockito.any(Function.class);
+        Function<WriterContext, Flow.Publisher<DataChunk>> anyFunction =
+                (Function<WriterContext, Flow.Publisher<DataChunk>>) Mockito.any(Function.class);
         Mockito.when(response.send(anyFunction)).then(mock -> {
-            Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> argument = mock.getArgument(0);
-            return Single.create(argument.apply(ctx)).onError(throwable -> throwable.printStackTrace());
+            Function<WriterContext, Flow.Publisher<DataChunk>> argument = mock.getArgument(0);
+            return Single.create(argument.apply(ctx)).onError(Throwable::printStackTrace);
         });
 
         classPathContentHandler.sendJar(Http.Method.GET, FILE_NAME, jarUrl, request, response);
@@ -116,13 +120,13 @@ public class UnstableTempTest {
     private void deleteTmpFiles() throws IOException {
         LOGGER.fine(() -> "Cleaning temp dir: " + tmpDir);
         Files.list(tmpDir)
-                .forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException e) {
-                        fail("Unable to delete " + path.getFileName(), e);
-                    }
-                });
+             .forEach(path -> {
+                 try {
+                     Files.deleteIfExists(path);
+                 } catch (IOException e) {
+                     fail("Unable to delete " + path.getFileName(), e);
+                 }
+             });
     }
 
     private Path createJar() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Publisher;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
@@ -54,7 +53,7 @@ abstract class Response implements ServerResponse {
 
     private final CompletionStage<ServerResponse> completionStage;
     private final EntitySupport.WriterContext writerContext;
-    private final MessageBodyEventListener eventListener;
+    private final EntityEventListener eventListener;
 
     // Content related
     private final SendLockSupport sendLockSupport;
@@ -71,8 +70,8 @@ abstract class Response implements ServerResponse {
         this.headers = new HashResponseHeaders(bareResponse);
         this.completionStage = bareResponse.whenCompleted().thenApply(a -> this);
         this.sendLockSupport = new SendLockSupport();
-        this.eventListener = new MessageBodyEventListener();
-        this.writerContext = EntitySupport.WriterContext.create(webServer.writerContext(), eventListener, headers, acceptedTypes);
+        this.eventListener = new EntityEventListener();
+        this.writerContext = webServer.writerContext().createChild(eventListener, headers, acceptedTypes);
     }
 
     /**
@@ -131,7 +130,7 @@ abstract class Response implements ServerResponse {
 
     private Span createWriteSpan(GenericType<?> type) {
         Optional<SpanContext> parentSpan = spanContext();
-        if (!parentSpan.isPresent()) {
+        if (parentSpan.isEmpty()) {
             // we only trace write span if there is a parent
             // (parent is either webserver HTTP Request span, or inherited span
             // from request
@@ -253,40 +252,6 @@ abstract class Response implements ServerResponse {
     }
 
     @Override
-    public Response registerFilter(Function<Publisher<DataChunk>, Publisher<DataChunk>> function) {
-        writerContext.registerFilter(function::apply);
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Class<T> type, Function<T, Publisher<DataChunk>> function) {
-        writerContext.registerWriter(type, function);
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Predicate<?> accept, Function<T, Publisher<DataChunk>> function) {
-        writerContext.registerWriter(accept, function);
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Class<T> type, MediaType contentType,
-            Function<? extends T, Publisher<DataChunk>> function) {
-
-        writerContext.registerWriter(type, contentType, function);
-        return this;
-    }
-
-    @Override
-    public <T> Response registerWriter(Predicate<?> accept, MediaType contentType,
-            Function<T, Publisher<DataChunk>> function) {
-
-        writerContext.registerWriter(accept, contentType, function);
-        return this;
-    }
-
-    @Override
     public Single<ServerResponse> whenSent() {
         return Single.create(completionStage);
     }
@@ -296,7 +261,7 @@ abstract class Response implements ServerResponse {
         return bareResponse.requestId();
     }
 
-    private final class MessageBodyEventListener implements EntitySupport.Context.EventListener {
+    private final class EntityEventListener implements EntitySupport.Context.EventListener {
 
         private Span span;
         private volatile boolean sent;
@@ -333,6 +298,7 @@ abstract class Response implements ServerResponse {
                     span = createWriteSpan(type);
                     break;
                 case BEFORE_ONNEXT:
+                case BEFORE_ONCOMPLETE:
                     sendHeadersIfNeeded();
                     break;
                 case BEFORE_ONERROR:
@@ -342,9 +308,6 @@ abstract class Response implements ServerResponse {
                     if (span != null) {
                         span.finish();
                     }
-                    break;
-                case BEFORE_ONCOMPLETE:
-                    sendHeadersIfNeeded();
                     break;
                 case AFTER_ONCOMPLETE:
                     finish();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Objects;
 
 import io.helidon.common.LazyValue;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.EntitySupport.Reader;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.common.MediaSupport;
 
 import jakarta.json.bind.Jsonb;
@@ -28,28 +30,30 @@ import jakarta.json.bind.JsonbBuilder;
 
 /**
  * Support for JSON-B integration.
- *
+ * <p>
  * For usage examples navigate to the {@link MediaSupport}.
  *
  * @see Jsonb
  */
+@SuppressWarnings("unused")
 public final class JsonbSupport implements MediaSupport {
 
     private static final Jsonb JSON_B = JsonbBuilder.create();
     private static final LazyValue<JsonbSupport> DEFAULT = LazyValue.create(() -> new JsonbSupport(JSON_B));
 
-    private final JsonbBodyReader reader;
-    private final JsonbBodyWriter writer;
-    private final JsonbBodyStreamWriter streamWriter;
-    private final JsonbEsBodyStreamWriter esStreamWriter;
-    private final JsonbNdBodyStreamWriter ndStreamWriter;
+    private final JsonbReader reader;
+    private final JsonbWriter writer;
+    private final JsonbStreamWriter streamWriter;
+    private final JsonbEsStreamWriter esStreamWriter;
+    private final JsonbNdStreamWriter ndStreamWriter;
 
     private JsonbSupport(Jsonb jsonb) {
-        this.reader = JsonbBodyReader.create(jsonb);
-        this.writer = JsonbBodyWriter.create(jsonb);
-        this.streamWriter = JsonbBodyStreamWriter.create(jsonb);
-        this.esStreamWriter = JsonbEsBodyStreamWriter.create(jsonb);
-        this.ndStreamWriter = JsonbNdBodyStreamWriter.create(jsonb);
+        Objects.requireNonNull(jsonb, "jsonb is null!");
+        this.reader = new JsonbReader(jsonb);
+        this.writer = new JsonbWriter(jsonb);
+        this.streamWriter = new JsonbStreamWriter(jsonb);
+        this.esStreamWriter = new JsonbEsStreamWriter(jsonb);
+        this.ndStreamWriter = new JsonbNdStreamWriter(jsonb);
     }
 
     /**
@@ -65,23 +69,19 @@ public final class JsonbSupport implements MediaSupport {
      * Creates a new {@link JsonbSupport}.
      *
      * @param jsonb the JSON-B to use; must not be {@code null}
-     *
      * @return a new {@link JsonbSupport}
-     *
-     * @exception NullPointerException if {@code jsonb} is {@code
-     * null}
+     * @throws NullPointerException if {@code jsonb} is {@code null}
      */
     public static JsonbSupport create(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
         return new JsonbSupport(jsonb);
     }
 
     /**
      * Return a default JSON-B entity reader.
      *
-     * @return default JSON-B body writer instance
+     * @return default JSON-B writer instance
      */
-    public static EntitySupport.Reader<Object> reader() {
+    public static Reader<Object> reader() {
         return DEFAULT.get().reader;
     }
 
@@ -89,19 +89,18 @@ public final class JsonbSupport implements MediaSupport {
      * Create a new JSON-B entity reader based on {@link Jsonb} instance.
      *
      * @param jsonb jsonb instance
-     * @return new JSON-B body reader instance
+     * @return new JSON-B reader instance
      */
-    public static EntitySupport.Reader<Object> reader(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
-        return JsonbBodyReader.create(jsonb);
+    public static Reader<Object> reader(Jsonb jsonb) {
+        return new JsonbReader(jsonb);
     }
 
     /**
      * Return a default JSON-B entity writer.
      *
-     * @return default JSON-B body writer instance
+     * @return default JSON-B writer instance
      */
-    public static EntitySupport.Writer<Object> writer() {
+    public static Writer<Object> writer() {
         return DEFAULT.get().writer;
     }
 
@@ -109,19 +108,18 @@ public final class JsonbSupport implements MediaSupport {
      * Create a new JSON-B entity writer based on {@link Jsonb} instance.
      *
      * @param jsonb jsonb instance
-     * @return new JSON-B body writer instance
+     * @return new JSON-B writer instance
      */
-    public static EntitySupport.Writer<Object> writer(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
-        return JsonbBodyWriter.create(jsonb);
+    public static Writer<Object> writer(Jsonb jsonb) {
+        return new JsonbWriter(jsonb);
     }
 
     /**
      * Return a default JSON-B entity stream writer.
      *
-     * @return default JSON-B body writer stream instance
+     * @return default JSON-B writer stream instance
      */
-    public static EntitySupport.StreamWriter<Object> streamWriter() {
+    public static StreamWriter<Object> streamWriter() {
         return DEFAULT.get().streamWriter;
     }
 
@@ -129,20 +127,19 @@ public final class JsonbSupport implements MediaSupport {
      * Create a new JSON-B entity stream writer based on {@link Jsonb} instance.
      *
      * @param jsonb jsonb instance
-     * @return new JSON-B body stream writer instance
+     * @return new JSON-B stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> streamWriter(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
-        return JsonbBodyStreamWriter.create(jsonb);
+    public static StreamWriter<Object> streamWriter(Jsonb jsonb) {
+        return new JsonbStreamWriter(jsonb);
     }
 
     /**
      * Return a default JSON-B entity event stream writer.
      * This writer is for {@link io.helidon.common.http.MediaType#TEXT_EVENT_STREAM} content type.
      *
-     * @return new JSON-B body stream writer instance
+     * @return new JSON-B stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> eventStreamWriter() {
+    public static StreamWriter<Object> eventStreamWriter() {
         return DEFAULT.get().esStreamWriter;
     }
 
@@ -151,20 +148,19 @@ public final class JsonbSupport implements MediaSupport {
      * This writer is for {@link io.helidon.common.http.MediaType#TEXT_EVENT_STREAM} content type.
      *
      * @param jsonb jsonb instance
-     * @return new JSON-B body stream writer instance
+     * @return new JSON-B stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> eventStreamWriter(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
-        return JsonbEsBodyStreamWriter.create(jsonb);
+    public static StreamWriter<Object> eventStreamWriter(Jsonb jsonb) {
+        return new JsonbEsStreamWriter(jsonb);
     }
 
     /**
      * Return a default JSON-B entity event stream writer.
      * This writer is for {@link io.helidon.common.http.MediaType#APPLICATION_X_NDJSON} content type.
      *
-     * @return new JSON-B body stream writer instance
+     * @return new JSON-B stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter() {
+    public static StreamWriter<Object> ndJsonStreamWriter() {
         return DEFAULT.get().ndStreamWriter;
     }
 
@@ -173,11 +169,10 @@ public final class JsonbSupport implements MediaSupport {
      * This writer is for {@link io.helidon.common.http.MediaType#APPLICATION_X_NDJSON} content type.
      *
      * @param jsonb jsonb instance
-     * @return new JSON-B body stream writer instance
+     * @return new JSON-B stream writer instance
      */
-    public static EntitySupport.StreamWriter<Object> ndJsonStreamWriter(Jsonb jsonb) {
-        Objects.requireNonNull(jsonb);
-        return JsonbNdBodyStreamWriter.create(jsonb);
+    public static StreamWriter<Object> ndJsonStreamWriter(Jsonb jsonb) {
+        return new JsonbNdStreamWriter(jsonb);
     }
 
     /**
@@ -185,7 +180,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B reader instance
      */
-    public EntitySupport.Reader<Object> readerInstance() {
+    public Reader<Object> readerInstance() {
         return reader;
     }
 
@@ -194,7 +189,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B writer instance
      */
-    public EntitySupport.Writer<Object> writerInstance() {
+    public Writer<Object> writerInstance() {
         return writer;
     }
 
@@ -203,7 +198,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> streamWriterInstance() {
+    public StreamWriter<Object> streamWriterInstance() {
         return streamWriter;
     }
 
@@ -212,7 +207,7 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B event stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> eventStreamWriterInstance() {
+    public StreamWriter<Object> eventStreamWriterInstance() {
         return esStreamWriter;
     }
 
@@ -221,24 +216,23 @@ public final class JsonbSupport implements MediaSupport {
      *
      * @return JSON-B event stream writer instance
      */
-    public EntitySupport.StreamWriter<Object> ndJsonStreamWriterInstance() {
+    public StreamWriter<Object> ndJsonStreamWriterInstance() {
         return ndStreamWriter;
     }
 
 
     @Override
-    public Collection<EntitySupport.Reader<?>> readers() {
+    public Collection<Reader<?>> readers() {
         return List.of(reader);
     }
 
     @Override
-    public Collection<EntitySupport.Writer<?>> writers() {
+    public Collection<Writer<?>> writers() {
         return List.of(writer);
     }
 
     @Override
-    public Collection<EntitySupport.StreamWriter<?>> streamWriters() {
+    public Collection<StreamWriter<?>> streamWriters() {
         return List.of(streamWriter, ndStreamWriter, esStreamWriter);
     }
-
 }

@@ -25,9 +25,21 @@ import io.helidon.media.common.EntitySupport.ReaderContext;
 import io.helidon.media.common.EntitySupport.WriterContext;
 
 /**
- * Entity.
+ * Readable and writeable {@link Payload}.
  */
 public interface Entity extends ReadableEntity, WriteableEntity {
+
+    /**
+     * Create a new entity.
+     *
+     * @param publisher     data publisher
+     * @param readerContext initial reader context, may be {@code null}
+     * @return Entity
+     * @since 3.0.0
+     */
+    static Entity create(Publisher<DataChunk> publisher, ReaderContext readerContext) {
+        return new EntityImpl(ctx -> publisher, readerContext, null);
+    }
 
     /**
      * Create a new entity.

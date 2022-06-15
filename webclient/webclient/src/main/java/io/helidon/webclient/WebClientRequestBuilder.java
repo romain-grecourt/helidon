@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * String representation of request uri.
-     *
+     * <p>
      * Replaces baseUri defined in client builder.
      *
      * @param uri request uri
@@ -52,7 +52,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Request {@link URL}.
-     *
+     * <p>
      * Replaces baseUri defined in client builder.
      *
      * @param url request url
@@ -62,7 +62,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Request {@link URI}.
-     *
+     * <p>
      * Replaces baseUri defined in client builder.
      *
      * @param uri request uri
@@ -72,7 +72,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Disables final uri encoding.
-     *
+     * <p>
      * This setting skips all parts of {@link URI} from encoding.
      *
      * @return updated builder instance
@@ -115,7 +115,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Add a query parameter.
-     *
+     * <p>
      * Appends these query parameters to the query parameters defined in the request uri.
      *
      * @param name   query name
@@ -142,7 +142,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Function from parameter is executed on top of stored headers.
-     *
+     * <p>
      * This approach is here to allow as to add any header via specialized method while using builder pattern.
      *
      * @param headers function which adds headers
@@ -191,16 +191,16 @@ public interface WebClientRequestBuilder {
      * @see #headers()
      * @see Parameters#addAll(Parameters)
      */
-    default WebClientRequestBuilder addHeaders(Parameters parameters){
+    default WebClientRequestBuilder addHeaders(Parameters parameters) {
         headers().addAll(parameters);
         return this;
     }
 
     /**
      * Configure query parameters.
-     *
+     * <p>
      * Appends these query parameters to the query parameters defined in the request uri.
-     *
+     * <p>
      * Copy all query parameters from supplied {@link Parameters} instance.
      *
      * @param queryParams to copy
@@ -250,7 +250,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Fragment of the request.
-     *
+     * <p>
      * Replaces fragment defined in the request uri.
      *
      * @param fragment request fragment
@@ -260,7 +260,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Path of the request.
-     *
+     * <p>
      * Appends this path to the path defined in the request uri.
      *
      * @param path path
@@ -270,7 +270,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Path of the request.
-     *
+     * <p>
      * Appends this path to the path defined in the request uri.
      *
      * @param path path
@@ -320,7 +320,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and transforms response to requested type.
-     *
+     * <p>
      * When transformation is done the returned {@link CompletionStage} is notified.
      *
      * @param responseType requested response type
@@ -331,7 +331,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and transforms response to requested type.
-     *
+     * <p>
      * When transformation is done the returned {@link CompletionStage} is notified.
      *
      * @param responseType requested response type
@@ -342,7 +342,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request without expecting to receive any specific type.
-     *
+     * <p>
      * Response is not converted and returned {@link CompletionStage} is notified.
      *
      * @return request completion stage
@@ -351,7 +351,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request.
-     *
+     * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *
@@ -361,7 +361,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and submitting request entity using {@link Flow.Publisher}.
-     *
+     * <p>
      * When response is received, it is converted to response type and returned {@link CompletionStage}
      * is notified.
      *
@@ -374,7 +374,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and submitting request entity.
-     *
+     * <p>
      * When response is received, it is converted to response type and returned {@link CompletionStage}
      * is notified.
      *
@@ -387,7 +387,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and submitting request entity using {@link Flow.Publisher}.
-     *
+     * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *
@@ -398,7 +398,7 @@ public interface WebClientRequestBuilder {
 
     /**
      * Performs prepared request and submitting request entity.
-     *
+     * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *
@@ -415,6 +415,7 @@ public interface WebClientRequestBuilder {
      *
      * @param requestEntity request entity
      * @param entityType    entity type
+     * @param <T>           entity type
      * @return request completion stage
      */
     <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType);
@@ -429,9 +430,10 @@ public interface WebClientRequestBuilder {
      * @param entityType    entity type
      * @param responseType  requested response type
      * @param <T>           response type
+     * @param <U>           entity type
      * @return request completion stage
      */
-    <T> Single<T> submit(T requestEntity, GenericType<T> entityType, Class<T> responseType);
+    <T, U> Single<T> submit(U requestEntity, GenericType<U> entityType, Class<T> responseType);
 
     /**
      * Performs prepared request and submitting request entity stream.
@@ -443,6 +445,7 @@ public interface WebClientRequestBuilder {
      * @param entityType   class representing the entity type
      * @param responseType requested response type
      * @param <T>          response type
+     * @param <U>          entity type
      * @return request completion stage
      */
     <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType);
@@ -457,6 +460,7 @@ public interface WebClientRequestBuilder {
      * @param entityType   class representing the entity type
      * @param responseType requested response type
      * @param <T>          response type
+     * @param <U>          entity type
      * @return request completion stage
      */
     <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, GenericType<U> entityType, Class<T> responseType);
@@ -469,6 +473,7 @@ public interface WebClientRequestBuilder {
      *
      * @param entityStream request entity stream
      * @param entityType   class representing the entity type
+     * @param <T>          entity type
      * @return request completion stage
      */
     <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType);
@@ -481,13 +486,14 @@ public interface WebClientRequestBuilder {
      *
      * @param entityStream request entity stream
      * @param entityType   class representing the entity type
+     * @param <T>          entity type
      * @return request completion stage
      */
     <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType);
 
     /**
      * Performs prepared request and submitting request entity using a marshalling function.
-     *
+     * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *

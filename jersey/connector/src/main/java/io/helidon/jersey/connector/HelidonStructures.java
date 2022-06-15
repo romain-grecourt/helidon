@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 package io.helidon.jersey.connector;
 
 import java.io.InputStream;
@@ -28,6 +27,7 @@ import javax.net.ssl.SSLContext;
 
 import io.helidon.common.http.Headers;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.config.Config;
 import io.helidon.media.common.DefaultMediaSupport;
@@ -54,7 +54,7 @@ class HelidonStructures {
         return new ReadOnlyHeaders(data);
     }
 
-    static EntitySupport.Reader<InputStream> createInputStreamBodyReader() {
+    static EntitySupport.Reader<InputStream> createInputStreamReader() {
         return DefaultMediaSupport.inputStreamReader();
     }
 
@@ -87,7 +87,7 @@ class HelidonStructures {
     }
 
     static boolean hasEntity(WebClientResponse webClientResponse) {
-        final ReadOnlyParameters headers = webClientResponse.content().readerContext().headers();
+        final Parameters headers = webClientResponse.content().readerContext().headers();
         final Optional<String> contentLenth = headers.first(Http.Header.CONTENT_LENGTH);
         final Optional<String> encoding = headers.first(Http.Header.TRANSFER_ENCODING);
 

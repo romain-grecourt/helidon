@@ -15,15 +15,15 @@
  */
 package io.helidon.media.multipart;
 
-import io.helidon.common.http.Headers;
-import io.helidon.common.http.Http;
-import io.helidon.common.http.MediaType;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Supplier;
+
+import io.helidon.common.http.Headers;
+import io.helidon.common.http.Http;
+import io.helidon.common.http.MediaType;
 
 /**
  * Body part headers.
@@ -97,6 +97,7 @@ public interface BodyPartHeaders extends Headers {
 
     /**
      * Create a new builder.
+     *
      * @return builder
      */
     static Builder builder() {
@@ -229,7 +230,6 @@ public interface BodyPartHeaders extends Headers {
                 }
                 contentDisposition(builder.build());
             }
-
             return readOnly ? new ReadOnlyBodyPartHeaders(headers) : new HashBodyPartHeaders(headers);
         }
     }

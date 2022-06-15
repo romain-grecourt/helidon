@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,24 @@ package io.helidon.media.jsonp;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Publisher;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.jsonp.JsonpBodyWriter.JsonStructureToChunks;
+import io.helidon.media.common.EntitySupport.StreamWriter;
+import io.helidon.media.common.EntitySupport.WriterContext;
 
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonWriterFactory;
 
 /**
- * Message body writer for {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
- * This writer is for {@link MediaType#TEXT_EVENT_STREAM} with no element-type parameter or element-type="application/json".
+ * {@link StreamWriter} implementation support {@link jakarta.json.JsonStructure} sub-classes (JSON-P).
+ * This writer is for {@link MediaType#TEXT_EVENT_STREAM} with no element-type parameter or
+ * element-type="application/json".
  */
-class JsonpEsBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructure> {
+class JsonpEsStreamWriter implements StreamWriter<JsonStructure> {
 
     private static final MediaType TEXT_EVENT_STREAM_JSON = MediaType
             .parse("text/event-stream;element-type=\"application/json\"");
@@ -43,46 +44,48 @@ class JsonpEsBodyStreamWriter implements EntitySupport.StreamWriter<JsonStructur
 
     private final JsonWriterFactory jsonWriterFactory;
 
-    JsonpEsBodyStreamWriter(JsonWriterFactory jsonWriterFactory) {
+    /**
+     * Create a new instance.
+     *
+     * @param jsonWriterFactory json factory
+     */
+    JsonpEsStreamWriter(JsonWriterFactory jsonWriterFactory) {
         this.jsonWriterFactory = Objects.requireNonNull(jsonWriterFactory);
     }
 
     @Override
-    public PredicateResult accept(GenericType<?> type, EntitySupport.WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (!JsonStructure.class.isAssignableFrom(type.rawType())) {
             return PredicateResult.NOT_SUPPORTED;
         }
         return context.contentType()
-                .or(() -> findMediaType(context))
-                .filter(mediaType -> mediaType.equals(TEXT_EVENT_STREAM_JSON) || mediaType.equals(MediaType.TEXT_EVENT_STREAM))
-                .map(it -> PredicateResult.COMPATIBLE)
-                .orElse(PredicateResult.NOT_SUPPORTED);
+                      .or(() -> findMediaType(context))
+                      .filter(mediaType -> mediaType.equals(TEXT_EVENT_STREAM_JSON)
+                              || mediaType.equals(MediaType.TEXT_EVENT_STREAM))
+                      .map(it -> PredicateResult.COMPATIBLE)
+                      .orElse(PredicateResult.NOT_SUPPORTED);
     }
 
     @Override
-    public Multi<DataChunk> write(Flow.Publisher<? extends JsonStructure> publisher,
-                                  GenericType<? extends JsonStructure> type,
-                                  EntitySupport.WriterContext context) {
+    public <U extends JsonStructure> Multi<DataChunk> write(Publisher<U> publisher,
+                                                            GenericType<U> type,
+                                                            WriterContext context) {
 
         MediaType contentType = context.contentType()
-                .or(() -> findMediaType(context))
-                .orElse(TEXT_EVENT_STREAM_JSON);
+                                       .or(() -> findMediaType(context))
+                                       .orElse(TEXT_EVENT_STREAM_JSON);
 
         context.contentType(contentType);
 
-        JsonStructureToChunks jsonToChunks = new JsonStructureToChunks(true,
-                                                                       jsonWriterFactory,
-                                                                       context.charset());
-
         return Multi.create(publisher)
-                .map(jsonToChunks)
-                .flatMap(dataChunk -> Multi.just(
-                        DataChunk.create(DATA),
-                        dataChunk,
-                        DataChunk.create(NL)));
+                    .flatMap(o -> JsonpWriter.write(jsonWriterFactory, true, o, context.charset()))
+                    .flatMap(dataChunk -> Multi.just(
+                            DataChunk.create(DATA),
+                            dataChunk,
+                            DataChunk.create(NL)));
     }
 
-    private Optional<MediaType> findMediaType(EntitySupport.WriterContext context) {
+    private Optional<MediaType> findMediaType(WriterContext context) {
         try {
             return Optional.of(context.findAccepted(MediaType.JSON_EVENT_STREAM_PREDICATE, TEXT_EVENT_STREAM_JSON));
         } catch (IllegalStateException ignore) {
