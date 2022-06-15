@@ -193,14 +193,14 @@ public interface EntitySupport {
     }
 
     /**
-     * Entity operator that generates raw payload from objects.
+     * Entity operator that generates raw data from objects.
      *
      * @param <T> type or base type supported by the operator
      */
     interface Writer<T> extends Operator<WriterContext> {
 
         /**
-         * Generate raw payload from the specified object of the given type.
+         * Generate raw data from the specified object of the given type.
          *
          * @param single  object to be converted
          * @param type    requested type
@@ -221,22 +221,22 @@ public interface EntitySupport {
     }
 
     /**
-     * Entity operator that can convert raw payload into one object.
+     * Entity operator that can convert raw data into one object.
      *
      * @param <T> type or base type supported by the operator
      */
     interface Reader<T> extends Operator<ReaderContext> {
 
         /**
-         * Convert raw payload into a publisher of the given type.
+         * Convert raw data into a publisher of the given type.
          *
-         * @param publisher raw payload
-         * @param type      requested type
-         * @param context   reader context
-         * @param <U>       requested type
+         * @param chunks  raw data
+         * @param type    requested type
+         * @param context reader context
+         * @param <U>     requested type
          * @return Single
          */
-        <U extends T> Single<U> read(Publisher<DataChunk> publisher, GenericType<U> type, ReaderContext context);
+        <U extends T> Single<U> read(Publisher<DataChunk> chunks, GenericType<U> type, ReaderContext context);
 
         /**
          * Unmarshall the given content using this reader.
@@ -251,16 +251,16 @@ public interface EntitySupport {
     }
 
     /**
-     * Entity operator that can convert raw payload into a stream of objects.
+     * Entity operator that can convert raw data into a stream of objects.
      *
      * @param <T> type or base type supported by the operator
      */
     interface StreamReader<T> extends Operator<ReaderContext> {
 
         /**
-         * Convert raw payload into a publisher of the given type.
+         * Convert raw data into a publisher of the given type.
          *
-         * @param publisher raw payload
+         * @param publisher raw data
          * @param type      requested type
          * @param context   reader context
          * @param <U>       requested type
@@ -281,14 +281,14 @@ public interface EntitySupport {
     }
 
     /**
-     * Entity operator that generate raw payload from a stream of objects.
+     * Entity operator that generate raw data from a stream of objects.
      *
      * @param <T> type or base type supported by the operator
      */
     interface StreamWriter<T> extends Operator<WriterContext> {
 
         /**
-         * Generate raw payload from the specified stream of objects of the given type.
+         * Generate raw data from the specified stream of objects of the given type.
          *
          * @param publisher stream of objects to be converted
          * @param type      requested type
@@ -300,7 +300,7 @@ public interface EntitySupport {
         /**
          * Create a marshalling function that can be used to marshall the publisher with a context.
          *
-         * @param publisher objects to convert to raw payload
+         * @param publisher objects to convert to raw data
          * @param type      requested type
          * @return Marshalling function
          */
@@ -491,13 +491,13 @@ public interface EntitySupport {
         /**
          * Convert raw data to a stream of objects by selecting a stream reader that accepts the specified type.
          *
-         * @param <T>     entity type
-         * @param payload inbound payload
-         * @param type    actual representation of the entity type
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   actual representation of the entity type
          * @return publisher, never {@code null}
          */
-        default <T> Multi<T> unmarshallStream(Publisher<DataChunk> payload, Class<T> type) {
-            return unmarshallStream(payload, GenericType.create(type));
+        default <T> Multi<T> unmarshallStream(Publisher<DataChunk> chunks, Class<T> type) {
+            return unmarshallStream(chunks, GenericType.create(type));
         }
 
         /**
@@ -707,7 +707,7 @@ public interface EntitySupport {
                                                              GenericType<T> type);
 
         /**
-         * Get the inbound {@code Accept} header.
+         * Get the {@code Accept} header.
          *
          * @return List never {@code null}
          */
@@ -728,16 +728,16 @@ public interface EntitySupport {
         void contentLength(long contentLength);
 
         /**
-         * Find an media type in the inbound {@code Accept} header with the given predicate and default value.
+         * Find a media type in the {@code Accept} header with the given predicate and default value.
          * <ul>
          * <li>The default value is returned if the predicate matches a media type with a wildcard subtype.<li>
-         * <li>The default value if the current {@code Content-Type} header is not set and the inbound {@code Accept}
-         * header is empty or missing.</li>
+         * <li>The default value if the current {@code Content-Type} header is not set and the {@code Accept} header
+         * is empty or missing.</li>
          * <li>When the {@code Content-Type} header is set, if the predicate matches the {@code Content-Type} header value
          * is returned.</li>
          * </ul>
          *
-         * @param predicate   a predicate to match against the inbound {@code Accept} header
+         * @param predicate   a predicate to match against the {@code Accept} header
          * @param defaultType a default media type
          * @return MediaType, never {@code null}
          * @throws IllegalStateException if no media type can be returned
@@ -745,7 +745,7 @@ public interface EntitySupport {
         MediaType findAccepted(Predicate<MediaType> predicate, MediaType defaultType) throws IllegalStateException;
 
         /**
-         * Find the given media type in the inbound {@code Accept} header.
+         * Find the given media type in the {@code Accept} header.
          *
          * @param mediaType media type to search for
          * @return MediaType, never {@code null}
