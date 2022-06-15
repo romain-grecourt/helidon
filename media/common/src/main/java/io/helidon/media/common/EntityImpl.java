@@ -24,8 +24,8 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 /**
  * Implementation of {@link Entity}.
@@ -33,6 +33,8 @@ import io.helidon.media.common.EntitySupport.WriterContext;
 final class EntityImpl implements Entity {
 
     private final Function<WriterContext, Publisher<DataChunk>> factory;
+    private final Object readerContextLock = new Object();
+    private final Object writerContextLock = new Object();
     private ReaderContext readerContext;
     private WriterContext writerContext;
 
@@ -60,28 +62,36 @@ final class EntityImpl implements Entity {
     @Override
     public WriterContext writerContext() {
         if (writerContext == null) {
-            writerContext = WriterContext.create();
+            synchronized (writerContextLock) {
+                this.writerContext = MediaContext.WriterContext.create();
+            }
         }
         return writerContext;
     }
 
     @Override
     public WriteableEntity writerContext(WriterContext writerContext) {
-        this.writerContext = Objects.requireNonNull(writerContext, "writerContext is null!");
+        synchronized (writerContextLock) {
+            this.writerContext = Objects.requireNonNull(writerContext, "writerContext is null!");
+        }
         return this;
     }
 
     @Override
     public ReaderContext readerContext() {
         if (readerContext == null) {
-            readerContext = ReaderContext.create();
+            synchronized (readerContextLock) {
+                readerContext = MediaContext.ReaderContext.create();
+            }
         }
         return readerContext;
     }
 
     @Override
     public WriteableEntity readerContext(ReaderContext readerContext) {
-        this.readerContext = Objects.requireNonNull(readerContext, "readerContext is null!");
+        synchronized (readerContextLock) {
+            this.readerContext = Objects.requireNonNull(readerContext, "readerContext is null!");
+        }
         return this;
     }
 

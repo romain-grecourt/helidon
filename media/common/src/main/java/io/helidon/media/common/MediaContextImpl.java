@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,16 @@
 package io.helidon.media.common;
 
 /**
- * Builder of {@link MediaContext} that can be parented.
- *
- * @param <T> Type of the class which this builder support is added to.
+ * Default implementation of {@link MediaContext}.
  */
-public interface ParentingMediaContextBuilder<T> {
+record MediaContextImpl(ReaderContext readerContext, WriterContext writerContext) implements MediaContext {
 
     /**
-     * Sets the {@link MediaContext} parent and overrides the existing one.
-     * This method discards all previously registered readers and writers via builder.
+     * Create a new instance.
      *
-     * @param mediaContext media context
-     * @return updated instance of the builder
+     * @param readerContext reader context
+     * @param writerContext writer context
      */
-    T mediaContext(MediaContext mediaContext);
-
+    MediaContextImpl {
+    }
 }

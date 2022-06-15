@@ -15,41 +15,38 @@
  */
 package io.helidon.media.common;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.concurrent.Flow;
+import java.util.function.Predicate;
 
-import io.helidon.common.serviceloader.HelidonServiceLoader;
+import io.helidon.common.GenericType;
+import io.helidon.common.http.DataChunk;
+import io.helidon.common.http.MediaType;
+import io.helidon.common.http.Parameters;
+import io.helidon.common.reactive.Multi;
+import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.config.ConfigSources;
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.WriterContext;
-import io.helidon.media.common.spi.MediaSupportProvider;
 
 /**
  * Media support.
  */
-public final class MediaContext {
+@SuppressWarnings("unused")
+public interface MediaContext {
 
-    private final ReaderContext readerContext;
-    private final WriterContext writerContext;
-
-    private MediaContext(ReaderContext readerContext, WriterContext writerContext) {
-        this.readerContext = readerContext;
-        this.writerContext = writerContext;
-    }
+    /**
+     * The default (fallback) charset.
+     */
+    Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     /**
      * Create a new instance with default readers and writers registered to the contexts.
      *
      * @return instance with defaults
      */
-    public static MediaContext create() {
+    static MediaContext create() {
         return builder().build();
     }
 
@@ -59,7 +56,7 @@ public final class MediaContext {
      * @param config a {@link Config}
      * @return instance based on config
      */
-    public static MediaContext create(Config config) {
+    static MediaContext create(Config config) {
         return builder().config(config).build();
     }
 
@@ -68,17 +65,17 @@ public final class MediaContext {
      *
      * @return empty instance
      */
-    public static MediaContext empty() {
+    static MediaContext empty() {
         return builder().registerDefaults(false).build();
     }
 
     /**
-     * Create a new {@link Builder} instance.
+     * Create a new {@link MediaContextBuilder} instance.
      *
-     * @return a new {@link Builder}
+     * @return a new {@link MediaContextBuilder}
      */
-    public static Builder builder() {
-        return new Builder();
+    static MediaContextBuilder builder() {
+        return new MediaContextBuilder();
     }
 
     /**
@@ -86,244 +83,624 @@ public final class MediaContext {
      *
      * @return the reader context
      */
-    public ReaderContext readerContext() {
-        return readerContext;
-    }
+    ReaderContext readerContext();
 
     /**
      * Get the configured writer context.
      *
      * @return the writer context
      */
-    public WriterContext writerContext() {
-        return writerContext;
+    WriterContext writerContext();
+
+    /**
+     * Builder that supports adding readers, writers and media services to the builder.
+     *
+     * @param <T> Type of the class which this builder support is added to.
+     */
+    interface Builder<T> {
+
+        /**
+         * Adds new instance of {@link MediaSupport}.
+         *
+         * @param mediaSupport media support
+         * @return updated instance of the builder
+         */
+        T addMediaSupport(MediaSupport mediaSupport);
+
+        /**
+         * Registers new reader.
+         *
+         * @param reader reader
+         * @return updated instance of the builder
+         */
+        T addReader(MediaSupport.Reader<?> reader);
+
+        /**
+         * Registers new stream reader.
+         *
+         * @param streamReader stream reader
+         * @return updated instance of the builder
+         */
+        T addStreamReader(MediaSupport.StreamReader<?> streamReader);
+
+        /**
+         * Registers new writer.
+         *
+         * @param writer writer
+         * @return updated instance of the builder
+         */
+        T addWriter(MediaSupport.Writer<?> writer);
+
+        /**
+         * Registers new stream writer.
+         *
+         * @param streamWriter stream writer
+         * @return updated instance of the builder
+         */
+        T addStreamWriter(MediaSupport.StreamWriter<?> streamWriter);
+
     }
 
     /**
-     * MediaSupport builder.
+     * Builder of {@link MediaContext} that can be parented.
+     *
+     * @param <T> Type of the class which this builder support is added to.
      */
-    public static class Builder implements io.helidon.common.Builder<Builder, MediaContext>,
-                                           MediaContextBuilder<Builder> {
-
-        private static final String SERVICE_NAME = "name";
-        private static final String DEFAULTS_NAME = "defaults";
-
-        private static final int DEFAULTS_PRIORITY = 100;
-        private static final int BUILDER_PRIORITY = 200;
-        private static final int LOADER_PRIORITY = 300;
-
-        private final HelidonServiceLoader.Builder<MediaSupportProvider> services = HelidonServiceLoader
-                .builder(ServiceLoader.load(MediaSupportProvider.class));
-
-        private final List<EntitySupport.Reader<?>> builderReaders = new ArrayList<>();
-        private final List<EntitySupport.StreamReader<?>> builderStreamReaders = new ArrayList<>();
-        private final List<EntitySupport.Writer<?>> builderWriters = new ArrayList<>();
-        private final List<EntitySupport.StreamWriter<?>> builderStreamWriter = new ArrayList<>();
-        private final List<MediaSupport> mediaSupports = new ArrayList<>();
-        private final Map<String, Map<String, String>> servicesConfig = new HashMap<>();
-        private final ReaderContext readerContext;
-        private final WriterContext writerContext;
-        private boolean registerDefaults = true;
-        private boolean discoverServices = false;
-        private boolean filterServices = false;
-
-        private Builder() {
-            this.readerContext = ReaderContext.create();
-            this.writerContext = WriterContext.create();
-        }
+    interface ParentingBuilder<T> extends Builder<T> {
 
         /**
-         * Configures this {@link Builder} from the supplied {@link Config}.
-         * <table class="config">
-         * <caption>Optional configuration parameters</caption>
-         * <tr>
-         *     <th>key</th>
-         *     <th>description</th>
-         * </tr>
-         * <tr>
-         *     <td>register-defaults</td>
-         *     <td>Whether to register default reader and writers</td>
-         * </tr>
-         * <tr>
-         *     <td>discover-services</td>
-         *     <td>Whether to discover services via service loader</td>
-         * </tr>
-         * <tr>
-         *     <td>filter-services</td>
-         *     <td>Whether to filter discovered services by service names in services section</td>
-         * </tr>
-         * <tr>
-         *     <td>services</td>
-         *     <td>Configuration section for each service. Each entry has to have "name" parameter.
-         *     It is also used for filtering of loaded services.</td>
-         * </tr>
-         * </table>
+         * Sets the {@link MediaContext} parent and overrides the existing one.
+         * This method discards all previously registered readers and writers via builder.
          *
-         * @param config a {@link Config}
-         * @return this {@link Builder}
-         */
-        public Builder config(Config config) {
-            config.get("register-defaults").asBoolean().ifPresent(this::registerDefaults);
-            config.get("discover-services").asBoolean().ifPresent(this::discoverServices);
-            config.get("filter-services").asBoolean().ifPresent(this::filterServices);
-            config.get("services")
-                    .asNodeList()
-                    .ifPresent(it -> it.forEach(serviceConfig -> {
-                        String name = serviceConfig.get(SERVICE_NAME).asString().get();
-                        servicesConfig.merge(name,
-                                             serviceConfig.detach().asMap().orElseGet(Map::of),
-                                             (first, second) -> {
-                                                 HashMap<String, String> result = new HashMap<>(first);
-                                                 result.putAll(second);
-                                                 return result;
-                                             });
-                    }));
-            return this;
-        }
-
-        @Override
-        public Builder addMediaSupport(MediaSupport mediaSupport) {
-            Objects.requireNonNull(mediaSupport);
-            mediaSupports.add(mediaSupport);
-            return this;
-        }
-
-        /**
-         * Adds new instance of {@link MediaSupport} with specific priority.
-         *
-         * @param mediaSupport media support
-         * @param priority priority
+         * @param mediaContext media context
          * @return updated instance of the builder
          */
-        public Builder addMediaSupport(MediaSupport mediaSupport, int priority) {
-            Objects.requireNonNull(mediaSupport);
-            services.addService((config) -> mediaSupport, priority);
-            return this;
-        }
+        T mediaContext(MediaContext mediaContext);
+    }
 
-        @Override
-        public Builder addReader(EntitySupport.Reader<?> reader) {
-            builderReaders.add(reader);
-            return this;
-        }
+    /**
+     * Registry of {@link Filters}.
+     */
+    interface Filters {
 
-        @Override
-        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
-            builderStreamReaders.add(streamReader);
-            return this;
-        }
+        /**
+         * Registers a media filter.
+         * <p>
+         * The registered filters are applied to form a chain from the first registered to the last registered.
+         * The first evaluation of the function transforms the original publisher to a new publisher. Any subsequent
+         * evaluation receives the publisher transformed by the last previously registered filter.
+         *
+         * @param filter a function to map previously registered or original {@code Publisher} to the new one.
+         *               If returns  {@code null} then the result will be ignored.
+         * @return this instance of {@link Filters}
+         * @throws NullPointerException if the supplied {@code filter} is {@code null}
+         * @see OperatorContext#applyFilters(Flow.Publisher)
+         */
+        Filters registerFilter(MediaSupport.Filter filter);
+    }
 
-        @Override
-        public Builder addWriter(EntitySupport.Writer<?> writer) {
-            builderWriters.add(writer);
-            return this;
-        }
+    /**
+     * Registry of {@link MediaSupport.Writer}.
+     */
+    interface Writers {
 
-        @Override
-        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
-            builderStreamWriter.add(streamWriter);
-            return this;
+        /**
+         * Register a writer.
+         *
+         * @param writer writer to register
+         * @return Writers
+         */
+        Writers registerWriter(MediaSupport.Writer<?> writer);
+
+        /**
+         * Register a stream writer.
+         *
+         * @param writer writer to register
+         * @return Writers
+         */
+        Writers registerWriter(MediaSupport.StreamWriter<?> writer);
+    }
+
+    /**
+     * Registry of {@link MediaSupport.Reader}.
+     */
+    interface Readers {
+
+        /**
+         * Register a reader.
+         *
+         * @param reader reader to register
+         * @return Readers
+         */
+        Readers registerReader(MediaSupport.Reader<?> reader);
+
+        /**
+         * Register a stream reader.
+         *
+         * @param reader reader to register
+         * @return Readers
+         */
+        Readers registerReader(MediaSupport.StreamReader<?> reader);
+    }
+
+    /**
+     * Media operator context.
+     */
+    interface OperatorContext extends Filters {
+
+        /**
+         * Media content subscription event listener.
+         */
+        interface EventListener {
+
+            /**
+             * Handle a subscription event.
+             *
+             * @param event subscription event
+             */
+            void onEvent(Event event);
         }
 
         /**
-         * Whether defaults should be included.
-         *
-         * @param registerDefaults register defaults
-         * @return this builder instance
+         * Media content subscription event types.
          */
-        public Builder registerDefaults(boolean registerDefaults) {
-            this.registerDefaults = registerDefaults;
-            return this;
+        enum EventType {
+
+            /**
+             * Emitted before {@link Flow.Subscriber#onSubscribe(Flow.Subscription)}.
+             */
+            BEFORE_ONSUBSCRIBE,
+
+            /**
+             * Emitted after {@link Flow.Subscriber#onSubscribe(Flow.Subscription)}.
+             */
+            AFTER_ONSUBSCRIBE,
+
+            /**
+             * Emitted before {@link Flow.Subscriber#onNext(Object)}.
+             */
+            BEFORE_ONNEXT,
+
+            /**
+             * Emitted after {@link Flow.Subscriber#onNext(Object)}.
+             */
+            AFTER_ONNEXT,
+
+            /**
+             * Emitted before {@link Flow.Subscriber#onError(Throwable)}.
+             */
+            BEFORE_ONERROR,
+
+            /**
+             * Emitted after {@link Flow.Subscriber#onError(Throwable)}.
+             */
+            AFTER_ONERROR,
+
+            /**
+             * Emitted after {@link Flow.Subscriber#onComplete()}.
+             */
+            BEFORE_ONCOMPLETE,
+
+            /**
+             * Emitted after {@link Flow.Subscriber#onComplete()}.
+             */
+            AFTER_ONCOMPLETE
         }
 
         /**
-         * Whether Java Service Loader should be used to load {@link MediaSupportProvider}.
-         *
-         * @param discoverServices use Java Service Loader
-         * @return this builder instance
+         * Media content subscription event contract.
          */
-        public Builder discoverServices(boolean discoverServices) {
-            this.discoverServices = discoverServices;
-            return this;
-        }
+        interface Event {
 
-        /**
-         * Whether services loaded by Java Service Loader should be filtered.
-         * All of the services which should pass the filter, have to be present under {@code services} section of configuration.
-         *
-         * @param filterServices filter services
-         * @return this builder instance
-         */
-        public Builder filterServices(boolean filterServices) {
-            this.filterServices = filterServices;
-            return this;
-        }
+            /**
+             * Get the event type of this event.
+             *
+             * @return EVENT_TYPE
+             */
+            EventType eventType();
 
-        @Override
-        public MediaContext build() {
-            //Remove all service names from the obtained service configurations
-            servicesConfig.forEach((key, values) -> values.remove(SERVICE_NAME));
-            if (filterServices) {
-                this.services.useSystemServiceLoader(false);
-                filterServices();
-            } else {
-                this.services.useSystemServiceLoader(discoverServices);
+            /**
+             * Get the type requested for conversion.
+             *
+             * @return never {@code null}
+             */
+            Optional<GenericType<?>> entityType();
+
+            /**
+             * Fluent helper method to cast this event as a {@link ErrorEvent}. This
+             * is safe to do when {@link #eventType()} returns
+             * {@link EventType#BEFORE_ONERROR} or {@link EventType#AFTER_ONERROR}
+             *
+             * @return ErrorEvent
+             * @throws IllegalStateException if this event is not an instance of
+             *                               {@link ErrorEvent}
+             */
+            default ErrorEvent asErrorEvent() {
+                if (!(this instanceof OperatorContext.ErrorEvent)) {
+                    throw new IllegalStateException("Not an error event");
+                }
+                return (ErrorEvent) this;
             }
-            if (registerDefaults) {
-                this.services.addService(new DefaultsProvider(), DEFAULTS_PRIORITY);
-            }
-            this.services.defaultPriority(LOADER_PRIORITY)
-                    .addService(config -> new MediaSupport() {
-                        @Override
-                        public void register(ReaderContext readerContext, WriterContext writerContext) {
-                            builderReaders.forEach(readerContext::registerReader);
-                            builderStreamReaders.forEach(readerContext::registerReader);
-                            builderWriters.forEach(writerContext::registerWriter);
-                            builderStreamWriter.forEach(writerContext::registerWriter);
-                        }
-                    }, BUILDER_PRIORITY)
-                    .addService(config -> new MediaSupport() {
-                        @Override
-                        public void register(ReaderContext readerContext, WriterContext writerContext) {
-                            mediaSupports.forEach(it -> it.register(readerContext, writerContext));
-                        }
-                    }, BUILDER_PRIORITY)
-                    .build()
-                    .asList()
-                    .stream()
-                    .map(it -> it.create(Config.just(ConfigSources.create(servicesConfig.getOrDefault(it.configKey(),
-                                                                                                        new HashMap<>())))))
-                    .collect(Collectors.toCollection(LinkedList::new))
-                    .descendingIterator()
-                    .forEachRemaining(mediaService -> mediaService.register(readerContext, writerContext));
-
-            return new MediaContext(readerContext, writerContext);
         }
 
-        private void filterServices() {
-            HelidonServiceLoader.builder(ServiceLoader.load(MediaSupportProvider.class))
-                    .defaultPriority(LOADER_PRIORITY)
-                    .build()
-                    .asList()
-                    .stream()
-                    .filter(provider -> servicesConfig.containsKey(provider.configKey()))
-                    .forEach(services::addService);
+        /**
+         * A subscription event emitted for {@link EventType#BEFORE_ONERROR} or
+         * {@link EventType#AFTER_ONERROR} that carries the received error.
+         */
+        interface ErrorEvent extends Event {
+
+            /**
+             * Get the subscription error of this event.
+             *
+             * @return {@code Throwable}, never {@code null}
+             */
+            Throwable error();
+        }
+
+        /**
+         * Get the underlying headers.
+         *
+         * @return Parameters, never {@code null}
+         */
+        Parameters headers();
+
+        /**
+         * Derive the charset to use from the {@code Content-Type} header value or
+         * using a default charset as fallback.
+         *
+         * @return Charset, never {@code null}
+         * @throws IllegalStateException if an error occurs loading the charset
+         *                               specified by the {@code Content-Type} header value
+         */
+        Charset charset() throws IllegalStateException;
+
+        /**
+         * Get the {@code Content-Type} header.
+         *
+         * @return Optional, never {@code null}
+         */
+        Optional<MediaType> contentType();
+
+        /**
+         * Apply the filters on the given input publisher to form a publisher chain.
+         *
+         * @param publisher input publisher
+         * @return tail of the publisher chain
+         */
+        Flow.Publisher<DataChunk> applyFilters(Flow.Publisher<DataChunk> publisher);
+    }
+
+    /**
+     * Media reader context.
+     */
+    interface ReaderContext extends OperatorContext, Readers, Filters {
+
+        /**
+         * Convert raw data to an object by selecting a reader that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <T> Single<T> unmarshall(Flow.Publisher<DataChunk> chunks, Class<T> type) {
+            return unmarshall(chunks, GenericType.create(type));
+        }
+
+        /**
+         * Convert raw data to an object by using the specified reader and type.
+         *
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <U, T extends U> Single<T> unmarshall(Flow.Publisher<DataChunk> chunks,
+                                                      MediaSupport.Reader<U> reader,
+                                                      Class<T> type) {
+
+            return unmarshall(chunks, reader, GenericType.create(type));
+        }
+
+        /**
+         * Convert raw data to a stream of objects by selecting a stream reader that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <T> Multi<T> unmarshallStream(Flow.Publisher<DataChunk> chunks, Class<T> type) {
+            return unmarshallStream(chunks, GenericType.create(type));
+        }
+
+        /**
+         * Convert raw data to a stream of objects by using the specified reader and type.
+         *
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <U, T extends U> Multi<T> unmarshallStream(Flow.Publisher<DataChunk> chunks,
+                                                           MediaSupport.StreamReader<U> reader,
+                                                           Class<T> type) {
+
+            return unmarshallStream(chunks, reader, GenericType.create(type));
+        }
+
+        /**
+         * Convert raw data to an object by selecting a reader that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <T> Single<T> unmarshall(Flow.Publisher<DataChunk> chunks, GenericType<T> type);
+
+        /**
+         * Convert raw data to an object by using the specified reader and type.
+         *
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <U, T extends U> Single<T> unmarshall(Flow.Publisher<DataChunk> chunks,
+                                              MediaSupport.Reader<U> reader,
+                                              GenericType<T> type);
+
+        /**
+         * Convert raw data to a stream of objects by selecting a stream reader that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param chunks raw data
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <T> Multi<T> unmarshallStream(Flow.Publisher<DataChunk> chunks, GenericType<T> type);
+
+        /**
+         * Convert raw data to a stream of objects by using the specified reader and type.
+         *
+         * @param <T>    entity type
+         * @param <U>    reader type
+         * @param chunks raw data
+         * @param reader specific reader
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <U, T extends U> Multi<T> unmarshallStream(Flow.Publisher<DataChunk> chunks,
+                                                   MediaSupport.StreamReader<U> reader,
+                                                   GenericType<T> type);
+
+        /**
+         * Get the {@code Content-Type} header.
+         *
+         * @return Optional, never {@code null}
+         */
+        Optional<MediaType> contentType();
+
+        /**
+         * Create a new child context.
+         *
+         * @param eventListener event listener, may be {@code null}
+         * @param headers       headers, must not be {@code null}
+         * @param contentType   content-type, may be {@code null}
+         * @return new context
+         */
+        ReaderContext createChild(EventListener eventListener, Parameters headers, MediaType contentType);
+
+        /**
+         * Create a new child context.
+         *
+         * @return new context
+         */
+        default ReaderContext createChild() {
+            return createChild(null, null, null);
+        }
+
+        /**
+         * Create a new reader context.
+         *
+         * @return reader context
+         */
+        static ReaderContext create() {
+            return new ReaderContextImpl(null, null, null, null);
         }
     }
 
-    private static final class DefaultsProvider implements MediaSupportProvider {
+    /**
+     * Writer context.
+     */
+    interface WriterContext extends OperatorContext, Writers, Filters {
 
-        @Override
-        public String configKey() {
-            return Builder.DEFAULTS_NAME;
+        /**
+         * Convert an object into raw data by selecting a writer that accepts the specified type and current context.
+         *
+         * @param <T>    entity type
+         * @param single entity publisher
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <T> Flow.Publisher<DataChunk> marshall(Single<T> single, Class<T> type) {
+            return marshall(single, GenericType.create(type));
         }
 
-        @Override
-        public MediaSupport create(Config config) {
-            return DefaultMediaSupport.builder()
-                    .config(config)
-                    .build();
+        /**
+         * Convert an object into raw data by selecting a writer with the specified type.
+         *
+         * @param <T>    entity type
+         * @param <U>    writer type
+         * @param single entity publisher
+         * @param writer specific writer
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <U, T extends U> Flow.Publisher<DataChunk> marshall(Single<T> single,
+                                                                    MediaSupport.Writer<U> writer,
+                                                                    Class<T> type) {
+
+            return marshall(single, writer, GenericType.create(type));
+        }
+
+        /**
+         * Convert an object into raw data by selecting a stream writer that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param single entity publisher
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        default <T> Flow.Publisher<DataChunk> marshallStream(Flow.Publisher<T> single, Class<T> type) {
+            return marshallStream(single, GenericType.create(type));
+        }
+
+        /**
+         * Convert a stream of objects into raw data by selecting a stream writer with the specified type.
+         *
+         * @param <T>       entity type
+         * @param <U>       writer type
+         * @param publisher entity publisher
+         * @param writer    specific writer
+         * @param type      entity type
+         * @return publisher, never {@code null}
+         */
+        default <U, T extends U> Flow.Publisher<DataChunk> marshallStream(Flow.Publisher<T> publisher,
+                                                                          MediaSupport.StreamWriter<U> writer,
+                                                                          Class<T> type) {
+
+            return marshallStream(publisher, writer, GenericType.create(type));
+        }
+
+        /**
+         * Convert a stream of objects into raw data by selecting a stream writer that accepts the specified type.
+         *
+         * @param <T>       entity type
+         * @param publisher entity publisher
+         * @param type      entity type
+         * @return publisher, never {@code null}
+         */
+        <T> Flow.Publisher<DataChunk> marshallStream(Flow.Publisher<T> publisher, GenericType<T> type);
+
+        /**
+         * Convert an object into raw data by selecting a writer that accepts the specified type.
+         *
+         * @param <T>    entity type
+         * @param single entity publisher
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <T> Flow.Publisher<DataChunk> marshall(Single<T> single, GenericType<T> type);
+
+        /**
+         * Convert an object into raw data by selecting a writer with the specified type.
+         *
+         * @param <T>    entity type
+         * @param <U>    writer type
+         * @param single entity publisher
+         * @param writer specific writer
+         * @param type   entity type
+         * @return publisher, never {@code null}
+         */
+        <U, T extends U> Flow.Publisher<DataChunk> marshall(Single<T> single,
+                                                            MediaSupport.Writer<U> writer,
+                                                            GenericType<T> type);
+
+        /**
+         * Convert a stream of objects into raw data by selecting a stream writer with the specified type.
+         *
+         * @param <T>       entity type
+         * @param <U>       writer type
+         * @param publisher entity publisher
+         * @param writer    specific writer
+         * @param type      entity type
+         * @return publisher, never {@code null}
+         */
+        <U, T extends U> Flow.Publisher<DataChunk> marshallStream(Flow.Publisher<T> publisher,
+                                                                  MediaSupport.StreamWriter<U> writer,
+                                                                  GenericType<T> type);
+
+        /**
+         * Get the {@code Accept} header.
+         *
+         * @return List never {@code null}
+         */
+        List<MediaType> acceptedTypes();
+
+        /**
+         * Set the {@code Content-Type} header value in the underlying headers if not present.
+         *
+         * @param contentType {@code Content-Type} value to set, must not be {@code null}
+         */
+        void contentType(MediaType contentType);
+
+        /**
+         * Set the {@code Content-Length} header value in the underlying headers if not present.
+         *
+         * @param contentLength {@code Content-Length} value to set, must be a positive value
+         */
+        void contentLength(long contentLength);
+
+        /**
+         * Find a media type in the {@code Accept} header with the given predicate and default value.
+         * <ul>
+         * <li>The default value is returned if the predicate matches a media type with a wildcard subtype.<li>
+         * <li>The default value if the current {@code Content-Type} header is not set and the {@code Accept} header
+         * is empty or missing.</li>
+         * <li>When the {@code Content-Type} header is set, if the predicate matches the {@code Content-Type} header
+         * value is returned.</li>
+         * </ul>
+         *
+         * @param predicate   a predicate to match against the {@code Accept} header
+         * @param defaultType a default media type
+         * @return MediaType, never {@code null}
+         * @throws IllegalStateException if no media type can be returned
+         */
+        MediaType findAccepted(Predicate<MediaType> predicate, MediaType defaultType) throws IllegalStateException;
+
+        /**
+         * Find the given media type in the {@code Accept} header.
+         *
+         * @param mediaType media type to search for
+         * @return MediaType, never {@code null}
+         * @throws IllegalStateException if the media type is not found
+         */
+        MediaType findAccepted(MediaType mediaType) throws IllegalStateException;
+
+        /**
+         * Create a new child context.
+         *
+         * @param eventListener event listener, may be {@code null}
+         * @param headers       headers, must not be {@code null}
+         * @param acceptedTypes accepted types, may be {@code null}
+         * @return new context
+         */
+        WriterContext createChild(EventListener eventListener, Parameters headers, List<MediaType> acceptedTypes);
+
+        /**
+         * Create a new child context.
+         *
+         * @return new context
+         */
+        default WriterContext createChild() {
+            return createChild(null, null, null);
+        }
+
+        /**
+         * Create a new writer context.
+         *
+         * @return writer context
+         */
+        static WriterContext create() {
+            return new WriterContextImpl(null, null, null, null);
         }
     }
-
 }

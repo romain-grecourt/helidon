@@ -39,8 +39,8 @@ import io.helidon.common.reactive.Single;
 import io.opentracing.SpanContext;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.common.EntitySupport.PredicateResult.supports;
-import static io.helidon.media.common.EntitySupport.writer;
+import static io.helidon.media.common.MediaSupport.PredicateResult.supports;
+import static io.helidon.media.common.MediaSupport.writer;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;

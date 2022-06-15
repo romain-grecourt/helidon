@@ -27,7 +27,8 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaSupport;
 
 /**
  * Represents HTTP Response.
@@ -40,7 +41,7 @@ import io.helidon.media.common.EntitySupport;
  * <p>
  * Response content (body/payload) can be constructed using {@link #send(Object) send(...)} methods.
  */
-public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Writers {
+public interface ServerResponse extends MediaContext.Filters, MediaContext.Writers {
 
     /**
      * Declares common groups of {@code Cache-Control} settings.
@@ -177,7 +178,7 @@ public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Wri
      *
      * @return MessageBodyWriterContext
      */
-    EntitySupport.WriterContext writerContext();
+    MediaContext.WriterContext writerContext();
 
     /**
      * Send a {@link Throwable} and close the response.
@@ -194,7 +195,7 @@ public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Wri
      * Send a message and close the response.
      *
      * <h4>Marshalling</h4>
-     * Data are marshaled using default or {@link #registerWriter(EntitySupport.Writer)} {@code writer} to the format
+     * Data are marshaled using default or {@link #registerWriter(MediaSupport.Writer)} {@code writer} to the format
      * of {@link ByteBuffer} {@link Publisher Publisher}. The last registered compatible writer is used.
      * <p>
      * Default writers supports:
@@ -270,7 +271,7 @@ public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Wri
      * @param function marshalling function
      * @return a completion stage of the response - completed when response is transferred
      */
-    Single<ServerResponse> send(Function<EntitySupport.WriterContext, Publisher<DataChunk>> function);
+    Single<ServerResponse> send(Function<MediaContext.WriterContext, Publisher<DataChunk>> function);
 
     /**
      * Sends an empty response. Do nothing if response was already send.
@@ -280,13 +281,13 @@ public interface ServerResponse extends EntitySupport.Filters, EntitySupport.Wri
     Single<ServerResponse> send();
 
     @Override
-    ServerResponse registerFilter(EntitySupport.Filter filter);
+    ServerResponse registerFilter(MediaSupport.Filter filter);
 
     @Override
-    ServerResponse registerWriter(EntitySupport.Writer<?> writer);
+    ServerResponse registerWriter(MediaSupport.Writer<?> writer);
 
     @Override
-    ServerResponse registerWriter(EntitySupport.StreamWriter<?> writer);
+    ServerResponse registerWriter(MediaSupport.StreamWriter<?> writer);
 
     /**
      * Completion stage is completed when response is completed.

@@ -41,7 +41,8 @@ import io.helidon.common.http.HashParameters;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
 
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
+import io.helidon.media.common.MediaContext;
 import io.helidon.webserver.RequestHeaders;
 import io.helidon.webserver.ResponseHeaders;
 import io.helidon.webserver.ServerRequest;
@@ -95,7 +96,7 @@ public class UnstableTempTest {
         ServerRequest request = Mockito.mock(ServerRequest.class);
         Mockito.when(request.headers()).thenReturn(headers);
         ServerResponse response = Mockito.mock(ServerResponse.class);
-        WriterContext ctx = WriterContext.create().createChild(null, HashParameters.create(), null);
+        WriterContext ctx = MediaContext.WriterContext.create().createChild(null, HashParameters.create(), null);
         ctx.registerFilter(dataChunkPub -> {
             String fileContent = new String(Single.create(dataChunkPub).await().bytes());
             contents.add(fileContent);

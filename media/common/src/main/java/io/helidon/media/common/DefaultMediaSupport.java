@@ -33,17 +33,13 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.RetrySchema;
 import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.media.common.EntitySupport.PredicateResult;
-import io.helidon.media.common.EntitySupport.Reader;
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.StreamWriter;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 import static io.helidon.common.reactive.IoMulti.DEFAULT_RETRY_SCHEMA;
-import static io.helidon.media.common.EntitySupport.reader;
-import static io.helidon.media.common.EntitySupport.streamWriter;
-import static io.helidon.media.common.EntitySupport.writer;
+import static io.helidon.media.common.MediaSupport.reader;
+import static io.helidon.media.common.MediaSupport.streamWriter;
+import static io.helidon.media.common.MediaSupport.writer;
 
 /**
  * MediaSupport that provides the default readers and writers.

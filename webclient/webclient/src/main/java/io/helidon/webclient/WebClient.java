@@ -30,11 +30,8 @@ import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.config.Config;
-import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.ParentingMediaContextBuilder;
 import io.helidon.webclient.spi.WebClientService;
 import io.helidon.webclient.spi.WebClientServiceProvider;
 
@@ -140,8 +137,7 @@ public interface WebClient {
      * Fluent API builder for {@link io.helidon.webclient.WebClient}.
      */
     final class Builder implements io.helidon.common.Builder<Builder, WebClient>,
-                                   ParentingMediaContextBuilder<Builder>,
-                                   MediaContextBuilder<Builder> {
+                                   MediaContext.ParentingBuilder<Builder> {
 
         private final WebClientConfiguration.Builder<?, ?> configuration = NettyClient.SHARED_CONFIGURATION.derive();
         private final HelidonServiceLoader.Builder<WebClientServiceProvider> services = HelidonServiceLoader
@@ -214,25 +210,25 @@ public interface WebClient {
         }
 
         @Override
-        public Builder addReader(EntitySupport.Reader<?> reader) {
+        public Builder addReader(MediaSupport.Reader<?> reader) {
             configuration.addReader(reader);
             return this;
         }
 
         @Override
-        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
+        public Builder addStreamReader(MediaSupport.StreamReader<?> streamReader) {
             configuration.addStreamReader(streamReader);
             return this;
         }
 
         @Override
-        public Builder addWriter(EntitySupport.Writer<?> writer) {
+        public Builder addWriter(MediaSupport.Writer<?> writer) {
             configuration.addWriter(writer);
             return this;
         }
 
         @Override
-        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
+        public Builder addStreamWriter(MediaSupport.StreamWriter<?> streamWriter) {
             configuration.addStreamWriter(streamWriter);
             return this;
         }

@@ -30,7 +30,8 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.SubscriptionHelper;
 import io.helidon.media.common.Entity;
-import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
 import io.helidon.media.common.ReadableEntity;
 import io.helidon.media.multipart.VirtualBuffer.BufferEntry;
 
@@ -94,7 +95,7 @@ public class MultiPartDecoder implements Processor<DataChunk, BodyPart>, Multi<B
      * @see ReaderContext#create()
      */
     public static MultiPartDecoder create(String boundary) {
-        return new MultiPartDecoder(boundary, ReaderContext.create());
+        return new MultiPartDecoder(boundary, MediaContext.ReaderContext.create());
     }
 
     @Override

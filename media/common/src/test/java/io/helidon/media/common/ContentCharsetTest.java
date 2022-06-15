@@ -21,7 +21,7 @@ import java.nio.charset.UnsupportedCharsetException;
 
 import io.helidon.common.http.MediaType;
 
-import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -56,13 +56,13 @@ public class ContentCharsetTest {
     @Test
     public void nonexistentCharset() {
         assertThat(readerContext("application/json").charset(),
-                is(equalTo(EntitySupport.DEFAULT_CHARSET)));
+                is(equalTo(MediaContext.DEFAULT_CHARSET)));
     }
 
     @Test
     public void missingContentType() {
         assertThat(readerContext(null).charset(),
-                is(equalTo(EntitySupport.DEFAULT_CHARSET)));
+                is(equalTo(MediaContext.DEFAULT_CHARSET)));
     }
 
     /**
@@ -73,6 +73,6 @@ public class ContentCharsetTest {
      */
     private ReaderContext readerContext(String contentTypeValue) {
         MediaType contentType = contentTypeValue != null ? MediaType.parse(contentTypeValue) : null;
-        return ReaderContext.create().createChild(null, null, contentType);
+        return MediaContext.ReaderContext.create().createChild(null, null, contentType);
     }
 }

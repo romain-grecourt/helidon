@@ -25,15 +25,15 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import io.helidon.common.GenericType;
-import io.helidon.media.common.EntitySupport.Context;
-import io.helidon.media.common.EntitySupport.Operator;
+import io.helidon.media.common.MediaContext.OperatorContext;
+import io.helidon.media.common.MediaSupport.OperatorPredicate;
 
 /**
- * Thread-safe hierarchical registry of entity operators.
+ * Thread-safe hierarchical registry of media operators.
  *
  * @param <T> operator type
  */
-final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, AutoCloseable {
+final class OperatorRegistry<T extends OperatorPredicate<?>> implements Iterable<T>, AutoCloseable {
 
     private final LinkedList<T> operators;
     private final ReadWriteLock lock;
@@ -62,7 +62,7 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
     /**
      * Register the specified operator at the last position.
      *
-     * @param operator operation to register
+     * @param operator operator to register
      */
     void registerLast(T operator) {
         register(operator, false);
@@ -71,7 +71,7 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
     /**
      * Register the specified operator at the first position.
      *
-     * @param operator operation to register
+     * @param operator operator to register
      */
     void registerFirst(T operator) {
         register(operator, true);
@@ -92,14 +92,14 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
     }
 
     /**
-     * Select an operator using {@link Operator#accept}.
+     * Select an operator using {@link OperatorPredicate#accept}.
      *
      * @param type    the type representation
      * @param context the context
      * @return operator, or {@code null} or no operator was found
      */
     @SuppressWarnings("unchecked")
-    <U extends Operator<V>, V extends Context> T select(GenericType<?> type, V context) {
+    <U extends OperatorPredicate<V>, V extends OperatorContext> T select(GenericType<?> type, V context) {
         Objects.requireNonNull(type, "type is null!");
         Objects.requireNonNull(context, "context is null!");
         T assignableOperator = null;
@@ -109,10 +109,10 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
             try {
                 current.lock.readLock().lock();
                 for (T operator : current.operators) {
-                    EntitySupport.PredicateResult accept = ((U) operator).accept(type, context);
-                    if (accept == EntitySupport.PredicateResult.COMPATIBLE && assignableOperator == null) {
+                    MediaSupport.PredicateResult accept = ((U) operator).accept(type, context);
+                    if (accept == MediaSupport.PredicateResult.COMPATIBLE && assignableOperator == null) {
                         assignableOperator = operator;
-                    } else if (accept == EntitySupport.PredicateResult.SUPPORTED) {
+                    } else if (accept == MediaSupport.PredicateResult.SUPPORTED) {
                         return operator;
                     }
                 }
@@ -136,7 +136,7 @@ final class OperatorRegistry<T extends Operator<?>> implements Iterable<T>, Auto
         }
     }
 
-    private static final class ParentedIterator<T extends Operator<?>> implements Iterator<T> {
+    private static final class ParentedIterator<T extends OperatorPredicate<?>> implements Iterator<T> {
 
         private final Iterator<T> iterator;
         private final Lock readLock;

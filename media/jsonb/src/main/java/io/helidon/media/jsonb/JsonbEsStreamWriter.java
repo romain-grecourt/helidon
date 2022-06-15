@@ -24,9 +24,9 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.common.EntitySupport.StreamWriter;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
+import io.helidon.media.common.MediaSupport.PredicateResult;
+import io.helidon.media.common.MediaSupport.StreamWriter;
 
 import jakarta.json.bind.Jsonb;
 
@@ -53,15 +53,15 @@ class JsonbEsStreamWriter implements StreamWriter<Object> {
     }
 
     @Override
-    public EntitySupport.PredicateResult accept(GenericType<?> type, WriterContext context) {
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
         if (CharSequence.class.isAssignableFrom(type.rawType())) {
-            return EntitySupport.PredicateResult.NOT_SUPPORTED;
+            return PredicateResult.NOT_SUPPORTED;
         }
         return context.contentType()
                 .or(() -> findMediaType(context))
                 .filter(mediaType -> mediaType.equals(TEXT_EVENT_STREAM_JSON) || mediaType.equals(MediaType.TEXT_EVENT_STREAM))
-                .map(it -> EntitySupport.PredicateResult.COMPATIBLE)
-                .orElse(EntitySupport.PredicateResult.NOT_SUPPORTED);
+                .map(it -> PredicateResult.COMPATIBLE)
+                .orElse(PredicateResult.NOT_SUPPORTED);
     }
 
     @Override

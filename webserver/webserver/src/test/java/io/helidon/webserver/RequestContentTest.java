@@ -37,13 +37,14 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.EntitySupport.PredicateResult;
 import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaSupport;
+import io.helidon.media.common.MediaSupport.PredicateResult;
 import io.helidon.webserver.utils.TestUtils;
 
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.common.EntitySupport.reader;
+import static io.helidon.media.common.MediaSupport.reader;
 import static io.helidon.webserver.utils.TestUtils.requestChunkAsString;
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -61,17 +62,6 @@ import static org.mockito.Mockito.mock;
  * The RequestContentTest.
  */
 public class RequestContentTest {
-
-    private static Request requestTestStub(Publisher<DataChunk> flux) {
-        BareRequest bareRequestMock = mock(BareRequest.class);
-        doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
-        doReturn(flux).when(bareRequestMock).bodyPublisher();
-        WebServer webServer = mock(WebServer.class);
-        MediaContext mediaContext = MediaContext.create();
-        doReturn(mediaContext.readerContext()).when(webServer).readerContext();
-        doReturn(mediaContext.writerContext()).when(webServer).writerContext();
-        return new RequestTestStub(bareRequestMock, webServer);
-    }
 
     @Test
     public void directSubscriptionTest() {
@@ -103,8 +93,8 @@ public class RequestContentTest {
         assertThat(sb.toString(), is("apply_filter-FIRST-SECOND-THIRD-"));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
+    @SuppressWarnings("unchecked")
     public void multiThreadingFilterAndReaderTest() {
         CountDownLatch subscribedLatch = new CountDownLatch(1);
         SubmissionPublisher<DataChunk> publisher = new SubmissionPublisher<>(Runnable::run, 10);
@@ -211,9 +201,10 @@ public class RequestContentTest {
     public void failingFilter() {
         Request request = requestTestStub(Single.never());
 
-        request.content().registerFilter(publisher -> {
-            throw new IllegalStateException("failed-publisher-transformation");
-        });
+        request.content()
+               .registerFilter(publisher -> {
+                   throw new IllegalStateException("failed-publisher-transformation");
+               });
 
         request.content()
                .registerReader(reader(
@@ -350,5 +341,16 @@ public class RequestContentTest {
                                .await(10, TimeUnit.SECONDS);
 
         assertThat(actual, is("TEST-STRING"));
+    }
+
+    private static Request requestTestStub(Publisher<DataChunk> flux) {
+        BareRequest bareRequestMock = mock(BareRequest.class);
+        doReturn(URI.create("http://0.0.0.0:1234")).when(bareRequestMock).uri();
+        doReturn(flux).when(bareRequestMock).bodyPublisher();
+        WebServer webServer = mock(WebServer.class);
+        MediaContext mediaContext = MediaContext.create();
+        doReturn(mediaContext.readerContext()).when(webServer).readerContext();
+        doReturn(mediaContext.writerContext()).when(webServer).writerContext();
+        return new RequestTestStub(bareRequestMock, webServer);
     }
 }

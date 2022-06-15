@@ -31,11 +31,8 @@ import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
-import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.ParentingMediaContextBuilder;
 
 import io.opentracing.Tracer;
 
@@ -106,18 +103,18 @@ public interface WebServer {
     Context context();
 
     /**
-     * Get the parent {@link EntitySupport.ReaderContext} context.
+     * Get the parent {@link MediaContext.ReaderContext} context.
      *
      * @return media body reader context
      */
-    EntitySupport.ReaderContext readerContext();
+    MediaContext.ReaderContext readerContext();
 
     /**
-     * Get the parent {@link EntitySupport.WriterContext} context.
+     * Get the parent {@link MediaContext.WriterContext} context.
      *
      * @return media body writer context
      */
-    EntitySupport.WriterContext writerContext();
+    MediaContext.WriterContext writerContext();
 
     /**
      * Returns a port number the default server socket is bound to and is listening on;
@@ -354,8 +351,7 @@ public interface WebServer {
     @Configured(root = true, prefix = "server", description = "Configuration of the HTTP server.")
     final class Builder implements io.helidon.common.Builder<Builder, WebServer>,
                                    SocketConfiguration.SocketConfigurationBuilder<Builder>,
-                                   ParentingMediaContextBuilder<Builder>,
-                                   MediaContextBuilder<Builder> {
+                                   MediaContext.ParentingBuilder<Builder> {
 
         private static final Logger LOGGER = Logger.getLogger(Builder.class.getName());
         private static final MediaContext DEFAULT_MEDIA_SUPPORT = MediaContext.create();
@@ -369,8 +365,8 @@ public interface WebServer {
         @SuppressWarnings("deprecation")
         private ServerConfiguration explicitConfig;
         private Transport transport;
-        private EntitySupport.ReaderContext readerContext;
-        private EntitySupport.WriterContext writerContext;
+        private MediaContext.ReaderContext readerContext;
+        private MediaContext.WriterContext writerContext;
         private DirectHandlers.Builder directHandlers = DirectHandlers.builder();
 
         private Builder() {
@@ -548,25 +544,25 @@ public interface WebServer {
         }
 
         @Override
-        public Builder addReader(EntitySupport.Reader<?> reader) {
+        public Builder addReader(MediaSupport.Reader<?> reader) {
             readerContext.registerReader(reader);
             return this;
         }
 
         @Override
-        public Builder addStreamReader(EntitySupport.StreamReader<?> streamReader) {
+        public Builder addStreamReader(MediaSupport.StreamReader<?> streamReader) {
             readerContext.registerReader(streamReader);
             return this;
         }
 
         @Override
-        public Builder addWriter(EntitySupport.Writer<?> writer) {
+        public Builder addWriter(MediaSupport.Writer<?> writer) {
             writerContext.registerWriter(writer);
             return this;
         }
 
         @Override
-        public Builder addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
+        public Builder addStreamWriter(MediaSupport.StreamWriter<?> streamWriter) {
             writerContext.registerWriter(streamWriter);
             return this;
         }

@@ -35,8 +35,8 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.Entity;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
 import io.helidon.media.common.ReadableEntity;
 import io.helidon.tracing.config.SpanTracingConfig;
 import io.helidon.tracing.config.TracingConfigUtil;
@@ -65,7 +65,7 @@ abstract class Request implements ServerRequest {
     private final Parameters queryParams;
     private final HashRequestHeaders headers;
     private final ReadableEntity content;
-    private final MessageBodyEventListener eventListener;
+    private final MediaEventListener eventListener;
 
     /**
      * Creates new instance.
@@ -79,7 +79,7 @@ abstract class Request implements ServerRequest {
         this.headers = headers;
         this.context = Contexts.context().orElseGet(() -> Context.create(webServer.context()));
         this.queryParams = UriComponent.decodeQuery(req.uri().getRawQuery(), true);
-        this.eventListener = new MessageBodyEventListener();
+        this.eventListener = new MediaEventListener();
         MediaType mediaType = headers.contentType().orElse(null);
         ReaderContext readerContext = webServer.readerContext().createChild(eventListener, headers, mediaType);
         this.content = Entity.create(req.bodyPublisher(), readerContext);
@@ -185,7 +185,7 @@ abstract class Request implements ServerRequest {
         return this.bareRequest.closeConnection();
     }
 
-    private final class MessageBodyEventListener implements EntitySupport.Context.EventListener {
+    private final class MediaEventListener implements MediaContext.OperatorContext.EventListener {
 
         private Span readSpan;
 
@@ -218,7 +218,7 @@ abstract class Request implements ServerRequest {
         }
 
         @Override
-        public void onEvent(EntitySupport.Context.Event event) {
+        public void onEvent(MediaContext.OperatorContext.Event event) {
             switch (event.eventType()) {
                 case BEFORE_ONSUBSCRIBE:
                     GenericType<?> type = event.entityType().orElse(null);

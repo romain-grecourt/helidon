@@ -24,15 +24,15 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.PredicateResult;
-import io.helidon.media.common.EntitySupport.Writer;
+import io.helidon.media.common.MediaSupport.Writer;
+import io.helidon.media.common.MediaSupport;
 import io.helidon.webserver.utils.SocketHttpClient;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.media.common.EntitySupport.writer;
+import static io.helidon.media.common.MediaSupport.writer;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -43,7 +43,7 @@ public class FilterTest {
     private static WebServer webServer;
     private static final AtomicLong filterItemCounter = new AtomicLong(0);
     private static final Writer<String> STRING_WRITER = writer(
-            PredicateResult.supports(String.class), s -> s.map(str -> DataChunk.create(str.getBytes())));
+            MediaSupport.PredicateResult.supports(String.class), s -> s.map(str -> DataChunk.create(str.getBytes())));
 
     /**
      * Start the Web Server

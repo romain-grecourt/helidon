@@ -23,9 +23,9 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.CharBuffer;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
+import io.helidon.media.common.MediaSupport.PredicateResult;
+import io.helidon.media.common.MediaSupport.Writer;
 
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonWriter;
@@ -48,8 +48,8 @@ class JsonpWriter implements Writer<JsonStructure> {
     }
 
     @Override
-    public EntitySupport.PredicateResult accept(GenericType<?> type, WriterContext context) {
-        return EntitySupport.PredicateResult.supports(JsonStructure.class, type);
+    public PredicateResult accept(GenericType<?> type, WriterContext context) {
+        return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override

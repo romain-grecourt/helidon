@@ -20,9 +20,6 @@ import java.util.List;
 import java.util.Objects;
 
 import io.helidon.common.LazyValue;
-import io.helidon.media.common.EntitySupport.Reader;
-import io.helidon.media.common.EntitySupport.StreamWriter;
-import io.helidon.media.common.EntitySupport.Writer;
 import io.helidon.media.common.MediaSupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;

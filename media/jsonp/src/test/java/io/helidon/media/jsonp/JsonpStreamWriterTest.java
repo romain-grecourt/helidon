@@ -25,9 +25,10 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.HashParameters;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaSupport;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
@@ -49,7 +50,7 @@ public class JsonpStreamWriterTest {
 
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Map.of());
     private static final JsonReaderFactory JSON_PARSER = Json.createReaderFactory(Map.of());
-    private static final WriterContext CONTEXT = WriterContext.create().createChild(null, HashParameters.create(), null);
+    private static final WriterContext CONTEXT = MediaContext.WriterContext.create().createChild(null, HashParameters.create(), null);
     private static final JsonpStreamWriter WRITER = (JsonpStreamWriter) JsonpSupport.streamWriter();
     private static final GenericType<JsonObject> JSON_OBJECT = GenericType.create(JsonObject.class);
     private static final GenericType<JsonArray> JSON_ARRAY = GenericType.create(JsonArray.class);
@@ -60,13 +61,13 @@ public class JsonpStreamWriterTest {
         assertAll(
                 () -> assertThat("JsonObject accepted",
                         WRITER.accept(JSON_OBJECT, CONTEXT),
-                        is(EntitySupport.PredicateResult.SUPPORTED)),
+                        is(MediaSupport.PredicateResult.SUPPORTED)),
                 () -> assertThat("JsonArray accepted",
                         WRITER.accept(JSON_ARRAY, CONTEXT),
-                        is(EntitySupport.PredicateResult.SUPPORTED)),
+                        is(MediaSupport.PredicateResult.SUPPORTED)),
                 () -> assertThat("Pojo not accepted",
                         WRITER.accept(MY_TYPE, CONTEXT),
-                        is(EntitySupport.PredicateResult.NOT_SUPPORTED))
+                        is(MediaSupport.PredicateResult.NOT_SUPPORTED))
         );
     }
 

@@ -36,11 +36,8 @@ import io.helidon.common.LazyValue;
 import io.helidon.common.context.Context;
 import io.helidon.config.Config;
 import io.helidon.config.DeprecatedConfig;
-import io.helidon.media.common.EntitySupport;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MediaContextBuilder;
 import io.helidon.media.common.MediaSupport;
-import io.helidon.media.common.ParentingMediaContextBuilder;
 import io.helidon.webclient.spi.WebClientService;
 
 import io.netty.handler.ssl.ClientAuth;
@@ -70,8 +67,8 @@ class WebClientConfiguration {
     private final boolean followRedirects;
     private final boolean keepAlive;
     private final int maxRedirects;
-    private final EntitySupport.ReaderContext readerContext;
-    private final EntitySupport.WriterContext writerContext;
+    private final MediaContext.ReaderContext readerContext;
+    private final MediaContext.WriterContext writerContext;
     private final WebClientTls webClientTls;
     private final URI uri;
     private final boolean validateHeaders;
@@ -254,11 +251,11 @@ class WebClientConfiguration {
         return clientServices;
     }
 
-    EntitySupport.ReaderContext readerContext() {
+    MediaContext.ReaderContext readerContext() {
         return readerContext;
     }
 
-    EntitySupport.WriterContext writerContext() {
+    MediaContext.WriterContext writerContext() {
         return writerContext;
     }
 
@@ -283,8 +280,7 @@ class WebClientConfiguration {
      */
     static class Builder<B extends Builder<B, T>, T extends WebClientConfiguration>
             implements io.helidon.common.Builder<B, T>,
-                       ParentingMediaContextBuilder<B>,
-                       MediaContextBuilder<B> {
+                       MediaContext.ParentingBuilder<B> {
 
         private final WebClientRequestHeaders clientHeaders;
         private final Map<String, String> defaultCookies;
@@ -304,8 +300,8 @@ class WebClientConfiguration {
         private boolean keepAlive;
         private WebClientTls webClientTls;
         private URI uri;
-        private EntitySupport.ReaderContext readerContext;
-        private EntitySupport.WriterContext writerContext;
+        private MediaContext.ReaderContext readerContext;
+        private MediaContext.WriterContext writerContext;
         private boolean validateHeaders;
         private boolean relativeUris;
         @SuppressWarnings("unchecked")
@@ -525,25 +521,25 @@ class WebClientConfiguration {
         }
 
         @Override
-        public B addReader(EntitySupport.Reader<?> reader) {
+        public B addReader(MediaSupport.Reader<?> reader) {
             this.readerContext.registerReader(reader);
             return me;
         }
 
         @Override
-        public B addStreamReader(EntitySupport.StreamReader<?> streamReader) {
+        public B addStreamReader(MediaSupport.StreamReader<?> streamReader) {
             this.readerContext.registerReader(streamReader);
             return me;
         }
 
         @Override
-        public B addWriter(EntitySupport.Writer<?> writer) {
+        public B addWriter(MediaSupport.Writer<?> writer) {
             this.writerContext.registerWriter(writer);
             return me;
         }
 
         @Override
-        public B addStreamWriter(EntitySupport.StreamWriter<?> streamWriter) {
+        public B addStreamWriter(MediaSupport.StreamWriter<?> streamWriter) {
             this.writerContext.registerWriter(streamWriter);
             return me;
         }
@@ -560,22 +556,22 @@ class WebClientConfiguration {
             return me;
         }
 
-        B readerContextParent(EntitySupport.ReaderContext readerContext) {
+        B readerContextParent(MediaContext.ReaderContext readerContext) {
             this.readerContext = readerContext.createChild();
             return me;
         }
 
-        B writerContextParent(EntitySupport.WriterContext writerContext) {
+        B writerContextParent(MediaContext.WriterContext writerContext) {
             this.writerContext = writerContext.createChild();
             return me;
         }
 
-        B readerContext(EntitySupport.ReaderContext readerContext) {
+        B readerContext(MediaContext.ReaderContext readerContext) {
             this.readerContext = readerContext;
             return me;
         }
 
-        B writerContext(EntitySupport.WriterContext writerContext) {
+        B writerContext(MediaContext.WriterContext writerContext) {
             this.writerContext = writerContext;
             return me;
         }

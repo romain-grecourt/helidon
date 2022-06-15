@@ -21,12 +21,13 @@ import java.util.function.Function;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 /**
  * Readable and writeable {@link Payload}.
  */
+@SuppressWarnings("unused")
 public interface Entity extends ReadableEntity, WriteableEntity {
 
     /**

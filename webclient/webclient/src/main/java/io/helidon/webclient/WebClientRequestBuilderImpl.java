@@ -55,7 +55,7 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext;
 import io.helidon.media.common.ReadableEntity;
 import io.helidon.webclient.spi.WebClientService;
 
@@ -119,8 +119,8 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     private final Http.RequestMethod method;
     private final WebClientRequestHeaders headers;
     private final WebClientQueryParams queryParams;
-    private final EntitySupport.ReaderContext readerContext;
-    private final EntitySupport.WriterContext writerContext;
+    private final MediaContext.ReaderContext readerContext;
+    private final MediaContext.WriterContext writerContext;
 
     private URI uri;
     private URI finalUri;
@@ -467,17 +467,17 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     }
 
     @Override
-    public Single<WebClientResponse> submit(Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> function) {
+    public Single<WebClientResponse> submit(Function<MediaContext.WriterContext, Flow.Publisher<DataChunk>> function) {
         return submit(function.apply(writerContext));
     }
 
     @Override
-    public EntitySupport.ReaderContext readerContext() {
+    public MediaContext.ReaderContext readerContext() {
         return readerContext;
     }
 
     @Override
-    public EntitySupport.WriterContext writerContext() {
+    public MediaContext.WriterContext writerContext() {
         return writerContext;
     }
 

@@ -39,7 +39,7 @@ import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
 import io.helidon.faulttolerance.Async;
 import io.helidon.faulttolerance.Timeout;
-import io.helidon.media.common.EntitySupport.Writer;
+import io.helidon.media.common.MediaSupport.Writer;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.servicecommon.rest.HelidonRestServiceSupport;
 import io.helidon.webserver.Routing;

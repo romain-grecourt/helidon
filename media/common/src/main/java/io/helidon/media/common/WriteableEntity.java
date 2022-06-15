@@ -15,16 +15,13 @@
  */
 package io.helidon.media.common;
 
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.StreamWriter;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
-import io.helidon.media.common.EntitySupport.Writers;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 /**
  * {@link Payload} that can be generated from objects.
  */
-public interface WriteableEntity extends Payload, Writers {
+public interface WriteableEntity extends Payload {
 
     /**
      * Get the writer context.
@@ -48,16 +45,4 @@ public interface WriteableEntity extends Payload, Writers {
      * @return this instance
      */
     WriteableEntity readerContext(ReaderContext context);
-
-    @Override
-    default WriteableEntity registerWriter(Writer<?> writer) {
-        writerContext().registerWriter(writer);
-        return this;
-    }
-
-    @Override
-    default WriteableEntity registerWriter(StreamWriter<?> writer) {
-        writerContext().registerWriter(writer);
-        return this;
-    }
 }

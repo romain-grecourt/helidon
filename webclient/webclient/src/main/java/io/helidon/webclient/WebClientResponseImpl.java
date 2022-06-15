@@ -26,7 +26,7 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Http;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.Entity;
-import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
 import io.helidon.media.common.ReadableEntity;
 
 /**

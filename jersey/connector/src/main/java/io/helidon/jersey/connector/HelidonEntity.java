@@ -30,9 +30,9 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.OutputStreamMulti;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentWriters;
-import io.helidon.media.common.EntitySupport.PredicateResult;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
+import io.helidon.media.common.MediaSupport.PredicateResult;
+import io.helidon.media.common.MediaSupport.Writer;
 import io.helidon.webclient.WebClientRequestBuilder;
 import io.helidon.webclient.WebClientResponse;
 
@@ -40,7 +40,7 @@ import jakarta.ws.rs.ProcessingException;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientRequest;
 
-import static io.helidon.media.common.EntitySupport.writer;
+import static io.helidon.media.common.MediaSupport.writer;
 
 /**
  * A utility class that converts outbound client entity to a class understandable by Helidon.

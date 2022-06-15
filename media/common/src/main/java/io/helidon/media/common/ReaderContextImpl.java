@@ -29,16 +29,16 @@ import io.helidon.common.http.Parameters;
 import io.helidon.common.http.ReadOnlyParameters;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.Reader;
-import io.helidon.media.common.EntitySupport.ReaderContext;
-import io.helidon.media.common.EntitySupport.StreamReader;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaSupport.Reader;
+import io.helidon.media.common.MediaSupport.StreamReader;
 
-import static io.helidon.media.common.EntitySupport.DEFAULT_CHARSET;
+import static io.helidon.media.common.MediaContext.DEFAULT_CHARSET;
 
 /**
  * Implementation of {@link ReaderContext}.
  */
-final class ReaderContextImpl extends AbstractEntityContext<ReaderContextImpl> implements ReaderContext {
+final class ReaderContextImpl extends AbstractContext<ReaderContextImpl> implements ReaderContext {
 
     private final Parameters headers;
     private final MediaType contentType;

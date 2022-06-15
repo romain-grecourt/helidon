@@ -22,12 +22,13 @@ import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaSupport;
 
 /**
  * Reader for the custom media type.
  */
-public class NameReader implements EntitySupport.Reader<Name> {
+public class NameReader implements MediaSupport.Reader<Name> {
 
     private static final MediaType TYPE = MediaType.parse("application/name");
 
@@ -41,16 +42,16 @@ public class NameReader implements EntitySupport.Reader<Name> {
     @Override
     public <U extends Name> Single<U> read(Flow.Publisher<DataChunk> publisher,
                                            GenericType<U> type,
-                                           EntitySupport.ReaderContext context) {
+                                           MediaContext.ReaderContext context) {
         return (Single<U>) ContentReaders.readString(publisher, context.charset()).map(Name::new);
     }
 
     @Override
-    public EntitySupport.PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
+    public MediaSupport.PredicateResult accept(GenericType<?> type, MediaContext.ReaderContext context) {
         return context.contentType()
                 .filter(TYPE::equals)
-                .map(it -> EntitySupport.PredicateResult.supports(Name.class, type))
-                .orElse(EntitySupport.PredicateResult.NOT_SUPPORTED);
+                .map(it -> MediaSupport.PredicateResult.supports(Name.class, type))
+                .orElse(MediaSupport.PredicateResult.NOT_SUPPORTED);
     }
 }
 

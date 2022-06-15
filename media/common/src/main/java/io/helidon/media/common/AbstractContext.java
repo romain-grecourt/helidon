@@ -26,17 +26,18 @@ import java.util.logging.Logger;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.Filter;
-import io.helidon.media.common.EntitySupport.Operator;
+import io.helidon.media.common.MediaContext.OperatorContext;
+import io.helidon.media.common.MediaSupport.Filter;
+import io.helidon.media.common.MediaSupport.OperatorPredicate;
 
 /**
- * Base implementation for {@link EntitySupport.Context}.
+ * Base implementation for {@link OperatorContext}.
  *
  * @param <T> implementation type
  */
-public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> implements EntitySupport.Context {
+public abstract class AbstractContext<T extends AbstractContext<T>> implements OperatorContext {
 
-    private static final Logger LOGGER = Logger.getLogger(AbstractEntityContext.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(AbstractContext.class.getName());
     private static final Event BEFORE_ONSUBSCRIBE = new EventImpl(EventType.BEFORE_ONSUBSCRIBE, null);
     private static final Event BEFORE_ONNEXT = new EventImpl(EventType.BEFORE_ONNEXT, null);
     private static final Event BEFORE_ONCOMPLETE = new EventImpl(EventType.BEFORE_ONCOMPLETE, null);
@@ -44,7 +45,7 @@ public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> 
     private static final Event AFTER_ONNEXT = new EventImpl(EventType.AFTER_ONNEXT, null);
     private static final Event AFTER_ONCOMPLETE = new EventImpl(EventType.AFTER_ONCOMPLETE, null);
 
-    private final OperatorRegistry<FilterOperator<?>> filters;
+    private final OperatorRegistry<FilterImpl<?>> filters;
     private final EventListener eventListener;
 
     /**
@@ -53,7 +54,7 @@ public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> 
      * @param parent        content filters parent
      * @param eventListener event listener
      */
-    protected AbstractEntityContext(AbstractEntityContext<T> parent, EventListener eventListener) {
+    protected AbstractContext(AbstractContext<T> parent, EventListener eventListener) {
         if (parent != null) {
             this.filters = new OperatorRegistry<>(parent.filters);
         } else {
@@ -66,7 +67,7 @@ public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> 
     @SuppressWarnings("unchecked")
     public T registerFilter(Filter filter) {
         Objects.requireNonNull(filter, "filter is null!");
-        filters.registerLast(new FilterOperator<>(filter));
+        filters.registerLast(new FilterImpl<>(filter));
         return (T) this;
     }
 
@@ -172,11 +173,11 @@ public abstract class AbstractEntityContext<T extends AbstractEntityContext<T>> 
         }
     }
 
-    private record FilterOperator<T>(Filter filter) implements Operator<T>, Filter {
+    private record FilterImpl<T extends OperatorContext>(Filter filter) implements OperatorPredicate<T>, Filter {
 
         @Override
-        public EntitySupport.PredicateResult accept(GenericType<?> type, T context) {
-            return EntitySupport.PredicateResult.SUPPORTED;
+        public MediaSupport.PredicateResult accept(GenericType<?> type, T context) {
+            return MediaSupport.PredicateResult.SUPPORTED;
         }
 
         @Override

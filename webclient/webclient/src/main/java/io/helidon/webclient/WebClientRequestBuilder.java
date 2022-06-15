@@ -32,12 +32,14 @@ import io.helidon.common.http.HttpRequest;
 import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 import io.helidon.webclient.spi.WebClientService;
 
 /**
  * Fluent API builder that is used by {@link WebClient} to create an outgoing request.
  */
+@SuppressWarnings("unused")
 public interface WebClientRequestBuilder {
 
     /**
@@ -213,14 +215,14 @@ public interface WebClientRequestBuilder {
      *
      * @return request reader context
      */
-    EntitySupport.ReaderContext readerContext();
+    MediaContext.ReaderContext readerContext();
 
     /**
      * Returns writer context of the request builder.
      *
      * @return request writer context
      */
-    EntitySupport.WriterContext writerContext();
+    WriterContext writerContext();
 
     /**
      * Sets http version.
@@ -448,7 +450,9 @@ public interface WebClientRequestBuilder {
      * @param <U>          entity type
      * @return request completion stage
      */
-    <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType);
+    default <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType) {
+        return submitStream(entityStream, GenericType.create(entityType), responseType);
+    }
 
     /**
      * Performs prepared request and submitting request entity stream.
@@ -476,7 +480,9 @@ public interface WebClientRequestBuilder {
      * @param <T>          entity type
      * @return request completion stage
      */
-    <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType);
+    default <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType) {
+        return submitStream(entityStream, GenericType.create(entityType));
+    }
 
     /**
      * Performs prepared request and submitting request entity stream.
@@ -497,10 +503,24 @@ public interface WebClientRequestBuilder {
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *
+     * @param function     marshalling function
+     * @param responseType requested response type
+     * @param <T>          response type
+     * @return request completion stage
+     */
+    <T> Single<WebClientResponse> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function,
+                                         Class<T> responseType);
+
+    /**
+     * Performs prepared request and submitting request entity using a marshalling function.
+     * <p>
+     * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
+     * is notified.
+     *
      * @param function marshalling function
      * @return request completion stage
      */
-    Single<WebClientResponse> submit(Function<EntitySupport.WriterContext, Flow.Publisher<DataChunk>> function);
+    Single<WebClientResponse> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function);
 
     /**
      * Request to a server. Contains all information about used request headers, configuration etc.

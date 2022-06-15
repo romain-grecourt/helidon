@@ -32,16 +32,16 @@ import io.helidon.common.http.MediaType;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.StreamWriter;
-import io.helidon.media.common.EntitySupport.Writer;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
+import io.helidon.media.common.MediaSupport.StreamWriter;
+import io.helidon.media.common.MediaSupport.Writer;
 
-import static io.helidon.media.common.EntitySupport.DEFAULT_CHARSET;
+import static io.helidon.media.common.MediaContext.DEFAULT_CHARSET;
 
 /**
  * Implementation of {@link WriterContext}.
  */
-final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> implements WriterContext {
+final class WriterContextImpl extends AbstractContext<WriterContextImpl> implements WriterContext {
 
     private final Parameters headers;
     private final List<MediaType> acceptedTypes;
@@ -104,25 +104,25 @@ final class WriterContextImpl extends AbstractEntityContext<WriterContextImpl> i
     }
 
     @Override
-    public <T> Publisher<DataChunk> marshall(Single<T> content, GenericType<T> type) {
-        return marshall(content, type, write(findWriter(type)));
+    public <T> Publisher<DataChunk> marshall(Single<T> single, GenericType<T> type) {
+        return marshall(single, type, write(findWriter(type)));
     }
 
     @Override
-    public <U, T extends U> Publisher<DataChunk> marshall(Single<T> content, Writer<U> writer, GenericType<T> type) {
-        return marshall(content, type, write(writer));
+    public <U, T extends U> Publisher<DataChunk> marshall(Single<T> single, Writer<U> writer, GenericType<T> type) {
+        return marshall(single, type, write(writer));
     }
 
     @Override
-    public <T> Publisher<DataChunk> marshallStream(Publisher<T> content, GenericType<T> type) {
-        return marshall(content, type, writeStream(findStreamWriter(type)));
+    public <T> Publisher<DataChunk> marshallStream(Publisher<T> publisher, GenericType<T> type) {
+        return marshall(publisher, type, writeStream(findStreamWriter(type)));
     }
 
     @Override
-    public <U, T extends U> Publisher<DataChunk> marshallStream(Publisher<T> content,
+    public <U, T extends U> Publisher<DataChunk> marshallStream(Publisher<T> publisher,
                                                                 StreamWriter<U> writer,
                                                                 GenericType<T> type) {
-        return marshall(content, type, writeStream(writer));
+        return marshall(publisher, type, writeStream(writer));
     }
 
     @Override

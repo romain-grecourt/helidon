@@ -32,7 +32,8 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.reactive.SubscriptionHelper;
 import io.helidon.media.common.Entity;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 import static io.helidon.media.multipart.MultiPartSupport.DEFAULT_BOUNDARY;
 
@@ -81,7 +82,7 @@ public class MultiPartEncoder implements Processor<BodyPart, DataChunk>, Multi<D
      * @see WriterContext#create()
      */
     public static MultiPartEncoder create(String boundary) {
-        return new MultiPartEncoder(boundary, WriterContext.create());
+        return new MultiPartEncoder(boundary, MediaContext.WriterContext.create());
     }
 
     /**
@@ -103,7 +104,7 @@ public class MultiPartEncoder implements Processor<BodyPart, DataChunk>, Multi<D
      * @see WriterContext#create()
      */
     public static MultiPartEncoder create() {
-        return new MultiPartEncoder(DEFAULT_BOUNDARY, WriterContext.create());
+        return new MultiPartEncoder(DEFAULT_BOUNDARY, MediaContext.WriterContext.create());
     }
 
     @Override

@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit;
 import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
-import io.helidon.media.common.EntitySupport;
 
+import io.helidon.media.common.MediaContext;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class JsonContentReaderTest {
 
-    private final static EntitySupport.ReaderContext CONTEXT = EntitySupport.ReaderContext.create();
+    private final static MediaContext.ReaderContext CONTEXT = MediaContext.ReaderContext.create();
 
     @Test
     public void simpleJsonObject() throws Exception {

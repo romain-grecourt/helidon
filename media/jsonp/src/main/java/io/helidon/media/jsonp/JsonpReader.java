@@ -25,9 +25,9 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
-import io.helidon.media.common.EntitySupport;
-import io.helidon.media.common.EntitySupport.Reader;
-import io.helidon.media.common.EntitySupport.ReaderContext;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaSupport.PredicateResult;
+import io.helidon.media.common.MediaSupport.Reader;
 
 import jakarta.json.JsonException;
 import jakarta.json.JsonReader;
@@ -52,8 +52,8 @@ final class JsonpReader implements Reader<JsonStructure> {
     }
 
     @Override
-    public EntitySupport.PredicateResult accept(GenericType<?> type, ReaderContext context) {
-        return EntitySupport.PredicateResult.supports(JsonStructure.class, type);
+    public PredicateResult accept(GenericType<?> type, ReaderContext context) {
+        return PredicateResult.supports(JsonStructure.class, type);
     }
 
     @Override
@@ -64,6 +64,7 @@ final class JsonpReader implements Reader<JsonStructure> {
         return ContentReaders.readBytes(publisher).map(bytes -> read(bytes, type, context.charset()));
     }
 
+    @SuppressWarnings("unchecked")
     private <U extends JsonStructure> U read(byte[] bytes, GenericType<U> type, Charset charset) {
         InputStream is = new ByteArrayInputStream(bytes);
         JsonReader reader = jsonFactory.createReader(is, charset);

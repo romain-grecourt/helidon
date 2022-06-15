@@ -23,7 +23,7 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport.WriterContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 
 /**
  * Builder for {@link Entity}.

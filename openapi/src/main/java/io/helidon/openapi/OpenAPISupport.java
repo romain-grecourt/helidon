@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.MediaType;
 import io.helidon.config.Config;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext;
 import io.helidon.media.jsonp.JsonpSupport;
 import io.helidon.openapi.internal.OpenAPIConfigImpl;
 import io.helidon.webserver.Routing;
@@ -211,8 +211,8 @@ public abstract class OpenAPISupport implements Service {
     }
 
     private void registerJsonpSupport(ServerRequest req, ServerResponse res) {
-        EntitySupport.ReaderContext readerContext = req.content().readerContext();
-        EntitySupport.WriterContext writerContext = res.writerContext();
+        MediaContext.ReaderContext readerContext = req.content().readerContext();
+        MediaContext.WriterContext writerContext = res.writerContext();
         JsonpSupport.create().register(readerContext, writerContext);
         req.next();
     }

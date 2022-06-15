@@ -25,21 +25,25 @@ import io.helidon.common.GenericType;
 import io.helidon.common.http.DataChunk;
 import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
-import io.helidon.media.common.EntitySupport;
+import io.helidon.media.common.MediaContext.ReaderContext;
+import io.helidon.media.common.MediaSupport;
+import io.helidon.media.common.MediaSupport.PredicateResult;
 
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 
-class LraStatusReader implements EntitySupport.Reader<LRAStatus> {
+class LraStatusReader implements MediaSupport.Reader<LRAStatus> {
+
     @Override
-    public EntitySupport.PredicateResult accept(GenericType<?> type, EntitySupport.ReaderContext context) {
-        return EntitySupport.PredicateResult.supports(LRAStatus.class, type);
+    public PredicateResult accept(GenericType<?> type, ReaderContext context) {
+        return PredicateResult.supports(LRAStatus.class, type);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <U extends LRAStatus> Single<U> read(Flow.Publisher<DataChunk> pub,
                                                 GenericType<U> type,
-                                                EntitySupport.ReaderContext context) {
+                                                ReaderContext context) {
+
         return (Single<U>) Multi.create(pub)
                 .map(DataChunk::data)
                 .flatMapIterable(List::of)
