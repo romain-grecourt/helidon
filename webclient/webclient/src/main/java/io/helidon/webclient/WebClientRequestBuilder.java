@@ -329,7 +329,9 @@ public interface WebClientRequestBuilder {
      * @param <T>          response type
      * @return request completion stage
      */
-    <T> Single<T> request(Class<T> responseType);
+    default <T> Single<T> request(Class<T> responseType) {
+        return request(GenericType.create(responseType));
+    }
 
     /**
      * Performs prepared request and transforms response to requested type.
@@ -359,7 +361,9 @@ public interface WebClientRequestBuilder {
      *
      * @return request completion stage
      */
-    Single<WebClientResponse> submit();
+    default Single<WebClientResponse> submit() {
+        return request();
+    }
 
     /**
      * Performs prepared request and submitting request entity using {@link Flow.Publisher}.
@@ -375,19 +379,6 @@ public interface WebClientRequestBuilder {
     <T> Single<T> submit(Flow.Publisher<DataChunk> requestEntity, Class<T> responseType);
 
     /**
-     * Performs prepared request and submitting request entity.
-     * <p>
-     * When response is received, it is converted to response type and returned {@link CompletionStage}
-     * is notified.
-     *
-     * @param requestEntity request entity
-     * @param responseType  requested response type
-     * @param <T>           response type
-     * @return request completion stage
-     */
-    <T> Single<T> submit(Object requestEntity, Class<T> responseType);
-
-    /**
      * Performs prepared request and submitting request entity using {@link Flow.Publisher}.
      * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
@@ -401,13 +392,30 @@ public interface WebClientRequestBuilder {
     /**
      * Performs prepared request and submitting request entity.
      * <p>
+     * When response is received, it is converted to response type and returned {@link CompletionStage}
+     * is notified.
+     *
+     * @param requestEntity request entity
+     * @param responseType  requested response type
+     * @param <T>           response type
+     * @return request completion stage
+     */
+    default <T> Single<T> submit(Object requestEntity, Class<T> responseType) {
+        return submit(requestEntity, GenericType.create(requestEntity), responseType);
+    }
+
+    /**
+     * Performs prepared request and submitting request entity.
+     * <p>
      * When response is received, it is not converted to any other specific type and returned {@link CompletionStage}
      * is notified.
      *
      * @param requestEntity request entity
      * @return request completion stage
      */
-    Single<WebClientResponse> submit(Object requestEntity);
+    default Single<WebClientResponse> submit(Object requestEntity) {
+        return submit(requestEntity, GenericType.create(requestEntity));
+    }
 
     /**
      * Performs prepared request and submitting request entity.
@@ -420,7 +428,9 @@ public interface WebClientRequestBuilder {
      * @param <T>           entity type
      * @return request completion stage
      */
-    <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType);
+    default <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType) {
+        return submit(writerContext().marshall(Single.just(requestEntity), entityType));
+    }
 
     /**
      * Performs prepared request and submitting request entity.
@@ -435,7 +445,9 @@ public interface WebClientRequestBuilder {
      * @param <U>           entity type
      * @return request completion stage
      */
-    <T, U> Single<T> submit(U requestEntity, GenericType<U> entityType, Class<T> responseType);
+    default <T, U> Single<T> submit(U requestEntity, GenericType<U> entityType, Class<T> responseType) {
+        return submit(writerContext().marshall(Single.just(requestEntity), entityType), responseType);
+    }
 
     /**
      * Performs prepared request and submitting request entity stream.
@@ -467,7 +479,12 @@ public interface WebClientRequestBuilder {
      * @param <U>          entity type
      * @return request completion stage
      */
-    <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, GenericType<U> entityType, Class<T> responseType);
+    default <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream,
+                                          GenericType<U> entityType,
+                                          Class<T> responseType) {
+
+        return submit(writerContext().marshallStream(entityStream, entityType), responseType);
+    }
 
     /**
      * Performs prepared request and submitting request entity stream.
@@ -495,7 +512,9 @@ public interface WebClientRequestBuilder {
      * @param <T>          entity type
      * @return request completion stage
      */
-    <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType);
+    default <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType) {
+        return submit(writerContext().marshallStream(entityStream, entityType));
+    }
 
     /**
      * Performs prepared request and submitting request entity using a marshalling function.
@@ -508,8 +527,9 @@ public interface WebClientRequestBuilder {
      * @param <T>          response type
      * @return request completion stage
      */
-    <T> Single<WebClientResponse> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function,
-                                         Class<T> responseType);
+    default <T> Single<T> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function, Class<T> responseType) {
+        return submit(function.apply(writerContext()), responseType);
+    }
 
     /**
      * Performs prepared request and submitting request entity using a marshalling function.
@@ -520,7 +540,9 @@ public interface WebClientRequestBuilder {
      * @param function marshalling function
      * @return request completion stage
      */
-    Single<WebClientResponse> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function);
+    default Single<WebClientResponse> submit(Function<WriterContext, Flow.Publisher<DataChunk>> function) {
+        return submit(function.apply(writerContext()));
+    }
 
     /**
      * Request to a server. Contains all information about used request headers, configuration etc.

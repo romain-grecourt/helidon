@@ -38,7 +38,6 @@ import io.helidon.common.reactive.Multi;
 import io.helidon.common.reactive.Single;
 import io.helidon.media.common.ContentReaders;
 import io.helidon.media.common.MediaContext;
-import io.helidon.media.common.MediaSupport;
 import io.helidon.media.common.MediaSupport.PredicateResult;
 import io.helidon.webserver.utils.TestUtils;
 
@@ -77,13 +76,15 @@ public class RequestContentTest {
         Request request = requestTestStub(Multi.just("first", "second", "third")
                                                .map(s -> DataChunk.create(s.getBytes())));
         StringBuilder sb = new StringBuilder();
-        request.content().registerFilter((Publisher<DataChunk> publisher) -> {
-            sb.append("apply_filter-");
-            return Multi.create(publisher)
-                        .map(TestUtils::requestChunkAsString)
-                        .map(String::toUpperCase)
-                        .map(s -> DataChunk.create(s.getBytes()));
-        });
+        request.content()
+               .readerContext()
+               .registerFilter(publisher -> {
+                   sb.append("apply_filter-");
+                   return Multi.create(publisher)
+                               .map(TestUtils::requestChunkAsString)
+                               .map(String::toUpperCase)
+                               .map(s -> DataChunk.create(s.getBytes()));
+               });
 
         assertThat("Apply filter is expected to be called after a subscription!", sb.toString(), is(""));
 
@@ -118,6 +119,7 @@ public class RequestContentTest {
         Request request = requestTestStub(Multi.create(publisher));
 
         request.content()
+               .readerContext()
                .registerFilter(p -> s -> p.subscribe(
                        new Subscriber<>() {
                            @Override
@@ -145,6 +147,7 @@ public class RequestContentTest {
                        }));
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(Iterable.class), publisher1 -> {
                            fail("Iterable reader should have not been used!");
@@ -152,6 +155,7 @@ public class RequestContentTest {
                        }));
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(ArrayList.class), publisher1 -> {
                            fail("ArrayList reader should have not been used!");
@@ -159,6 +163,7 @@ public class RequestContentTest {
                        }));
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(List.class), publisher1 -> {
 
@@ -202,11 +207,13 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.never());
 
         request.content()
+               .readerContext()
                .registerFilter(publisher -> {
                    throw new IllegalStateException("failed-publisher-transformation");
                });
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(Duration.class), publisher -> {
                            fail("Should not be called");
@@ -230,6 +237,7 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.never());
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(Duration.class), publisher -> {
                            throw new IllegalStateException("failed-read");
@@ -252,13 +260,16 @@ public class RequestContentTest {
         Request request = requestTestStub(Single.just(DataChunk.create("hello".getBytes())));
 
         request.content()
+               .readerContext()
                .registerReader(reader(
                        PredicateResult.supports(LocalDate.class), publisher -> {
                            throw new IllegalStateException("Should not be called");
                        }));
 
         try {
-            request.content().as(Duration.class).await(10, TimeUnit.SECONDS);
+            request.content()
+                   .as(Duration.class)
+                   .await(10, TimeUnit.SECONDS);
             fail("Should have thrown an exception");
         } catch (CompletionException e) {
             assertThat(e.getCause(), instanceOf(IllegalStateException.class));
@@ -268,7 +279,9 @@ public class RequestContentTest {
     @Test
     public void nullFilter() {
         Request request = requestTestStub(Single.never());
-        assertThrows(NullPointerException.class, () -> request.content().registerFilter(null));
+        assertThrows(NullPointerException.class, () -> request.content()
+                                                              .readerContext()
+                                                              .registerFilter(null));
     }
 
     @Test
@@ -276,6 +289,7 @@ public class RequestContentTest {
         Request request = requestTestStub(Multi.singleton(DataChunk.create("data".getBytes())));
 
         request.content()
+               .readerContext()
                .registerFilter(p -> {
                    throw new IllegalStateException("failed-publisher-transformation");
                });
@@ -295,11 +309,14 @@ public class RequestContentTest {
     public void readerTest() {
         Request request = requestTestStub(Multi.singleton(DataChunk.create("2010-01-02".getBytes())));
 
+        request.content()
+               .readerContext()
+               .registerReader(reader(
+                       PredicateResult.supports(LocalDate.class), (publisher, ctx) ->
+                               ContentReaders.readString(publisher, ctx.charset())
+                                             .map(LocalDate::parse)));
+
         Single<String> complete = request.content()
-                                         .registerReader(reader(
-                                                 PredicateResult.supports(LocalDate.class), (publisher, ctx) ->
-                                                         ContentReaders.readString(publisher, ctx.charset())
-                                                                       .map(LocalDate::parse)))
                                          .as(LocalDate.class)
                                          .map(o -> o.getDayOfMonth() + "/" + o.getMonthValue() + "/" + o.getYear());
 
@@ -324,7 +341,8 @@ public class RequestContentTest {
     public void overridingStringContentReader() {
         Request request = requestTestStub(Single.just(DataChunk.create("test-string".getBytes())));
 
-        String actual = request.content()
+        request.content()
+                .readerContext()
                                .registerReader(reader(
                                        PredicateResult.supports(String.class), publisher -> {
                                            fail("Should not be called");
@@ -336,7 +354,9 @@ public class RequestContentTest {
                                                     .map(TestUtils::requestChunkAsString)
                                                     .map(String::toUpperCase)
                                                     .collectList()
-                                                    .map((strings -> strings.get(0)))))
+                                                    .map((strings -> strings.get(0)))));
+
+        String actual = request.content()
                                .as(String.class)
                                .await(10, TimeUnit.SECONDS);
 

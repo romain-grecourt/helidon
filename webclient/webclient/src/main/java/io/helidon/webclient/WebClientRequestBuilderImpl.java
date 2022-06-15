@@ -56,6 +56,7 @@ import io.helidon.common.http.Parameters;
 import io.helidon.common.reactive.Single;
 import io.helidon.common.serviceloader.HelidonServiceLoader;
 import io.helidon.media.common.MediaContext;
+import io.helidon.media.common.MediaContext.WriterContext;
 import io.helidon.media.common.ReadableEntity;
 import io.helidon.webclient.spi.WebClientService;
 
@@ -120,7 +121,7 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     private final WebClientRequestHeaders headers;
     private final WebClientQueryParams queryParams;
     private final MediaContext.ReaderContext readerContext;
-    private final MediaContext.WriterContext writerContext;
+    private final WriterContext writerContext;
 
     private URI uri;
     private URI finalUri;
@@ -395,11 +396,6 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     }
 
     @Override
-    public <T> Single<T> request(Class<T> responseType) {
-        return request(GenericType.create(responseType));
-    }
-
-    @Override
     public <T> Single<T> request(GenericType<T> responseType) {
         return Contexts.runInContext(context, () -> invokeWithEntity(Single.empty(), responseType));
     }
@@ -410,19 +406,8 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     }
 
     @Override
-    public Single<WebClientResponse> submit() {
-        return request();
-    }
-
-    @Override
     public <T> Single<T> submit(Flow.Publisher<DataChunk> requestEntity, Class<T> responseType) {
         return Contexts.runInContext(context, () -> invokeWithEntity(requestEntity, GenericType.create(responseType)));
-    }
-
-    @Override
-    public <T> Single<T> submit(Object requestEntity, Class<T> responseType) {
-        return submit(writerContext.marshall(Single.just(requestEntity), GenericType.create(requestEntity)),
-                responseType);
     }
 
     @Override
@@ -431,53 +416,12 @@ class WebClientRequestBuilderImpl implements WebClientRequestBuilder {
     }
 
     @Override
-    public Single<WebClientResponse> submit(Object requestEntity) {
-        return submit(requestEntity, GenericType.create(requestEntity));
-    }
-
-    @Override
-    public <T> Single<WebClientResponse> submit(T requestEntity, GenericType<T> entityType) {
-        return submit(writerContext.marshall(Single.just(requestEntity), entityType));
-    }
-
-    @Override
-    public <T> Single<T> submit(T requestEntity, GenericType<T> entityType, Class<T> responseType) {
-        return submit(writerContext.marshall(Single.just(requestEntity), entityType), responseType);
-    }
-
-    @Override
-    public <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, Class<U> entityType, Class<T> responseType) {
-        return submitStream(entityStream, GenericType.create(entityType), responseType);
-    }
-
-    @Override
-    public <T, U> Single<T> submitStream(Flow.Publisher<U> entityStream, GenericType<U> entityType, Class<T> responseType) {
-        return Contexts.runInContext(context, () -> invokeWithEntity(
-                writerContext.marshallStream(entityStream, entityType), GenericType.create(responseType)));
-    }
-
-    @Override
-    public <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, Class<T> entityType) {
-        return submit(writerContext.marshallStream(entityStream, entityType));
-    }
-
-    @Override
-    public <T> Single<WebClientResponse> submitStream(Flow.Publisher<T> entityStream, GenericType<T> entityType) {
-        return submit(writerContext.marshallStream(entityStream, entityType));
-    }
-
-    @Override
-    public Single<WebClientResponse> submit(Function<MediaContext.WriterContext, Flow.Publisher<DataChunk>> function) {
-        return submit(function.apply(writerContext));
-    }
-
-    @Override
     public MediaContext.ReaderContext readerContext() {
         return readerContext;
     }
 
     @Override
-    public MediaContext.WriterContext writerContext() {
+    public WriterContext writerContext() {
         return writerContext;
     }
 

@@ -58,17 +58,15 @@ import io.helidon.media.common.MediaContext.Writers;
  * Routing.builder()
  *        .get("/foo", (res, req) -&gt; {
  *            ReadableEntity content = req.content();
- *            content.registerReader(JsonbSupport.create())
- *            content.as(String.class)
- *                   .thenAccept(System.out::print);
+ *            content.readerContext().registerReader(JsonbSupport.create())
+ *            content.as(String.class).thenAccept(System.out::print);
  *        })
  * </code></pre>
  * Example response writer registration:
  * <pre><code>
  * Routing.builder()
  *        .get("/foo", (res, req) -&gt; {
- *           EntitySupport.WriterContext writerContext = res.writerContext();
- *           writerContext.registerWriter(JsonbSupport.create())
+ *           res.writerContext().registerWriter(JsonbSupport.create())
  *           res.send("Example entity");
  *        })
  * </code></pre>
