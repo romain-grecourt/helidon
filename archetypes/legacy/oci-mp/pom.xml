@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2019, 2023 Oracle and/or its affiliates.
+    Copyright (c) 2020, 2022 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -16,25 +16,21 @@
     limitations under the License.
 
 -->
-
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.helidon</groupId>
-        <artifactId>helidon-dependencies</artifactId>
+        <groupId>io.helidon.archetypes</groupId>
+        <artifactId>helidon-archetypes-legacy-project</artifactId>
         <version>3.1.1-SNAPSHOT</version>
-        <relativePath>../dependencies/pom.xml</relativePath>
     </parent>
-    <groupId>io.helidon.applications</groupId>
-    <artifactId>helidon-applications-project</artifactId>
-    <packaging>pom</packaging>
-    <name>Helidon Applications Project</name>
-    <description>Modules for Helidon applications</description>
+    <artifactId>helidon-oci-mp</artifactId>
+    <packaging>helidon-archetype</packaging>
+    <name>Helidon MP OCI Archetype</name>
 
-    <modules>
-        <module>parent</module>
-        <module>se</module>
-        <module>mp</module>
-    </modules>
+    <properties>
+        <flavor>mp</flavor>
+        <app-type>oci</app-type>
+    </properties>
 </project>
