@@ -22,6 +22,7 @@
 
     <exec src="/common/presets.xml"/>
     <presets>
+        <enum path="media.json-lib">jackson</enum>
         <boolean path="db">true</boolean>
     </presets>
     <exec src="/mp/custom/custom-mp.xml"/>

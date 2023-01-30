@@ -41,6 +41,8 @@
         </inputs>
         <output>
             <model>
+                <value key="parent-groupId">io.helidon.applications</value>
+                <value key="parent-version">${helidon-version}</value>
                 <value key="groupId">${groupId}</value>
                 <value key="artifactId">${artifactId}</value>
                 <value key="project-version">${version}</value>

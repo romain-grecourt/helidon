@@ -19,12 +19,22 @@
 <archetype-script xmlns="https://helidon.io/archetype/2.0"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
+    <exec src="/common/common.xml"/>
+    <presets>
+        <boolean path="db">false</boolean>
+        <boolean path="docker">true</boolean>
+        <boolean path="docker.native-image">false</boolean>
+        <boolean path="docker.jlink-image">false</boolean>
+        <boolean path="k8s">true</boolean>
+        <boolean path="v8o">false</boolean>
+    </presets>
+    <exec src="/common/packaging.xml"/>
     <output>
-        <transformation id="mustache">
-            <replace regex="\.mustache$" replacement=""/>
+        <transformation id="serverpath">
+            <replace regex="^(.*)$" replacement="server/$1"/>
         </transformation>
-        <transformation id="packaged">
-            <replace regex="__pkg__" replacement="${package/\./\/}"/>
+        <transformation id="clientpath">
+            <replace regex="^(.*)$" replacement="client/$1"/>
         </transformation>
         <templates engine="mustache" transformations="mustache,packaged">
             <directory>files</directory>
@@ -32,25 +42,252 @@
                 <include>**/*.mustache</include>
             </includes>
         </templates>
+        <templates engine="mustache" transformations="mustache,serverpath">
+            <directory>/common/files/</directory>
+            <includes>
+                <include>pom.xml.mustache</include>
+            </includes>
+            <model>
+                <value key="parent-groupId">${groupId}</value>
+                <value key="parent-artifactId">${artifactId}</value>
+                <value key="parent-version">${version}</value>
+                <value key="groupId">${groupId}</value>
+                <value key="artifactId">${artifactId}-server</value>
+                <value key="project-version">${version}</value>
+                <value key="mainClass">io.helidon.microprofile.cdi.Main</value>
+                <list key="dependencies">
+                    <map>
+                        <value key="groupId">org.jboss</value>
+                        <value key="artifactId">jandex</value>
+                        <value key="scope">runtime</value>
+                    </map>
+                    <map>
+                        <value key="groupId">jakarta.activation</value>
+                        <value key="artifactId">jakarta.activation-api</value>
+                        <value key="scope">runtime</value>
+                    </map>
+                    <map order="0">
+                        <value key="groupId">org.junit.jupiter</value>
+                        <value key="artifactId">junit-jupiter-api</value>
+                        <value key="scope">test</value>
+                    </map>
+                    <map order="0">
+                        <value key="groupId">io.helidon.microprofile.tests</value>
+                        <value key="artifactId">helidon-microprofile-tests-junit5</value>
+                        <value key="scope">test</value>
+                    </map>
+                    <map order="0">
+                        <value key="groupId">org.hamcrest</value>
+                        <value key="artifactId">hamcrest-all</value>
+                        <value key="scope">test</value>
+                    </map>
+                </list>
+                <list key="maven-plugins" >
+                    <value template="mustache"><![CDATA[            <plugin>
+                <groupId>org.jboss.jandex</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-server</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipOpenApiGenerate}</skip>
+                            <inputSpec>${project.basedir}/../spec/api.yaml</inputSpec>
+                            <generatorName>java-helidon-server</generatorName>
+                            <generateModelTests>false</generateModelTests>
+                            <generateModelDocumentation>false</generateModelDocumentation>
+                            <generateApiTests>false</generateApiTests>
+                            <generateApiDocumentation>false</generateApiDocumentation>
+                            <output>${project.build.directory}/generated-sources/server</output>
+                            <configOptions>
+                                <apiPackage>{{package}}.server.api</apiPackage>
+                                <fullProject>false</fullProject>
+                                <helidonVersion>{{helidon-version}}</helidonVersion>
+                                <library>mp</library>
+                                <modelPackage>{{package}}.server.model</modelPackage>
+                                <serializationLibrary>jackson</serializationLibrary>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*MockedTest</include>
+                    </includes>
+                </configuration>
+            </plugin>]]></value>
+                </list>
+                <list key="maven-profiles">
+                    <value template="mustache"><![CDATA[                <profiles>
+        <profile>
+            <id>native-image</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>resource-config</id>
+                                <goals>
+                                    <goal>generateResourceConfig</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                            <execution>
+                                <id>build-native-image</id>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+            <dependencies>
+                <dependency>
+                    <groupId>io.helidon.integrations.graal</groupId>
+                    <artifactId>helidon-mp-graal-native-image-extension</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>jlink-image</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.helidon.build-tools</groupId>
+                        <artifactId>helidon-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>jlink-image</id>
+                                <goals>
+                                    <goal>jlink-image</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>test</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*ConfigFileTest</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*InstancePrincipalTest</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>]]></value>
+                </list>
+            </model>
+        </templates>
+        <templates engine="mustache" transformations="serverpath">
+            <directory>../common/files</directory>
+            <includes>
+                <include>src/main/resources/**</include>
+            </includes>
+            <model>
+                <list key="microprofile-config-entries">
+                    <value template="mustache"><![CDATA[
+                    # Application properties. This is the default greeting
+                    app.greeting=Hello
+
+                    # OCI Monitoring configuration
+                    oci.monitoring.compartmentId=<your monitoring compartment id>
+                    oci.monitoring.namespace=<your monitoring namespace e.g. helidon_oci>
+
+                    # OCI Logging configuration
+                    oci.logging.id=<your oci custom log id>
+
+                    # OCI Authentication strategy
+                    oci.auth-strategy=config_file,instance_principals,resource_principal
+                    ]]></value>
+                </list>
+                <list key="yaml-config-entries">
+                    <value template="mustache"><![CDATA[
+# Helidon Metrics to OCI parameters
+ocimetrics:
+  # OCI compartment ID where the metrics will be sent
+  compartmentId: <your monitoring compartment id>
+  # OCI metric namespace
+  namespace: <your monitoring namespace e.g. helidon_oci>
+  # Delay in seconds before the 1st metrics transmission to OCI takes place.  Defaults to 1 second if not specified.
+  initialDelay: 10
+  # Interval in seconds between metrics transmission to OCI. Defaults to 60 seconds if not specified.
+  delay: 180
+  # Filter only the scopes that will be sent to OCI. This is optional and will default to all scopes if not specified.
+  scopes: [base, vendor, application]
+  # Enable or disable metric transmission to OCI. Defaults to true if not specified.
+  enabled: true
+                    ]]></value>
+                </list>
+                <list key="oci-logging-entries">
+                    <value template="mustache"><![CDATA[
+# If testing with the Unified Monitoring Agent, add java.util.logging.FileHandler in the handlers parameter and also
+# set java.util.logging.FileHandler.pattern to specify the filename where the logs will be saved and where the agent
+# will pull from and sent to the OCI Logging Service. For example, to save the logs in ${HOME}/helidon_log/helidon.log
+# file path, set java.util.logging.FileHandler.pattern like:
+# java.util.logging.FileHandler.pattern=%h/helidon_log/helidon.log
+#
+# Check https://docs.oracle.com/en-us/iaas/Content/Logging/Concepts/custom_logs.htm for more information on how to
+# set up Custom Logs that uses the Unified monitoring agent.
+                    ]]></value>
+                </list>
+            </model>
+        </templates>
+        <files transformations="clientpath">
+            <directory>../common/files</directory>
+            <includes>
+                <include>src/main/resources/META-INF/beans.xml</include>
+            </includes>
+        </files>
         <files>
             <directory>files</directory>
             <includes>
-                <include>client/src</include>
                 <include>server/src/main/resources</include>
-                <include>server/.dockerignore</include>
-                <include>server/distribution.xml</include>
                 <include>spec</include>
-                <include>README.md</include>
             </includes>
         </files>
-        <templates engine="mustache" transformations="mustache">
-            <directory>/common/files</directory>
-            <includes>
-                <include>.helidon.mustache</include>
-            </includes>
-        </templates>
-        <model>
-            <value key="dot-helidon-schema-version">1.1.0</value>
-        </model>
     </output>
 </archetype-script>
