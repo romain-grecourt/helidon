@@ -4,12 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <!--Default io.helidon.applications -->
-        <groupId>{{parent-groupId}} </groupId>
+        <groupId>{{parent-groupId}}</groupId>
         <artifactId>{{parent-artifactId}}</artifactId>
-        <!--Default {{helidon-version}} -->
         <version>{{parent-version}}</version>
+{{#remote-parent-pom}}
         <relativePath/>
+{{/remote-parent-pom}}
     </parent>
     <groupId>{{groupId}}</groupId>
     <artifactId>{{artifactId}}</artifactId>
@@ -17,7 +17,7 @@
 
     <properties>
 {{#mainClass}}
-        <mainClass>{{package}}.Main</mainClass>
+        <mainClass>{{mainClass}}</mainClass>
 {{/mainClass}}
     </properties>
 

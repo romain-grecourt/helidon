@@ -32,6 +32,8 @@
     <source src="/mp/custom/observability.xml"/>
     <output>
         <model>
+            <value key="artifact-path">target</value>
+            <value key="artifact-name">${artifactId}</value>
             <value key="helidon-test">true</value>
             <value key="readme-description">Minimal Helidon MP project suitable to start from scratch.</value>
             <list key="readme-exercise-the-application">

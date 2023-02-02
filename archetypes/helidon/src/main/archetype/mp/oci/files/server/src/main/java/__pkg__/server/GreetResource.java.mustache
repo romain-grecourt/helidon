@@ -192,6 +192,7 @@ public class GreetResource implements GreetService {
             .build();
 
         try {
+            this.monitoringClient.setEndpoint(monitoringClient.getEndpoint().replaceFirst("telemetry\\.", "telemetry-ingestion."));
             this.monitoringClient.postMetricData(postMetricDataRequest);
             LOGGER.info("publishMetric successfully sends metric to OCI monitoring service");
         } catch (Exception e) {
