@@ -27,7 +27,7 @@
                     <value key="artifact-name">${artifactId}-server</value>
                     <value key="docker-run-readme-section" template="mustache"><![CDATA[
 ```
-docker run --rm -p 8080:8080 -v ~/.oci:/helidon/.oci:ro {{artifactId}}:latest
+docker run --rm -p 8080:8080 -v ~/.oci:/root/.oci:ro {{artifactId}}:latest
 ```
 This will mount `~/.oci` as a volume in the running docker container.
 ]]>
@@ -210,7 +210,7 @@ Create a volume pointing to your OCI configuration file
 Mount this volume as part of your application containers specification
 ```yaml
         volumeMounts:
-        - mountPath: /home/helidon/.oci
+        - mountPath: /root/.oci
           name: oci-config
 ```
                                 ]]></value>
