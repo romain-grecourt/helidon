@@ -17,14 +17,12 @@
 
 -->
 <archetype-script xmlns="https://helidon.io/archetype/2.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="https://helidon.io/archetype/2.0 https://helidon.io/xsd/archetype-2.0.xsd">
     <methods>
-        <method name="models">
+        <method name="pre-processed-models">
             <output>
                 <model>
-                    <value key="artifact-path">server/target</value>
-                    <value key="artifact-name">${artifactId}-server</value>
                     <value key="docker-run-readme-section" template="mustache"><![CDATA[
 ```
 docker run --rm -p 8080:8080 -v ~/.oci:/root/.oci:ro {{artifactId}}:latest
@@ -37,6 +35,7 @@ This will mount `~/.oci` as a volume in the running docker container.
         </method>
     </methods>
     <variables>
+        <text path="module-dir">server</text>
         <boolean path="multi-module">true</boolean>
     </variables>
     <presets>
@@ -47,23 +46,17 @@ This will mount `~/.oci` as a volume in the running docker container.
         <boolean path="k8s">true</boolean>
         <boolean path="v8o">false</boolean>
     </presets>
-    <call method="models"/>
+    <call method="pre-processed-models"/>
     <exec src="/common/common.xml"/>
     <exec src="/common/packaging.xml"/>
     <output>
-        <transformation id="serverpath">
-            <replace regex="^(.*)$" replacement="server/$1"/>
-        </transformation>
-        <transformation id="clientpath">
-            <replace regex="^(.*)$" replacement="client/$1"/>
-        </transformation>
         <templates engine="mustache" transformations="mustache,packaged">
             <directory>files</directory>
             <includes>
                 <include>**/*.mustache</include>
             </includes>
         </templates>
-        <templates engine="mustache" transformations="mustache,packaged,serverpath">
+        <templates engine="mustache" transformations="mustache,packaged,module-dir">
             <directory>../common/files</directory>
             <includes>
                 <include>src/main/resources/**</include>
@@ -117,12 +110,8 @@ ocimetrics:
                 </list>
             </model>
         </templates>
-        <files transformations="clientpath">
-            <directory>../common/files</directory>
-            <includes>
-                <include>src/main/resources/META-INF/beans.xml</include>
-            </includes>
-        </files>
+        <file source="../common/files/src/main/resources/META-INF/beans.xml"
+              target="client/src/main/resources/META-INF/beans.xml" />
         <files>
             <directory>files</directory>
             <includes>
@@ -131,6 +120,191 @@ ocimetrics:
             </includes>
         </files>
         <model>
+            <value key="parent-artifactId">${artifactId}-parent</value>
+            <value key="client-artifactId">${artifactId}-client</value>
+            <value key="artifactId">${artifactId}-server</value>
+            <value key="parent-groupId">${groupId}</value>
+            <value key="parent-version">${version}</value>
+            <value key="mainClass">io.helidon.microprofile.cdi.Main</value>
+            <list key="dependencies">
+                <map>
+                    <value key="groupId">io.helidon.microprofile.bundles</value>
+                    <value key="artifactId">helidon-microprofile-core</value>
+                </map>
+                <map>
+                    <value key="groupId">io.helidon.microprofile.cdi</value>
+                    <value key="artifactId">helidon-microprofile-cdi</value>
+                </map>
+                <map>
+                    <value key="groupId">jakarta.enterprise</value>
+                    <value key="artifactId">jakarta.enterprise.cdi-api</value>
+                </map>
+                <map>
+                    <value key="groupId">jakarta.ws.rs</value>
+                    <value key="artifactId">jakarta.ws.rs-api</value>
+                </map>
+                <map>
+                    <value key="groupId">org.openapitools</value>
+                    <value key="artifactId">jackson-databind-nullable</value>
+                </map>
+                <map>
+                    <value key="groupId">com.fasterxml.jackson.core</value>
+                    <value key="artifactId">jackson-annotations</value>
+                </map>
+                <map>
+                    <value key="groupId">com.fasterxml.jackson.core</value>
+                    <value key="artifactId">jackson-databind</value>
+                </map>
+                <map>
+                    <value key="groupId">org.glassfish.jersey.media</value>
+                    <value key="artifactId">jersey-media-json-jackson</value>
+                </map>
+                <map>
+                    <value key="groupId">com.fasterxml.jackson.datatype</value>
+                    <value key="artifactId">jackson-datatype-jsr310</value>
+                </map>
+                <map>
+                    <value key="groupId">io.helidon.microprofile.health</value>
+                    <value key="artifactId">helidon-microprofile-health</value>
+                </map>
+                <map>
+                    <value key="groupId">io.helidon.microprofile.metrics</value>
+                    <value key="artifactId">helidon-microprofile-metrics</value>
+                </map>
+                <map>
+                    <value key="groupId">io.helidon.integrations.oci.sdk</value>
+                    <value key="artifactId">helidon-integrations-oci-sdk-cdi</value>
+                </map>
+                <map>
+                    <value key="groupId">com.oracle.oci.sdk</value>
+                    <value key="artifactId">oci-java-sdk-common</value>
+                </map>
+                <map>
+                    <value key="groupId">com.oracle.oci.sdk</value>
+                    <value key="artifactId">oci-java-sdk-loggingingestion</value>
+                </map>
+                <map>
+                    <value key="groupId">com.oracle.oci.sdk</value>
+                    <value key="artifactId">oci-java-sdk-monitoring</value>
+                </map>
+                <map>
+                    <value key="groupId">io.helidon.integrations.oci.metrics</value>
+                    <value key="artifactId">helidon-integrations-oci-metrics-cdi</value>
+                    <value key="scope">runtime</value>
+                </map>
+                <map>
+                    <value key="groupId">org.jboss</value>
+                    <value key="artifactId">jandex</value>
+                    <value key="scope">runtime</value>
+                </map>
+                <map order="0">
+                    <value key="groupId">org.junit.jupiter</value>
+                    <value key="artifactId">junit-jupiter-api</value>
+                    <value key="scope">test</value>
+                </map>
+                <map order="0">
+                    <value key="groupId">org.hamcrest</value>
+                    <value key="artifactId">hamcrest-all</value>
+                    <value key="scope">test</value>
+                </map>
+                <map order="0">
+                    <value key="groupId">io.helidon.microprofile.tests</value>
+                    <value key="artifactId">helidon-microprofile-tests-junit5</value>
+                    <value key="scope">test</value>
+                </map>
+                <map order="0">
+                    <value key="groupId">${groupId}</value>
+                    <value key="artifactId">${artifactId}-client</value>
+                    <value key="version">${version}</value>
+                </map>
+            </list>
+            <list key="maven-plugins">
+                <value template="mustache"><![CDATA[            <plugin>
+                <groupId>org.jboss.jandex</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-server</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipOpenApiGenerate}</skip>
+                            <inputSpec>${project.basedir}/../spec/api.yaml</inputSpec>
+                            <generatorName>java-helidon-server</generatorName>
+                            <generateModelTests>false</generateModelTests>
+                            <generateModelDocumentation>false</generateModelDocumentation>
+                            <generateApiTests>false</generateApiTests>
+                            <generateApiDocumentation>false</generateApiDocumentation>
+                            <output>${project.build.directory}/generated-sources/server</output>
+                            <configOptions>
+                                <apiPackage>{{package}}.server.api</apiPackage>
+                                <fullProject>false</fullProject>
+                                <helidonVersion>{{helidon-version}}</helidonVersion>
+                                <library>mp</library>
+                                <modelPackage>{{package}}.server.model</modelPackage>
+                                <serializationLibrary>jackson</serializationLibrary>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*MockedTest</include>
+                    </includes>
+                </configuration>
+            </plugin>]]></value>
+            </list>
+            <list key="maven-profiles">
+                <value template="mustache"><![CDATA[
+    <profiles>
+        <profile>
+            <id>test</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*ConfigFileTest</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/*InstancePrincipalTest</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>]]></value>
+            </list>
             <value key="readme-description" file="files/README-Description.md"/>
             <value key="readme-run-commands">
                 <![CDATA[
@@ -219,7 +393,10 @@ Mount this volume as part of your application containers specification
                 <value>client/pom.xml</value>
                 <value>server/pom.xml</value>
             </list>
-            <value key="phase1-options"> -DskipOpenApiGenerate</value>
+            <list key="docker-phase1-options">
+                <value>-Declipselink.weave.skip</value>
+                <value>-DskipOpenApiGenerate</value>
+            </list>
             <list key="src-dirs">
                 <value>client/src</value>
                 <value>server/src</value>

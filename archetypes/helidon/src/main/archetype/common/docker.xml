@@ -59,8 +59,6 @@
                     <list key="src-dirs" if="!${multi-module}">
                         <value>src</value>
                     </list>
-                    <value key="artifact-path">target</value>
-                    <value key="artifact-name">${artifactId}</value>
                     <list key="native-sections" if="${db} &amp;&amp; ${flavor} == 'mp'">
                         <value file="/se/database/files/README.native.md" if="${docker.native-image}" template="mustache"/>
                     </list>

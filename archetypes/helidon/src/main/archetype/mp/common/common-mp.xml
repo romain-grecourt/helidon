@@ -81,6 +81,9 @@
                 <value>static org.hamcrest.MatcherAssert.assertThat</value>
                 <value>static org.hamcrest.Matchers.is</value>
             </list>
+            <list key="docker-phase1-options">
+                <value>-Declipselink.weave.skip</value>
+            </list>
         </model>
     </output>
 </archetype-script>
