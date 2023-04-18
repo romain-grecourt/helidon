@@ -30,7 +30,6 @@ public class ApiOptionalResponse<R> extends ApiResponse {
 
     protected ApiOptionalResponse(BuilderBase<?, ?, ?, ?> builder, Optional<R> entity) {
         super(builder);
-
         this.entity = entity;
     }
 
@@ -59,20 +58,17 @@ public class ApiOptionalResponse<R> extends ApiResponse {
      * Map the (possible) response entity to a different type.
      *
      * @param mapper mapper function
-     * @param <U> new type
+     * @param <U>    new type
      * @return new optional response with the mapped entity
      */
     public <U> ApiOptionalResponse<U> map(Function<R, U> mapper) {
         Builder<U, U> builder = ApiOptionalResponse.apiResponseBuilder();
-
         entity.map(mapper).ifPresent(builder::entity);
-
-        return builder
-                .entityProcessor(Function.identity())
-                .headers(headers())
-                .requestId(requestId())
-                .status(status())
-                .build();
+        return builder.entityProcessor(Function.identity())
+                      .headers(headers())
+                      .requestId(requestId())
+                      .status(status())
+                      .build();
     }
 
     /**
@@ -136,6 +132,7 @@ public class ApiOptionalResponse<R> extends ApiResponse {
 
         /**
          * Entity as received from network.
+         *
          * @return entity if present, empty otherwise
          */
         protected Optional<X> entity() {
@@ -144,6 +141,7 @@ public class ApiOptionalResponse<R> extends ApiResponse {
 
         /**
          * The configured entity processor.
+         *
          * @return processor
          */
         protected Function<X, R> entityProcessor() {

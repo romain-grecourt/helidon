@@ -16,6 +16,7 @@
 
 package io.helidon.integrations.vault.secrets.transit;
 
+import io.helidon.integrations.vault.Engine;
 import io.helidon.integrations.vault.ListSecrets;
 import io.helidon.integrations.vault.Secrets;
 import io.helidon.integrations.vault.VaultOptionalResponse;
@@ -25,19 +26,13 @@ import io.helidon.integrations.vault.VaultOptionalResponse;
  */
 public interface TransitSecrets extends Secrets {
     /**
-     * Create blocking transit secrets from its reactive counterpart.
-     * This method should not be used when injection is available, as an instance
-     * of this class can be injected.
-     * This method should never be used in reactive environment, unless running
-     * in an executor service (use the {@link io.helidon.integrations.vault.secrets.transit.TransitSecretsRx}
-     * operations in reactive environment).
-     *
-     * @param reactive reactive transit secrets
-     * @return blocking transit secrets
+     * Transit Secrets engine.
+     * <p>
+     * Documentation:
+     * <a href="https://www.vaultproject.io/docs/secrets/transit">https://www.vaultproject.io/docs/secrets/transit</a>
      */
-    static TransitSecrets create(TransitSecretsRx reactive) {
-        return new TransitSecretsImpl(reactive);
-    }
+    Engine<TransitSecrets> ENGINE = Engine.create(TransitSecrets.class, "transit", "transit");
+
     /**
      * List available keys.
      *

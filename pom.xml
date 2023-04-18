@@ -199,7 +199,6 @@
         <module>logging</module>
         <module>scheduling</module>
         <module>nima</module>
-        <module>reactive</module>
         <module>cors</module>
         <module>pico</module>
         <module>builder</module>

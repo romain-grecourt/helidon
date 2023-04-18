@@ -38,7 +38,7 @@ public final class VaultOptionalResponse<R> extends ApiOptionalResponse<R> {
      * @param builder subclass of builder of vault optional response
      * @param entity entity (if mapped from HTTP entity)
      */
-    protected VaultOptionalResponse(BuilderBase<?, ?, R> builder, Optional<R> entity) {
+    VaultOptionalResponse(BuilderBase<?, ?, R> builder, Optional<R> entity) {
         super(builder, entity);
         this.errors = List.copyOf(builder.errors());
     }

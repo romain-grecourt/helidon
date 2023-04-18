@@ -31,8 +31,7 @@ module io.helidon.integrations.vault.auths.token {
     requires io.helidon.integrations.vault;
     requires io.helidon.integrations.common.rest;
     requires io.helidon.integrations.vault.auths.common;
-    requires io.helidon.reactive.webclient;
-    requires io.helidon.reactive.faulttolerance;
+    requires io.helidon.common.http;
 
     exports io.helidon.integrations.vault.auths.token;
 

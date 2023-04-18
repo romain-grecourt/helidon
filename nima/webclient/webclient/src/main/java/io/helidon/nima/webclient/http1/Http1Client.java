@@ -18,6 +18,7 @@ package io.helidon.nima.webclient.http1;
 
 import java.util.Objects;
 
+import io.helidon.config.Config;
 import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
 import io.helidon.nima.http.media.MediaContext;
@@ -190,6 +191,10 @@ public interface Http1Client extends HttpClient<Http1ClientRequest, Http1ClientR
         @Override
         public Http1Client build() {
             return new Http1ClientImpl(this);
+        }
+
+        public void config(Config webclient) {
+
         }
     }
 

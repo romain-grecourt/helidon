@@ -52,10 +52,19 @@ public class JsonpSupport implements MediaSupport {
     private static final JsonReaderFactory READER_FACTORY = Json.createReaderFactory(Map.of());
     private static final JsonWriterFactory WRITER_FACTORY = Json.createWriterFactory(Map.of());
 
-    private final JsonpReader reader = new JsonpReader(READER_FACTORY);
-    private final JsonpWriter writer = new JsonpWriter(WRITER_FACTORY);
+    private final JsonpReader<?> reader = new JsonpReader<>(READER_FACTORY);
+    private final JsonpWriter<?> writer = new JsonpWriter<>(WRITER_FACTORY);
 
     private JsonpSupport() {
+    }
+
+    /**
+     * Creates a new {@link JsonpSupport}.
+     *
+     * @return a new {@link JsonpSupport}
+     */
+    public static MediaSupport create() {
+        return new JsonpSupport();
     }
 
     /**
@@ -146,12 +155,14 @@ public class JsonpSupport implements MediaSupport {
         return JsonStructure.class.isAssignableFrom(type.rawType());
     }
 
+    @SuppressWarnings("unchecked")
     <T> EntityReader<T> reader() {
-        return reader;
+        return (EntityReader<T>) reader;
     }
 
+    @SuppressWarnings("unchecked")
     <T> EntityWriter<T> writer() {
-        return writer;
+        return (EntityWriter<T>) writer;
     }
 
 }

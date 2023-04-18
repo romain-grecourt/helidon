@@ -23,6 +23,6 @@
  *        .register(PrometheusSupport.create())
  * }</pre>
  *
- * @see io.helidon.metrics.prometheus.PrometheusSupport
+ * @see io.helidon.metrics.prometheus.PrometheusFeature
  */
 package io.helidon.metrics.prometheus;

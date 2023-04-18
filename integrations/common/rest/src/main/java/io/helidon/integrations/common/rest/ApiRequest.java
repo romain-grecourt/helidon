@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.helidon.common.media.type.MediaType;
+import io.helidon.common.http.HttpMediaType;
 
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonObject;
@@ -60,7 +60,7 @@ public interface ApiRequest<T extends ApiRequest<T>> {
      * @param mediaType media type of request
      * @return updated request
      */
-    T requestMediaType(MediaType mediaType);
+    T requestMediaType(HttpMediaType mediaType);
 
     /**
      * The accept header, defaults to {@link io.helidon.common.media.type.MediaTypes#APPLICATION_JSON} for most requests, except
@@ -70,7 +70,7 @@ public interface ApiRequest<T extends ApiRequest<T>> {
      * @param mediaType accepted media type
      * @return updated request
      */
-    T responseMediaType(MediaType mediaType);
+    T responseMediaType(HttpMediaType mediaType);
 
     /**
      * Configure request ID for logging (and possibly to send over the network).
@@ -110,17 +110,17 @@ public interface ApiRequest<T extends ApiRequest<T>> {
      * Request media type.
      *
      * @return media type if configured
-     * @see #requestMediaType(io.helidon.common.media.type.MediaType)
+     * @see #requestMediaType(HttpMediaType)
      */
-    Optional<MediaType> requestMediaType();
+    Optional<HttpMediaType> requestMediaType();
 
     /**
      * Response media type.
      *
      * @return media type if configured
-     * @see #responseMediaType(io.helidon.common.media.type.MediaType)
+     * @see #responseMediaType(HttpMediaType)
      */
-    Optional<MediaType> responseMediaType();
+    Optional<HttpMediaType> responseMediaType();
 
     /**
      * Configured request ID.

@@ -22,6 +22,7 @@ module io.helidon.metrics.prometheus {
 
     // prometheus :(
     requires simpleclient;
+    requires io.helidon.nima.servicecommon;
 
     exports io.helidon.metrics.prometheus;
 }

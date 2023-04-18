@@ -19,7 +19,7 @@ package io.helidon.integrations.common.rest;
 /**
  * API exception that is not related to processing of a response.
  *
- * @see io.helidon.integrations.common.rest.RestException
+ * @see RestException
  */
 public class ApiException extends RuntimeException {
     /**

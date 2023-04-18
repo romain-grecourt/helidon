@@ -25,27 +25,23 @@ import io.helidon.integrations.vault.SysApi;
 import io.helidon.integrations.vault.spi.InjectionProvider;
 
 /**
- * Java Service Loader service implementation for {@link SysRx}.
+ * Java Service Loader service implementation for {@link Sys}.
  */
-public class HcpSysProvider implements io.helidon.integrations.vault.spi.SysProvider<SysRx>, InjectionProvider {
+public class HcpSysProvider implements io.helidon.integrations.vault.spi.SysProvider<Sys>, InjectionProvider {
     private static final List<InjectionType<?>> INJECTABLES = new LinkedList<>();
 
     static {
-        INJECTABLES.add(InjectionType.create(SysRx.class, (vault, vaultConfig, instanceConfig) -> vault.sys(SysRx.API)));
-        INJECTABLES.add(InjectionType.create(Sys.class, (vault, vaultConfig, instanceConfig) -> {
-            SysRx sys = vault.sys(SysRx.API);
-            return new SysImpl(sys);
-        }));
+        INJECTABLES.add(InjectionType.create(Sys.class, (vault, vaultConfig, instanceConfig) -> vault.sys(Sys.API)));
     }
 
     @Override
-    public SysApi<SysRx> supportedApi() {
-        return SysRx.API;
+    public SysApi<Sys> supportedApi() {
+        return Sys.API;
     }
 
     @Override
-    public SysRx createSys(Config config, RestApi restAccess) {
-        return new SysRxImpl(restAccess);
+    public Sys createSys(Config config, RestApi restAccess) {
+        return new SysImpl(restAccess);
     }
 
     @Override

@@ -32,10 +32,12 @@ module io.helidon.integrations.common.rest {
     requires io.helidon.common.http;
     requires io.helidon.common;
     requires io.helidon.common.reactive;
-    requires io.helidon.reactive.faulttolerance;
     requires io.helidon.config;
-    requires io.helidon.reactive.webclient;
     requires io.helidon.reactive.media.jsonp;
+    requires io.helidon.nima.faulttolerance;
+    requires io.helidon.nima.webclient;
+    requires io.helidon.nima.http.media.jsonp;
+    requires io.helidon.common.context;
 
     exports io.helidon.integrations.common.rest;
 }

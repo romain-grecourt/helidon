@@ -34,7 +34,7 @@ public final class VaultToken extends VaultTokenBase {
     }
 
     /**
-     * Builder for {@link io.helidon.integrations.vault.VaultToken}.
+     * Builder for {@link VaultToken}.
      */
     public static class Builder extends VaultTokenBase.Builder<Builder, VaultToken> {
         private Builder() {

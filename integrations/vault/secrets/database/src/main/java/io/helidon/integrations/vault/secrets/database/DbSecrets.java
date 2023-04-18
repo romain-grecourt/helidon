@@ -26,28 +26,16 @@ import io.helidon.integrations.vault.VaultOptionalResponse;
 
 /**
  * Database secrets engine API.
- * <p>
- * All methods block the current thread. This implementation is not suitable for reactive programming.
- * Use {@link io.helidon.integrations.vault.secrets.database.DbSecretsRx} in reactive code.
  */
 public interface DbSecrets extends Secrets {
+
     /**
      * Database secrets engine.
      * <p>
      * Documentation:
      * <a href="https://www.vaultproject.io/docs/secrets/databases">https://www.vaultproject.io/docs/secrets/databases</a>
      */
-    Engine<DbSecretsRx> ENGINE = DbSecretsRx.ENGINE;
-
-    /**
-     * Create blocking DB secrets from its reactive counterpart.
-     *
-     * @param reactive reactive DB secrets
-     * @return blocking DB secrets
-     */
-    static DbSecrets create(DbSecretsRx reactive) {
-        return new DbSecretsImpl(reactive);
-    }
+    Engine<DbSecrets> ENGINE = Engine.create(DbSecrets.class, "database", "database");
 
     /**
      * List database connections.

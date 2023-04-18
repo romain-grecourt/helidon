@@ -28,38 +28,29 @@ import io.helidon.integrations.vault.spi.InjectionProvider;
 /**
  * Java Service Loader implementation for AppRole authentication method.
  */
-public class AppRoleAuthProvider implements AuthMethodProvider<AppRoleAuthRx>,
+public class AppRoleAuthProvider implements AuthMethodProvider<AppRoleAuth>,
                                             InjectionProvider {
     private static final List<InjectionType<?>> INJECTABLES;
 
     static {
         List<InjectionType<?>> injectables = new LinkedList<>();
 
-        injectables.add(InjectionType.create(AppRoleAuthRx.class,
-                                             (vault, config, instanceConfig) -> instanceConfig.vaultPath()
-                                                     .map(it -> vault.auth(AppRoleAuthRx.AUTH_METHOD, it))
-                                                     .orElseGet(() -> vault.auth(AppRoleAuthRx.AUTH_METHOD))));
-
         injectables.add(InjectionType.create(AppRoleAuth.class,
-                                             (vault, config, instanceConfig) -> {
-                                                 AppRoleAuthRx rx = instanceConfig.vaultPath()
-                                                         .map(it -> vault.auth(AppRoleAuthRx.AUTH_METHOD, it))
-                                                         .orElseGet(() -> vault.auth(AppRoleAuthRx.AUTH_METHOD));
-
-                                                 return new AppRoleAuthImpl(rx);
-                                             }));
+                                             (vault, config, instanceConfig) -> instanceConfig.vaultPath()
+                                                     .map(it -> vault.auth(AppRoleAuth.AUTH_METHOD, it))
+                                                     .orElseGet(() -> vault.auth(AppRoleAuth.AUTH_METHOD))));
 
         INJECTABLES = List.copyOf(injectables);
     }
 
     @Override
-    public AuthMethod<AppRoleAuthRx> supportedMethod() {
-        return AppRoleAuthRx.AUTH_METHOD;
+    public AuthMethod<AppRoleAuth> supportedMethod() {
+        return AppRoleAuth.AUTH_METHOD;
     }
 
     @Override
-    public AppRoleAuthRx createAuth(Config config, RestApi restApi, String path) {
-        return new AppRoleAuthRxImpl(restApi, path);
+    public AppRoleAuth createAuth(Config config, RestApi restApi, String path) {
+        return new AppRoleAuthImpl(restApi, path);
     }
 
     @Override

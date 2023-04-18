@@ -17,7 +17,7 @@
 package io.helidon.integrations.vault;
 
 /**
- * System API to use with {@link io.helidon.integrations.vault.Vault#sys(SysApi)}.
+ * System API to use with {@link Vault#sys(SysApi)}.
  *
  * @param <T> type of API
  */

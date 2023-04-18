@@ -21,17 +21,24 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Optional;
 
+import io.helidon.integrations.vault.Engine;
 import io.helidon.integrations.vault.ListSecrets;
 import io.helidon.integrations.vault.Secrets;
 import io.helidon.integrations.vault.VaultOptionalResponse;
 
 /**
  * API operation for Vault PKI Secrets Engine.
- *
- * All methods block the current thread. This implementation is not suitable for reactive programming.
- * Use {@link io.helidon.integrations.vault.secrets.pki.PkiSecretsRx} in reactive code.
  */
 public interface PkiSecrets extends Secrets {
+
+    /**
+     * PKI secrets engine.
+     * <p>
+     * Documentation:
+     * <a href="https://www.vaultproject.io/api-docs/secret/pki">https://www.vaultproject.io/api-docs/secret/pki</a>
+     */
+    Engine<PkiSecrets> ENGINE = Engine.create(PkiSecrets.class, "pki", "pki");
+
     /**
      * RSA algorithm for keys.
      */
@@ -40,16 +47,6 @@ public interface PkiSecrets extends Secrets {
      * EC (Elliptic curve) algorithm for keys.
      */
     String KEY_TYPE_EC = PkiSecretsRx.KEY_TYPE_EC;
-
-    /**
-     * Create a new blocking API from its reactive counterpart.
-     *
-     * @param reactive reactive PKI Secrets
-     * @return blocking PKI Secrets
-     */
-    static PkiSecrets create(PkiSecretsRx reactive) {
-        return new PkiSecretsImpl(reactive);
-    }
 
     /**
      * List certificate serial numbers.

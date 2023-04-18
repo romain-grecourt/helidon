@@ -16,18 +16,16 @@
 
 package io.helidon.metrics.prometheus;
 
-import java.util.concurrent.TimeUnit;
-
 import io.helidon.common.http.Http;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.testsupport.TestClient;
-import io.helidon.reactive.webserver.testsupport.TestRequest;
-import io.helidon.reactive.webserver.testsupport.TestResponse;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import org.hamcrest.core.StringStartsWith;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -35,57 +33,58 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.IsNot.not;
 
+@ServerTest
 public class PrometheusSupportTest {
 
-    private Routing routing;
     private Counter alpha;
-    private Counter beta;
 
-    @BeforeEach
-    public void prepareRouting() {
+    private final Http1Client client;
+
+    PrometheusSupportTest(Http1Client client) {
+        this.client = client;
+    }
+
+    @SetUpRoute
+    void prepareRouting(HttpRouting.Builder router) {
         CollectorRegistry registry = new CollectorRegistry();
-        // Routing
-        this.routing = Routing.builder()
-                .register(PrometheusSupport.create(registry))
-                .build();
+        router.addFeature(PrometheusFeature.create(registry));
         // Metrics
         this.alpha = Counter.build()
-                               .name("alpha")
-                               .help("Alpha help with \\ and \n.")
-                               .labelNames("method")
-                               .register(registry);
-        this.beta = Counter.build()
-                               .name("beta")
-                               .help("Beta help.")
-                               .register(registry);
+                            .name("alpha")
+                            .help("Alpha help with \\ and \n.")
+                            .labelNames("method")
+                            .register(registry);
+
         for (int i = 0; i < 5; i++) {
             alpha.labels("\"foo\" \\ \n").inc();
         }
         for (int i = 0; i < 6; i++) {
             alpha.labels("bar").inc();
         }
+
+        Counter beta = Counter.build()
+                              .name("beta")
+                              .help("Beta help.")
+                              .register(registry);
         for (int i = 0; i < 3; i++) {
             beta.inc();
         }
     }
 
-    private TestResponse doTestRequest(String nameQuery) throws Exception {
-        TestRequest request = TestClient.create(routing)
-                                        .path("/metrics");
-        if (nameQuery != null && !nameQuery.isEmpty()) {
-            request.queryParameter("name[]", nameQuery);
-        }
-        TestResponse response = request.get();
+    private Http1ClientResponse get(String nameQuery) {
+        Http1ClientResponse response = client.get("/metrics")
+                                             .queryParam("name[]", nameQuery)
+                                             .request();
         assertThat(response.status(), is(Http.Status.OK_200));
         return response;
     }
 
     @Test
-    public void simpleCall() throws Exception {
-        TestResponse response = doTestRequest(null);
+    public void simpleCall() {
+        Http1ClientResponse response = get(null);
         assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null),
-                   StringStartsWith.startsWith("text/plain"));
-        String body = response.asString().get(5, TimeUnit.SECONDS);
+                StringStartsWith.startsWith("text/plain"));
+        String body = response.as(String.class);
         assertThat(body, containsString("# HELP beta"));
         assertThat(body, containsString("# TYPE beta counter"));
         assertThat(body, containsString("beta 3.0"));
@@ -96,24 +95,24 @@ public class PrometheusSupportTest {
     }
 
     @Test
-    public void doubleCall() throws Exception {
-        TestResponse response = doTestRequest(null);
+    public void doubleCall() {
+        Http1ClientResponse response = get(null);
         assertThat(response.headers().first(Http.Header.CONTENT_TYPE).orElse(null),
-                   StringStartsWith.startsWith("text/plain"));
-        String body = response.asString().get(5, TimeUnit.SECONDS);
+                StringStartsWith.startsWith("text/plain"));
+        String body = response.as(String.class);
         assertThat(body, containsString("alpha{method=\"bar\",} 6.0"));
         assertThat(body, not(containsString("alpha{method=\"baz\"")));
         alpha.labels("baz").inc();
-        response = doTestRequest(null);
-        body = response.asString().get(5, TimeUnit.SECONDS);
+        response = get(null);
+        body = response.as(String.class);
         assertThat(body, containsString("alpha{method=\"baz\",} 1.0"));
     }
 
     @Test
-    public void filter() throws Exception {
-        TestResponse response = doTestRequest("alpha");
+    public void filter() {
+        Http1ClientResponse response = get("alpha");
         assertThat(response.status(), is(Http.Status.OK_200));
-        String body = response.asString().get(5, TimeUnit.SECONDS);
+        String body = response.as(String.class);
         assertThat(body, not(containsString("# TYPE beta")));
         assertThat(body, not(containsString("beta 3.0")));
         assertThat(body, containsString("# TYPE alpha counter"));

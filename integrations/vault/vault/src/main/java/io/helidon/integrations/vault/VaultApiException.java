@@ -16,6 +16,8 @@
 
 package io.helidon.integrations.vault;
 
+import java.util.Formatter;
+
 import io.helidon.integrations.common.rest.ApiException;
 
 /**
@@ -33,10 +35,20 @@ public class VaultApiException extends ApiException {
     }
 
     /**
+     * Vault exception with a descriptive message.
+     *
+     * @param format a {@link Formatter} string
+     * @param args   format string arguments
+     */
+    public VaultApiException(String format, Object... args) {
+        super(String.format(format, args));
+    }
+
+    /**
      * Vault exception with message and a cause.
      *
      * @param message error message
-     * @param cause throwable that caused this exception
+     * @param cause   throwable that caused this exception
      */
     public VaultApiException(String message, Throwable cause) {
         super(message, cause);

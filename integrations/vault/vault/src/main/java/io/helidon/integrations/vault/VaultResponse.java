@@ -39,7 +39,7 @@ public abstract class VaultResponse extends ApiEntityResponse {
     /**
      * Request ID as understood by Vault. May differ from {@link #requestId()}.
      *
-     * @return valut request ID
+     * @return vault request ID
      */
     public String vaultRequestId() {
         return requestId;

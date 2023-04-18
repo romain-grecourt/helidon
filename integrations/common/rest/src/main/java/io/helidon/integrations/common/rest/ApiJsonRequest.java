@@ -20,12 +20,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.helidon.common.media.type.MediaType;
+import io.helidon.common.http.HttpMediaType;
 
 /**
  * Common base class for REST requests that have an entity.
  * This class acts as a mutable builder of request JSON object.
- *
+ * <br>
  * Path is not a part of this request.
  *
  * @param <T> type of the request
@@ -87,13 +87,13 @@ public abstract class ApiJsonRequest<T extends ApiJsonRequest<T>> extends ApiJso
     }
 
     @Override
-    public T requestMediaType(MediaType mediaType) {
+    public T requestMediaType(HttpMediaType mediaType) {
         delegate.requestMediaType(mediaType);
         return me();
     }
 
     @Override
-    public T responseMediaType(MediaType mediaType) {
+    public T responseMediaType(HttpMediaType mediaType) {
         delegate.responseMediaType(mediaType);
         return me();
     }
@@ -105,12 +105,12 @@ public abstract class ApiJsonRequest<T extends ApiJsonRequest<T>> extends ApiJso
     }
 
     @Override
-    public Optional<MediaType> requestMediaType() {
+    public Optional<HttpMediaType> requestMediaType() {
         return delegate.requestMediaType();
     }
 
     @Override
-    public Optional<MediaType> responseMediaType() {
+    public Optional<HttpMediaType> responseMediaType() {
         return delegate.responseMediaType();
     }
 

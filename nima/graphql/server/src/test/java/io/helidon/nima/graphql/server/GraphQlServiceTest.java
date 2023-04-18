@@ -18,11 +18,12 @@ package io.helidon.nima.graphql.server;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
+import io.helidon.nima.http.media.jsonb.JsonbSupport;
 import io.helidon.nima.webserver.WebServer;
-import io.helidon.reactive.media.jsonb.JsonbSupport;
-import io.helidon.reactive.webclient.WebClient;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.webclient.WebClient;
+import io.helidon.nima.webclient.http1.Http1Client;
 
 import graphql.schema.GraphQLSchema;
 import graphql.schema.StaticDataFetcher;
@@ -42,32 +43,33 @@ class GraphQlServiceTest {
     @Test
     void testHelloWorld() {
         WebServer server = WebServer.builder()
-                .host("localhost")
-                .routing(r -> r.register(GraphQlService.create(buildSchema())))
-                .build()
-                .start();
+                                    .host("localhost")
+                                    .routing(r -> r.register(GraphQlService.create(buildSchema())))
+                                    .build()
+                                    .start();
 
         try {
-            WebClient webClient = WebClient.builder()
-                    .addMediaSupport(JsonbSupport.create())
-                    .build();
+            Http1Client webClient =
+                    WebClient.builder()
+                             .mediaContext(MediaContext.builder()
+                                                       .addMediaSupport(JsonbSupport.create())
+                                                       .build())
+                             .build();
 
-            LinkedHashMap<String, Object> response = webClient
-                    .post()
-                    .uri("http://localhost:" + server.port() + "/graphql")
-                    .submit("{\"query\": \"{hello}\"}", LinkedHashMap.class)
-                    .await(10, TimeUnit.SECONDS);
+            LinkedHashMap<String, Object> response =
+                    webClient.post()
+                             .uri("http://localhost:" + server.port() + "/graphql")
+                             .submit("{\"query\": \"{hello}\"}")
+                             .as(LinkedHashMap.class);
 
             Map<String, Object> data = (Map<String, Object>) response.get("data");
             assertThat("POST errors: " + response.get("errors"), data, notNullValue());
             assertThat("POST", data.get("hello"), is("world"));
 
-            response = webClient
-                    .get()
-                    .uri("http://localhost:" + server.port() + "/graphql")
-                    .queryParam("query", "{hello}")
-                    .request(LinkedHashMap.class)
-                    .await(10, TimeUnit.SECONDS);
+            response = webClient.get()
+                                .uri("http://localhost:" + server.port() + "/graphql")
+                                .queryParam("query", "{hello}")
+                                .request(LinkedHashMap.class);
 
             data = (Map<String, Object>) response.get("data");
             assertThat("GET errors: " + response.get("errors"), data, notNullValue());
@@ -83,9 +85,10 @@ class GraphQlServiceTest {
         SchemaParser schemaParser = new SchemaParser();
         TypeDefinitionRegistry typeDefinitionRegistry = schemaParser.parse(schema);
 
-        RuntimeWiring runtimeWiring = RuntimeWiring.newRuntimeWiring()
-                .type("Query", builder -> builder.dataFetcher("hello", new StaticDataFetcher("world")))
-                .build();
+        RuntimeWiring runtimeWiring =
+                RuntimeWiring.newRuntimeWiring()
+                             .type("Query", builder -> builder.dataFetcher("hello", new StaticDataFetcher("world")))
+                             .build();
 
         SchemaGenerator schemaGenerator = new SchemaGenerator();
         return schemaGenerator.makeExecutableSchema(typeDefinitionRegistry, runtimeWiring);

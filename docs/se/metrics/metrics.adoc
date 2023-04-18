@@ -207,7 +207,7 @@ Your code creates a link:{prometheus-javadoc-base-url}/PrometheusSupport.html[`P
 
 [source,java]
 ----
-import io.helidon.metrics.prometheus.PrometheusSupport;
+import io.helidon.metrics.prometheus.PrometheusFeature;
 
 Routing.builder()
                 .register(PrometheusSupport.create())

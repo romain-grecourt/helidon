@@ -16,8 +16,8 @@
 
 package io.helidon.microprofile.messaging.health;
 
+import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import io.helidon.microprofile.config.ConfigCdiExtension;
 import io.helidon.microprofile.health.HealthCdiExtension;
@@ -30,8 +30,10 @@ import io.helidon.microprofile.tests.junit5.AddExtension;
 import io.helidon.microprofile.tests.junit5.AddExtensions;
 import io.helidon.microprofile.tests.junit5.DisableDiscovery;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.http.media.jsonp.JsonpSupport;
+import io.helidon.nima.webclient.WebClient;
+import io.helidon.nima.webclient.http1.Http1Client;
 
 import jakarta.enterprise.inject.se.SeContainer;
 import jakarta.enterprise.inject.spi.CDI;
@@ -83,15 +85,17 @@ public class MessagingHealthTest {
 
     private static final String ERROR_MESSAGE = "BOOM!";
 
-    private WebClient client;
+    private Http1Client client;
 
     @BeforeEach
     void setUp() {
         ServerCdiExtension server = CDI.current().select(ServerCdiExtension.class).get();
         client = WebClient.builder()
-                .baseUri("http://localhost:" + server.port())
-                .addReader(JsonpSupport.reader())
-                .build();
+                          .baseUri("http://localhost:" + server.port())
+                          .mediaContext(MediaContext.builder()
+                                                    .addMediaSupport(JsonpSupport.create())
+                                                    .build())
+                          .build();
     }
 
     @Test
@@ -108,7 +112,7 @@ public class MessagingHealthTest {
                 CHANNEL_1, DOWN,
                 CHANNEL_2, UP
         ));
-        assertThat(bean.getSubscriber1().error().await(200, TimeUnit.MILLISECONDS).getMessage(),
+        assertThat(bean.getSubscriber1().error().await(Duration.ofMillis(200)).getMessage(),
                 equalTo(ERROR_MESSAGE));
 
         bean.getEmitter2().fail(new RuntimeException(ERROR_MESSAGE));
@@ -116,7 +120,7 @@ public class MessagingHealthTest {
                 CHANNEL_1, DOWN,
                 CHANNEL_2, DOWN
         ));
-        assertThat(bean.getSubscriber1().error().await(200, TimeUnit.MILLISECONDS).getMessage(),
+        assertThat(bean.getSubscriber1().error().await(Duration.ofMillis(200)).getMessage(),
                 equalTo(ERROR_MESSAGE));
     }
 
@@ -155,17 +159,14 @@ public class MessagingHealthTest {
 
     private JsonObject getHealthCheck(String checkName) {
         return client.get()
-                .path("/health")
-                .submit()
-                .await(5, TimeUnit.SECONDS)
-                .content()
-                .as(JsonObject.class)
-                .await(500, TimeUnit.MILLISECONDS)
-                .getValue("/checks")
-                .asJsonArray().stream()
-                .map(JsonValue::asJsonObject)
-                .filter(check -> check.getString("name").equals(checkName))
-                .findFirst()
-                .orElseThrow(() -> new AssertionFailedError("Health check 'messaging' is missing!"));
+                     .path("/health")
+                     .request(JsonObject.class)
+                     .getValue("/checks")
+                     .asJsonArray()
+                     .stream()
+                     .map(JsonValue::asJsonObject)
+                     .filter(check -> check.getString("name").equals(checkName))
+                     .findFirst()
+                     .orElseThrow(() -> new AssertionFailedError("Health check 'messaging' is missing!"));
     }
 }

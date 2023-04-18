@@ -36,7 +36,7 @@ public interface SysProvider<T> {
      * Create a new instance of Sys.
      *
      * @param config vault configuration
-     * @param restAccess access to REST endpoits
+     * @param restAccess access to REST endpoints
      * @return a API to access sys functions
      */
     T createSys(Config config, RestApi restAccess);

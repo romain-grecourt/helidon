@@ -22,13 +22,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.helidon.common.media.type.MediaType;
+import io.helidon.common.http.HttpMediaType;
 
 /**
  * Common base class for REST requests.
  * This class acts as a mutable builder without a build method, as the intended use is to pass it
  * to a {@code io.helidon.integrations.common.rest.RestApi}, not to send it around for parallel processing.
- *
+ * <br>
  * Path is not a part of this request.
  *
  * @param <T> type of the request
@@ -36,8 +36,8 @@ import io.helidon.common.media.type.MediaType;
 public abstract class ApiRestRequest<T extends ApiRequest<T>> implements ApiRequest<T> {
     private final Map<String, List<String>> queryParams = new HashMap<>();
     private final Map<String, List<String>> headers = new HashMap<>();
-    private MediaType requestMediaType;
-    private MediaType responseMediaType;
+    private HttpMediaType requestMediaType;
+    private HttpMediaType responseMediaType;
     private String requestId;
 
     /**
@@ -49,7 +49,7 @@ public abstract class ApiRestRequest<T extends ApiRequest<T>> implements ApiRequ
     /**
      * Add an HTTP header.
      *
-     * @param name name of the header
+     * @param name  name of the header
      * @param value header value(s)
      * @return updated request
      */
@@ -62,7 +62,7 @@ public abstract class ApiRestRequest<T extends ApiRequest<T>> implements ApiRequ
     /**
      * Add an HTTP query parameter.
      *
-     * @param name name of the parameter
+     * @param name  name of the parameter
      * @param value parameter value(s)
      * @return updated request
      */
@@ -73,13 +73,13 @@ public abstract class ApiRestRequest<T extends ApiRequest<T>> implements ApiRequ
     }
 
     @Override
-    public T requestMediaType(MediaType mediaType) {
+    public T requestMediaType(HttpMediaType mediaType) {
         this.requestMediaType = mediaType;
         return me();
     }
 
     @Override
-    public T responseMediaType(MediaType mediaType) {
+    public T responseMediaType(HttpMediaType mediaType) {
         this.responseMediaType = mediaType;
         return me();
     }
@@ -101,12 +101,12 @@ public abstract class ApiRestRequest<T extends ApiRequest<T>> implements ApiRequ
     }
 
     @Override
-    public Optional<MediaType> requestMediaType() {
+    public Optional<HttpMediaType> requestMediaType() {
         return Optional.ofNullable(requestMediaType);
     }
 
     @Override
-    public Optional<MediaType> responseMediaType() {
+    public Optional<HttpMediaType> responseMediaType() {
         return Optional.ofNullable(responseMediaType);
     }
 

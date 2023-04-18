@@ -33,10 +33,9 @@ module io.helidon.integrations.vault {
     requires transitive io.helidon.config;
 
     requires io.helidon.common;
-    requires io.helidon.reactive.webclient;
-    requires io.helidon.reactive.media.jsonp;
-    requires io.helidon.reactive.faulttolerance;
     requires io.helidon.integrations.common.rest;
+    requires io.helidon.nima.webclient;
+    requires io.helidon.nima.faulttolerance;
 
     exports io.helidon.integrations.vault;
     exports io.helidon.integrations.vault.spi;
