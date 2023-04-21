@@ -112,8 +112,7 @@ public class IdcsRoleMapperProvider extends IdcsRoleMapperProviderBase implement
             return buildSubject(subject, allGrants);
         }
         // we do not have a cached value, we must request it from remote server
-        // this may trigger multiple times in parallel - rather than creating a map of future for each user
-        // we leave this be (as the map of futures may be unlimited)
+        // this may trigger multiple times in parallel
         List<Grant> computedGrants = new LinkedList<>(computeGrants(subject));
         List<Grant> newGrants = roleCache.computeValue(username, () -> Optional.of(List.copyOf(computedGrants)))
                                          .orElseGet(List::of);
@@ -127,7 +126,7 @@ public class IdcsRoleMapperProvider extends IdcsRoleMapperProviderBase implement
      * This implementation gets grants from server {@link #getGrantsFromServer(io.helidon.security.Subject)}.
      *
      * @param subject to retrieve roles (or in general {@link io.helidon.security.Grant grants})
-     * @return future with grants to be added to the subject
+     * @return grants to be added to the subject
      */
     protected List<? extends Grant> computeGrants(Subject subject) {
         return getGrantsFromServer(subject);

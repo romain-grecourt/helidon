@@ -55,7 +55,7 @@ public interface Secrets {
      * List available secrets.
      *
      * @param request request
-     * @return future with response
+     * @return response
      */
     VaultOptionalResponse<ListSecrets.Response> list(ListSecrets.Request request);
 }

@@ -148,8 +148,7 @@ public class IdcsMtRoleMapperProvider extends IdcsRoleMapperProviderBase {
             return buildSubject(subject, allGrants);
         }
         // we do not have a cached value, we must request it from remote server
-        // this may trigger multiple times in parallel - rather than creating a map of future for each user
-        // we leave this be (as the map of futures may be unlimited)
+        // this may trigger multiple times in parallel
         List<? extends Grant> computedGrants = computeGrants(idcsMtContext.tenantId(), idcsMtContext.appId(), subject);
         List<Grant> newGrants = cache.computeValue(cacheKey, () -> Optional.of(List.copyOf(computedGrants)))
                                      .orElseGet(List::of);
@@ -165,7 +164,7 @@ public class IdcsMtRoleMapperProvider extends IdcsRoleMapperProviderBase {
      * @param idcsTenantId tenant id
      * @param idcsAppName  app name
      * @param subject      subject
-     * @return future with grants to be added to the subject
+     * @return grants to be added to the subject
      */
     protected List<? extends Grant> computeGrants(String idcsTenantId, String idcsAppName, Subject subject) {
         return getGrantsFromServer(idcsTenantId, idcsAppName, subject);

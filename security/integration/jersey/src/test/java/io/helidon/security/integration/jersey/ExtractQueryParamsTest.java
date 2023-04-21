@@ -63,12 +63,9 @@ public class ExtractQueryParamsTest {
                                   .register(TestResource1.class)
                                   .register(new TestResource2())
                                   .register(feature)
-                                  .register(new ExceptionMapper<Exception>() {
-                                      @Override
-                                      public Response toResponse(Exception exception) {
-                                          exception.printStackTrace();
-                                          return Response.serverError().build();
-                                      }
+                                  .register((ExceptionMapper<Exception>) exception -> {
+                                      exception.printStackTrace();
+                                      return Response.serverError().build();
                                   })
                                   .build())
                 .build());

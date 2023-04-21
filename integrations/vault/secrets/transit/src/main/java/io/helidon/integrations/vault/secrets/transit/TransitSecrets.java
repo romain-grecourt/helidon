@@ -46,7 +46,7 @@ public interface TransitSecrets extends Secrets {
      * Creates a new named encryption key of the specified type.
      *
      * @param request create key request
-     * @return future with response
+     * @return response
      */
     CreateKey.Response createKey(CreateKey.Request request);
 
@@ -57,7 +57,7 @@ public interface TransitSecrets extends Secrets {
      * must be called before deleting.
      *
      * @param request delete key request
-     * @return future with response
+     * @return response
      */
     DeleteKey.Response deleteKey(DeleteKey.Request request);
 
@@ -65,7 +65,7 @@ public interface TransitSecrets extends Secrets {
      * Tune configuration of a key.
      *
      * @param request update configuration request
-     * @return future with response
+     * @return response
      * @see io.helidon.integrations.vault.secrets.transit.UpdateKeyConfig.Request#allowDeletion(boolean)
      */
     UpdateKeyConfig.Response updateKeyConfig(UpdateKeyConfig.Request request);
@@ -77,7 +77,7 @@ public interface TransitSecrets extends Secrets {
      * parameter is empty or not). If the user only has update capability and the key does not exist, an error will be returned.
      *
      * @param request encrypt request
-     * @return future with response
+     * @return response
      */
     Encrypt.Response encrypt(Encrypt.Request request);
 
@@ -89,7 +89,7 @@ public interface TransitSecrets extends Secrets {
      * be returned.
      *
      * @param request encrypt request
-     * @return future with response
+     * @return response
      */
     EncryptBatch.Response encrypt(EncryptBatch.Request request);
 
@@ -97,7 +97,7 @@ public interface TransitSecrets extends Secrets {
      * Decrypts the provided ciphertext using the named key.
      *
      * @param request decrypt request
-     * @return future with response
+     * @return response
      */
     Decrypt.Response decrypt(Decrypt.Request request);
 
@@ -105,7 +105,7 @@ public interface TransitSecrets extends Secrets {
      * Decrypts the provided batch of ciphertext strings using the named key.
      *
      * @param request decrypt request
-     * @return future with response
+     * @return response
      */
     DecryptBatch.Response decrypt(DecryptBatch.Request request);
 
