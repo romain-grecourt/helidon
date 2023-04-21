@@ -18,8 +18,6 @@ package io.helidon.security.providers;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.AuthorizationResponse;
@@ -47,61 +45,61 @@ public class ResourceBasedProvider implements AuthenticationProvider, Authorizat
     }
 
     @Override
-    public CompletionStage<AuthenticationResponse> authenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         SecurityEnvironment env = providerRequest.env();
 
-        return CompletableFuture.completedFuture(env.abacAttribute("resourceType")
-                                                         .map(String::valueOf)
-                                                         .map(resource -> {
-                                                             switch (resource) {
-                                                             case "jack":
-                                                                 return success("resource-jack");
-                                                             case "jill":
-                                                                 return success("resource-jill");
-                                                             case "service":
-                                                                 return service("resource-aService");
-                                                             case "fail":
-                                                                 return AuthenticationResponse
-                                                                         .failed("resource-Intentional fail");
-                                                             case "successFinish":
-                                                                 return AuthenticationResponse.builder()
-                                                                         .status(SecurityResponse.SecurityStatus.SUCCESS_FINISH)
-                                                                         .user(SecurityTest.SYSTEM)
-                                                                         .build();
-                                                             case "abstain":
-                                                                 return AuthenticationResponse.abstain();
-                                                             default:
-                                                                 if (resource.startsWith("atz")) {
-                                                                     return success("atz");
-                                                                 }
-                                                                 return AuthenticationResponse.failed("resource-Invalid request");
-                                                             }
-                                                         }).orElse(AuthenticationResponse.abstain()));
+        return env.abacAttribute("resourceType")
+                  .map(String::valueOf)
+                  .map(resource -> {
+                      switch (resource) {
+                          case "jack" -> {
+                              return success("resource-jack");
+                          }
+                          case "jill" -> {
+                              return success("resource-jill");
+                          }
+                          case "service" -> {
+                              return service("resource-aService");
+                          }
+                          case "fail" -> {
+                              return AuthenticationResponse
+                                      .failed("resource-Intentional fail");
+                          }
+                          case "successFinish" -> {
+                              return AuthenticationResponse.builder()
+                                                           .status(SecurityResponse.SecurityStatus.SUCCESS_FINISH)
+                                                           .user(SecurityTest.SYSTEM)
+                                                           .build();
+                          }
+                          case "abstain" -> {
+                              return AuthenticationResponse.abstain();
+                          }
+                          default -> {
+                              if (resource.startsWith("atz")) {
+                                  return success("atz");
+                              }
+                              return AuthenticationResponse.failed("resource-Invalid request");
+                          }
+                      }
+                  }).orElse(AuthenticationResponse.abstain());
     }
 
     @Override
-    public CompletionStage<AuthorizationResponse> authorize(ProviderRequest context) {
+    public AuthorizationResponse authorize(ProviderRequest context) {
         SecurityEnvironment env = context.env();
 
-        return CompletableFuture.completedFuture(env.abacAttribute("resourceType")
-                                                         .map(String::valueOf)
-                                                         .map(resource -> {
-                                                             switch (resource) {
-                                                             case "atz/permit":
-                                                                 return AuthorizationResponse.permit();
-                                                             case "atz/deny":
-                                                                 return AuthorizationResponse.deny();
-                                                             case "atz/abstain":
-                                                                 return AuthorizationResponse.abstain();
-                                                             case "atz/fail":
-                                                                 return AuthorizationResponse.builder()
-                                                                         .status(SecurityResponse.SecurityStatus.FAILURE)
-                                                                         .description("Intentional failure")
-                                                                         .build();
-                                                             default:
-                                                                 return AuthorizationResponse.permit();
-                                                             }
-                                                         }).orElse(AuthorizationResponse.abstain()));
+        return env.abacAttribute("resourceType")
+                  .map(String::valueOf)
+                  .map(resource ->
+                          switch (resource) {
+                              case "atz/deny" -> AuthorizationResponse.deny();
+                              case "atz/abstain" -> AuthorizationResponse.abstain();
+                              case "atz/fail" -> AuthorizationResponse.builder()
+                                                                      .status(SecurityResponse.SecurityStatus.FAILURE)
+                                                                      .description("Intentional failure")
+                                                                      .build();
+                              default -> AuthorizationResponse.permit();
+                          }).orElse(AuthorizationResponse.abstain());
     }
 
     @Override
@@ -116,43 +114,35 @@ public class ResourceBasedProvider implements AuthenticationProvider, Authorizat
     }
 
     @Override
-    public CompletionStage<OutboundSecurityResponse> outboundSecurity(ProviderRequest providerRequest,
-                                                                      SecurityEnvironment outboundEnv,
-                                                                      EndpointConfig outboundConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                        SecurityEnvironment outboundEnv,
+                                                                        EndpointConfig outboundConfig) {
 
-        return CompletableFuture.completedFuture(providerRequest
-                                                         .env()
-                                                         .abacAttribute("resourceType")
-                                                         .map(String::valueOf)
-                                                         .map(resource -> {
-                                                             switch (resource) {
-                                                             case "jack":
-                                                                 return OutboundSecurityResponse
-                                                                         .withHeaders(Map.of("resource",
-                                                                                             List.of("resource-jack")));
-                                                             case "jill":
-                                                                 return OutboundSecurityResponse
-                                                                         .withHeaders(Map.of("resource",
-                                                                                             List.of("resource-jill")));
-                                                             case "service":
-                                                                 return OutboundSecurityResponse
-                                                                         .withHeaders(Map.of("resource",
-                                                                                             List.of("resource-aService")));
-                                                             case "fail":
-                                                                 return OutboundSecurityResponse.builder()
-                                                                         .status(SecurityResponse.SecurityStatus.FAILURE)
-                                                                         .description("resource-Intentional fail").build();
-                                                             case "successFinish":
-                                                                 return OutboundSecurityResponse.builder()
-                                                                         .status(SecurityResponse.SecurityStatus.SUCCESS_FINISH)
-                                                                         .build();
-                                                             case "abstain":
-                                                                 return OutboundSecurityResponse.abstain();
-                                                             default:
-                                                                 return OutboundSecurityResponse.builder()
-                                                                         .status(SecurityResponse.SecurityStatus.FAILURE)
-                                                                         .description("resource-Invalid request").build();
-                                                             }
-                                                         }).orElse(OutboundSecurityResponse.abstain()));
+        return providerRequest
+                .env()
+                .abacAttribute("resourceType")
+                .map(String::valueOf)
+                .map(resource ->
+                        switch (resource) {
+                            case "jack" -> OutboundSecurityResponse
+                                    .withHeaders(Map.of("resource",
+                                            List.of("resource-jack")));
+                            case "jill" -> OutboundSecurityResponse
+                                    .withHeaders(Map.of("resource",
+                                            List.of("resource-jill")));
+                            case "service" -> OutboundSecurityResponse
+                                    .withHeaders(Map.of("resource",
+                                            List.of("resource-aService")));
+                            case "fail" -> OutboundSecurityResponse.builder()
+                                                                   .status(SecurityResponse.SecurityStatus.FAILURE)
+                                                                   .description("resource-Intentional fail").build();
+                            case "successFinish" -> OutboundSecurityResponse.builder()
+                                                                            .status(SecurityResponse.SecurityStatus.SUCCESS_FINISH)
+                                                                            .build();
+                            case "abstain" -> OutboundSecurityResponse.abstain();
+                            default -> OutboundSecurityResponse.builder()
+                                                               .status(SecurityResponse.SecurityStatus.FAILURE)
+                                                               .description("resource-Invalid request").build();
+                        }).orElse(OutboundSecurityResponse.abstain());
     }
 }

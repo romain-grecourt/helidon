@@ -19,8 +19,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.SubjectMappingProvider;
@@ -35,6 +33,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Test {@link io.helidon.security.spi.SubjectMappingProvider}.
  */
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class SubjectMappingTest {
     public static final String INTENTIONAL_FAILURE = "Intentional failure";
     public static final String CUSTOM_GRANT_TYPE = "custom-grant-type";
@@ -63,8 +62,8 @@ public class SubjectMappingTest {
         SecurityContext context = security.createContext(UUID.randomUUID().toString());
 
         context.env(SecurityEnvironment.builder()
-                               .path("jarda")
-                               .build());
+                                       .path("jarda")
+                                       .build());
 
         AuthenticationResponse authenticate = context.authenticate();
 
@@ -79,8 +78,8 @@ public class SubjectMappingTest {
     @Test
     void testUserMapping() {
         contextWithMapper.env(SecurityEnvironment.builder()
-                                         .path("jarda")
-                                         .build());
+                                                 .path("jarda")
+                                                 .build());
 
         AuthenticationResponse authenticate = contextWithMapper.authenticate();
 
@@ -107,8 +106,8 @@ public class SubjectMappingTest {
     @Test
     void testFailure() {
         contextWithMapper.env(SecurityEnvironment.builder()
-                                         .path("fail")
-                                         .build());
+                                                 .path("fail")
+                                                 .build());
 
         AuthenticationResponse response = contextWithMapper.authenticate();
 
@@ -118,9 +117,9 @@ public class SubjectMappingTest {
 
     private static class Mapper implements SubjectMappingProvider {
         @Override
-        public CompletionStage<AuthenticationResponse> map(ProviderRequest providerRequest,
-                                                           AuthenticationResponse previousResponse) {
-            return CompletableFuture.completedFuture(buildResponse(providerRequest, previousResponse));
+        public AuthenticationResponse map(ProviderRequest providerRequest,
+                                          AuthenticationResponse previousResponse) {
+            return buildResponse(providerRequest, previousResponse);
         }
 
         private AuthenticationResponse buildResponse(ProviderRequest providerRequest,
@@ -129,54 +128,45 @@ public class SubjectMappingTest {
             Optional<Subject> userSubject = providerRequest.subject();
             Optional<Subject> serviceSubject = providerRequest.service();
 
-            if (userSubject.isPresent()) {
-                return mapSubject(userSubject.get());
-            }
-
-            if (serviceSubject.isPresent()) {
-                return mapSubject(serviceSubject.get());
-            }
-
-            return AuthenticationResponse.failed("No subject to map!!!");
+            return userSubject.map(this::mapSubject)
+                              .orElseGet(() -> serviceSubject.map(this::mapSubject)
+                                                             .orElseGet(() -> AuthenticationResponse.failed("No subject to map!!!")));
         }
 
         private AuthenticationResponse mapSubject(Subject subject) {
             return AuthenticationResponse.success(Subject.builder()
-                                                          .update(subject)
-                                                          .addGrant(Role.builder()
-                                                                            .name(subject.principal().getName() + "_role")
-                                                                            .origin(MAPPER_ORIGIN)
-                                                                            .build())
-                                                          .addGrant(Grant.builder()
-                                                                            .name(CUSTOM_GRANT)
-                                                                            .type(CUSTOM_GRANT_TYPE)
-                                                                            .origin(MAPPER_ORIGIN)
-                                                                            .build())
-                                                          .build());
+                                                         .update(subject)
+                                                         .addGrant(Role.builder()
+                                                                       .name(subject.principal().getName() + "_role")
+                                                                       .origin(MAPPER_ORIGIN)
+                                                                       .build())
+                                                         .addGrant(Grant.builder()
+                                                                        .name(CUSTOM_GRANT)
+                                                                        .type(CUSTOM_GRANT_TYPE)
+                                                                        .origin(MAPPER_ORIGIN)
+                                                                        .build())
+                                                         .build());
         }
     }
 
     private static class Atn implements AuthenticationProvider {
         @Override
-        public CompletionStage<AuthenticationResponse> authenticate(ProviderRequest providerRequest) {
-            return CompletableFuture.completedFuture(buildResponse(providerRequest));
+        public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
+            return buildResponse(providerRequest);
         }
 
         private AuthenticationResponse buildResponse(ProviderRequest providerRequest) {
-            return providerRequest.env().path()
-                    .map(path -> {
-                        switch (path) {
-                        case "fail":
-                            return AuthenticationResponse.failed(INTENTIONAL_FAILURE);
-                        case "abstain":
-                            return AuthenticationResponse.abstain();
-                        case "service":
-                            return AuthenticationResponse.successService(Subject.create(Principal.create("serviceIdentity")));
-                        default:
-                            return AuthenticationResponse.success(Principal.create(path));
-                        }
-                    })
-                    .orElse(AuthenticationResponse.abstain());
+            return providerRequest.env().
+                                  path()
+                                  .map(path ->
+                                          switch (path) {
+                                              case "fail" -> AuthenticationResponse.failed(INTENTIONAL_FAILURE);
+                                              case "abstain" -> AuthenticationResponse.abstain();
+                                              case "service" ->
+                                                      AuthenticationResponse.successService(Subject.create(Principal.create("serviceIdentity")));
+                                              default -> AuthenticationResponse.success(Principal.create(path));
+                                          })
+                                  .orElse(AuthenticationResponse.abstain());
         }
     }
 }

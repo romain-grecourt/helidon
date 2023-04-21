@@ -172,71 +172,70 @@ abstract class SecurityFilterCommon {
                                          SecurityClientBuilder<AuthenticationResponse> clientBuilder,
                                          SecurityDefinition methodSecurity, AtnTracing atnTracing) {
 
-        AuthenticationResponse response = clientBuilder.buildAndGet();
+        AuthenticationResponse response = clientBuilder.submit();
 
         SecurityResponse.SecurityStatus responseStatus = response.status();
 
         atnTracing.logStatus(responseStatus);
 
         switch (responseStatus) {
-        case SUCCESS:
-            //everything is fine, we can continue with processing
-            return;
-        case FAILURE_FINISH:
-            if (methodSecurity.authenticationOptional()) {
-                logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
-            } else {
-                context.setTraceSuccess(false);
-                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-                context.setTraceThrowable(response.throwable().orElse(null));
-                context.setShouldFinish(true);
+            case SUCCESS -> {
+                //everything is fine, we can continue with processing
+            }
+            case FAILURE_FINISH -> {
+                if (methodSecurity.authenticationOptional()) {
+                    logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
+                } else {
+                    context.setTraceSuccess(false);
+                    context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                    context.setTraceThrowable(response.throwable().orElse(null));
+                    context.setShouldFinish(true);
 
-                int status = response.statusCode().orElse(Response.Status.UNAUTHORIZED.getStatusCode());
+                    int status = response.statusCode().orElse(Response.Status.UNAUTHORIZED.getStatusCode());
+                    abortRequest(context, response, status, Map.of());
+                }
+            }
+            case SUCCESS_FINISH -> {
+                context.setShouldFinish(true);
+                int status = response.statusCode().orElse(Response.Status.OK.getStatusCode());
                 abortRequest(context, response, status, Map.of());
             }
-
-            return;
-        case SUCCESS_FINISH:
-            context.setShouldFinish(true);
-
-            int status = response.statusCode().orElse(Response.Status.OK.getStatusCode());
-            abortRequest(context, response, status, Map.of());
-
-            return;
-        case ABSTAIN:
-            if (methodSecurity.authenticationOptional()) {
-                logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
-            } else {
-                context.setTraceSuccess(false);
-                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-                context.setShouldFinish(true);
-                abortRequest(context,
-                             response,
-                             Response.Status.UNAUTHORIZED.getStatusCode(),
-                             Map.of());
+            case ABSTAIN -> {
+                if (methodSecurity.authenticationOptional()) {
+                    logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
+                } else {
+                    context.setTraceSuccess(false);
+                    context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                    context.setShouldFinish(true);
+                    abortRequest(context,
+                            response,
+                            Response.Status.UNAUTHORIZED.getStatusCode(),
+                            Map.of());
+                }
             }
-            return;
-        case FAILURE:
-            if (methodSecurity.authenticationOptional() && !methodSecurity.failOnFailureIfOptional()) {
-                logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
-            } else {
-                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-                context.setTraceThrowable(response.throwable().orElse(null));
-                context.setTraceSuccess(false);
-                abortRequest(context,
-                             response,
-                             Response.Status.UNAUTHORIZED.getStatusCode(),
-                             Map.of());
-                context.setShouldFinish(true);
+            case FAILURE -> {
+                if (methodSecurity.authenticationOptional() && !methodSecurity.failOnFailureIfOptional()) {
+                    logger().log(Level.TRACE, "Authentication failed, but was optional, so assuming anonymous");
+                } else {
+                    context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                    context.setTraceThrowable(response.throwable().orElse(null));
+                    context.setTraceSuccess(false);
+                    abortRequest(context,
+                            response,
+                            Response.Status.UNAUTHORIZED.getStatusCode(),
+                            Map.of());
+                    context.setShouldFinish(true);
+                }
             }
-            return;
-        default:
-            context.setTraceSuccess(false);
-            context.setTraceDescription(response.description().orElse("UNKNOWN_RESPONSE: " + responseStatus));
-            context.setShouldFinish(true);
-            SecurityException throwable = new SecurityException("Invalid SecurityStatus returned: " + responseStatus);
-            context.setTraceThrowable(throwable);
-            throw throwable;
+            //noinspection DuplicatedCode
+            default -> {
+                context.setTraceSuccess(false);
+                context.setTraceDescription(response.description().orElse("UNKNOWN_RESPONSE: " + responseStatus));
+                context.setShouldFinish(true);
+                SecurityException throwable = new SecurityException("Invalid SecurityStatus returned: " + responseStatus);
+                context.setTraceThrowable(throwable);
+                throw throwable;
+            }
         }
     }
 
@@ -279,52 +278,54 @@ abstract class SecurityFilterCommon {
     protected void processAuthorization(SecurityFilter.FilterContext context,
                                         SecurityClientBuilder<AuthorizationResponse> clientBuilder) {
         // now fully synchronous
-        AuthorizationResponse response = clientBuilder.buildAndGet();
+        AuthorizationResponse response = clientBuilder.submit();
         SecurityResponse.SecurityStatus responseStatus = response.status();
 
         switch (responseStatus) {
-        case SUCCESS:
-            //everything is fine, we can continue with processing
-            return;
-        case FAILURE_FINISH:
-            context.setTraceSuccess(false);
-            context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-            context.setTraceThrowable(response.throwable().orElse(null));
-            context.setShouldFinish(true);
-            int status = response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode());
-            abortRequest(context, response, status, Map.of());
-            return;
-        case SUCCESS_FINISH:
-            context.setShouldFinish(true);
-            status = response.statusCode().orElse(Response.Status.OK.getStatusCode());
-            abortRequest(context, response, status, Map.of());
-            return;
-        case FAILURE:
-            context.setTraceSuccess(false);
-            context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-            context.setTraceThrowable(response.throwable().orElse(null));
-            context.setShouldFinish(true);
-            abortRequest(context,
-                         response,
-                         response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode()),
-                         Map.of());
-            return;
-        case ABSTAIN:
-            context.setTraceSuccess(false);
-            context.setTraceDescription(response.description().orElse(responseStatus.toString()));
-            context.setShouldFinish(true);
-            abortRequest(context,
-                         response,
-                         response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode()),
-                         Map.of());
-            return;
-        default:
-            context.setTraceSuccess(false);
-            context.setTraceDescription(response.description().orElse("UNKNOWN_RESPONSE: " + responseStatus));
-            context.setShouldFinish(true);
-            SecurityException throwable = new SecurityException("Invalid SecurityStatus returned: " + responseStatus);
-            context.setTraceThrowable(throwable);
-            throw throwable;
+            case SUCCESS -> {
+                //everything is fine, we can continue with processing
+            }
+            case FAILURE_FINISH -> {
+                context.setTraceSuccess(false);
+                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                context.setTraceThrowable(response.throwable().orElse(null));
+                context.setShouldFinish(true);
+                int status = response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode());
+                abortRequest(context, response, status, Map.of());
+            }
+            case SUCCESS_FINISH -> {
+                context.setShouldFinish(true);
+                int status = response.statusCode().orElse(Response.Status.OK.getStatusCode());
+                abortRequest(context, response, status, Map.of());
+            }
+            case FAILURE -> {
+                context.setTraceSuccess(false);
+                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                context.setTraceThrowable(response.throwable().orElse(null));
+                context.setShouldFinish(true);
+                abortRequest(context,
+                        response,
+                        response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode()),
+                        Map.of());
+            }
+            case ABSTAIN -> {
+                context.setTraceSuccess(false);
+                context.setTraceDescription(response.description().orElse(responseStatus.toString()));
+                context.setShouldFinish(true);
+                abortRequest(context,
+                        response,
+                        response.statusCode().orElse(Response.Status.FORBIDDEN.getStatusCode()),
+                        Map.of());
+            }
+            //noinspection DuplicatedCode
+            default -> {
+                context.setTraceSuccess(false);
+                context.setTraceDescription(response.description().orElse("UNKNOWN_RESPONSE: " + responseStatus));
+                context.setShouldFinish(true);
+                SecurityException throwable = new SecurityException("Invalid SecurityStatus returned: " + responseStatus);
+                context.setTraceThrowable(throwable);
+                throw throwable;
+            }
         }
     }
 

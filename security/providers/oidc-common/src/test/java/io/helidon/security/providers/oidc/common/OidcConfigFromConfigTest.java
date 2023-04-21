@@ -22,7 +22,7 @@ import io.helidon.config.Config;
  * Unit test for {@link OidcConfig}.
  */
 class OidcConfigFromConfigTest extends OidcConfigAbstractTest {
-    private OidcConfig oidcConfig;
+    private final OidcConfig oidcConfig;
 
     OidcConfigFromConfigTest() {
         Config config = Config.builder()

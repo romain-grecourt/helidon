@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import io.helidon.config.Config;
 import io.helidon.config.metadata.Configured;
@@ -121,26 +119,21 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
     }
 
     @Override
-    public CompletionStage<AuthenticationResponse> authenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         Map<String, List<String>> headers = providerRequest.env().headers();
 
         if ((headers.get("Signature") != null) && acceptHeaders.contains(HttpSignHeader.SIGNATURE)) {
-            return CompletableFuture
-                    .supplyAsync(() -> signatureHeader(headers.get("Signature"), providerRequest.env()),
-                                 providerRequest.securityContext().executorService());
+            return signatureHeader(headers.get("Signature"), providerRequest.env());
         } else if ((headers.get("Authorization") != null) && acceptHeaders.contains(HttpSignHeader.AUTHORIZATION)) {
             // TODO when authorization header in use and "authorization" is also a
             // required header to be signed, we must either fail or ignore, as we cannot sign ourselves
-            return CompletableFuture
-                    .supplyAsync(() -> authorizeHeader(providerRequest.env()),
-                                 providerRequest.securityContext().executorService());
+            return authorizeHeader(providerRequest.env());
         }
 
         if (optional) {
-            return CompletableFuture.completedFuture(AuthenticationResponse.abstain());
+            return AuthenticationResponse.abstain();
         }
-        return CompletableFuture
-                .completedFuture(AuthenticationResponse.failed("Missing header. Accepted headers: " + acceptHeaders));
+        return AuthenticationResponse.failed("Missing header. Accepted headers: " + acceptHeaders);
     }
 
     private AuthenticationResponse authorizeHeader(SecurityEnvironment env) {
@@ -150,7 +143,7 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
         // attempt to validate each authorization, first one that succeeds will finish processing and return
         for (String authorizationValue : authorization) {
             if (authorizationValue.toLowerCase().startsWith("signature ")) {
-                response = signatureHeader(List.of(authorizationValue.substring("singature ".length())), env);
+                response = signatureHeader(List.of(authorizationValue.substring("signature ".length())), env);
                 if (response.status().isSuccess()) {
                     // that was a good header, let's return the response
                     return response;
@@ -256,12 +249,11 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
     }
 
     @Override
-    public CompletionStage<OutboundSecurityResponse> outboundSecurity(ProviderRequest providerRequest,
-                                                                      SecurityEnvironment outboundEnv,
-                                                                      EndpointConfig outboundConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                        SecurityEnvironment outboundEnv,
+                                                                        EndpointConfig outboundConfig) {
 
-        return CompletableFuture.supplyAsync(() -> signRequest(outboundEnv),
-                                             providerRequest.securityContext().executorService());
+        return signRequest(outboundEnv);
     }
 
     private OutboundSecurityResponse signRequest(SecurityEnvironment outboundEnv) {
@@ -286,20 +278,16 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
                     .status(SecurityResponse.SecurityStatus.SUCCESS);
 
             switch (targetConfig.header()) {
-            case SIGNATURE:
-                builder.requestHeader("Signature", signature.toSignatureHeader());
-                break;
-            case AUTHORIZATION:
-                builder.requestHeader("Authorization", "Signature " + signature.toSignatureHeader());
-                break;
-            case CUSTOM:
-                Map<String, List<String>> headers = new HashMap<>();
-                targetConfig.tokenHandler()
-                        .addHeader(headers, signature.toSignatureHeader());
-                headers.forEach(builder::requestHeader);
-                break;
-            default:
-                throw new HttpSignatureException("Invalid header configuration: " + targetConfig.header());
+                case SIGNATURE -> builder.requestHeader("Signature", signature.toSignatureHeader());
+                case AUTHORIZATION ->
+                        builder.requestHeader("Authorization", "Signature " + signature.toSignatureHeader());
+                case CUSTOM -> {
+                    Map<String, List<String>> headers = new HashMap<>();
+                    targetConfig.tokenHandler()
+                                .addHeader(headers, signature.toSignatureHeader());
+                    headers.forEach((header, values) -> builder.requestHeader(header, values));
+                }
+                default -> throw new HttpSignatureException("Invalid header configuration: " + targetConfig.header());
             }
 
             Map<String, List<String>> headers = outboundEnv.headers();
@@ -473,7 +461,7 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
          * present. If set to false, this provider will {@link SecurityResponse.SecurityStatus#FAILURE fail}
          * if signature is not present.
          *
-         * @param optional true for optional singatures
+         * @param optional true for optional signatures
          * @return updated builder instance
          */
         @ConfiguredOption("true")
@@ -484,9 +472,9 @@ public final class HttpSignProvider implements AuthenticationProvider, OutboundS
 
         /**
          * Realm to use for challenging inbound requests that do not have "Authorization" header
-         * in case header is {@link HttpSignHeader#AUTHORIZATION} and singatures are not optional.
+         * in case header is {@link HttpSignHeader#AUTHORIZATION} and signatures are not optional.
          *
-         * @param realm realm to challenge with, defautls to "helidon"
+         * @param realm realm to challenge with, defaults to "helidon"
          * @return updated builder instance
          */
         @ConfiguredOption(DEFAULT_REALM_VALUE)

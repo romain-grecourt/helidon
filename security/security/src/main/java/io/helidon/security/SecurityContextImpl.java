@@ -49,7 +49,7 @@ final class SecurityContextImpl implements SecurityContext {
     private volatile EndpointConfig ec;
     private volatile Subject serviceSubject;
     private volatile Subject currentSubject;
-    private volatile AtomicBoolean atzChecked = new AtomicBoolean(false);
+    private final AtomicBoolean atzChecked = new AtomicBoolean(false);
 
     SecurityContextImpl(Builder builder) {
         this.security = builder.security();
@@ -89,7 +89,7 @@ final class SecurityContextImpl implements SecurityContext {
 
     @Override
     public SecurityRequestBuilder<?> securityRequestBuilder(SecurityEnvironment environment) {
-        return new SecurityRequestBuilder(this);
+        return new SecurityRequestBuilder<>(this);
     }
 
     @Override
@@ -102,7 +102,7 @@ final class SecurityContextImpl implements SecurityContext {
 
     @Override
     public AuthenticationResponse authenticate() {
-        return atnClientBuilder().buildAndGet();
+        return atnClientBuilder().submit();
     }
 
     @Override
@@ -135,7 +135,6 @@ final class SecurityContextImpl implements SecurityContext {
         return executorService.get();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public boolean isUserInRole(String role) {
         if (!isAuthenticated()) {
@@ -171,7 +170,7 @@ final class SecurityContextImpl implements SecurityContext {
             builder.object("object" + i, resource[i]);
         }
 
-        return builder.buildAndGet();
+        return builder.submit();
     }
 
     @Override

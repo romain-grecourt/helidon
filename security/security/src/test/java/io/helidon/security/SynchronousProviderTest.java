@@ -19,7 +19,6 @@ package io.helidon.security;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.AuthorizationProvider;
 import io.helidon.security.spi.OutboundSecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +26,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Unit test for {@link SynchronousProvider}.
+ * Unit test for {@code SynchronousProvider}.
  * This is (mostly) a compilation based test - as the class does not directly implement the interfaces, I validate in this
  * test that correct method signatures are present in it.
  */
@@ -42,11 +41,11 @@ public class SynchronousProviderTest {
 
         SecurityContext context = security.contextBuilder("unit_test").build();
 
-        AuthenticationResponse authenticationResponse = context.atnClientBuilder().buildAndGet();
+        AuthenticationResponse authenticationResponse = context.atnClientBuilder().submit();
         checkResponse(authenticationResponse);
-        AuthorizationResponse authorizationResponse = context.atzClientBuilder().buildAndGet();
+        AuthorizationResponse authorizationResponse = context.atzClientBuilder().submit();
         checkResponse(authorizationResponse);
-        OutboundSecurityResponse outboundSecurityResponse = context.outboundClientBuilder().buildAndGet();
+        OutboundSecurityResponse outboundSecurityResponse = context.outboundClientBuilder().submit();
         checkResponse(outboundSecurityResponse);
     }
 
@@ -56,9 +55,9 @@ public class SynchronousProviderTest {
         assertThat(response.description().get(), is("unit.test"));
     }
 
-    private class Atn extends SynchronousProvider implements AuthenticationProvider {
+    private static class Atn implements AuthenticationProvider {
         @Override
-        protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
+        public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
             return AuthenticationResponse.builder()
                     .description("unit.test")
                     .status(SecurityResponse.SecurityStatus.ABSTAIN)
@@ -66,9 +65,9 @@ public class SynchronousProviderTest {
         }
     }
 
-    private class Atz extends SynchronousProvider implements AuthorizationProvider {
+    private static class Atz implements AuthorizationProvider {
         @Override
-        protected AuthorizationResponse syncAuthorize(ProviderRequest providerRequest) {
+        public AuthorizationResponse authorize(ProviderRequest providerRequest) {
             return AuthorizationResponse.builder()
                     .description("unit.test")
                     .status(SecurityResponse.SecurityStatus.ABSTAIN)
@@ -76,11 +75,11 @@ public class SynchronousProviderTest {
         }
     }
 
-    private class Outbound extends SynchronousProvider implements OutboundSecurityProvider {
+    private static class Outbound implements OutboundSecurityProvider {
         @Override
-        protected OutboundSecurityResponse syncOutbound(ProviderRequest providerRequest,
-                                                        SecurityEnvironment outEnv,
-                                                        EndpointConfig epc) {
+        public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                            SecurityEnvironment outEnv,
+                                                                            EndpointConfig epc) {
             return OutboundSecurityResponse.builder()
                     .description("unit.test")
                     .status(SecurityResponse.SecurityStatus.ABSTAIN)

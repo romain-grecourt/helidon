@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit test for {@link CompositeOutboundProvider}.
  */
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public class CompositePolicyFlagsTest {
     private static final PathBasedProvider PATH_BASED_PROVIDER = new PathBasedProvider();
     private static final ResourceBasedProvider RESOURCE_BASED_PROVIDER = new ResourceBasedProvider();
@@ -50,49 +51,49 @@ public class CompositePolicyFlagsTest {
         AuthenticationProvider atn = psp.selectProvider(AuthenticationProvider.class).get();
         AuthorizationProvider atz = psp.selectProvider(AuthorizationProvider.class).get();
 
-        SecurityResponse res = SecurityResponse.get(atn.authenticate(request("/jack", "jack")));
+        SecurityResponse res = atn.authenticate(request("/jack", "jack"));
         assertThat(res.status(), is(conf.okOk));
-        res = SecurityResponse.get(atz.authorize(request("/atz/permit", "atz/permit")));
+        res = atz.authorize(request("/atz/permit", "atz/permit"));
         assertThat(res.status(), is(conf.okOk));
 
-        res = SecurityResponse.get(atn.authenticate(request("/jack", "abstain")));
+        res = atn.authenticate(request("/jack", "abstain"));
         assertThat(res.status(), is(conf.okAbstain));
-        res = SecurityResponse.get(atz.authorize(request("/atz/permit", "atz/abstain")));
+        res = atz.authorize(request("/atz/permit", "atz/abstain"));
         assertThat(res.status(), is(conf.okAbstain));
 
-        res = SecurityResponse.get(atn.authenticate(request("/jack", "fail")));
+        res = atn.authenticate(request("/jack", "fail"));
         assertThat(res.status(), is(conf.okFail));
-        res = SecurityResponse.get(atz.authorize(request("/atz/permit", "atz/fail")));
+        res = atz.authorize(request("/atz/permit", "atz/fail"));
         assertThat(res.status(), is(conf.okFail));
 
-        res = SecurityResponse.get(atn.authenticate(request("/abstain", "jack")));
+        res = atn.authenticate(request("/abstain", "jack"));
         assertThat(res.status(), is(conf.abstainOk));
-        res = SecurityResponse.get(atz.authorize(request("/atz/abstain", "atz/permit")));
+        res = atz.authorize(request("/atz/abstain", "atz/permit"));
         assertThat(res.status(), is(conf.abstainOk));
 
-        res = SecurityResponse.get(atn.authenticate(request("/abstain", "abstain")));
+        res = atn.authenticate(request("/abstain", "abstain"));
         assertThat(res.status(), is(conf.abstainAbstain));
-        res = SecurityResponse.get(atz.authorize(request("/atz/abstain", "atz/abstain")));
+        res = atz.authorize(request("/atz/abstain", "atz/abstain"));
         assertThat(res.status(), is(conf.abstainAbstain));
 
-        res = SecurityResponse.get(atn.authenticate(request("/abstain", "fail")));
+        res = atn.authenticate(request("/abstain", "fail"));
         assertThat(res.status(), is(conf.abstainFail));
-        res = SecurityResponse.get(atz.authorize(request("/atz/abstain", "atz/fail")));
+        res = atz.authorize(request("/atz/abstain", "atz/fail"));
         assertThat(res.status(), is(conf.abstainFail));
 
-        res = SecurityResponse.get(atn.authenticate(request("/fail", "jack")));
+        res = atn.authenticate(request("/fail", "jack"));
         assertThat(res.status(), is(conf.failOk));
-        res = SecurityResponse.get(atz.authorize(request("/atz/fail", "atz/permit")));
+        res = atz.authorize(request("/atz/fail", "atz/permit"));
         assertThat(res.status(), is(conf.failOk));
 
-        res = SecurityResponse.get(atn.authenticate(request("/fail", "abstain")));
+        res = atn.authenticate(request("/fail", "abstain"));
         assertThat(res.status(), is(conf.failAbstain));
-        res = SecurityResponse.get(atz.authorize(request("/atz/fail", "atz/abstain")));
+        res = atz.authorize(request("/atz/fail", "atz/abstain"));
         assertThat(res.status(), is(conf.failAbstain));
 
-        res = SecurityResponse.get(atn.authenticate(request("/fail", "fail")));
+        res = atn.authenticate(request("/fail", "fail"));
         assertThat(res.status(), is(conf.failFail));
-        res = SecurityResponse.get(atz.authorize(request("/atz/fail", "atz/fail")));
+        res = atz.authorize(request("/atz/fail", "atz/fail"));
         assertThat(res.status(), is(conf.failFail));
     }
 
@@ -342,9 +343,9 @@ public class CompositePolicyFlagsTest {
         return mock;
     }
 
-    private class TestConfig {
-        private CompositeProviderFlag firstFlag;
-        private CompositeProviderFlag secondFlag;
+    private static class TestConfig {
+        private final CompositeProviderFlag firstFlag;
+        private final CompositeProviderFlag secondFlag;
         private SecurityStatus okOk;
         private SecurityStatus okAbstain;
         private SecurityStatus okFail;

@@ -22,8 +22,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import io.helidon.security.spi.OutboundSecurityProvider;
 
@@ -33,7 +31,6 @@ import io.helidon.security.spi.OutboundSecurityProvider;
 final class CompositeOutboundProvider implements OutboundSecurityProvider {
     private final List<OutboundSecurityProvider> providers = new LinkedList<>();
 
-    @SuppressWarnings("unchecked")
     CompositeOutboundProvider(List<OutboundSecurityProvider> providers) {
         this.providers.addAll(providers);
     }
@@ -54,57 +51,46 @@ final class CompositeOutboundProvider implements OutboundSecurityProvider {
     }
 
     @Override
-    public CompletionStage<OutboundSecurityResponse> outboundSecurity(ProviderRequest providerRequest,
-                                                                      SecurityEnvironment outboundEnv,
-                                                                      EndpointConfig outboundConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                        SecurityEnvironment outboundEnv,
+                                                                        EndpointConfig outboundConfig) {
 
-        CompletionStage<OutboundCall> previous = CompletableFuture
-                .completedFuture(new OutboundCall(OutboundSecurityResponse.abstain(),
-                                                  providerRequest,
-                                                  outboundEnv,
-                                                  outboundConfig));
+        OutboundCall call = new OutboundCall(OutboundSecurityResponse.abstain(), providerRequest,
+                outboundEnv, outboundConfig);
 
         for (OutboundSecurityProvider provider : providers) {
-            previous = previous.thenCompose(call -> {
-                if (call.response.status() == SecurityResponse.SecurityStatus.ABSTAIN) {
-                    // previous call(s) did not care, I don't have to update request
-                    if (provider.isOutboundSupported(call.inboundContext, call.outboundEnv, call.outboundConfig)) {
-                        return provider.outboundSecurity(call.inboundContext, call.outboundEnv, call.outboundConfig)
-                                .thenApply(response -> {
-                                    SecurityEnvironment nextEnv = updateRequestHeaders(call.outboundEnv, response);
-                                    return new OutboundCall(response, call.inboundContext, nextEnv, call.outboundConfig);
-                                });
-                    } else {
-                        // just continue with existing result
-                        return CompletableFuture.completedFuture(call);
-                    }
+            if (call.response.status() == SecurityResponse.SecurityStatus.ABSTAIN) {
+                // previous call(s) did not care, I don't have to update request
+                if (provider.isOutboundSupported(call.inboundContext, call.outboundEnv, call.outboundConfig)) {
+                    OutboundSecurityResponse outboundSecurityResponse = provider.outboundSecurity(call.inboundContext, call.outboundEnv, call.outboundConfig);
+                    SecurityEnvironment nextEnv = updateRequestHeaders(call.outboundEnv, outboundSecurityResponse);
+                    call = new OutboundCall(outboundSecurityResponse, call.inboundContext, nextEnv, call.outboundConfig);
+                    continue;
                 }
-                // construct a new request
-                if (call.response.status().isSuccess()) {
-                    // invoke current
-                    return provider.outboundSecurity(call.inboundContext, call.outboundEnv, call.outboundConfig)
-                            .thenApply(thisResponse -> {
-                                OutboundSecurityResponse prevResponse = call.response;
 
-                                // combine
-                                OutboundSecurityResponse.Builder builder = OutboundSecurityResponse.builder();
-                                prevResponse.requestHeaders().forEach(builder::requestHeader);
-                                prevResponse.responseHeaders().forEach(builder::responseHeader);
-                                thisResponse.requestHeaders().forEach(builder::requestHeader);
-                                thisResponse.responseHeaders().forEach(builder::responseHeader);
-                                SecurityEnvironment nextEnv = updateRequestHeaders(call.outboundEnv, thisResponse);
+                // continue with existing result
+                continue;
+            }
+            // construct a new request
+            if (call.response.status().isSuccess()) {
+                // invoke current
+                OutboundSecurityResponse thisResponse = provider.outboundSecurity(call.inboundContext, call.outboundEnv, call.outboundConfig);
+                OutboundSecurityResponse prevResponse = call.response;
 
-                                builder.status(thisResponse.status());
-                                return new OutboundCall(builder.build(), call.inboundContext, nextEnv, call.outboundConfig);
-                            });
-                } else {
-                    // just fail (as previous outbound all failed)
-                    return CompletableFuture.completedFuture(call);
-                }
-            });
+                // combine
+                OutboundSecurityResponse.Builder builder = OutboundSecurityResponse.builder();
+                prevResponse.requestHeaders().forEach(builder::requestHeader);
+                prevResponse.responseHeaders().forEach(builder::responseHeader);
+                thisResponse.requestHeaders().forEach(builder::requestHeader);
+                thisResponse.responseHeaders().forEach(builder::responseHeader);
+                SecurityEnvironment nextEnv = updateRequestHeaders(call.outboundEnv, thisResponse);
+
+                builder.status(thisResponse.status());
+                call = new OutboundCall(builder.build(), call.inboundContext, nextEnv, call.outboundConfig);
+            }
         }
 
-        return previous.thenApply(outboundCall -> outboundCall.response);
+        return call.response;
     }
 
     private SecurityEnvironment updateRequestHeaders(SecurityEnvironment env, OutboundSecurityResponse response) {
@@ -115,21 +101,9 @@ final class CompositeOutboundProvider implements OutboundSecurityProvider {
         return builder.build();
     }
 
-    private static final class OutboundCall {
-        private final ProviderRequest inboundContext;
-        private final SecurityEnvironment outboundEnv;
-        private final EndpointConfig outboundConfig;
-        private final OutboundSecurityResponse response;
-
-        private OutboundCall(OutboundSecurityResponse response,
-                             ProviderRequest inboundContext,
-                             SecurityEnvironment outboundEnv,
-                             EndpointConfig outboundConfig) {
-            this.response = response;
-
-            this.inboundContext = inboundContext;
-            this.outboundEnv = outboundEnv;
-            this.outboundConfig = outboundConfig;
-        }
+    private record OutboundCall(OutboundSecurityResponse response,
+                                ProviderRequest inboundContext,
+                                SecurityEnvironment outboundEnv,
+                                EndpointConfig outboundConfig) {
     }
 }

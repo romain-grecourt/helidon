@@ -18,13 +18,12 @@ package io.helidon.security.providers.oidc.common;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.http.Http;
 import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.parameters.Parameters;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.security.SecurityException;
 import io.helidon.security.jwt.jwk.JwkKeys;
 
@@ -39,8 +38,8 @@ class IdcsSupport {
     }
 
     // load signature jwk with a token, blocking operation
-    static JwkKeys signJwk(WebClient appWebClient,
-                           WebClient generalClient,
+    static JwkKeys signJwk(Http1Client appWebClient,
+                           Http1Client generalClient,
                            URI tokenEndpointUri,
                            URI signJwkUri,
                            Duration clientTimeout) {
@@ -51,16 +50,14 @@ class IdcsSupport {
                 .build();
 
         try {
-            WebClientResponse response = appWebClient.post()
-                    .uri(tokenEndpointUri)
-                    .accept(HttpMediaType.APPLICATION_JSON)
-                    .submit(form)
-                    .await(clientTimeout.toMillis(), TimeUnit.MILLISECONDS);
+            Http1ClientResponse response = appWebClient.post()
+                                                       .uri(tokenEndpointUri)
+                                                       .accept(HttpMediaType.APPLICATION_JSON)
+                                                       .submit(form);
 
             if (response.status().family() == Http.Status.Family.SUCCESSFUL) {
-                JsonObject json = response.content()
-                        .as(JsonObject.class)
-                        .await(clientTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                JsonObject json = response.entity()
+                        .as(JsonObject.class);
 
                 String accessToken = json.getString("access_token");
 
@@ -71,14 +68,11 @@ class IdcsSupport {
                             it.add(Http.Header.AUTHORIZATION, "Bearer " + accessToken);
                             return it;
                         })
-                        .request(JsonObject.class)
-                        .await(clientTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                        .request(JsonObject.class);
 
                 return JwkKeys.create(jwkJson);
             } else {
-                String errorEntity = response.content()
-                        .as(String.class)
-                        .await(clientTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                String errorEntity = response.entity().as(String.class);
                 throw new SecurityException("Failed to read JWK from IDCS. Status: " + response.status()
                                                     + ", entity: " + errorEntity);
             }

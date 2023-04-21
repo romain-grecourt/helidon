@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import io.grpc.ServerInterceptor;
 import io.helidon.common.http.HttpPrologue;
 import io.helidon.common.http.PathMatchers;
 import io.helidon.nima.webserver.Routing;
@@ -179,6 +180,14 @@ public class GrpcRouting implements Routing {
                                                  ServerCalls.ClientStreamingMethod<ReqT, ResT> method) {
 
             return route(Grpc.clientStream(proto, serviceName, methodName, method));
+        }
+
+        public void intercept(ServerInterceptor interceptor) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public void intercept(String name, ServerInterceptor interceptor) {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
 
         private Builder route(GrpcRoute route) {

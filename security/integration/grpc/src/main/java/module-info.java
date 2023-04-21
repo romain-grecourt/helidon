@@ -32,11 +32,10 @@ module io.helidon.security.integration.grpc {
 
     requires io.helidon.common;
     requires io.helidon.common.context;
-    requires transitive io.helidon.grpc.core;
-    requires static io.helidon.grpc.server;
     requires transitive io.helidon.security;
     requires transitive io.helidon.security.integration.common;
     requires io.helidon.tracing;
-    requires io.helidon.reactive.webserver;
     requires io.grpc;
+    requires io.helidon.nima.webserver;
+    requires io.helidon.nima.grpc.server;
 }

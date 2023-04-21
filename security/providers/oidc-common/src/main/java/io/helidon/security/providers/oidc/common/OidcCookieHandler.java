@@ -29,7 +29,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import io.helidon.common.http.SetCookie;
-import io.helidon.common.reactive.Single;
 
 /**
  * Handler of cookies used in OIDC.
@@ -42,8 +41,8 @@ public class OidcCookieHandler {
     private final List<Consumer<SetCookie.Builder>> createCookieUpdaters = new LinkedList<>();
     private final String cookieName;
     private final String valuePrefix;
-    private final Function<String, Single<String>> encryptFunction;
-    private final Function<String, Single<String>> decryptFunction;
+    private final Function<String, String> encryptFunction;
+    private final Function<String, String> decryptFunction;
 
     private OidcCookieHandler(Builder builder) {
         this.cookieName = builder.cookieName;
@@ -92,10 +91,10 @@ public class OidcCookieHandler {
                                                          builder.encryptionName,
                                                          builder.encryptionPassword);
             this.encryptFunction = it -> cookieEncryption.encrypt(it.getBytes(StandardCharsets.UTF_8));
-            this.decryptFunction = it -> cookieEncryption.decrypt(it).map(String::new);
+            this.decryptFunction = it -> new String(cookieEncryption.decrypt(it));
         } else {
-            this.encryptFunction = Single::just;
-            this.decryptFunction = Single::just;
+            this.encryptFunction = Function.identity();
+            this.decryptFunction = Function.identity();
         }
 
         if (LOGGER.isLoggable(Level.TRACE)) {
@@ -109,15 +108,13 @@ public class OidcCookieHandler {
     }
 
     /**
-     * {@link io.helidon.common.http.SetCookie} builder to set a new cookie,
-     * returns a future, as the value may need to be encrypted using a remote service.
+     * {@link io.helidon.common.http.SetCookie} builder to set a new cookie.
      *
      * @param value value of the cookie
      * @return a new builder to configure set cookie configured from OIDC Config
      */
-    public Single<SetCookie.Builder> createCookie(String value) {
-        return encryptFunction.apply(value)
-                .map(this::createCookieDirectValue);
+    public SetCookie.Builder createCookie(String value) {
+        return createCookieDirectValue(encryptFunction.apply(value));
     }
 
     /**
@@ -148,7 +145,7 @@ public class OidcCookieHandler {
      * @param headers headers to process
      * @return cookie value, or empty if the cookie could not be found
      */
-    public Optional<Single<String>> findCookie(Map<String, List<String>> headers) {
+    public Optional<String> findCookie(Map<String, List<String>> headers) {
         Objects.requireNonNull(headers);
 
         List<String> cookies = headers.get("Cookie");
@@ -176,7 +173,7 @@ public class OidcCookieHandler {
      * @param cipherText cipher text to decrypt
      * @return secret
      */
-    public Single<String> decrypt(String cipherText) {
+    public String decrypt(String cipherText) {
         return decryptFunction.apply(cipherText);
     }
 
@@ -194,6 +191,7 @@ public class OidcCookieHandler {
         return builder;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     static class Builder implements io.helidon.common.Builder<Builder, OidcCookieHandler> {
         static final String DEFAULT_PATH = "/";
         static final boolean DEFAULT_HTTP_ONLY = true;

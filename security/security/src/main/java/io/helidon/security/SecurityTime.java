@@ -122,6 +122,7 @@ public class SecurityTime {
     /**
      * Fluent API builder for {@link SecurityTime}.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured
     public static final class Builder implements io.helidon.common.Builder<Builder, SecurityTime> {
         private final List<ChronoValues> values = new ArrayList<>();

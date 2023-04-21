@@ -19,9 +19,13 @@ package io.helidon.security.providers.oidc.common;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.Routing;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -38,27 +42,32 @@ import java.util.Map;
 /**
  * Unit test for {@link OidcConfig}.
  */
+@SuppressWarnings({"HttpUrlsUsage"})
+@ServerTest
 class OidcConfigFromBuilderTest extends OidcConfigAbstractTest {
-    private OidcConfig oidcConfig;
+    private final OidcConfig oidcConfig;
     private boolean isCommunicationWithProxy = true;
     private String httpHostPort;
     private boolean relativeUris;
     private String cookieEncryptionPasswordValue;
 
-    OidcConfigFromBuilderTest() {
+    private final WebServer webServer;
+
+    OidcConfigFromBuilderTest(WebServer webServer) {
+        this.webServer = webServer;
         oidcConfig = OidcConfig.builder()
-                .identityUri(URI.create("https://identity.oracle.com"))
-                .scopeAudience("http://localhost:7987/test-application")
-                .clientId("client-id-value")
-                .clientSecret("client-secret-value")
-                .frontendUri("http://something:7001")
-                .validateJwtWithJwk(false)
-                .oidcMetadataWellKnown(false)
-                .tokenEndpointUri(URI.create("http://identity.oracle.com/tokens"))
-                .authorizationEndpointUri(URI.create("http://identity.oracle.com/authorization"))
-                .introspectEndpointUri(URI.create("http://identity.oracle.com/introspect"))
-                .relativeUris(true)
-                .build();
+                               .identityUri(URI.create("https://identity.oracle.com"))
+                               .scopeAudience("http://localhost:7987/test-application")
+                               .clientId("client-id-value")
+                               .clientSecret("client-secret-value")
+                               .frontendUri("http://something:7001")
+                               .validateJwtWithJwk(false)
+                               .oidcMetadataWellKnown(false)
+                               .tokenEndpointUri(URI.create("http://identity.oracle.com/tokens"))
+                               .authorizationEndpointUri(URI.create("http://identity.oracle.com/authorization"))
+                               .introspectEndpointUri(URI.create("http://identity.oracle.com/introspect"))
+                               .relativeUris(true)
+                               .build();
     }
 
     @Override
@@ -69,13 +78,13 @@ class OidcConfigFromBuilderTest extends OidcConfigAbstractTest {
     @Test
     void testDefaultValues() {
         OidcConfig config = OidcConfig.builder()
-                // The next 3 parameters need to be set or config builder will fail
-                .identityUri(URI.create("https://identity.oracle.com"))
-                .clientId("client-id-value")
-                .clientSecret("client-secret-value")
-                // Set to false so it will not load metadata
-                .oidcMetadataWellKnown(false)
-                .build();
+                                      // The next 3 parameters need to be set or config builder will fail
+                                      .identityUri(URI.create("https://identity.oracle.com"))
+                                      .clientId("client-id-value")
+                                      .clientSecret("client-secret-value")
+                                      // Set to false so it will not load metadata
+                                      .oidcMetadataWellKnown(false)
+                                      .build();
         assertAll("All values using defaults",
                 () -> assertThat("Redirect URI", config.redirectUri(), is(OidcConfig.DEFAULT_REDIRECT_URI)),
                 () -> assertThat("Should Redirect", config.shouldRedirect(), is(OidcConfig.DEFAULT_REDIRECT)),
@@ -86,17 +95,17 @@ class OidcConfigFromBuilderTest extends OidcConfigAbstractTest {
                 () -> assertThat("Use Cookie", config.useCookie(), is(OidcConfig.DEFAULT_COOKIE_USE)),
                 () -> assertThat("Use Header", config.useHeader(), is(OidcConfig.DEFAULT_HEADER_USE)),
                 () -> assertThat("Base scopes to use", config.baseScopes(), is(OidcConfig.Builder.DEFAULT_BASE_SCOPES)),
-                () -> assertThat("Cookie value prefix", config.cookieValuePrefix(), is(OidcConfig.DEFAULT_COOKIE_NAME + "=")),
-                () -> assertThat("Cookie name", config.cookieName(), is(OidcConfig.DEFAULT_COOKIE_NAME)),
+                () -> assertThat("Cookie value prefix", config.tokenCookieHandler().cookieValuePrefix(), is(OidcConfig.DEFAULT_COOKIE_NAME + "=")),
+                () -> assertThat("Cookie name", config.tokenCookieHandler().cookieName(), is(OidcConfig.DEFAULT_COOKIE_NAME)),
                 () -> assertThat("Realm", config.realm(), is(OidcConfig.Builder.DEFAULT_REALM)),
                 () -> assertThat("Redirect Attempt Parameter", config.redirectAttemptParam(), is(OidcConfig.DEFAULT_ATTEMPT_PARAM)),
                 () -> assertThat("Max Redirects", config.maxRedirects(), is(OidcConfig.DEFAULT_MAX_REDIRECTS)),
                 () -> assertThat("Client Timeout", config.clientTimeout(),
-                                 is(Duration.ofSeconds(OidcConfig.Builder.DEFAULT_TIMEOUT_SECONDS))),
+                        is(Duration.ofSeconds(OidcConfig.Builder.DEFAULT_TIMEOUT_SECONDS))),
                 () -> assertThat("Force HTTPS Redirects", config.forceHttpsRedirects(), is(OidcConfig.DEFAULT_FORCE_HTTPS_REDIRECTS)),
                 () -> assertThat("Token Refresh Skew", config.tokenRefreshSkew(), is(OidcConfig.DEFAULT_TOKEN_REFRESH_SKEW)),
                 // cookie options should be separated by space as defined by the specification
-                () -> assertThat("Cookie options", config.cookieOptions(), is("; Path=/; HttpOnly; SameSite=Lax")),
+                () -> assertThat("Cookie options", config.tokenCookieHandler().createCookieOptions(), is("; Path=/; HttpOnly; SameSite=Lax")),
                 () -> assertThat("Audience", config.audience(), is("https://identity.oracle.com")),
                 () -> assertThat("Parameter name", config.paramName(), is("accessToken")),
                 () -> assertThat("Issuer", config.issuer(), nullValue()),
@@ -106,64 +115,64 @@ class OidcConfigFromBuilderTest extends OidcConfigAbstractTest {
         );
     }
 
+    @SetUpRoute
+    void prepareRouting(HttpRouting.Builder router) {
+        router.any(this::proxy);
+    }
+
+    void proxy(ServerRequest req, ServerResponse res) {
+        // Simulate a successful Proxy response
+        if (isCommunicationWithProxy) {
+            // Flip to false so next request will simulate Identity Server  interaction
+            isCommunicationWithProxy = false;
+            res.send();
+        }
+        // Simulate a failed Identity response if relativeURIs=false but the request URI is relative
+        else if (!relativeUris && !req.requestedUri().toUri().toASCIIString().startsWith(httpHostPort)) {
+            res.status(Http.Status.INTERNAL_SERVER_ERROR_500);
+            res.send("URI must be absolute");
+        }
+        // Simulate a failed Identity response if relativeURIs=true but the request URI is absolute
+        else if (relativeUris && req.requestedUri().toUri().toASCIIString().startsWith(httpHostPort)) {
+            res.status(Http.Status.INTERNAL_SERVER_ERROR_500);
+            res.send("URI must be relative");
+        }
+        // Simulate a successful Identity response
+        else {
+            res.send("{}");
+        }
+    }
+
     @Test
     void testRequestUrisWithProxy() {
         httpHostPort = "";                   // This will be set once the server is up
         isCommunicationWithProxy = true;     // initial request is with a proxy
         // This server will simulate a Proxy on the 1st request and Identity Server on the 2nd request
-        WebServer proxyAndIdentityServer = WebServer.builder()
-                .host("localhost")
-                .routing(Routing.builder()
-                        .any((req, res) -> {
-                            // Simulate a successful Proxy response
-                            if (isCommunicationWithProxy) {
-                                // Flip to false so next request will simulate Identity Server  interaction
-                                isCommunicationWithProxy = false;
-                                res.send();
-                            }
-                            // Simulate a failed Identity response if relativeURIs=false but the request URI is relative
-                            else if (!relativeUris && !req.uri().toASCIIString().startsWith(httpHostPort)) {
-                                res.status(Http.Status.INTERNAL_SERVER_ERROR_500);
-                                res.send("URI must be absolute");
-                            }
-                            // Simulate a failed Identity response if relativeURIs=true but the request URI is absolute
-                            else if (relativeUris && req.uri().toASCIIString().startsWith(httpHostPort)) {
-                                res.status(Http.Status.INTERNAL_SERVER_ERROR_500);
-                                res.send("URI must be relative");
-                            }
-                            // Simulate a successful Identity response
-                            else {
-                                res.send("{}");
-                            }
-                        }))
-                .build();
-        proxyAndIdentityServer.start().await(Duration.ofSeconds(10));
-        httpHostPort = "http://localhost:" + proxyAndIdentityServer.port();
+        httpHostPort = "http://localhost:" + webServer.port();
 
         // 1st test will simulate relativeUris=false and will fail if URI is relative
         OidcConfig.builder()
-                // The next 3 parameters need to be set or config builder will fail
-                .identityUri(URI.create(httpHostPort + "/identity"))
-                .clientId("client-id-value")
-                .clientSecret("client-secret-value")
-                .proxyProtocol("http")
-                .proxyHost("localhost")
-                .proxyPort(proxyAndIdentityServer.port())
-                .build();
+                  // The next 3 parameters need to be set or config builder will fail
+                  .identityUri(URI.create(httpHostPort + "/identity"))
+                  .clientId("client-id-value")
+                  .clientSecret("client-secret-value")
+                  .proxyProtocol("http")
+                  .proxyHost("localhost")
+                  .proxyPort(webServer.port())
+                  .build();
 
         // 2nd test will simulate relativeUris=true and will fail if URI is absolute
         relativeUris = true;
         OidcConfig.builder()
-                // The next 3 parameters need to be set or config builder will fail
-                .identityUri(URI.create(httpHostPort + "/identity"))
-                .clientId("client-id-value")
-                .clientSecret("client-secret-value")
-                .proxyProtocol("http")
-                .proxyHost("localhost")
-                .proxyPort(proxyAndIdentityServer.port())
-                .relativeUris(relativeUris)
-                .build();
-        proxyAndIdentityServer.shutdown();
+                  // The next 3 parameters need to be set or config builder will fail
+                  .identityUri(URI.create(httpHostPort + "/identity"))
+                  .clientId("client-id-value")
+                  .clientSecret("client-secret-value")
+                  .proxyProtocol("http")
+                  .proxyHost("localhost")
+                  .proxyPort(webServer.port())
+                  .relativeUris(true)
+                  .build();
     }
 
     @Test
@@ -171,8 +180,8 @@ class OidcConfigFromBuilderTest extends OidcConfigAbstractTest {
         OidcConfig.Builder builder = new TestOidcConfigBuilder();
         for (String passwordValue : Arrays.asList("PasswordString", "", "   ")) {
             builder.config(Config.builder()
-                    .sources(ConfigSources.create(Map.of("cookie-encryption-password", passwordValue)))
-                    .build()
+                                 .sources(ConfigSources.create(Map.of("cookie-encryption-password", passwordValue)))
+                                 .build()
             );
             assertThat(cookieEncryptionPasswordValue, is(passwordValue));
             // reset the value

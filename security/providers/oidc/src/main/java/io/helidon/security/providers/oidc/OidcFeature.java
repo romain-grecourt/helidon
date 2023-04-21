@@ -40,16 +40,15 @@ import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.http.ServerRequestHeaders;
 import io.helidon.common.http.ServerResponseHeaders;
 import io.helidon.common.parameters.Parameters;
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.cors.CrossOriginConfig;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
 import io.helidon.nima.webserver.cors.CorsSupport;
 import io.helidon.nima.webserver.http.HttpFeature;
 import io.helidon.nima.webserver.http.HttpRouting;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
 import io.helidon.security.Security;
 import io.helidon.security.integration.nima.SecurityFeature;
 import io.helidon.security.providers.oidc.common.OidcConfig;
@@ -62,17 +61,19 @@ import io.helidon.security.providers.oidc.common.spi.TenantConfigProvider;
 import jakarta.json.JsonObject;
 
 import static io.helidon.common.http.Http.Header.HOST;
+import static io.helidon.security.providers.oidc.OidcUtil.updateRequest;
+import static io.helidon.security.providers.oidc.common.OidcConfig.postJsonResponse;
 import static io.helidon.security.providers.oidc.common.spi.TenantConfigFinder.DEFAULT_TENANT_ID;
 
 /**
  * OIDC integration requires web resources to be exposed through a web server.
  * This registers the endpoint to which OIDC redirects browser after successful login.
- *
+ * <p>
  * This incorporates the "response_type=code" approach.
- *
+ * <p>
  * When passing configuration to this class, you should pass the root of configuration
  * (that contains security.providers). This class then reads the configuration for provider
- * named "oidc" or (if mutliples are configured) for the name specified.
+ * named "oidc" or (if multiples are configured) for the name specified.
  * Configuration options used by this class are (under security.providers[].${name}):
  * <table class="config">
  * <caption>Configuration parameters</caption>
@@ -143,9 +144,9 @@ public final class OidcFeature implements HttpFeature {
     private static final String STATE_PARAM_NAME = "state";
     private static final String DEFAULT_REDIRECT = "/index.html";
 
-    private final List<TenantConfigFinder> oidcConfigFinders;
+    private final List<TenantConfigFinder> configFinders;
     private final LruCache<String, Tenant> tenants = LruCache.create();
-    private final OidcConfig oidcConfig;
+    private final OidcConfig config;
     private final OidcCookieHandler tokenCookieHandler;
     private final OidcCookieHandler idTokenCookieHandler;
     private final OidcCookieHandler tenantCookieHandler;
@@ -153,15 +154,14 @@ public final class OidcFeature implements HttpFeature {
     private final CorsSupport corsSupport;
 
     private OidcFeature(Builder builder) {
-        this.oidcConfig = builder.oidcConfig;
+        this.config = builder.oidcConfig;
         this.enabled = builder.enabled;
-        this.tokenCookieHandler = oidcConfig.tokenCookieHandler();
-        this.idTokenCookieHandler = oidcConfig.idTokenCookieHandler();
-        this.tenantCookieHandler = oidcConfig.tenantCookieHandler();
-        this.corsSupport = prepareCrossOriginSupport(oidcConfig.redirectUri(), oidcConfig.crossOriginConfig());
-        this.oidcConfigFinders = List.copyOf(builder.tenantConfigFinders);
-
-        this.oidcConfigFinders.forEach(tenantConfigFinder -> tenantConfigFinder.onChange(tenants::remove));
+        this.tokenCookieHandler = config.tokenCookieHandler();
+        this.idTokenCookieHandler = config.idTokenCookieHandler();
+        this.tenantCookieHandler = config.tenantCookieHandler();
+        this.corsSupport = prepareCrossOriginSupport(config.redirectUri(), config.crossOriginConfig());
+        this.configFinders = List.copyOf(builder.tenantConfigFinders);
+        this.configFinders.forEach(tenantConfigFinder -> tenantConfigFinder.onChange(tenants::remove));
     }
 
     /**
@@ -221,37 +221,38 @@ public final class OidcFeature implements HttpFeature {
     public void setup(HttpRouting.Builder routing) {
         if (enabled) {
             if (corsSupport != null) {
-                routing.any(oidcConfig.redirectUri(), corsSupport);
+                routing.any(config.redirectUri(), corsSupport);
             }
-            routing.get(oidcConfig.redirectUri(), this::processOidcRedirect);
-            if (oidcConfig.logoutEnabled()) {
+            routing.get(config.redirectUri(), this::processOidcRedirect);
+            if (config.logoutEnabled()) {
                 if (corsSupport != null) {
-                    routing.any(oidcConfig.logoutUri(), corsSupport);
+                    routing.any(config.logoutUri(), corsSupport);
                 }
-                routing.get(oidcConfig.logoutUri(), this::processLogout);
+                routing.get(config.logoutUri(), this::processLogout);
             }
             routing.any(this::addRequestAsHeader);
         }
     }
 
     private void processLogout(ServerRequest req, ServerResponse res) {
-        findTenantName(req)
-                .forSingle(tenantName -> processTenantLogout(req, res, tenantName));
+        String tenantName = findTenantName(req);
+        processTenantLogout(req, res, tenantName);
     }
 
-    private Single<String> findTenantName(ServerRequest request) {
+    private String findTenantName(ServerRequest request) {
         List<String> missingLocations = new LinkedList<>();
         Optional<String> tenantId = Optional.empty();
-        if (oidcConfig.useParam()) {
-            tenantId = request.query().first(oidcConfig.tenantParamName());
+        if (config.useParam()) {
+            tenantId = request.query().first(config.tenantParamName());
 
             if (tenantId.isEmpty()) {
                 missingLocations.add("query-param");
             }
         }
-        if (oidcConfig.useCookie() && tenantId.isEmpty()) {
-            Optional<Single<String>> cookie = oidcConfig.tenantCookieHandler()
-                    .findCookie(request.headers().toMap());
+        if (config.useCookie() && tenantId.isEmpty()) {
+            Map<String, List<String>> headers = new HashMap<>();
+            request.headers().forEach(it -> headers.put(it.name(), it.allValues()));
+            Optional<String> cookie = config.tenantCookieHandler().findCookie(headers);
 
             if (cookie.isPresent()) {
                 return cookie.get();
@@ -259,77 +260,77 @@ public final class OidcFeature implements HttpFeature {
             missingLocations.add("cookie");
         }
         if (tenantId.isPresent()) {
-            return Single.just(tenantId.get());
+            return tenantId.get();
         } else {
             if (LOGGER.isLoggable(Level.TRACE)) {
                 LOGGER.log(Level.TRACE, "Missing tenant id, could not find in either of: " + missingLocations
-                                      + "Falling back to the default tenant id: " + DEFAULT_TENANT_ID);
+                        + "Falling back to the default tenant id: " + DEFAULT_TENANT_ID);
             }
-            return Single.just(DEFAULT_TENANT_ID);
+            return DEFAULT_TENANT_ID;
         }
     }
 
     private void processTenantLogout(ServerRequest req, ServerResponse res, String tenantName) {
         Tenant tenant = obtainCurrentTenant(tenantName);
-
         logoutWithTenant(req, res, tenant);
     }
 
     private Tenant obtainCurrentTenant(String tenantName) {
         Optional<Tenant> maybeTenant = tenants.get(tenantName);
-        if (maybeTenant.isPresent()) {
-            return maybeTenant.get();
-        } else {
-            Tenant tenant = oidcConfigFinders.stream()
-                    .map(finder -> finder.config(tenantName))
-                    .flatMap(Optional::stream)
-                    .map(tenantConfig -> Tenant.create(oidcConfig, tenantConfig))
-                    .findFirst()
-                    .orElseGet(() -> Tenant.create(oidcConfig, oidcConfig.tenantConfig(tenantName)));
-            return tenants.computeValue(tenantName, () -> Optional.of(tenant)).get();
-        }
+        return maybeTenant.orElseGet(() ->
+                tenants.computeValue(tenantName, () -> findCurrentTenant(tenantName))
+                       .orElseThrow(() -> new SecurityException("Could not find tenant: " + tenantName)));
+    }
+
+    private Optional<Tenant> findCurrentTenant(String tenantName) {
+        return configFinders.stream()
+                            .map(finder -> finder.config(tenantName))
+                            .flatMap(Optional::stream)
+                            .map(tenantConfig -> Tenant.create(config, tenantConfig))
+                            .findFirst()
+                            .or(() -> Optional.of(Tenant.create(config, config.tenantConfig(tenantName))));
     }
 
     private void logoutWithTenant(ServerRequest req, ServerResponse res, Tenant tenant) {
         Optional<String> idTokenCookie = req.headers()
-                .cookies()
-                .first(idTokenCookieHandler.cookieName());
+                                            .cookies()
+                                            .first(idTokenCookieHandler.cookieName());
 
         if (idTokenCookie.isEmpty()) {
             LOGGER.log(Level.TRACE, "Logout request invoked without ID Token cookie");
             res.status(Http.Status.FORBIDDEN_403)
-                    .send();
+               .send();
             return;
         }
 
-        String encryptedIdToken = idTokenCookie.get();
+        try {
+            String idToken = idTokenCookieHandler.decrypt(idTokenCookie.get());
+            StringBuilder sb = new StringBuilder(tenant.logoutEndpointUri()
+                    + "?id_token_hint="
+                    + idToken
+                    + "&post_logout_redirect_uri=" + postLogoutUri(req));
 
-        idTokenCookieHandler.decrypt(encryptedIdToken)
-                .forSingle(idToken -> {
-                    StringBuilder sb = new StringBuilder(tenant.logoutEndpointUri()
-                                                                 + "?id_token_hint="
-                                                                 + idToken
-                                                                 + "&post_logout_redirect_uri=" + postLogoutUri(req));
+            req.query().first("state")
+               .ifPresent(it -> sb.append("&state=").append(it));
 
-                    req.query().first("state")
-                            .ifPresent(it -> sb.append("&state=").append(it));
+            ServerResponseHeaders headers = res.headers();
+            headers.addCookie(tokenCookieHandler.removeCookie().build());
+            headers.addCookie(idTokenCookieHandler.removeCookie().build());
+            headers.addCookie(tenantCookieHandler.removeCookie().build());
 
-                    ServerResponseHeaders headers = res.headers();
-                    headers.addCookie(tokenCookieHandler.removeCookie().build());
-                    headers.addCookie(idTokenCookieHandler.removeCookie().build());
-                    headers.addCookie(tenantCookieHandler.removeCookie().build());
-
-                    res.status(Http.Status.TEMPORARY_REDIRECT_307)
-                            .header(Http.Header.LOCATION, sb.toString())
-                            .send();
-                })
-                .exceptionallyAccept(t -> sendError(res, t));
+            res.status(Http.Status.TEMPORARY_REDIRECT_307)
+               .header(Http.Header.LOCATION, sb.toString())
+               .send();
+        } catch (Throwable th) {
+            sendError(res, th);
+        }
     }
 
     private void addRequestAsHeader(ServerRequest req, ServerResponse res) {
-        //noinspection unchecked
-        Context context = Contexts.context().orElseThrow(() -> new SecurityException("Context must be available"));
+        Context context = Contexts.context()
+                                  .orElseThrow(() -> new SecurityException("Context must be available"));
 
+        @SuppressWarnings("unchecked")
         Map<String, List<String>> newHeaders = context
                 .get(SecurityFeature.CONTEXT_ADD_HEADERS, Map.class)
                 .map(theMap -> (Map<String, List<String>>) theMap)
@@ -342,10 +343,10 @@ public final class OidcFeature implements HttpFeature {
         String query = req.query().rawValue();
         if (query.isEmpty()) {
             newHeaders.put(Security.HEADER_ORIG_URI,
-                           List.of(req.path().rawPath()));
+                    List.of(req.path().rawPath()));
         } else {
             newHeaders.put(Security.HEADER_ORIG_URI,
-                           List.of(req.path().rawPath() + "?" + query));
+                    List.of(req.path().rawPath() + "?" + query));
         }
 
         res.next();
@@ -356,11 +357,11 @@ public final class OidcFeature implements HttpFeature {
         Optional<String> codeParam = req.query().first(CODE_PARAM_NAME);
         // if code is not in the request, this is a problem
         codeParam.ifPresentOrElse(code -> processCode(code, req, res),
-                                  () -> processError(req, res));
+                () -> processError(req, res));
     }
 
     private void processCode(String code, ServerRequest req, ServerResponse res) {
-        String tenantName = req.query().first(oidcConfig.tenantParamName()).orElse(TenantConfigFinder.DEFAULT_TENANT_ID);
+        String tenantName = req.query().first(config.tenantParamName()).orElse(TenantConfigFinder.DEFAULT_TENANT_ID);
         Tenant tenant = obtainCurrentTenant(tenantName);
 
         processCodeWithTenant(code, req, res, tenantName, tenant);
@@ -369,30 +370,38 @@ public final class OidcFeature implements HttpFeature {
     private void processCodeWithTenant(String code, ServerRequest req, ServerResponse res, String tenantName, Tenant tenant) {
         TenantConfig tenantConfig = tenant.tenantConfig();
 
-        WebClient webClient = tenant.appWebClient();
+        Http1Client webClient = tenant.appWebClient();
 
         Parameters.Builder form = Parameters.builder("oidc-form-params")
-                .add("grant_type", "authorization_code")
-                .add("code", code)
-                .add("redirect_uri", redirectUri(req, tenantName));
+                                            .add("grant_type", "authorization_code")
+                                            .add("code", code)
+                                            .add("redirect_uri", redirectUri(req, tenantName));
 
-        WebClientRequestBuilder post = webClient.post()
-                .uri(tenant.tokenEndpointUri())
-                .accept(HttpMediaType.APPLICATION_JSON);
+        Http1ClientRequest post = webClient.post()
+                                           .uri(tenant.tokenEndpointUri())
+                                           .accept(HttpMediaType.APPLICATION_JSON);
 
-        OidcUtil.updateRequest(OidcConfig.RequestType.CODE_TO_TOKEN, tenantConfig, form);
+        updateRequest(OidcConfig.RequestType.CODE_TO_TOKEN, tenantConfig, form);
 
-        OidcConfig.postJsonResponse(post,
-                                    form.build(),
-                                    json -> processJsonResponse(req, res, json, tenantName),
-                                    (status, errorEntity) -> processError(res, status, errorEntity),
-                                    (t, message) -> processError(res, t, message))
-                .await();
-
+        try {
+            JsonObject json = postJsonResponse(post, form.build());
+            processJsonResponse(req, res, json, tenantName);
+        } catch (Throwable th) {
+            if (th instanceof OidcConfig.OidcResponseException rex) {
+                LOGGER.log(Level.DEBUG,
+                        "Invalid token or failed request when connecting to OIDC Token Endpoint."
+                                + " Response: {0}, response status: {1}",
+                        rex.entity(), rex.status());
+            } else {
+                LOGGER.log(Level.DEBUG, th.getMessage(), th);
+            }
+            res.status(Http.Status.UNAUTHORIZED_401);
+            res.send("Not a valid authorization code");
+        }
     }
 
     private Object postLogoutUri(ServerRequest req) {
-        URI uri = oidcConfig.postLogoutUri();
+        URI uri = config.postLogoutUri();
         if (uri.getHost() != null) {
             return uri.toString();
         }
@@ -400,11 +409,11 @@ public final class OidcFeature implements HttpFeature {
         path = path.startsWith("/") ? path : "/" + path;
         ServerRequestHeaders headers = req.headers();
         if (headers.contains(HOST)) {
-            String scheme = oidcConfig.forceHttpsRedirects() || req.isSecure() ? "https" : "http";
+            String scheme = config.forceHttpsRedirects() || req.isSecure() ? "https" : "http";
             return scheme + "://" + headers.get(HOST).value() + path;
         } else {
             LOGGER.log(Level.WARNING, "Request without Host header received, yet post logout URI does not define a host");
-            return oidcConfig.toString();
+            return config.toString();
         }
     }
 
@@ -414,64 +423,45 @@ public final class OidcFeature implements HttpFeature {
 
         if (host.isPresent()) {
             String scheme = req.isSecure() ? "https" : "http";
-            uri = oidcConfig.redirectUriWithHost(scheme + "://" + host.get());
+            uri = config.redirectUriWithHost(scheme + "://" + host.get());
         } else {
-            uri = oidcConfig.redirectUriWithHost();
+            uri = config.redirectUriWithHost();
         }
         if (!DEFAULT_TENANT_ID.equals(tenantName)) {
-            return uri + (uri.contains("?") ? "&" : "?") + encode(oidcConfig.tenantParamName()) + "=" + encode(tenantName);
+            return uri + (uri.contains("?") ? "&" : "?") + encode(config.tenantParamName()) + "=" + encode(tenantName);
         }
         return uri;
     }
 
-    private String processJsonResponse(ServerRequest req,
-                                       ServerResponse res,
-                                       JsonObject json,
-                                       String tenantName) {
+    private void processJsonResponse(ServerRequest req, ServerResponse res, JsonObject json, String tenantName) {
         String tokenValue = json.getString("access_token");
         String idToken = json.getString("id_token", null);
 
         //redirect to "state"
         String state = req.query().first(STATE_PARAM_NAME).orElse(DEFAULT_REDIRECT);
         res.status(Http.Status.TEMPORARY_REDIRECT_307);
-        if (oidcConfig.useParam()) {
-            state += (state.contains("?") ? "&" : "?") + oidcConfig.paramName() + "=" + tokenValue;
+        if (config.useParam()) {
+            state += (state.contains("?") ? "&" : "?") + config.paramName() + "=" + tokenValue;
             if (!DEFAULT_TENANT_ID.equals(tenantName)) {
-                state += "&" + encode(oidcConfig.tenantParamName()) + "=" + encode(tenantName);
+                state += "&" + encode(config.tenantParamName()) + "=" + encode(tenantName);
             }
         }
 
         state = increaseRedirectCounter(state);
         res.headers().add(Http.Header.LOCATION, state);
 
-        if (oidcConfig.useCookie()) {
+        if (config.useCookie()) {
             ServerResponseHeaders headers = res.headers();
-
-            OidcCookieHandler tenantCookieHandler = oidcConfig.tenantCookieHandler();
-            tenantCookieHandler.createCookie(tenantName)
-                    .forSingle(builder -> headers.addCookie(builder.build()))
-                    .exceptionallyAccept(t -> sendError(res, t));
-
-            tokenCookieHandler.createCookie(tokenValue)
-                    .forSingle(builder -> {
-                        headers.addCookie(builder.build());
-                        if (idToken != null && oidcConfig.logoutEnabled()) {
-                            idTokenCookieHandler.createCookie(idToken)
-                                    .forSingle(it -> {
-                                        headers.addCookie(it.build());
-                                        res.send();
-                                    })
-                                    .exceptionallyAccept(t -> sendError(res, t));
-                        } else {
-                            res.send();
-                        }
-                    })
-                    .exceptionallyAccept(t -> sendError(res, t));
+            headers.addCookie(config.tenantCookieHandler().createCookie(tenantName).build())
+                   .addCookie(config.tokenCookieHandler().createCookie(tokenValue).build());
+            if (idToken != null && config.logoutEnabled()) {
+                headers.addCookie(config.idTokenCookieHandler().createCookie(idToken).build());
+            } else {
+                res.send();
+            }
         } else {
             res.send();
         }
-
-        return "done";
     }
 
     private String encode(String toEncode) {
@@ -488,33 +478,10 @@ public final class OidcFeature implements HttpFeature {
                 .send();
     }
 
-    private Optional<String> processError(ServerResponse serverResponse, Http.Status status, String entity) {
-        LOGGER.log(Level.DEBUG,
-                   "Invalid token or failed request when connecting to OIDC Token Endpoint. Response: " + entity
-                           + ", response status: " + status);
-
-        sendErrorResponse(serverResponse);
-        return Optional.empty();
-    }
-
-    private Optional<String> processError(ServerResponse res, Throwable t, String message) {
-        LOGGER.log(Level.DEBUG, message, t);
-
-        sendErrorResponse(res);
-        return Optional.empty();
-    }
-
-    // this must always be the same, so clients cannot guess what kind of problem they are facing
-    // if they try to provide wrong data
-    private void sendErrorResponse(ServerResponse serverResponse) {
-        serverResponse.status(Http.Status.UNAUTHORIZED_401);
-        serverResponse.send("Not a valid authorization code");
-    }
-
     String increaseRedirectCounter(String state) {
         if (state.contains("?")) {
             // there are parameters
-            Pattern attemptPattern = Pattern.compile(".*?(" + oidcConfig.redirectAttemptParam() + "=\\d+).*");
+            Pattern attemptPattern = Pattern.compile(".*?(" + config.redirectAttemptParam() + "=\\d+).*");
             Matcher matcher = attemptPattern.matcher(state);
             if (matcher.matches()) {
                 String attempts = matcher.group(1);
@@ -522,26 +489,26 @@ public final class OidcFeature implements HttpFeature {
                 String count = attempts.substring(equals + 1);
                 int countNumber = Integer.parseInt(count);
                 countNumber++;
-                return state.replace(attempts, oidcConfig.redirectAttemptParam() + "=" + countNumber);
+                return state.replace(attempts, config.redirectAttemptParam() + "=" + countNumber);
             } else {
-                return state + "&" + oidcConfig.redirectAttemptParam() + "=1";
+                return state + "&" + config.redirectAttemptParam() + "=1";
             }
         } else {
             // no parameters
-            return state + "?" + oidcConfig.redirectAttemptParam() + "=1";
+            return state + "?" + config.redirectAttemptParam() + "=1";
         }
     }
 
     private void processError(ServerRequest req, ServerResponse res) {
         String error = req.query().first("error").orElse("invalid_request");
         String errorDescription = req.query().first("error_description")
-                .orElseGet(() -> "Failed to process authorization request. Expected redirect from OIDC server with code"
-                        + " parameter, but got: " + req.query());
+                                     .orElseGet(() -> "Failed to process authorization request. Expected redirect from OIDC server with code"
+                                             + " parameter, but got: " + req.query());
         LOGGER.log(Level.WARNING,
-                   () -> "Received request on OIDC endpoint with no code. Error: "
-                           + error
-                           + " Error description: "
-                           + errorDescription);
+                () -> "Received request on OIDC endpoint with no code. Error: "
+                        + error
+                        + " Error description: "
+                        + errorDescription);
 
         res.status(Http.Status.BAD_REQUEST_400);
         res.send("{\"error\": \"" + error + "\", \"error_description\": \"" + errorDescription + "\"}");
@@ -551,8 +518,8 @@ public final class OidcFeature implements HttpFeature {
         return crossOriginConfig == null
                 ? null
                 : CorsSupport.builder()
-                        .addCrossOrigin(path, crossOriginConfig)
-                        .build();
+                             .addCrossOrigin(path, crossOriginConfig)
+                             .build();
     }
 
     /**
@@ -567,7 +534,7 @@ public final class OidcFeature implements HttpFeature {
                 .builder(ServiceLoader.load(TenantConfigProvider.class))
                 .defaultWeight(DEFAULT_WEIGHT);
         private boolean enabled = true;
-        private Config config = Config.empty();
+        private final Config config = Config.empty();
         private OidcConfig oidcConfig;
         private List<TenantConfigFinder> tenantConfigFinders;
 
@@ -580,13 +547,13 @@ public final class OidcFeature implements HttpFeature {
             }
 
             return rootConfig.get("security.providers")
-                    .asNodeList()
-                    .get()
-                    .stream()
-                    .filter(it -> it.get(providerName).exists())
-                    .findFirst()
-                    .map(it -> it.get(providerName))
-                    .orElseThrow(() -> new SecurityException("No configuration found for provider named: " + providerName));
+                             .asNodeList()
+                             .get()
+                             .stream()
+                             .filter(it -> it.get(providerName).exists())
+                             .findFirst()
+                             .map(it -> it.get(providerName))
+                             .orElseThrow(() -> new SecurityException("No configuration found for provider named: " + providerName));
         }
 
         @Override
@@ -595,8 +562,8 @@ public final class OidcFeature implements HttpFeature {
                 throw new IllegalStateException("When OIDC and security is enabled, OIDC configuration must be provided");
             }
             tenantConfigFinders = tenantConfigProviders.build().asList().stream()
-                    .map(provider -> provider.createTenantConfigFinder(config))
-                    .collect(Collectors.toList());
+                                                       .map(provider -> provider.createTenantConfigFinder(config))
+                                                       .collect(Collectors.toList());
             return new OidcFeature(this);
         }
 
@@ -630,7 +597,7 @@ public final class OidcFeature implements HttpFeature {
         /**
          * Config located either at the configuration root, or at the provider node.
          *
-         * @param config configuration to use
+         * @param config       configuration to use
          * @param providerName name of the security provider used for the {@link OidcFeature}
          *                     configuration
          * @return updated builder instance
@@ -683,7 +650,7 @@ public final class OidcFeature implements HttpFeature {
          * Add specific {@link TenantConfigFinder} implementation with specific priority.
          *
          * @param configFinder config finder implementation
-         * @param priority finder priority
+         * @param priority     finder priority
          * @return updated builder instance
          */
         public Builder addTenantConfigFinder(TenantConfigFinder configFinder, int priority) {

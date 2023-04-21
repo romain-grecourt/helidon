@@ -34,7 +34,7 @@ public abstract class TracingConfig extends Traceable {
      */
     public static final TracingConfig ENABLED = TracingConfig.builder().build();
     /**
-     * Traced conifg that is disabled for all components, spans and logs.
+     * Traced config that is disabled for all components, spans and logs.
      */
     public static final TracingConfig DISABLED = TracingConfig.builder().enabled(false).build();
 

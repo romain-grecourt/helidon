@@ -16,34 +16,30 @@
 
 package io.helidon.security.integration.grpc;
 
-import java.util.concurrent.TimeUnit;
+import java.net.InetSocketAddress;
+import java.net.URI;
 
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.grpc.core.GrpcHelper;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
-import io.helidon.grpc.server.ServiceDescriptor;
 import io.helidon.grpc.server.test.Echo;
 import io.helidon.grpc.server.test.EchoServiceGrpc;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.ServerResponse;
+import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.security.Security;
-import io.helidon.security.integration.webserver.WebSecurity;
+import io.helidon.security.integration.nima.SecurityFeature;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
 import io.grpc.Channel;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.core.Response;
-import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import services.SecuredOutboundEchoService;
@@ -51,82 +47,47 @@ import services.SecuredOutboundEchoService;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-
+@ServerTest
 public class OutboundSecurityIT {
 
-    private static WebServer webServer;
-
-    private static GrpcServer grpcServer;
-
-    private static TestCallCredentials adminCreds = new TestCallCredentials("Ted", "secret");
-
+    private static final TestCallCredentials adminCreds = new TestCallCredentials("Ted", "secret");
+    private static final SecuredOutboundEchoService echoService = new SecuredOutboundEchoService();
+    private static Http1Client client;
     private static EchoServiceGrpc.EchoServiceBlockingStub adminEchoStub;
-
     private static EchoServiceGrpc.EchoServiceBlockingStub noCredsEchoStub;
 
-    private static String webServerURL;
-
-    private static Client client;
-
-    // ----- test lifecycle methods -----------------------------------------
-
-    @BeforeAll
-    public static void startServers() throws Exception {
+    @SetUpServer
+    static void setUpServer(WebServer.Builder serverBuilder) {
         LogConfig.configureRuntime();
-
         Config config = Config.create();
-
         Security security = Security.builder()
-                .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
-                .build();
+                                    .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
+                                    .build();
 
-
-        // secured web server's Routing
-        Routing webRouting = Routing.builder()
-                .register(WebSecurity.create(security).securityDefaults(WebSecurity.authenticate()))
-                .get("/test", WebSecurity.rolesAllowed("admin"), OutboundSecurityIT::echoWebRequest)
-                .get("/propagate", WebSecurity.rolesAllowed("user"), OutboundSecurityIT::propagateCredentialsWebRequest)
-                .get("/override", WebSecurity.rolesAllowed("user"), OutboundSecurityIT::overrideCredentialsWebRequest)
-                .build();
-
-        webServer = WebServer.create(webRouting)
-                .start()
-                .toCompletableFuture()
-                .get(10, TimeUnit.SECONDS);
-
-        webServerURL = "http://127.0.0.1:" + webServer.port();
-
-        client = ClientBuilder.newBuilder().build()
-                .register(HttpAuthenticationFeature.basicBuilder().build());
-
-        ServiceDescriptor echoService = ServiceDescriptor.builder(new SecuredOutboundEchoService(webServerURL))
-                .intercept(GrpcSecurity.rolesAllowed("admin"))
-                .build();
-
-        // Add the EchoService
-        GrpcRouting grpcRouting = GrpcRouting.builder()
-                                         .intercept(GrpcSecurity.create(security).securityDefaults(GrpcSecurity.authenticate()))
-                                         .register(echoService)
-                                         .build();
-
-        // Run the server on port 0 so that it picks a free ephemeral port
-        GrpcServerConfiguration serverConfig = GrpcServerConfiguration.builder().port(0).build();
-
-        grpcServer = GrpcServer.create(serverConfig, grpcRouting)
-                        .start()
-                        .toCompletableFuture()
-                        .get(10, TimeUnit.SECONDS);
-
-        Channel channel = InProcessChannelBuilder.forName(grpcServer.configuration().name()).build();
-
-        adminEchoStub = EchoServiceGrpc.newBlockingStub(channel).withCallCredentials(adminCreds);
-        noCredsEchoStub = EchoServiceGrpc.newBlockingStub(channel);
+        serverBuilder
+                .defaultSocket(builder -> builder
+                        .port(-1)
+                        .host("localhost"))
+                .routing(router -> router
+                        .addFeature(SecurityFeature.create(security)
+                                                   .securityDefaults(SecurityFeature.authenticate()))
+                        .get("/test", SecurityFeature.rolesAllowed("admin"), OutboundSecurityIT::echoWebRequest)
+                        .get("/propagate", SecurityFeature.rolesAllowed("user"), OutboundSecurityIT::propagateCredentialsWebRequest)
+                        .get("/override", SecurityFeature.rolesAllowed("user"), OutboundSecurityIT::overrideCredentialsWebRequest))
+                .addRouting(GrpcRouting.builder()
+                                       .service(echoService));
     }
 
-    @AfterAll
-    public static void cleanup() {
-        grpcServer.shutdown();
-        webServer.shutdown();
+    @BeforeAll
+    static void setupStubs(URI uri) {
+        InetSocketAddress ina = new InetSocketAddress(uri.getHost(), uri.getPort());
+        Channel channel = InProcessChannelBuilder.forAddress(ina).build();
+
+        client = Http1Client.builder().baseUri(uri).build();
+
+        echoService.client = Http1Client.builder().baseUri(uri).build();
+        adminEchoStub = EchoServiceGrpc.newBlockingStub(channel).withCallCredentials(adminCreds);
+        noCredsEchoStub = EchoServiceGrpc.newBlockingStub(channel);
     }
 
     // ----- test methods ---------------------------------------------------
@@ -140,40 +101,39 @@ public class OutboundSecurityIT {
     @Test
     public void shouldPropagateCredentialsToOutboundCallFromWebMethod() {
         String message = "testing...";
-        String response = client.target(webServerURL)
-                .path("/propagate")
+        String response = client
+                .get("/propagate")
                 .queryParam("message", message)
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Ted") FIXME
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "secret") FIXME
                 .request()
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Ted")
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "secret")
-                .get(String.class);
+                .as(String.class);
 
         assertThat(response, is(message));
     }
 
     @Test
     public void shouldPropagateInvalidCredentialsToOutboundCallFromWebMethod() {
-        Response response = client.target(webServerURL)
-                .path("/propagate")
+        Http1ClientResponse response = client
+                .get("/propagate")
                 .queryParam("message", "testing...")
-                .request()
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Bob")
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "password")
-                .get();
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Bob") FIXME
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "password") FIXME
+                .request();
 
-        assertThat(response.getStatus(), is(Response.Status.FORBIDDEN.getStatusCode()));
+        assertThat(response.status(), is(Http.Status.FORBIDDEN_403));
     }
 
     @Test
     public void shouldOverrideCredentialsToOutboundCallFromWebMethod() {
         String message = "testing...";
-        String response = client.target(webServerURL)
-                .path("/override")
+        String response = client
+                .get("/override")
                 .queryParam("message", message)
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Bob") FIXME
+                //.property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "password") FIXME
                 .request()
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_USERNAME, "Bob")
-                .property(HttpAuthenticationFeature.HTTP_AUTHENTICATION_BASIC_PASSWORD, "password")
-                .get(String.class);
+                .as(String.class);
 
         assertThat(response, is(message));
     }
@@ -181,7 +141,7 @@ public class OutboundSecurityIT {
     // ----- helper methods -------------------------------------------------
 
     private static void echoWebRequest(ServerRequest req, ServerResponse res) {
-        String message = req.queryParams().first("message").orElse(null);
+        String message = req.query().first("message").orElse(null);
         if (message != null) {
             res.send(message);
         } else {
@@ -195,7 +155,7 @@ public class OutboundSecurityIT {
 
             EchoServiceGrpc.EchoServiceBlockingStub stub = noCredsEchoStub.withCallCredentials(clientSecurity);
 
-            String message = req.queryParams().first("message").orElse(null);
+            String message = req.query().first("message").orElse(null);
             Echo.EchoResponse echoResponse = stub.echo(Echo.EchoRequest.newBuilder().setMessage(message).build());
             res.send(echoResponse.getMessage());
         } catch (StatusRuntimeException e) {
@@ -214,7 +174,7 @@ public class OutboundSecurityIT {
 
             EchoServiceGrpc.EchoServiceBlockingStub stub = noCredsEchoStub.withCallCredentials(clientSecurity);
 
-            String message = req.queryParams().first("message").orElse(null);
+            String message = req.query().first("message").orElse(null);
             Echo.EchoResponse echoResponse = stub.echo(Echo.EchoRequest.newBuilder().setMessage(message).build());
             res.send(echoResponse.getMessage());
         } catch (StatusRuntimeException e) {

@@ -30,8 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -40,7 +38,6 @@ import java.util.stream.Collectors;
 
 import io.helidon.common.HelidonServiceLoader;
 import io.helidon.common.configurable.ThreadPoolSupplier;
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigValue;
 import io.helidon.config.metadata.Configured;
@@ -124,9 +121,9 @@ public interface Security {
      */
     static Set<String> getRoles(Subject subject) {
         return subject.grants(Role.class)
-                .stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet());
+                      .stream()
+                      .map(Role::getName)
+                      .collect(Collectors.toSet());
     }
 
     /**
@@ -201,9 +198,9 @@ public interface Security {
      *
      * @param configurationName name of the configuration of this encryption
      * @param bytesToEncrypt    bytes to encrypt
-     * @return future with cipher text
+     * @return cipher text
      */
-    Single<String> encrypt(String configurationName, byte[] bytesToEncrypt);
+    String encrypt(String configurationName, byte[] bytesToEncrypt);
 
     /**
      * Decrypt cipher text.
@@ -212,9 +209,9 @@ public interface Security {
      *
      * @param configurationName name of the configuration of this encryption
      * @param cipherText        cipher text to decrypt
-     * @return future with decrypted bytes
+     * @return decrypted bytes
      */
-    Single<byte[]> decrypt(String configurationName, String cipherText);
+    byte[] decrypt(String configurationName, String cipherText);
 
     /**
      * Create a digest for the provided bytes.
@@ -222,18 +219,18 @@ public interface Security {
      * @param configurationName name of the digest configuration
      * @param bytesToDigest     data to digest
      * @param preHashed         whether the data is already a hash
-     * @return future with digest (such as signature or HMAC)
+     * @return digest (such as signature or HMAC)
      */
-    Single<String> digest(String configurationName, byte[] bytesToDigest, boolean preHashed);
+    String digest(String configurationName, byte[] bytesToDigest, boolean preHashed);
 
     /**
      * Create a digest for the provided raw bytes.
      *
      * @param configurationName name of the digest configuration
      * @param bytesToDigest     data to digest
-     * @return future with digest (such as signature or HMAC)
+     * @return digest (such as signature or HMAC)
      */
-    Single<String> digest(String configurationName, byte[] bytesToDigest);
+    String digest(String configurationName, byte[] bytesToDigest);
 
     /**
      * Verify a digest.
@@ -242,9 +239,9 @@ public interface Security {
      * @param bytesToDigest     data to verify a digest for
      * @param digest            digest as provided by a third party (or another component)
      * @param preHashed         whether the data is already a hash
-     * @return future with result of verification ({@code true} means the digest is valid)
+     * @return result of verification ({@code true} means the digest is valid)
      */
-    Single<Boolean> verifyDigest(String configurationName, byte[] bytesToDigest, String digest, boolean preHashed);
+    boolean verifyDigest(String configurationName, byte[] bytesToDigest, String digest, boolean preHashed);
 
     /**
      * Verify a digest.
@@ -252,26 +249,26 @@ public interface Security {
      * @param configurationName name of the digest configuration
      * @param bytesToDigest     raw data to verify a digest for
      * @param digest            digest as provided by a third party (or another component)
-     * @return future with result of verification ({@code true} means the digest is valid)
+     * @return result of verification ({@code true} means the digest is valid)
      */
-    Single<Boolean> verifyDigest(String configurationName, byte[] bytesToDigest, String digest);
+    boolean verifyDigest(String configurationName, byte[] bytesToDigest, String digest);
 
     /**
      * Get a secret.
      *
      * @param configurationName name of the secret configuration
-     * @return future with the secret value, or error if the secret is not configured
+     * @return secret value
      */
-    Single<Optional<String>> secret(String configurationName);
+    Optional<String> secret(String configurationName);
 
     /**
      * Get a secret.
      *
      * @param configurationName name of the secret configuration
      * @param defaultValue      default value to use if secret not configured
-     * @return future with the secret value
+     * @return secret value
      */
-    Single<String> secret(String configurationName, String defaultValue);
+    String secret(String configurationName, String defaultValue);
 
     /**
      * Security environment builder, to be used to create
@@ -302,7 +299,7 @@ public interface Security {
      * Audit an event.
      *
      * @param tracingId id to map this audit event to a request
-     * @param event event to audit
+     * @param event     event to audit
      */
     void audit(String tracingId, AuditEvent event);
 
@@ -347,9 +344,10 @@ public interface Security {
     /**
      * Builder pattern class for helping create {@link io.helidon.security.Security} in a convenient way.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured(root = true, prefix = "security", description = "Configuration of security providers, integration and other"
             + " security options")
-     final class Builder implements io.helidon.common.Builder<Builder, Security> {
+    final class Builder implements io.helidon.common.Builder<Builder, Security> {
         private static final System.Logger LOGGER = System.getLogger(Builder.class.getName());
 
         private final Set<AuditProvider> auditProviders = new LinkedHashSet<>();
@@ -361,7 +359,7 @@ public interface Security {
         private final Map<String, DigestProvider<?>> digestProviders = new HashMap<>();
         private final Map<SecurityProvider, Boolean> allProviders = new IdentityHashMap<>();
 
-        private final Map<String, Supplier<Single<Optional<String>>>> secrets = new HashMap<>();
+        private final Map<String, Supplier<Optional<String>>> secrets = new HashMap<>();
         private final Map<String, EncryptionProvider.EncryptionSupport> encryptions = new HashMap<>();
         private final Map<String, DigestProvider.DigestSupport> digests = new HashMap<>();
         private final Set<String> providerNames = new HashSet<>();
@@ -397,7 +395,7 @@ public interface Security {
          * @return updated builder instance
          */
         @ConfiguredOption(key = "provider-policy.type", type = ProviderSelectionPolicyType.class,
-                          description = "Type of the policy.", value = "FIRST")
+                description = "Type of the policy.", value = "FIRST")
         @ConfiguredOption(key = "provider-policy.class-name", description = "Provider selection policy class name, only used "
                 + "when type is set to CLASS", type = Class.class)
         public Builder providerSelectionPolicy(Function<ProviderSelectionPolicy.Providers, ProviderSelectionPolicy>
@@ -529,9 +527,9 @@ public interface Security {
          * @return updated builder instance
          */
         @ConfiguredOption(key = "default-authentication-provider",
-                          description = "ID of the default authentication provider",
-                          type = String.class,
-                          provider = true)
+                description = "ID of the default authentication provider",
+                type = String.class,
+                provider = true)
         public Builder authenticationProvider(AuthenticationProvider provider) {
             // explicit default provider
             this.authnProvider = new NamedProvider<>(provider.getClass().getSimpleName(), provider);
@@ -555,8 +553,8 @@ public interface Security {
          * @return updated builder instance
          */
         @ConfiguredOption(key = "default-authorization-provider",
-                          type = String.class,
-                          description = "ID of the default authorization provider")
+                type = String.class,
+                description = "ID of the default authorization provider")
         public Builder authorizationProvider(AuthorizationProvider provider) {
             // explicit default provider
             this.authzProvider = new NamedProvider<>(provider.getClass().getSimpleName(), provider);
@@ -601,7 +599,7 @@ public interface Security {
          * Add a named authentication provider. Provider can be referenced by name e.g. from configuration.
          *
          * @param provider provider instance
-         * @param name     name of provider, may be null or empty, but as such will not be rerefencable by name
+         * @param name     name of provider, may be null or empty, but as such will not be referencable by name
          * @return updated builder instance
          */
         public Builder addAuthenticationProvider(AuthenticationProvider provider, String name) {
@@ -624,7 +622,7 @@ public interface Security {
          * Add a named authentication provider. Provider can be referenced by name e.g. from configuration.
          *
          * @param builder builder of provider instance
-         * @param name    name of provider, may be null or empty, but as such will not be rerefencable by name
+         * @param name    name of provider, may be null or empty, but as such will not be referencable by name
          * @return updated builder instance
          */
         public Builder addAuthenticationProvider(Supplier<? extends AuthenticationProvider> builder,
@@ -876,7 +874,7 @@ public interface Security {
         public Security build() {
             if (allProviders.isEmpty() && enabled) {
                 LOGGER.log(System.Logger.Level.WARNING,
-                           "Security component is NOT configured with any security providers.");
+                        "Security component is NOT configured with any security providers.");
             }
 
             if (auditProviders.isEmpty()) {
@@ -885,8 +883,7 @@ public interface Security {
             }
 
             if (atnProviders.isEmpty()) {
-                addAuthenticationProvider(context -> CompletableFuture
-                        .completedFuture(AuthenticationResponse.success(SecurityContext.ANONYMOUS)), "default");
+                addAuthenticationProvider(context -> AuthenticationResponse.success(SecurityContext.ANONYMOUS), "default");
             }
 
             if (atzProviders.isEmpty()) {
@@ -912,15 +909,15 @@ public interface Security {
          * @see #secret(String, String)
          */
         @ConfiguredOption(key = "secrets",
-                          kind = ConfiguredOption.Kind.LIST,
-                          type = Config.class,
-                          description = "Configured secrets")
+                kind = ConfiguredOption.Kind.LIST,
+                type = Config.class,
+                description = "Configured secrets")
         @ConfiguredOption(key = "secrets.*.name", type = String.class, description = "Name of the secret, used for lookup")
         @ConfiguredOption(key = "secrets.*.provider", type = String.class, description = "Name of the secret provider")
         @ConfiguredOption(key = "secrets.*.config",
-                          type = SecretsProviderConfig.class,
-                          provider = true,
-                          description = "Configuration specific to the secret provider")
+                type = SecretsProviderConfig.class,
+                provider = true,
+                description = "Configuration specific to the secret provider")
         public <T extends ProviderConfig> Builder addSecret(String name,
                                                             SecretsProvider<T> secretProvider,
                                                             T providerConfig) {
@@ -989,108 +986,97 @@ public interface Security {
             config.get("tracing.enabled").as(Boolean.class).ifPresent(this::tracingEnabled);
             //iterate through all providers and find them
             config.get("providers")
-                    .asList(Config.class)
-                    .ifPresent(confList -> {
-                        confList.forEach(pConf -> providerFromConfig(configKeyToService, classNameToService, knownKeys, pConf));
-                    });
+                  .asList(Config.class)
+                  .ifPresent(confList -> confList.forEach(pConf ->
+                          providerFromConfig(configKeyToService, classNameToService, knownKeys, pConf)));
 
             String defaultAtnProvider = config.get("default-authentication-provider").asString().orElse(null);
             if (null != defaultAtnProvider) {
                 authenticationProvider(atnProviders.stream()
-                                               .filter(nsp -> nsp.getName().equals(defaultAtnProvider))
-                                               .findFirst()
-                                               .map(NamedProvider::getProvider)
-                                               .orElseThrow(() -> new SecurityException("Authentication provider named \""
-                                                                                                + defaultAtnProvider + "\" is set"
-                                                                                                + " as "
-                                                                                                + "default, yet no provider "
-                                                                                                + "configuration exists")));
+                                                   .filter(nsp -> nsp.getName().equals(defaultAtnProvider))
+                                                   .findFirst()
+                                                   .map(NamedProvider::getProvider)
+                                                   .orElseThrow(() -> new SecurityException("Authentication provider named \""
+                                                           + defaultAtnProvider + "\" is set"
+                                                           + " as "
+                                                           + "default, yet no provider "
+                                                           + "configuration exists")));
             }
 
             String defaultAtzProvider = config.get("default-authorization-provider").asString().orElse(null);
             if (null != defaultAtzProvider) {
                 authorizationProvider(atzProviders.stream()
-                                              .filter(nsp -> nsp.getName().equals(defaultAtzProvider))
-                                              .findFirst()
-                                              .map(NamedProvider::getProvider)
-                                              .orElseThrow(() -> new SecurityException("Authorization provider named \""
-                                                                                               + defaultAtzProvider + "\" is set"
-                                                                                               + " as "
-                                                                                               + "default, yet no provider "
-                                                                                               + "configuration exists")));
+                                                  .filter(nsp -> nsp.getName().equals(defaultAtzProvider))
+                                                  .findFirst()
+                                                  .map(NamedProvider::getProvider)
+                                                  .orElseThrow(() -> new SecurityException("Authorization provider named \""
+                                                          + defaultAtzProvider + "\" is set"
+                                                          + " as "
+                                                          + "default, yet no provider "
+                                                          + "configuration exists")));
             }
 
             // now policy
             Config providerPolicyConfig = config.get("provider-policy");
             ProviderSelectionPolicyType pType = providerPolicyConfig.get("type")
-                    .asString()
-                    .map(ProviderSelectionPolicyType::valueOf)
-                    .orElse(ProviderSelectionPolicyType.FIRST);
+                                                                    .asString()
+                                                                    .map(ProviderSelectionPolicyType::valueOf)
+                                                                    .orElse(ProviderSelectionPolicyType.FIRST);
 
             switch (pType) {
-            case FIRST:
-                providerSelectionPolicy = FirstProviderSelectionPolicy::new;
-                break;
-            case COMPOSITE:
-                providerSelectionPolicy = CompositeProviderSelectionPolicy.create(providerPolicyConfig);
-                break;
-            case CLASS:
-                providerSelectionPolicy = findProviderSelectionPolicy(providerPolicyConfig);
-                break;
-            default:
-                throw new IllegalStateException("Invalid enum option: " + pType + ", probably version mis-match");
+                case FIRST -> providerSelectionPolicy = FirstProviderSelectionPolicy::new;
+                case COMPOSITE ->
+                        providerSelectionPolicy = CompositeProviderSelectionPolicy.create(providerPolicyConfig);
+                case CLASS -> providerSelectionPolicy = findProviderSelectionPolicy(providerPolicyConfig);
+                default ->
+                        throw new IllegalStateException("Invalid enum option: " + pType + ", probably version mis-match");
             }
 
             config.get("secrets")
-                    .asList(Config.class)
-                    .ifPresent(confList -> {
-                        confList.forEach(sConf -> {
-                            String name = sConf.get("name").asString().get();
-                            String provider = sConf.get("provider").asString().get();
-                            Config secretConfig = sConf.get("config");
-                            SecretsProvider<?> secretsProvider = secretsProviders.get(provider);
-                            if (secretsProvider == null) {
-                                throw new SecurityException("Provider \"" + provider
-                                                                    + "\" used for secret \"" + name + "\" not found");
-                            } else {
-                                secrets.put(name, secretsProvider.secret(secretConfig));
-                            }
-                        });
-                    });
+                  .asList(Config.class)
+                  .ifPresent(confList -> confList.forEach(sConf -> {
+                      String name = sConf.get("name").asString().get();
+                      String provider = sConf.get("provider").asString().get();
+                      Config secretConfig = sConf.get("config");
+                      SecretsProvider<?> secretsProvider = secretsProviders.get(provider);
+                      if (secretsProvider == null) {
+                          throw new SecurityException("Provider \"" + provider
+                                  + "\" used for secret \"" + name + "\" not found");
+                      } else {
+                          secrets.put(name, secretsProvider.secret(secretConfig));
+                      }
+                  }));
 
             config.get("encryption")
-                    .asList(Config.class)
-                    .ifPresent(confList -> {
-                        confList.forEach(eConf -> {
-                            String name = eConf.get("name").asString().get();
-                            String provider = eConf.get("provider").asString().get();
-                            Config encryptionConfig = eConf.get("config");
-                            EncryptionProvider<?> encryptionProvider = encryptionProviders.get(provider);
-                            if (encryptionProvider == null) {
-                                throw new SecurityException("Provider \"" + provider
-                                                                    + "\" used for encryption \"" + name + "\" not found");
-                            } else {
-                                encryptions.put(name, encryptionProvider.encryption(encryptionConfig));
-                            }
-                        });
-                    });
+                  .asList(Config.class)
+                  .ifPresent(confList ->
+                          confList.forEach(eConf -> {
+                              String name = eConf.get("name").asString().get();
+                              String provider = eConf.get("provider").asString().get();
+                              Config encryptionConfig = eConf.get("config");
+                              EncryptionProvider<?> encryptionProvider = encryptionProviders.get(provider);
+                              if (encryptionProvider == null) {
+                                  throw new SecurityException("Provider \"" + provider
+                                          + "\" used for encryption \"" + name + "\" not found");
+                              } else {
+                                  encryptions.put(name, encryptionProvider.encryption(encryptionConfig));
+                              }
+                          }));
 
             config.get("digest")
-                    .asList(Config.class)
-                    .ifPresent(confList -> {
-                        confList.forEach(dConf -> {
-                            String name = dConf.get("name").asString().get();
-                            String provider = dConf.get("provider").asString().get();
-                            Config digestConfig = dConf.get("config");
-                            DigestProvider<?> digestProvider = digestProviders.get(provider);
-                            if (digestProvider == null) {
-                                throw new SecurityException("Provider \"" + provider
-                                                                    + "\" used for digest \"" + name + "\" not found");
-                            } else {
-                                digests.put(name, digestProvider.digest(digestConfig));
-                            }
-                        });
-                    });
+                  .asList(Config.class)
+                  .ifPresent(confList -> confList.forEach(dConf -> {
+                      String name = dConf.get("name").asString().get();
+                      String provider = dConf.get("provider").asString().get();
+                      Config digestConfig = dConf.get("config");
+                      DigestProvider<?> digestProvider = digestProviders.get(provider);
+                      if (digestProvider == null) {
+                          throw new SecurityException("Provider \"" + provider
+                                  + "\" used for digest \"" + name + "\" not found");
+                      } else {
+                          digests.put(name, digestProvider.digest(digestConfig));
+                      }
+                  }));
         }
 
         private void providerFromConfig(Map<String, SecurityProviderService> configKeyToService,
@@ -1203,9 +1189,9 @@ public interface Security {
             pConf.asNodeList().get().stream().filter(this::notReservedProviderKey).forEach(providerSpecificConf -> {
                 if (!providerSpecific.compareAndSet(null, providerSpecificConf)) {
                     throw new SecurityException("More than one provider configurations found, each provider can only"
-                                                        + " have one provide specific config. Conflict: "
-                                                        + providerSpecific.get().key()
-                                                        + " and " + providerSpecificConf.key());
+                            + " have one provide specific config. Conflict: "
+                            + providerSpecific.get().key()
+                            + " and " + providerSpecificConf.key());
                 }
             });
         }
@@ -1226,9 +1212,9 @@ public interface Security {
                 pConf.asNodeList().get().stream().filter(this::notReservedProviderKey).forEach(providerSpecificConf -> {
                     if (!providerSpecific.compareAndSet(null, providerSpecificConf)) {
                         throw new SecurityException("More than one provider configurations found, each provider can only"
-                                                            + " have one provider specific config. Conflict: "
-                                                            + providerSpecific.get().key()
-                                                            + " and " + providerSpecificConf.key());
+                                + " have one provider specific config. Conflict: "
+                                + providerSpecific.get().key()
+                                + " and " + providerSpecificConf.key());
                     }
 
                     findProviderService(service, configKeyToService, providerSpecificConf.name(), knownKeys);
@@ -1244,8 +1230,8 @@ public interface Security {
                 service.set(configKeyToService.get(name));
             } else {
                 throw new SecurityException("Configuration key " + name
-                                                    + " is not a valid provider configuration. Supported keys: "
-                                                    + knownKeys);
+                        + " is not a valid provider configuration. Supported keys: "
+                        + knownKeys);
             }
         }
 
@@ -1273,14 +1259,15 @@ public interface Security {
         }
 
         private Function<ProviderSelectionPolicy.Providers, ProviderSelectionPolicy> findProviderSelectionPolicy(Config config) {
-            Class clazz = config.get("class-name").as(Class.class).orElseThrow(() -> new java.lang.SecurityException(
+            Class<?> clazz = config.get("class-name").as(Class.class).orElseThrow(() -> new java.lang.SecurityException(
                     "You have configured a CLASS provider selection without configuring class-name"));
 
             if (!ProviderSelectionPolicy.class.isAssignableFrom(clazz)) {
                 throw new SecurityException("Class " + clazz.getName() + " does not implement ProviderSelectionPolicy");
             }
 
-            @SuppressWarnings("unchecked") Class<? extends ProviderSelectionPolicy> pspClass = clazz;
+            @SuppressWarnings({"unchecked", "CastCanBeRemovedNarrowingVariableType"})
+            Class<? extends ProviderSelectionPolicy> pspClass = (Class<? extends ProviderSelectionPolicy>) clazz;
 
             //now let's find the constructor
             try {
@@ -1326,8 +1313,8 @@ public interface Security {
             } catch (NoSuchMethodException e) {
                 throw new SecurityException("You have configured " + clazz
                         .getName() + " as provider selection policy class, yet it is missing public constructor with Providers "
-                                                    + "or Providers and Config as parameters.",
-                                            e);
+                        + "or Providers and Config as parameters.",
+                        e);
             }
         }
 
@@ -1402,7 +1389,7 @@ public interface Security {
             return allProviders;
         }
 
-        Map<String, Supplier<Single<Optional<String>>>> secrets() {
+        Map<String, Supplier<Optional<String>>> secrets() {
             return secrets;
         }
 
@@ -1460,9 +1447,8 @@ public interface Security {
 
         private static class DefaultAtzProvider implements AuthorizationProvider {
             @Override
-            public CompletionStage<AuthorizationResponse> authorize(ProviderRequest context) {
-                return CompletableFuture
-                        .completedFuture(AuthorizationResponse.permit());
+            public AuthorizationResponse authorize(ProviderRequest context) {
+                return AuthorizationResponse.permit();
             }
         }
     }

@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 /**
  * Common test methods for oidc config tests.
  */
+@SuppressWarnings({"HttpUrlsUsage"})
 abstract class OidcConfigAbstractTest {
     abstract OidcConfig getConfig();
 
@@ -41,13 +42,13 @@ abstract class OidcConfigAbstractTest {
                   () -> assertThat("Client ID", config.clientId(), is("client-id-value")),
                   () -> assertThat("Validate JWT with JWK", config.validateJwtWithJwk(), is(false)),
                   () -> assertThat("Token endpoint",
-                                   config.tokenEndpoint().getUri(),
+                                   config.tokenEndpointUri(),
                                    is(URI.create("http://identity.oracle.com/tokens"))),
                   () -> assertThat("Authorization endpoint",
                                    config.authorizationEndpointUri(),
                                    is("http://identity.oracle.com/authorization")),
                   () -> assertThat("Introspect endpoint",
-                                   config.introspectEndpoint().getUri(),
+                                   config.introspectUri(),
                                    is(URI.create("http://identity.oracle.com/introspect"))),
                   () -> assertThat("Validate relativeUris flag",
                                   config.relativeUris(),
@@ -64,10 +65,10 @@ abstract class OidcConfigAbstractTest {
                   () -> assertThat("Use Cookie", config.useCookie(), is(OidcConfig.DEFAULT_COOKIE_USE)),
                   () -> assertThat("Use Header", config.useHeader(), is(OidcConfig.DEFAULT_HEADER_USE)),
                   () -> assertThat("Base scopes to use", config.baseScopes(), is(BaseBuilder.DEFAULT_BASE_SCOPES)),
-                  () -> assertThat("Cookie value prefix", config.cookieValuePrefix(), is("JSESSIONID=")),
-                  () -> assertThat("Cookie name", config.cookieName(), is(OidcConfig.DEFAULT_COOKIE_NAME)),
+                  () -> assertThat("Cookie value prefix", config.tokenCookieHandler().cookieValuePrefix(), is("JSESSIONID=")),
+                  () -> assertThat("Cookie name", config.tokenCookieHandler().cookieName(), is(OidcConfig.DEFAULT_COOKIE_NAME)),
                   // cookie options should be separated by space as defined by the specification
-                  () -> assertThat("Cookie options", config.cookieOptions(), is("; Path=/; HttpOnly; SameSite=Lax")),
+                  () -> assertThat("Cookie options", config.tokenCookieHandler().createCookieOptions(), is("; Path=/; HttpOnly; SameSite=Lax")),
                   () -> assertThat("Audience", config.audience(), is("https://identity.oracle.com")),
                   () -> assertThat("Parameter name", config.paramName(), is("accessToken")),
                   () -> assertThat("Issuer", config.issuer(), nullValue()),

@@ -43,19 +43,14 @@ class DefaultTenantIdProvider implements TenantIdProvider {
 
         if (multiTenant) {
             String mtIdLookup = config.get("tenant-id-style").asString().orElse(DEFAULT_TENANT_ID_STYLE);
-            switch (mtIdLookup) {
-            case DEFAULT_TENANT_ID_STYLE:
-                return new HostHeaderTenantId();
-            case "token-handler":
-                return new TokenHandlerTenantId(TokenHandler.create(config.get("tenant-id-handler")));
-            case "domain":
-                return new DomainTenantId(config.get("tenant-id-domain-level").asInt().orElse(3));
-            case "none":
-                return new NoTenantId();
-            default:
-                throw new IllegalArgumentException("Invalid configuration of multi tenancy id style. Type "
-                                                           + mtIdLookup + " is not supported");
-            }
+            return switch (mtIdLookup) {
+                case DEFAULT_TENANT_ID_STYLE -> new HostHeaderTenantId();
+                case "token-handler" -> new TokenHandlerTenantId(TokenHandler.create(config.get("tenant-id-handler")));
+                case "domain" -> new DomainTenantId(config.get("tenant-id-domain-level").asInt().orElse(3));
+                case "none" -> new NoTenantId();
+                default -> throw new IllegalArgumentException(
+                        "Invalid configuration of multi tenancy id style. Type " + mtIdLookup + " is not supported");
+            };
         } else {
             return new NoTenantId();
         }
@@ -84,12 +79,7 @@ class DefaultTenantIdProvider implements TenantIdProvider {
         }
     }
 
-    private static class TokenHandlerTenantId implements TenantIdFinder {
-        private final TokenHandler tokenHandler;
-
-        TokenHandlerTenantId(TokenHandler tokenHandler) {
-            this.tokenHandler = tokenHandler;
-        }
+    private record TokenHandlerTenantId(TokenHandler tokenHandler) implements TenantIdFinder {
 
         @Override
         public Optional<String> tenantId(ProviderRequest providerRequest) {

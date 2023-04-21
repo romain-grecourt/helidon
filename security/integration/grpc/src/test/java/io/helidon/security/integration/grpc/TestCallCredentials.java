@@ -28,12 +28,11 @@ import io.grpc.Metadata;
  * A {@link io.grpc.CallCredentials} that add a basic auth
  * authorization header to a request.
  */
-public class TestCallCredentials
-        extends CallCredentials {
+public class TestCallCredentials extends CallCredentials {
     /**
      * The basic auth encoded user name and password.
      */
-    private String basicAuth;
+    private final String basicAuth;
 
     /**
      * Create a {@link TestCallCredentials}.

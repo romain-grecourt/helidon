@@ -41,13 +41,11 @@ public class SecurityTest {
             .build();
 
     private static Security security;
-    private static ProviderForTesting firstProvider;
-    private static ProviderForTesting secondProvider;
 
     @BeforeAll
     public static void init() {
-        firstProvider = new ProviderForTesting("DENY");
-        secondProvider = new ProviderForTesting("SECOND_DENY");
+        ProviderForTesting firstProvider = new ProviderForTesting("DENY");
+        ProviderForTesting secondProvider = new ProviderForTesting("SECOND_DENY");
         security = Security.builder()
                 .addProvider(firstProvider, "FirstInstance")
                 .addProvider(secondProvider, "SecondInstance")
@@ -97,12 +95,12 @@ public class SecurityTest {
         context.env(envBuilder.addAttribute("resourceType", "SECOND_DENY"));
 
         // default authorizationClient
-        AuthorizationResponse response = context.atzClientBuilder().buildAndGet();
+        AuthorizationResponse response = context.atzClientBuilder().submit();
 
         assertThat(response.status().isSuccess(), is(false));
 
         context.env(envBuilder.addAttribute("resourceType", "PERMIT"));
-        response = context.atzClientBuilder().buildAndGet();
+        response = context.atzClientBuilder().submit();
 
         assertThat(response.status().isSuccess(), is(true));
 
@@ -110,14 +108,14 @@ public class SecurityTest {
         context.env(envBuilder.addAttribute("resourceType", "DENY"));
         response = context.atzClientBuilder()
                 .explicitProvider("FirstInstance")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
 
         context.env(envBuilder.addAttribute("resourceType", "SECOND_DENY"));
         response = context.atzClientBuilder()
                 .explicitProvider("FirstInstance")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(true));
     }

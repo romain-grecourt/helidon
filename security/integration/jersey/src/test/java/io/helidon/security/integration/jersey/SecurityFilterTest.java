@@ -46,6 +46,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit test for {@link SecurityFilter}.
  */
+@SuppressWarnings("unchecked")
 class SecurityFilterTest {
     private static Security security;
     private static ServerConfig serverConfig;
@@ -80,7 +81,7 @@ class SecurityFilterTest {
         SecurityDefinition methodSecurity = mock(SecurityDefinition.class);
 
         SecurityClientBuilder<AuthenticationResponse> clientBuilder = mock(SecurityClientBuilder.class);
-        when(clientBuilder.buildAndGet()).thenReturn(AuthenticationResponse.failed("Unit-test"));
+        when(clientBuilder.submit()).thenReturn(AuthenticationResponse.failed("Unit-test"));
 
         sf.processAuthentication(filterContext, clientBuilder, methodSecurity, tracing.atnTracing());
         assertThat(filterContext.isShouldFinish(), is(true));
@@ -109,7 +110,7 @@ class SecurityFilterTest {
         SecurityDefinition methodSecurity = mock(SecurityDefinition.class);
 
         SecurityClientBuilder<AuthenticationResponse> clientBuilder = mock(SecurityClientBuilder.class);
-        when(clientBuilder.buildAndGet()).thenReturn(AuthenticationResponse.failed("Unit-test"));
+        when(clientBuilder.submit()).thenReturn(AuthenticationResponse.failed("Unit-test"));
 
         WebApplicationException e = Assertions.assertThrows(WebApplicationException.class, () ->
                 sf.processAuthentication(filterContext, clientBuilder, methodSecurity, tracing.atnTracing()));
@@ -139,7 +140,7 @@ class SecurityFilterTest {
         filterContext.setJerseyRequest(request);
 
         SecurityClientBuilder<AuthorizationResponse> clientBuilder = mock(SecurityClientBuilder.class);
-        when(clientBuilder.buildAndGet()).thenReturn(AuthorizationResponse.builder()
+        when(clientBuilder.submit()).thenReturn(AuthorizationResponse.builder()
                                                              .description("Unit-test")
                                                              .status(SecurityResponse.SecurityStatus.FAILURE)
                                                              .build());
@@ -171,7 +172,7 @@ class SecurityFilterTest {
         SecurityDefinition methodSecurity = mock(SecurityDefinition.class);
 
         SecurityClientBuilder<AuthorizationResponse> clientBuilder = mock(SecurityClientBuilder.class);
-        when(clientBuilder.buildAndGet()).thenReturn(AuthorizationResponse.builder()
+        when(clientBuilder.submit()).thenReturn(AuthorizationResponse.builder()
                                                              .description("Unit-test")
                                                              .status(SecurityResponse.SecurityStatus.FAILURE)
                                                              .build());

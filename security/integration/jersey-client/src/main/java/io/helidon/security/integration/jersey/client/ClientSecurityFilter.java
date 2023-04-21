@@ -80,19 +80,19 @@ public class ClientSecurityFilter implements ClientRequestFilter {
         if (securityContext.isPresent()) {
             outboundSecurity(requestContext, securityContext.get());
         } else {
-            LOGGER.log(Level.TRACE, "Security context not available, using empty one. You can define it using "
-                                  + "property \""
-                                  + ClientSecurity.PROPERTY_CONTEXT + "\" on request");
+            LOGGER.log(Level.TRACE,
+                    "Security context not available, using empty one. You can define it using property \"{0} on request",
+                    ClientSecurity.PROPERTY_CONTEXT);
 
             // use current context, or create a new one if we run outside of Helidon context
-            Context context = Contexts.context()
-                    .orElseGet(() -> Context.builder()
-                            .id("security-" + CONTEXT_COUNTER.incrementAndGet())
-                            .build());
+            Context context = Contexts.context().orElseGet(() ->
+                    Context.builder()
+                           .id("security-" + CONTEXT_COUNTER.incrementAndGet())
+                           .build());
 
             // create a new security context for current request (not authenticated)
             Optional<SecurityContext> newSecurityContext = context.get(Security.class)
-                .map(it -> it.createContext(context.id()));
+                                                                  .map(it -> it.createContext(context.id()));
 
             if (newSecurityContext.isPresent()) {
                 // run in the context we obtained above with the new security context
@@ -113,15 +113,15 @@ public class ClientSecurityFilter implements ClientRequestFilter {
 
         try {
             SecurityEnvironment.Builder outboundEnv = securityContext.env()
-                    .derive()
-                    .clearHeaders()
-                    .clearQueryParams();
+                                                                     .derive()
+                                                                     .clearHeaders()
+                                                                     .clearQueryParams();
 
             outboundEnv.method(requestContext.getMethod())
-                    .path(requestContext.getUri().getPath())
-                    .targetUri(requestContext.getUri())
-                    .headers(requestContext.getStringHeaders())
-                    .queryParams(UriQuery.create(requestContext.getUri()));
+                       .path(requestContext.getUri().getPath())
+                       .targetUri(requestContext.getUri())
+                       .headers(requestContext.getStringHeaders())
+                       .queryParams(UriQuery.create(requestContext.getUri()));
 
             EndpointConfig.Builder outboundEp = securityContext.endpointConfig().derive();
 
@@ -133,43 +133,35 @@ public class ClientSecurityFilter implements ClientRequestFilter {
                 outboundEp.addAtribute(name, requestContext.getProperty(name));
             }
 
-            OutboundSecurityClientBuilder clientBuilder = securityContext.outboundClientBuilder()
+            OutboundSecurityClientBuilder clientBuilder = securityContext
+                    .outboundClientBuilder()
                     .outboundEnvironment(outboundEnv)
                     .update(it -> tracing.findParent().ifPresent(it::tracingSpan))
                     .outboundEndpointConfig(outboundEp);
 
             explicitProvider.ifPresent(clientBuilder::explicitProvider);
 
-            OutboundSecurityResponse providerResponse = clientBuilder.buildAndGet();
+            OutboundSecurityResponse providerResponse = clientBuilder.submit();
             SecurityResponse.SecurityStatus status = providerResponse.status();
             tracing.logStatus(status);
             switch (status) {
-            case FAILURE:
-            case FAILURE_FINISH:
-                providerResponse.throwable()
-                        .ifPresentOrElse(tracing::error,
-                                         () -> tracing.error(providerResponse.description().orElse("Failed")));
-
-                break;
-            case ABSTAIN:
-            case SUCCESS:
-            case SUCCESS_FINISH:
-            default:
-                break;
+                case FAILURE, FAILURE_FINISH -> providerResponse.throwable().ifPresentOrElse(
+                        tracing::error,
+                        () -> tracing.error(providerResponse.description().orElse("Failed")));
             }
 
             Map<String, List<String>> newHeaders = providerResponse.requestHeaders();
 
             LOGGER.log(Level.TRACE, () -> "Client filter header(s). SIZE: " + newHeaders.size());
 
-            MultivaluedMap<String, Object> hdrs = requestContext.getHeaders();
+            MultivaluedMap<String, Object> headers = requestContext.getHeaders();
             for (Map.Entry<String, List<String>> entry : newHeaders.entrySet()) {
                 LOGGER.log(Level.TRACE, () -> "    + Header: " + entry.getKey() + ": " + entry.getValue());
 
                 //replace existing
-                hdrs.remove(entry.getKey());
+                headers.remove(entry.getKey());
                 for (String value : entry.getValue()) {
-                    hdrs.add(entry.getKey(), value);
+                    headers.add(entry.getKey(), value);
                 }
             }
             tracing.finish();
@@ -188,9 +180,9 @@ public class ClientSecurityFilter implements ClientRequestFilter {
 
     private static <T> Optional<T> property(ClientRequestContext requestContext, Class<T> clazz, String propertyName) {
         return Optional.ofNullable(requestContext.getProperty(propertyName))
-                .filter(clazz::isInstance)
-                .or(() -> Optional.ofNullable(requestContext.getConfiguration().getProperty(propertyName))
-                        .filter(clazz::isInstance))
-                .map(clazz::cast);
+                       .filter(clazz::isInstance)
+                       .or(() -> Optional.ofNullable(requestContext.getConfiguration().getProperty(propertyName))
+                                         .filter(clazz::isInstance))
+                       .map(clazz::cast);
     }
 }

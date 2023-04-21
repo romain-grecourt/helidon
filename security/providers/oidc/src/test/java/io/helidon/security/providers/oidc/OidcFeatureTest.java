@@ -48,6 +48,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit test for {@link io.helidon.security.providers.oidc.OidcFeature}.
  */
+@SuppressWarnings({"SpellCheckingInspection", "HttpUrlsUsage"})
 class OidcFeatureTest {
     private static final String PARAM_NAME = "my-param-attempts";
 
@@ -180,9 +181,7 @@ class OidcFeatureTest {
                 .build();
         EndpointConfig endpointConfig = EndpointConfig.builder().build();
 
-        OutboundSecurityResponse response = provider.outboundSecurity(providerRequest, outboundEnv, endpointConfig)
-                .toCompletableFuture()
-                .join();
+        OutboundSecurityResponse response = provider.outboundSecurity(providerRequest, outboundEnv, endpointConfig);
 
         List<String> authorization = response.requestHeaders().get("Authorization");
         assertThat("Authorization header", authorization, hasItem("Bearer " + tokenContent));
@@ -214,9 +213,7 @@ class OidcFeatureTest {
         boolean outboundSupported = provider.isOutboundSupported(providerRequest, outboundEnv, endpointConfig);
         assertThat("Outbound should not be supported by default", outboundSupported, is(false));
 
-        OutboundSecurityResponse response = provider.outboundSecurity(providerRequest, outboundEnv, endpointConfig)
-                .toCompletableFuture()
-                .join();
+        OutboundSecurityResponse response = provider.outboundSecurity(providerRequest, outboundEnv, endpointConfig);
 
         assertThat("Disabled target should have empty headers", response.requestHeaders().size(), is(0));
     }

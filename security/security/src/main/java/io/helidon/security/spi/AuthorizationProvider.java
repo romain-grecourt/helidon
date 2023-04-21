@@ -16,8 +16,6 @@
 
 package io.helidon.security.spi;
 
-import java.util.concurrent.CompletionStage;
-
 import io.helidon.security.AuthorizationResponse;
 import io.helidon.security.ProviderRequest;
 import io.helidon.security.Role;
@@ -36,7 +34,7 @@ import io.helidon.security.Subject;
 public interface AuthorizationProvider extends SecurityProvider {
     /**
      * Authorize a request based on configuration.
-     *
+     * <br/>
      * Authorization cannot be optional. If this method is called, it should always attempt to authorize the current request.
      * This method will be invoked for inbound requests ONLY.
      *
@@ -44,13 +42,13 @@ public interface AuthorizationProvider extends SecurityProvider {
      * @return response that either permits, denies or abstains from decision
      * @see AuthorizationResponse#permit()
      */
-    CompletionStage<AuthorizationResponse> authorize(ProviderRequest context);
+    AuthorizationResponse authorize(ProviderRequest context);
 
     /**
      * Return true if current user is in the specified role.
      * Only providers that support role based access should implement this method.
      * For others it checks the subject for the presence of {@link Role} grant of the specified name.
-     *
+     * <br/>
      * This method is defined to conform with one of the most commonly spread authorization concept, as it is required
      * for frameworks such as Servlet and JAX-RS.
      *

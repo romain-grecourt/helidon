@@ -120,6 +120,7 @@ public class SecurityEnvironment implements AbacSupport {
     /**
      * Time on the server this environment was created for current request.
      * This should be treated as the "decisive" time of the request for security evaluation.
+     * <br/>
      *
      * This can be configured - e.g. there can be a time-shift (moving time by a specific amount of seconds to the past or
      * to the future), or an explicit value (e.g. setting the time to 14:00 e.g. for testing purposes).

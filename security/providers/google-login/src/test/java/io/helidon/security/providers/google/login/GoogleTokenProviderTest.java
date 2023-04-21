@@ -23,7 +23,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiFunction;
 
@@ -60,6 +59,7 @@ import static org.mockito.Mockito.when;
 /**
  * Unit test for {@link GoogleTokenProvider}.
  */
+@SuppressWarnings({"HttpUrlsUsage", "SpellCheckingInspection"})
 public class GoogleTokenProviderTest {
     private static final String TOKEN_VALUE = "12345safdafa12354asdf24a4sdfasdfasdf";
     private static final String pictureUrl = "http://www.google.com";
@@ -108,7 +108,7 @@ public class GoogleTokenProviderTest {
     @Test
     public void testInbound() {
         ProviderRequest inboundRequest = createInboundRequest("Authorization", "bearer " + TOKEN_VALUE);
-        AuthenticationResponse response = provider.syncAuthenticate(inboundRequest);
+        AuthenticationResponse response = provider.authenticate(inboundRequest);
         assertThat(response.user(), is(not(Optional.empty())));
         response.user().ifPresent(subject -> {
             Principal principal = subject.principal();
@@ -118,9 +118,9 @@ public class GoogleTokenProviderTest {
     }
 
     @Test
-    public void testInboundIncorrectToken() throws ExecutionException, InterruptedException {
+    public void testInboundIncorrectToken() {
         ProviderRequest inboundRequest = createInboundRequest("Authorization", "tearer " + TOKEN_VALUE);
-        AuthenticationResponse response = provider.authenticate(inboundRequest).toCompletableFuture().get();
+        AuthenticationResponse response = provider.authenticate(inboundRequest);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(400));
@@ -128,9 +128,9 @@ public class GoogleTokenProviderTest {
     }
 
     @Test
-    public void testInboundMissingToken() throws ExecutionException, InterruptedException {
+    public void testInboundMissingToken() {
         ProviderRequest inboundRequest = createInboundRequest("OtherHeader", "tearer " + TOKEN_VALUE);
-        AuthenticationResponse response = provider.authenticate(inboundRequest).toCompletableFuture().get();
+        AuthenticationResponse response = provider.authenticate(inboundRequest);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -138,13 +138,13 @@ public class GoogleTokenProviderTest {
     }
 
     @Test
-    public void testInboundInvalidToken() throws ExecutionException, InterruptedException, GeneralSecurityException, IOException {
+    public void testInboundInvalidToken() throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
         when(verifier.verify(TOKEN_VALUE)).thenReturn(null);
         GoogleTokenProvider provider = GoogleTokenProvider.builder().clientId("clientId").verifier(verifier).build();
 
         ProviderRequest inboundRequest = createInboundRequest("Authorization", "bearer " + TOKEN_VALUE);
-        AuthenticationResponse response = provider.authenticate(inboundRequest).toCompletableFuture().get();
+        AuthenticationResponse response = provider.authenticate(inboundRequest);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -152,14 +152,13 @@ public class GoogleTokenProviderTest {
     }
 
     @Test
-    public void testInboundVerificationException()
-            throws ExecutionException, InterruptedException, GeneralSecurityException, IOException {
+    public void testInboundVerificationException() throws GeneralSecurityException, IOException {
         GoogleIdTokenVerifier verifier = mock(GoogleIdTokenVerifier.class);
         when(verifier.verify(TOKEN_VALUE)).thenThrow(new IOException("Failed to verify token"));
         GoogleTokenProvider provider = GoogleTokenProvider.builder().clientId("clientId").verifier(verifier).build();
 
         ProviderRequest inboundRequest = createInboundRequest("Authorization", "bearer " + TOKEN_VALUE);
-        AuthenticationResponse response = provider.authenticate(inboundRequest).toCompletableFuture().get();
+        AuthenticationResponse response = provider.authenticate(inboundRequest);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -199,7 +198,7 @@ public class GoogleTokenProviderTest {
                    provider.isOutboundSupported(outboundRequest, outboundEnv, outboundEp),
                    is(true));
 
-        OutboundSecurityResponse response = provider.syncOutbound(outboundRequest, outboundEnv, outboundEp);
+        OutboundSecurityResponse response = provider.outboundSecurity(outboundRequest, outboundEnv, outboundEp);
 
         List<String> authorization = response.requestHeaders().get("Authorization");
 

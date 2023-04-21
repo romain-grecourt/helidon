@@ -48,6 +48,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Unit test for {@link HttpBasicAuthProvider} and {@link HttpDigestAuthProvider}.
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class HttpAuthProviderBuilderTest {
     private static final AtomicInteger COUNTER = new AtomicInteger();
     private static final String QUOTE = "\"";
@@ -116,7 +117,7 @@ public class HttpAuthProviderBuilderTest {
 
     @Test
     public void basicTestOptional() {
-        AuthenticationResponse response = context.atnClientBuilder().explicitProvider("basic_optional").buildAndGet();
+        AuthenticationResponse response = context.atnClientBuilder().explicitProvider("basic_optional").submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.status().name(), is(SecurityResponse.SecurityStatus.ABSTAIN.name()));
@@ -125,7 +126,7 @@ public class HttpAuthProviderBuilderTest {
 
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildBasic("jack", "invalid_passworrd"));
         System.out.println("test");
-        response = context.atnClientBuilder().explicitProvider("basic_optional").buildAndGet();
+        response = context.atnClientBuilder().explicitProvider("basic_optional").submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.status().name(), is(SecurityResponse.SecurityStatus.ABSTAIN.name()));
@@ -135,7 +136,7 @@ public class HttpAuthProviderBuilderTest {
 
     @Test
     public void basicTestFail() {
-        AuthenticationResponse response = context.atnClientBuilder().buildAndGet();
+        AuthenticationResponse response = context.atnClientBuilder().submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -242,7 +243,7 @@ public class HttpAuthProviderBuilderTest {
     public void digestTestOptional() {
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest_optional")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.status().name(), is(SecurityResponse.SecurityStatus.ABSTAIN.name()));
@@ -252,7 +253,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.AUTH, "wrong", "user"));
         response = context.atnClientBuilder()
                 .explicitProvider("digest_optional")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.status().name(), is(SecurityResponse.SecurityStatus.ABSTAIN.name()));
@@ -264,7 +265,7 @@ public class HttpAuthProviderBuilderTest {
     public void digestTest401() {
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -278,7 +279,7 @@ public class HttpAuthProviderBuilderTest {
     public void digestOldTest401() {
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest_old")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -293,7 +294,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.AUTH, "jack", "jackIsGreat"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse("No description"),
                    response.status(),
@@ -310,7 +311,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.AUTH, "wrong", "user"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse(""), is("Invalid username or password"));
         assertThat(response.status().isSuccess(), is(false));
@@ -324,7 +325,7 @@ public class HttpAuthProviderBuilderTest {
                   buildDigest(HttpDigest.Qop.AUTH, "jack", "wrong password"));
         response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse(""), is("Invalid username or password"));
         assertThat(response.status().isSuccess(), is(false));
@@ -336,7 +337,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildBasic("jack", "jackIsGreat"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -347,7 +348,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, "digest wrong_header_value");
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -358,7 +359,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.AUTH, "jill", "password"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse("No description"),
                    response.status(),
@@ -379,7 +380,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.NONE, "jack", "jackIsGreat"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest_old")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse("No description"),
                    response.status(),
@@ -396,7 +397,7 @@ public class HttpAuthProviderBuilderTest {
         setHeader(context, HttpBasicAuthProvider.HEADER_AUTHENTICATION, buildDigest(HttpDigest.Qop.NONE, "jill", "password"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest_old")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse("No description"),
                    response.status(),
@@ -421,7 +422,7 @@ public class HttpAuthProviderBuilderTest {
 
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse(""), is("Nonce timeout"));
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
@@ -438,7 +439,7 @@ public class HttpAuthProviderBuilderTest {
                               "mic"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse(""), is("Nonce must be base64 encoded"));
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
@@ -457,7 +458,7 @@ public class HttpAuthProviderBuilderTest {
 
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
         assertThat(response.description().orElse(""), is("Invalid nonce length"));
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -475,7 +476,7 @@ public class HttpAuthProviderBuilderTest {
 
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
         assertThat(response.description().orElse(""), is("Invalid nonce value"));
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
         assertThat(response.statusCode().orElse(200), is(401));
@@ -491,7 +492,7 @@ public class HttpAuthProviderBuilderTest {
                               "wrongRealm"));
         AuthenticationResponse response = context.atnClientBuilder()
                 .explicitProvider("digest")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.description().orElse(""), is("Invalid realm"));
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));

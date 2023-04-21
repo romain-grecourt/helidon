@@ -51,7 +51,7 @@
                                         <value>io.helidon.common.context.Contexts</value>
                                         <value>io.helidon.security.Security</value>
                                         <value>io.helidon.security.integration.webserver.WebSecurity</value>
-                                        <value>io.helidon.security.providers.oidc.reactive.OidcSupport</value>
+                                        <value>io.helidon.security.providers.oidc.server.OidcSupport</value>
                                     </list>
                                     <list key="Main-createRouting" if="${flavor} == 'se'">
                                         <value><![CDATA[        Security security = Security.create(config.get("security"));]]></value>

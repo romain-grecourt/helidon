@@ -16,10 +16,10 @@
 
 package services;
 
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
+import io.helidon.nima.grpc.webserver.GrpcService;
 import io.helidon.grpc.server.test.Echo;
 
+import com.google.protobuf.Descriptors;
 import io.grpc.stub.StreamObserver;
 
 import static io.helidon.grpc.core.ResponseHelper.complete;
@@ -27,13 +27,16 @@ import static io.helidon.grpc.core.ResponseHelper.complete;
 /**
  * A simple test gRPC echo service.
  */
-public class EchoService
-        implements GrpcService {
+public class EchoService implements GrpcService {
 
     @Override
-    public void update(ServiceDescriptor.Rules rules) {
-        rules.proto(Echo.getDescriptor())
-                .unary("Echo", this::echo);
+    public Descriptors.FileDescriptor proto() {
+        return Echo.getDescriptor();
+    }
+
+    @Override
+    public void update(Routing routing) {
+        routing.unary("Echo", this::echo);
     }
 
     /**

@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
-import io.helidon.reactive.webserver.ServerRequest;
+import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.security.EndpointConfig;
 import io.helidon.security.OutboundSecurityClientBuilder;
 import io.helidon.security.OutboundSecurityResponse;
@@ -43,8 +43,7 @@ import static io.helidon.security.integration.grpc.GrpcSecurity.ABAC_ATTRIBUTE_M
  * <p>
  * Only works as part of integration with the Helidon Security component.
  */
-public final class GrpcClientSecurity
-        extends CallCredentials {
+public final class GrpcClientSecurity extends CallCredentials {
 
     /**
      * Property name for outbound security provider name. Set this with
@@ -91,22 +90,14 @@ public final class GrpcClientSecurity
                     .outboundEndpointConfig(outboundEp)
                     .explicitProvider(explicitProvider);
 
-            OutboundSecurityResponse providerResponse = clientBuilder.buildAndGet();
+            OutboundSecurityResponse providerResponse = clientBuilder.submit();
             SecurityResponse.SecurityStatus status = providerResponse.status();
             tracing.logStatus(status);
 
             switch (status) {
-            case FAILURE:
-            case FAILURE_FINISH:
-                providerResponse.throwable()
-                        .ifPresentOrElse(tracing::error,
-                                         () -> tracing.error(providerResponse.description().orElse("Failed")));
-                break;
-            case ABSTAIN:
-            case SUCCESS:
-            case SUCCESS_FINISH:
-            default:
-                break;
+                case FAILURE, FAILURE_FINISH -> providerResponse.throwable().ifPresentOrElse(
+                        tracing::error,
+                        () -> tracing.error(providerResponse.description().orElse("Failed")));
             }
 
             Map<String, List<String>> newHeaders = providerResponse.requestHeaders();
@@ -120,14 +111,16 @@ public final class GrpcClientSecurity
             }
 
             applier.apply(metadata);
-
             tracing.finish();
-        } catch (SecurityException e) {
-            tracing.error(e);
-            applier.fail(Status.UNAUTHENTICATED.withDescription("Security principal propagation error").withCause(e));
-        } catch (Exception e) {
-            tracing.error(e);
-            applier.fail(Status.UNAUTHENTICATED.withDescription("Unknown error").withCause(e));
+        } catch (Throwable th) {
+            tracing.error(th);
+            if (th instanceof SecurityException) {
+                applier.fail(Status.UNAUTHENTICATED.withDescription("Security principal propagation error")
+                                                   .withCause(th));
+            } else {
+                applier.fail(Status.UNAUTHENTICATED.withDescription("Unknown error")
+                                                   .withCause(th));
+            }
         }
     }
 

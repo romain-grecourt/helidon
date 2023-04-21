@@ -16,18 +16,17 @@
 
 package services;
 
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
+import com.google.protobuf.Descriptors;
+import io.helidon.common.context.Contexts;
+import io.helidon.common.http.Http;
+import io.helidon.nima.grpc.webserver.GrpcService;
 import io.helidon.grpc.server.test.Echo;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.security.SecurityContext;
-import io.helidon.security.integration.grpc.GrpcSecurity;
-import io.helidon.security.integration.jersey.client.ClientSecurity;
 
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.core.Response;
 
 import static io.helidon.grpc.core.ResponseHelper.complete;
 
@@ -35,55 +34,51 @@ import static io.helidon.grpc.core.ResponseHelper.complete;
  * A simple test gRPC echo service that
  * makes a secure outbound http request.
  */
-public class SecuredOutboundEchoService
-        implements GrpcService {
+public class SecuredOutboundEchoService implements GrpcService {
 
-    private final Client client;
+    public Http1Client client;
 
-    private final String url;
-
-    public SecuredOutboundEchoService(String url) {
-        this.url = url;
-        this.client = ClientBuilder.newClient();
+    @Override
+    public Descriptors.FileDescriptor proto() {
+        return Echo.getDescriptor();
     }
 
     @Override
-    public void update(ServiceDescriptor.Rules rules) {
-        rules.name("EchoService")
-                .proto(Echo.getDescriptor())
-                .unary("Echo", this::echo);
+    public void update(Routing routing) {
+        routing.unary("Echo", this::echo);
     }
 
     /**
      * Make a web request passing this method's message parameter and send
      * the web response back to the caller .
      *
-     * @param request   the echo request containing the message to echo
-     * @param observer  the call response
+     * @param request  the echo request containing the message to echo
+     * @param observer the call response
      */
     public void echo(Echo.EchoRequest request, StreamObserver<Echo.EchoResponse> observer) {
         try {
-            SecurityContext securityContext = GrpcSecurity.SECURITY_CONTEXT.get();
+            SecurityContext securityContext = Contexts.context()
+                    .flatMap(context -> context.get(SecurityContext.class))
+                    .orElseThrow();
+
             String message = request.getMessage();
 
-            Response webResponse = client.target(url)
-                    .path("/test")
-                    .queryParam("message", message)
-                    .request()
-                    .property(ClientSecurity.PROPERTY_CONTEXT, securityContext)
-                    .get();
+            Http1ClientResponse response = client.get("/test")
+                                                 .queryParam("message", message)
+                                                 // .property(ClientSecurity.PROPERTY_CONTEXT, securityContext) FIXME
+                                                 .request();
 
-            if (webResponse.getStatus() == 200) {
-                String value = webResponse.readEntity(String.class);
+            if (response.status() == Http.Status.OK_200) {
+                String value = response.as(String.class);
 
                 Echo.EchoResponse echoResponse = Echo.EchoResponse.newBuilder().setMessage(value).build();
                 complete(observer, echoResponse);
-            } else if (webResponse.getStatus() == Response.Status.FORBIDDEN.getStatusCode()
-                    || webResponse.getStatus() == Response.Status.UNAUTHORIZED.getStatusCode()) {
+            } else if (response.status() == Http.Status.FORBIDDEN_403
+                    || response.status() == Http.Status.UNAUTHORIZED_401) {
 
                 observer.onError(Status.PERMISSION_DENIED.asException());
             } else {
-                observer.onError(Status.UNKNOWN.withDescription("Received http response " + webResponse).asException());
+                observer.onError(Status.UNKNOWN.withDescription("Received http response " + response).asException());
             }
         } catch (Throwable thrown) {
             observer.onError(Status.UNKNOWN.withCause(thrown).asException());

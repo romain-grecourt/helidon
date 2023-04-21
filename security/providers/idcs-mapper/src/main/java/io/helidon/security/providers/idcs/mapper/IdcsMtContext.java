@@ -21,32 +21,32 @@ import java.util.Objects;
 /**
  * IDCS multitenancy context used by the mappers.
  */
-public final class IdcsMtContext {
-    private final String tenantId;
-    private final String appId;
-
+public record IdcsMtContext(String tenantId, String appId) {
     /**
      * Create new context with the specified ids.
+     *
      * @param tenantId The IDCS tenancy id.
-     * @param appId The IDCS app ID.
+     * @param appId    The IDCS app ID.
      */
-    public IdcsMtContext(final String tenantId, final String appId) {
-        this.tenantId = tenantId;
-        this.appId = appId;
+    public IdcsMtContext {
     }
 
     /**
      * IDCS Tenancy ID.
+     *
      * @return idcs tenancy ID
      */
+    @Override
     public String tenantId() {
         return tenantId;
     }
 
     /**
      * IDCS Application ID.
+     *
      * @return idcs application ID
      */
+    @Override
     public String appId() {
         return appId;
     }
@@ -62,11 +62,6 @@ public final class IdcsMtContext {
         IdcsMtContext that = (IdcsMtContext) o;
         return Objects.equals(tenantId, that.tenantId)
                 && Objects.equals(appId, that.appId);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(tenantId, appId);
     }
 
     @Override

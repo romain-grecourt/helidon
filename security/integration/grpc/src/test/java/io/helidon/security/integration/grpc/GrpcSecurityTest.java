@@ -148,7 +148,7 @@ public class GrpcSecurityTest {
 
         expectedHeaders.put("key-1", Arrays.asList("value-1.1", "value-1.2"));
         expectedHeaders.put("key-2", Collections.singletonList("value-2"));
-        
+
         assertThat(securityHeaders, is(notNullValue()));
         assertThat(securityHeaders, is(expectedHeaders));
     }
@@ -456,8 +456,8 @@ public class GrpcSecurityTest {
         GrpcSecurity grpcSecurity = GrpcSecurity.create(security);
 
         assertThat(grpcSecurity, is(notNullValue()));
-        assertThat(grpcSecurity.getSecurity(), is(sameInstance(security)));
-        assertThat(grpcSecurity.getDefaultHandler(), is(notNullValue()));
+        assertThat(grpcSecurity.security(), is(sameInstance(security)));
+        assertThat(grpcSecurity.defaultHandler(), is(notNullValue()));
     }
 
     @Test
@@ -468,8 +468,8 @@ public class GrpcSecurityTest {
                 .securityDefaults(defaultHandler);
 
         assertThat(grpcSecurity, is(notNullValue()));
-        assertThat(grpcSecurity.getSecurity(), is(sameInstance(security)));
-        assertThat(grpcSecurity.getDefaultHandler(), is(sameInstance(defaultHandler)));
+        assertThat(grpcSecurity.security(), is(sameInstance(security)));
+        assertThat(grpcSecurity.defaultHandler(), is(sameInstance(defaultHandler)));
     }
 
 

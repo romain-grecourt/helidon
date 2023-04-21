@@ -26,7 +26,7 @@ import io.helidon.security.ProviderRequest;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.SynchronousProvider;
 
-public class RestrictedProvider extends SynchronousProvider implements AuthenticationProvider {
+public class RestrictedProvider implements AuthenticationProvider {
 
     /**
      * Register an entry in {@link io.helidon.common.context.Context} and fail authentication.
@@ -35,7 +35,7 @@ public class RestrictedProvider extends SynchronousProvider implements Authentic
      * @return authentication response
      */
     @Override
-    protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         // Use context to communicate with MySecurityResponseMapper
         Contexts.context()
                 .ifPresent(c -> c.register(RestrictedProvider.class, getClass().getSimpleName()));

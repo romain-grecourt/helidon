@@ -16,25 +16,28 @@
 
 package io.helidon.security.integration.grpc;
 
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.util.Iterator;
-import java.util.concurrent.TimeUnit;
 
 import io.helidon.config.Config;
-import io.helidon.config.ConfigSources;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
 import io.helidon.grpc.server.test.Echo;
 import io.helidon.grpc.server.test.EchoServiceGrpc;
 import io.helidon.grpc.server.test.StringServiceGrpc;
 import io.helidon.grpc.server.test.Strings;
 import io.helidon.logging.common.LogConfig;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.security.Security;
+import io.helidon.security.integration.nima.SecurityFeature;
+import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
 import io.grpc.Channel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import services.EchoService;
@@ -44,59 +47,48 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@SuppressWarnings("SpellCheckingInspection")
+@ServerTest
+class SecurityFromConfigIT {
 
-public class SecurityFromConfigIT {
-    private static GrpcServer grpcServer;
-
-    private static TestCallCredentials adminCreds = new TestCallCredentials("Ted", "secret");
-
-    private static TestCallCredentials userCreds = new TestCallCredentials("Bob", "password");
-
+    private static final TestCallCredentials adminCreds = new TestCallCredentials("Ted", "secret");
+    private static final TestCallCredentials userCreds = new TestCallCredentials("Bob", "password");
     private static EchoServiceGrpc.EchoServiceBlockingStub adminEchoStub;
-
     private static EchoServiceGrpc.EchoServiceBlockingStub userEchoStub;
-
     private static StringServiceGrpc.StringServiceBlockingStub adminStringStub;
-
     private static StringServiceGrpc.StringServiceBlockingStub userStringStub;
-
     private static StringServiceGrpc.StringServiceBlockingStub noCredsEchoStub;
 
-    @BeforeAll
-    public static void startServer() throws Exception {
+    @SetUpServer
+    static void setUpServer(WebServer.Builder serverBuilder) {
         LogConfig.configureRuntime();
+        Config config = Config.create();
+        Security security = Security.builder()
+                                    .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
+                                    .build();
 
-        // load the config containing the gRPC service security settings
-        Config config = Config.builder().sources(ConfigSources.classpath("secure-services.conf")).build();
+        serverBuilder
+                .defaultSocket(builder -> builder
+                        .port(-1)
+                        .host("localhost"))
+                .routing(router -> router
+                        .addFeature(SecurityFeature.create(security)
+                                                   .securityDefaults(SecurityFeature.authenticate())))
+                .addRouting(GrpcRouting.builder()
+                                       .service(new EchoService())
+                                       .service(new StringService()));
+    }
 
-        // Create the gRPC routing configuring the GrpcSecurity interceptor from config
-        GrpcRouting routing = GrpcRouting.builder()
-                                         .intercept(GrpcSecurity.create(config.get("security")))
-                                         .register(new EchoService())
-                                         .register(new StringService())
-                                         .build();
-
-        // Run the server on port 0 so that it picks a free ephemeral port
-        GrpcServerConfiguration serverConfig = GrpcServerConfiguration.builder().port(0).build();
-
-        grpcServer = GrpcServer.create(serverConfig, routing)
-                        .start()
-                        .toCompletableFuture()
-                        .get(10, TimeUnit.SECONDS);
-
-        Channel channel = InProcessChannelBuilder.forName(grpcServer.configuration().name())
-                .build();
+    @BeforeAll
+    static void setupStubs(URI uri) {
+        InetSocketAddress ina = new InetSocketAddress(uri.getHost(), uri.getPort());
+        Channel channel = InProcessChannelBuilder.forAddress(ina).build();
 
         adminEchoStub = EchoServiceGrpc.newBlockingStub(channel).withCallCredentials(adminCreds);
         userEchoStub = EchoServiceGrpc.newBlockingStub(channel).withCallCredentials(userCreds);
         adminStringStub = StringServiceGrpc.newBlockingStub(channel).withCallCredentials(adminCreds);
         userStringStub = StringServiceGrpc.newBlockingStub(channel).withCallCredentials(userCreds);
         noCredsEchoStub = StringServiceGrpc.newBlockingStub(channel);
-    }
-
-    @AfterAll
-    public static void cleanup() {
-        grpcServer.shutdown();
     }
 
     /**

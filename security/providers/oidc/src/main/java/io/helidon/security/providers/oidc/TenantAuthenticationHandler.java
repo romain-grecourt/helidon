@@ -16,6 +16,7 @@
 
 package io.helidon.security.providers.oidc;
 
+import java.lang.System.Logger.Level;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -26,22 +27,18 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.helidon.common.Errors;
 import io.helidon.common.http.Http;
-import io.helidon.common.media.type.MediaTypes;
+import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.parameters.Parameters;
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
 import io.helidon.security.AuthenticationResponse;
-import io.helidon.security.EndpointConfig;
+import io.helidon.security.EndpointConfig.AnnotationScope;
 import io.helidon.security.Grant;
 import io.helidon.security.Principal;
 import io.helidon.security.ProviderRequest;
@@ -49,9 +46,10 @@ import io.helidon.security.Role;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityEnvironment;
 import io.helidon.security.SecurityLevel;
-import io.helidon.security.SecurityResponse;
+import io.helidon.security.SecurityResponse.SecurityStatus;
 import io.helidon.security.Subject;
-import io.helidon.security.abac.scope.ScopeValidator;
+import io.helidon.security.abac.scope.ScopeValidator.Scope;
+import io.helidon.security.abac.scope.ScopeValidator.Scopes;
 import io.helidon.security.jwt.Jwt;
 import io.helidon.security.jwt.JwtException;
 import io.helidon.security.jwt.JwtUtil;
@@ -59,10 +57,15 @@ import io.helidon.security.jwt.SignedJwt;
 import io.helidon.security.jwt.jwk.JwkKeys;
 import io.helidon.security.providers.common.TokenCredential;
 import io.helidon.security.providers.oidc.common.OidcConfig;
+import io.helidon.security.providers.oidc.common.OidcConfig.RequestType;
 import io.helidon.security.providers.oidc.common.Tenant;
 import io.helidon.security.providers.oidc.common.TenantConfig;
 import io.helidon.security.util.TokenHandler;
 
+import jakarta.json.JsonObject;
+
+import static io.helidon.common.http.Http.Header.WWW_AUTHENTICATE;
+import static io.helidon.common.http.Http.Status.UNAUTHORIZED_401;
 import static io.helidon.security.providers.oidc.common.OidcConfig.postJsonResponse;
 import static io.helidon.security.providers.oidc.common.spi.TenantConfigFinder.DEFAULT_TENANT_ID;
 
@@ -78,7 +81,7 @@ class TenantAuthenticationHandler {
     private final TenantConfig tenantConfig;
     private final Tenant tenant;
     private final boolean useJwtGroups;
-    private final BiFunction<SignedJwt, Errors.Collector, Single<Errors.Collector>> jwtValidator;
+    private final Errors.Collector collector = Errors.collector();
     private final BiConsumer<StringBuilder, String> scopeAppender;
     private final Pattern attemptPattern;
 
@@ -88,83 +91,63 @@ class TenantAuthenticationHandler {
         this.tenantConfig = tenant.tenantConfig();
         this.useJwtGroups = useJwtGroups;
         this.optional = optional;
+        this.attemptPattern = Pattern.compile(".*?" + oidcConfig.redirectAttemptParam() + "=(\\d+).*");
 
-        attemptPattern = Pattern.compile(".*?" + oidcConfig.redirectAttemptParam() + "=(\\d+).*");
-        if (tenantConfig.validateJwtWithJwk()) {
-            this.jwtValidator = (signedJwt, collector) -> {
-                JwkKeys jwk = tenant.signJwk();
-                Errors errors = signedJwt.verifySignature(jwk);
-                errors.forEach(errorMessage -> {
-                    switch (errorMessage.getSeverity()) {
-                    case FATAL:
-                        collector.fatal(errorMessage.getSource(), errorMessage.getMessage());
-                        break;
-                    case WARN:
-                        collector.warn(errorMessage.getSource(), errorMessage.getMessage());
-                        break;
-                    case HINT:
-                    default:
-                        collector.hint(errorMessage.getSource(), errorMessage.getMessage());
-                        break;
-                    }
-                });
-                return Single.just(collector);
-            };
-        } else {
-            this.jwtValidator = (signedJwt, collector) -> {
-                Parameters.Builder form = Parameters.builder("oidc-form-params")
-                        .add("token", signedJwt.tokenContent());
-
-                WebClientRequestBuilder post = tenant.appWebClient()
-                        .post()
-                        .uri(tenant.introspectUri())
-                        .accept(MediaTypes.APPLICATION_JSON)
-                        .headers(it -> {
-                            it.add(Http.Header.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
-                            return it;
-                        });
-
-                OidcUtil.updateRequest(OidcConfig.RequestType.INTROSPECT_JWT, tenantConfig, form);
-
-                return postJsonResponse(post,
-                                        form.build(),
-                                        json -> {
-                                            if (!json.getBoolean("active")) {
-                                                collector.fatal(json, "Token is not active");
-                                            }
-                                            return collector;
-                                        },
-                                        (status, message) ->
-                                                Optional.of(collector.fatal(status,
-                                                                            "Failed to validate token, response "
-                                                                                    + "status: "
-                                                                                    + status
-                                                                                    + ", entity: " + message)),
-                                        (t, message) ->
-                                                Optional.of(collector.fatal(t,
-                                                                            "Failed to validate token, request failed: "
-                                                                                    + message)));
-            };
-        }
         // clean the scope audience - must end with / if exists
-        String configuredScopeAudience = tenantConfig.scopeAudience();
-        if (configuredScopeAudience == null || configuredScopeAudience.isEmpty()) {
+        String audience = tenantConfig.scopeAudience();
+        if (audience == null || audience.isEmpty()) {
             this.scopeAppender = StringBuilder::append;
         } else {
-            if (configuredScopeAudience.endsWith("/")) {
-                this.scopeAppender = (stringBuilder, scope) -> stringBuilder.append(configuredScopeAudience).append(scope);
+            if (audience.endsWith("/")) {
+                this.scopeAppender = (sb, scope) -> sb.append(audience).append(scope);
             } else {
-                this.scopeAppender = (stringBuilder, scope) -> stringBuilder.append(configuredScopeAudience)
-                        .append("/")
-                        .append(scope);
+                this.scopeAppender = (sb, scope) -> sb.append(audience).append("/").append(scope);
             }
         }
     }
 
-    CompletionStage<AuthenticationResponse> authenticate(String tenantId, ProviderRequest providerRequest) {
+    private void validateJwtWithJwk(SignedJwt signedJwt) {
+        JwkKeys jwk = tenant.signJwk();
+        Errors errors = signedJwt.verifySignature(jwk);
+        errors.forEach(errorMessage -> {
+            switch (errorMessage.getSeverity()) {
+                case FATAL -> collector.fatal(errorMessage.getSource(), errorMessage.getMessage());
+                case WARN -> collector.warn(errorMessage.getSource(), errorMessage.getMessage());
+                default -> collector.hint(errorMessage.getSource(), errorMessage.getMessage());
+            }
+        });
+    }
+
+    private void validateJwtWithPost(SignedJwt signedJwt) {
+
+        Http1ClientRequest post = tenant.appWebClient()
+                                        .post()
+                                        .uri(tenant.introspectUri())
+                                        .accept(HttpMediaType.APPLICATION_JSON)
+                                        .header(Http.Header.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+
+        Parameters.Builder form = Parameters.builder("oidc-form-params")
+                                            .add("token", signedJwt.tokenContent());
+
+        OidcUtil.updateRequest(RequestType.INTROSPECT_JWT, tenantConfig, form);
+
+        try {
+            JsonObject json = postJsonResponse(post, form.build());
+            if (!json.getBoolean("active")) {
+                this.collector.fatal(json, "Token is not active");
+            }
+        } catch (OidcConfig.OidcResponseException ex) {
+            collector.fatal(ex.status(), String.format(
+                    "Failed to validate token, response status: %s, entity: %s", ex.status(), ex.entity()));
+        } catch (Throwable ex) {
+            collector.fatal(ex, "Failed to validate token, request failed: " + ex.getMessage());
+        }
+    }
+
+    AuthenticationResponse authenticate(String tenantId, ProviderRequest providerRequest) {
         /*
-        1. Get token from request - if available, validate it and continue
-        2. If not - Redirect to login page
+          1. Get token from request - if available, validate it and continue
+          2. If not - Redirect to login page
          */
         List<String> missingLocations = new LinkedList<>();
 
@@ -193,66 +176,53 @@ class TenantAuthenticationHandler {
             if (oidcConfig.useCookie()) {
                 if (token.isEmpty()) {
                     // only do this for cookies
-                    Optional<Single<String>> cookie = oidcConfig.tokenCookieHandler()
-                            .findCookie(providerRequest.env().headers());
+                    Optional<String> cookie = oidcConfig.tokenCookieHandler()
+                                                        .findCookie(providerRequest.env().headers());
                     if (cookie.isEmpty()) {
                         missingLocations.add("cookie");
                     } else {
-                        return cookie.get()
-                                .flatMapSingle(it -> validateToken(tenantId, providerRequest, it))
-                                .onErrorResumeWithSingle(throwable -> {
-                                    if (LOGGER.isLoggable(System.Logger.Level.DEBUG)) {
-                                        LOGGER.log(System.Logger.Level.DEBUG, "Invalid token in cookie", throwable);
-                                    }
-                                    return Single.just(errorResponse(providerRequest,
-                                                                     Http.Status.UNAUTHORIZED_401,
-                                                                     null,
-                                                                     "Invalid token",
-                                                                     tenantId));
-                                });
+                        try {
+                            return validateToken(tenantId, providerRequest, cookie.get());
+                        } catch (Throwable throwable) {
+                            String msg = "Invalid token in cookie";
+                            LOGGER.log(Level.DEBUG, msg, throwable);
+                            return errorResponse(providerRequest, UNAUTHORIZED_401, null, msg, tenantId);
+                        }
                     }
                 }
             }
         } catch (SecurityException e) {
-            LOGGER.log(System.Logger.Level.DEBUG, "Failed to extract token from one of the configured locations", e);
-            return failOrAbstain("Failed to extract one of the configured tokens" + e);
+            String msg = "Failed to extract token from one of the configured locations";
+            LOGGER.log(Level.DEBUG, msg, e);
+            return failOrAbstain(msg + e);
         }
 
         if (token.isPresent()) {
             return validateToken(tenantId, providerRequest, token.get());
         } else {
-            LOGGER.log(System.Logger.Level.DEBUG, () -> "Missing token, could not find in either of: " + missingLocations);
-            return CompletableFuture.completedFuture(errorResponse(providerRequest,
-                                                                   Http.Status.UNAUTHORIZED_401,
-                                                                   null,
-                                                                   "Missing token, could not find in either of: "
-                                                                           + missingLocations,
-                                                                   tenantId));
+            String msg = "Missing token, could not find in either of: " + missingLocations;
+            LOGGER.log(Level.DEBUG, msg);
+            return errorResponse(providerRequest, UNAUTHORIZED_401, null, msg, tenantId);
         }
     }
 
     private Set<String> expectedScopes(ProviderRequest request) {
-
         Set<String> result = new HashSet<>();
 
+        AnnotationScope[] allScopes = AnnotationScope.values();
         for (SecurityLevel securityLevel : request.endpointConfig().securityLevels()) {
-            List<ScopeValidator.Scopes> expectedScopes = securityLevel.combineAnnotations(ScopeValidator.Scopes.class,
-                                                                                          EndpointConfig.AnnotationScope
-                                                                                                  .values());
+            List<Scopes> expectedScopes = securityLevel.combineAnnotations(Scopes.class, allScopes);
             expectedScopes.stream()
-                    .map(ScopeValidator.Scopes::value)
-                    .map(Arrays::asList)
-                    .map(List::stream)
-                    .forEach(stream -> stream.map(ScopeValidator.Scope::value)
-                            .forEach(result::add));
+                          .map(Scopes::value)
+                          .map(Arrays::asList)
+                          .map(List::stream)
+                          .forEach(stream -> stream.map(Scope::value)
+                                                   .forEach(result::add));
 
-            List<ScopeValidator.Scope> expectedScopeAnnotations = securityLevel.combineAnnotations(ScopeValidator.Scope.class,
-                                                                                                   EndpointConfig.AnnotationScope
-                                                                                                           .values());
-
-            expectedScopeAnnotations.stream()
-                    .map(ScopeValidator.Scope::value)
-                    .forEach(result::add);
+            List<Scope> annotations = securityLevel.combineAnnotations(Scope.class, allScopes);
+            annotations.stream()
+                       .map(Scope::value)
+                       .forEach(result::add);
         }
 
         return result;
@@ -297,29 +267,26 @@ class TenantAuthenticationHandler {
                 redirectUri = encode(redirectUri(providerRequest.env()));
             } else {
                 redirectUri = encode(redirectUri(providerRequest.env()) + "?"
-                                             + encode(oidcConfig.tenantParamName()) + "=" + encode(tenantId));
+                        + encode(oidcConfig.tenantParamName()) + "=" + encode(tenantId));
             }
 
-
-            StringBuilder queryString = new StringBuilder("?");
-            queryString.append("client_id=").append(tenantConfig.clientId()).append("&");
-            queryString.append("response_type=code&");
-            queryString.append("redirect_uri=").append(redirectUri).append("&");
-            queryString.append("scope=").append(scopeString).append("&");
-            queryString.append("nonce=").append(nonce).append("&");
-            queryString.append("state=").append(encode(state));
+            String queryString = "?" + "client_id=" + tenantConfig.clientId() + "&" +
+                    "response_type=code&" +
+                    "redirect_uri=" + redirectUri + "&" +
+                    "scope=" + scopeString + "&" +
+                    "nonce=" + nonce + "&" +
+                    "state=" + encode(state);
 
             // must redirect
             return AuthenticationResponse
                     .builder()
-                    .status(SecurityResponse.SecurityStatus.FAILURE_FINISH)
+                    .status(SecurityStatus.FAILURE_FINISH)
                     .statusCode(Http.Status.TEMPORARY_REDIRECT_307.code())
                     .description("Redirecting to identity server: " + description)
                     .responseHeader("Location", authorizationEndpoint + queryString)
                     .build();
-        } else {
-            return errorResponseNoRedirect(code, description, status);
         }
+        return errorResponseNoRedirect(code, description, status);
     }
 
     private String redirectUri(SecurityEnvironment env) {
@@ -334,42 +301,35 @@ class TenantAuthenticationHandler {
         return oidcConfig.redirectUriWithHost();
     }
 
-    private CompletionStage<AuthenticationResponse> failOrAbstain(String message) {
-        if (optional) {
-            return CompletableFuture.completedFuture(AuthenticationResponse.builder()
-                                                             .status(SecurityResponse.SecurityStatus.ABSTAIN)
-                                                             .description(message)
-                                                             .build());
-        } else {
-            return CompletableFuture.completedFuture(AuthenticationResponse.builder()
-                                                             .status(AuthenticationResponse.SecurityStatus.FAILURE)
-                                                             .description(message)
-                                                             .build());
-        }
+    private AuthenticationResponse failOrAbstain(String message) {
+        return AuthenticationResponse.builder()
+                                     .status(optional ? SecurityStatus.ABSTAIN : SecurityStatus.FAILURE)
+                                     .description(message)
+                                     .build();
     }
 
     private AuthenticationResponse errorResponseNoRedirect(String code, String description, Http.Status status) {
         if (optional) {
             return AuthenticationResponse.builder()
-                    .status(SecurityResponse.SecurityStatus.ABSTAIN)
-                    .description(description)
-                    .build();
+                                         .status(SecurityStatus.ABSTAIN)
+                                         .description(description)
+                                         .build();
         }
         if (null == code) {
+            String headerValue = "Bearer realm=\"" + tenantConfig.realm() + "\"";
             return AuthenticationResponse.builder()
-                    .status(SecurityResponse.SecurityStatus.FAILURE)
-                    .statusCode(Http.Status.UNAUTHORIZED_401.code())
-                    .responseHeader(Http.Header.WWW_AUTHENTICATE.defaultCase(), "Bearer realm=\"" + tenantConfig.realm() + "\"")
-                    .description(description)
-                    .build();
-        } else {
-            return AuthenticationResponse.builder()
-                    .status(SecurityResponse.SecurityStatus.FAILURE)
-                    .statusCode(status.code())
-                    .responseHeader(Http.Header.WWW_AUTHENTICATE.defaultCase(), errorHeader(code, description))
-                    .description(description)
-                    .build();
+                                         .status(SecurityStatus.FAILURE)
+                                         .statusCode(UNAUTHORIZED_401.code())
+                                         .responseHeader(WWW_AUTHENTICATE.defaultCase(), headerValue)
+                                         .description(description)
+                                         .build();
         }
+        return AuthenticationResponse.builder()
+                                     .status(SecurityStatus.FAILURE)
+                                     .statusCode(status.code())
+                                     .responseHeader(WWW_AUTHENTICATE.defaultCase(), errorHeader(code, description))
+                                     .description(description)
+                                     .build();
     }
 
     private int redirectAttempt(String state) {
@@ -380,7 +340,6 @@ class TenantAuthenticationHandler {
                 return Integer.parseInt(matcher.group(1));
             }
         }
-
         return 1;
     }
 
@@ -389,8 +348,9 @@ class TenantAuthenticationHandler {
     }
 
     private String origUri(ProviderRequest providerRequest) {
-        List<String> origUri = providerRequest.env().headers()
-                .getOrDefault(Security.HEADER_ORIG_URI, List.of());
+        List<String> origUri = providerRequest.env()
+                                              .headers()
+                                              .getOrDefault(Security.HEADER_ORIG_URI, List.of());
 
         if (origUri.isEmpty()) {
             origUri = List.of(providerRequest.env().targetUri().getPath());
@@ -403,27 +363,26 @@ class TenantAuthenticationHandler {
         return URLEncoder.encode(state, StandardCharsets.UTF_8);
     }
 
-    private Single<AuthenticationResponse> validateToken(String tenantId,
-                                                         ProviderRequest providerRequest,
-                                                         String token) {
+    private AuthenticationResponse validateToken(String tenantId, ProviderRequest providerRequest, String token) {
         SignedJwt signedJwt;
         try {
             signedJwt = SignedJwt.parseToken(token);
         } catch (Exception e) {
-            //invalid token
-            LOGGER.log(System.Logger.Level.DEBUG, "Could not parse inbound token", e);
-            return Single.just(AuthenticationResponse.failed("Invalid token", e));
+            LOGGER.log(Level.DEBUG, "Could not parse inbound token", e);
+            return AuthenticationResponse.failed("Invalid token", e);
         }
 
-        return jwtValidator.apply(signedJwt, Errors.collector())
-                .map(it -> processValidationResult(providerRequest,
-                                                   signedJwt,
-                                                   tenantId,
-                                                   it))
-                .onErrorResume(t -> {
-                    LOGGER.log(System.Logger.Level.DEBUG, "Failed to validate request", t);
-                    return AuthenticationResponse.failed("Failed to validate JWT", t);
-                });
+        try {
+            if (tenantConfig.validateJwtWithJwk()) {
+                validateJwtWithJwk(signedJwt);
+            } else {
+                validateJwtWithPost(signedJwt);
+            }
+            return processValidationResult(providerRequest, signedJwt, tenantId, collector);
+        } catch (Throwable ex) {
+            LOGGER.log(Level.DEBUG, "Failed to validate request", ex);
+            return AuthenticationResponse.failed("Failed to validate JWT", ex);
+        }
     }
 
     private AuthenticationResponse processValidationResult(ProviderRequest providerRequest,
@@ -440,9 +399,9 @@ class TenantAuthenticationHandler {
             Subject subject = buildSubject(jwt, signedJwt);
 
             Set<String> scopes = subject.grantsByType("scope")
-                    .stream()
-                    .map(Grant::getName)
-                    .collect(Collectors.toSet());
+                                        .stream()
+                                        .map(Grant::getName)
+                                        .collect(Collectors.toSet());
 
             // make sure we have the correct scopes
             Set<String> expectedScopes = expectedScopes(providerRequest);
@@ -457,22 +416,22 @@ class TenantAuthenticationHandler {
                 return AuthenticationResponse.success(subject);
             } else {
                 return errorResponse(providerRequest,
-                                     Http.Status.FORBIDDEN_403,
-                                     "insufficient_scope",
-                                     "Scopes " + missingScopes + " are missing",
-                                     tenantId);
+                        Http.Status.FORBIDDEN_403,
+                        "insufficient_scope",
+                        "Scopes " + missingScopes + " are missing",
+                        tenantId);
             }
         } else {
-            if (LOGGER.isLoggable(System.Logger.Level.DEBUG)) {
+            if (LOGGER.isLoggable(Level.DEBUG)) {
                 // only log errors when details requested
                 errors.log(LOGGER);
                 validationErrors.log(LOGGER);
             }
             return errorResponse(providerRequest,
-                                 Http.Status.UNAUTHORIZED_401,
-                                 "invalid_token",
-                                 "Token not valid",
-                                 tenantId);
+                    UNAUTHORIZED_401,
+                    "invalid_token",
+                    "Token not valid",
+                    tenantId);
         }
     }
 
@@ -488,8 +447,8 @@ class TenantAuthenticationHandler {
         builder.addToken(SignedJwt.class, signedJwt);
 
         Subject.Builder subjectBuilder = Subject.builder()
-                .principal(principal)
-                .addPublicCredential(TokenCredential.class, builder.build());
+                                                .principal(principal)
+                                                .addPublicCredential(TokenCredential.class, builder.build());
 
         if (useJwtGroups) {
             Optional<List<String>> userGroups = jwt.userGroups();
@@ -498,9 +457,9 @@ class TenantAuthenticationHandler {
 
         Optional<List<String>> scopes = jwt.scopes();
         scopes.ifPresent(scopeList -> scopeList.forEach(scope -> subjectBuilder.addGrant(Grant.builder()
-                                                                                                 .name(scope)
-                                                                                                 .type("scope")
-                                                                                                 .build())));
+                                                                                              .name(scope)
+                                                                                              .type("scope")
+                                                                                              .build())));
 
         return subjectBuilder.build();
 
@@ -508,19 +467,16 @@ class TenantAuthenticationHandler {
 
     private Principal buildPrincipal(Jwt jwt) {
         String subject = jwt.subject()
-                .orElseThrow(() -> new JwtException("JWT does not contain subject claim, cannot create principal."));
+                            .orElseThrow(() -> new JwtException("JWT does not contain subject claim, cannot create principal."));
 
         String name = jwt.preferredUsername()
-                .orElse(subject);
+                         .orElse(subject);
 
-        Principal.Builder builder = Principal.builder();
+        Principal.Builder builder = Principal.builder()
+                                             .name(name)
+                                             .id(subject);
 
-        builder.name(name)
-                .id(subject);
-
-        jwt.payloadClaims()
-                .forEach((key, jsonValue) -> builder.addAttribute(key, JwtUtil.toObject(jsonValue)));
-
+        jwt.payloadClaims().forEach((key, jsonValue) -> builder.addAttribute(key, JwtUtil.toObject(jsonValue)));
         jwt.email().ifPresent(value -> builder.addAttribute("email", value));
         jwt.emailVerified().ifPresent(value -> builder.addAttribute("email_verified", value));
         jwt.locale().ifPresent(value -> builder.addAttribute("locale", value));

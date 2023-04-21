@@ -27,13 +27,11 @@ import io.helidon.security.SecurityTest;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.AuthorizationProvider;
 import io.helidon.security.spi.OutboundSecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 /**
  * Just a simple testing provider.
  */
-public class ProviderForTesting extends SynchronousProvider
-        implements AuthenticationProvider, AuthorizationProvider, OutboundSecurityProvider {
+public class ProviderForTesting implements AuthenticationProvider, AuthorizationProvider, OutboundSecurityProvider {
     private final String denyResource;
 
     public ProviderForTesting(String denyResource) {
@@ -45,23 +43,23 @@ public class ProviderForTesting extends SynchronousProvider
     }
 
     @Override
-    protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
-        return AuthenticationResponse
-                .success(SecurityTest.SYSTEM);
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
+        return AuthenticationResponse.success(SecurityTest.SYSTEM);
     }
 
     @Override
-    protected OutboundSecurityResponse syncOutbound(ProviderRequest providerRequest,
-                                                    SecurityEnvironment outboundEnv,
-                                                    EndpointConfig outboundEndpointConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                     SecurityEnvironment outboundEnv,
+                                                     EndpointConfig outboundEndpointConfig) {
         return OutboundSecurityResponse.empty();
     }
 
     @Override
-    protected AuthorizationResponse syncAuthorize(ProviderRequest providerRequest) {
-        String resource = providerRequest.env().abacAttribute("resourceType")
-                .map(String::valueOf)
-                .orElseThrow(() -> new IllegalArgumentException("Resource type is required"));
+    public AuthorizationResponse authorize(ProviderRequest providerRequest) {
+        String resource = providerRequest.env()
+                                         .abacAttribute("resourceType")
+                                         .map(String::valueOf)
+                                         .orElseThrow(() -> new IllegalArgumentException("Resource type is required"));
 
         if (denyResource.equals(resource)) {
             return AuthorizationResponse.deny();

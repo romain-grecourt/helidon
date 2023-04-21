@@ -53,7 +53,7 @@ public interface DigestProvider<T extends ProviderConfig> extends SecurityProvid
          *
          * @param data data to digest
          * @param preHashed whether the data is already a hash ({@code true}), or the raw data ({@code false})
-         * @return future with the digest string (signature, HMAC)
+         * @return digest string (signature, HMAC)
          */
         String apply(byte[] data, Boolean preHashed);
     }
@@ -69,7 +69,7 @@ public interface DigestProvider<T extends ProviderConfig> extends SecurityProvid
          * @param data data that was digested
          * @param preHashed whether the data is already a hash
          * @param digest original digest of the data (signature, HMAC)
-         * @return future with the result of verification
+         * @return result of verification
          */
         Boolean apply(byte[] data, Boolean preHashed, String digest);
     }
@@ -111,7 +111,7 @@ public interface DigestProvider<T extends ProviderConfig> extends SecurityProvid
          * Generates a signature or an HMAC.
          * @param bytes bytes to sign
          * @param preHashed whether the bytes are pre-hashed
-         * @return future with the digest (signature or HMAC)
+         * @return digest (signature or HMAC)
          */
         public String digest(byte[] bytes, boolean preHashed) {
             return digestFunction.apply(bytes, preHashed);
@@ -123,8 +123,7 @@ public interface DigestProvider<T extends ProviderConfig> extends SecurityProvid
          * @param bytes bytes to verify
          * @param preHashed whether the bytes are pre-hashed
          * @param digest digest obtained from a third-part
-         * @return future with {@code true} if the digest is valid, {@code false} if not valid, and an error if not
-         *  a supported digest
+         * @return {@code true} if the digest is valid, {@code false} if not valid
          */
         public Boolean verify(byte[] bytes, boolean preHashed, String digest) {
             return verifyFunction.apply(bytes, preHashed, digest);

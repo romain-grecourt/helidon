@@ -71,7 +71,7 @@ public class HeaderAtnProviderConfigTest extends HeaderAtnProviderTest {
                              .build())
                 .build();
 
-        AuthenticationResponse response = context.atnClientBuilder().buildAndGet();
+        AuthenticationResponse response = context.atnClientBuilder().submit();
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
         assertThat(response.user(), is(not(Optional.empty())));
@@ -79,9 +79,7 @@ public class HeaderAtnProviderConfigTest extends HeaderAtnProviderTest {
         response.user()
                 .map(Subject::principal)
                 .map(Principal::getName)
-                .ifPresent(user -> {
-                    assertThat(user, is(username));
-                });
+                .ifPresent(user -> assertThat(user, is(username)));
 
         assertThat(response.service(), is(Optional.empty()));
     }

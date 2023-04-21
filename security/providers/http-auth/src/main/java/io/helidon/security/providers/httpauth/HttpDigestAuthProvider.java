@@ -45,13 +45,12 @@ import io.helidon.security.Subject;
 import io.helidon.security.SubjectType;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.SecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 /**
  * Http authentication security provider.
  * Provides support for username and password authentication, with support for roles list.
  */
-public final class HttpDigestAuthProvider extends SynchronousProvider implements AuthenticationProvider {
+public final class HttpDigestAuthProvider implements AuthenticationProvider {
     static final String HEADER_AUTHENTICATION_REQUIRED = "WWW-Authenticate";
     static final String HEADER_AUTHENTICATION = "authorization";
     static final String DIGEST_PREFIX = "digest ";
@@ -132,7 +131,7 @@ public final class HttpDigestAuthProvider extends SynchronousProvider implements
     }
 
     @Override
-    protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         Map<String, List<String>> headers = providerRequest.env().headers();
         List<String> authorizationHeader = headers.get(HEADER_AUTHENTICATION);
 
@@ -271,6 +270,7 @@ public final class HttpDigestAuthProvider extends SynchronousProvider implements
     /**
      * {@link HttpDigestAuthProvider} fluent API builder.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured(prefix = HttpDigestAuthService.PROVIDER_CONFIG_KEY,
                 description = "Http digest authentication security provider",
                 provides = {SecurityProvider.class, AuthenticationProvider.class})
@@ -453,7 +453,7 @@ public final class HttpDigestAuthProvider extends SynchronousProvider implements
         /**
          * Digest QOP to support.
          *
-         * @param qop qop to add to list of supported qops
+         * @param qop qop to add to list of supported QOPs
          * @return updated builder instance
          */
         @ConfiguredOption(key = "qop",

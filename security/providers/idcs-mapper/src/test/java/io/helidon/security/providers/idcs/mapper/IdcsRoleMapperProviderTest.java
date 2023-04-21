@@ -20,7 +20,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.Grant;
 import io.helidon.security.Principal;
@@ -41,24 +40,25 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsIterableWithSize.iterableWithSize;
 import static org.junit.jupiter.api.Assertions.fail;
 
-class IdcsRoleMapperRxProviderTest {
+@SuppressWarnings("OptionalGetWithoutIsPresent")
+class IdcsRoleMapperProviderTest {
     private static TestProvider provider;
 
     @BeforeAll
     static void prepareProvider() {
-        IdcsRoleMapperRxProvider.Builder<?> builder = IdcsRoleMapperRxProvider.builder();
+        IdcsRoleMapperProvider.Builder<?> builder = IdcsRoleMapperProvider.builder();
         builder.oidcConfig(OidcConfig.builder()
-                                   .oidcMetadataWellKnown(false)
-                                   .clientId("client-id")
-                                   .clientSecret("client-secret")
-                // intentionally wrong IP address, so this immediately fails when an attempt is done to cnnect
-                                   .identityUri(URI.create("https://497.497.497.497/identity/uri"))
-                                   .tokenEndpointUri(URI.create("https://497.497.497.497/token/endpoint/uri"))
-                                   .authorizationEndpointUri(URI.create("https://497.497.497.497/authorization/endpoint/uri"))
-                                   .build())
-                .roleCache(EvictableCache.<String, List<Grant>>builder()
-                                   .maxSize(2)
-                                   .build());
+                                     .oidcMetadataWellKnown(false)
+                                     .clientId("client-id")
+                                     .clientSecret("client-secret")
+                                     // intentionally wrong IP address, so this immediately fails when an attempt is done to connect
+                                     .identityUri(URI.create("https://497.497.497.497/identity/uri"))
+                                     .tokenEndpointUri(URI.create("https://497.497.497.497/token/endpoint/uri"))
+                                     .authorizationEndpointUri(URI.create("https://497.497.497.497/authorization/endpoint/uri"))
+                                     .build())
+               .roleCache(EvictableCache.<String, List<Grant>>builder()
+                                        .maxSize(2)
+                                        .build());
         provider = new TestProvider(builder);
     }
 
@@ -67,16 +67,13 @@ class IdcsRoleMapperRxProviderTest {
         ProviderRequest mock = Mockito.mock(ProviderRequest.class);
         String username = "test-user";
         AuthenticationResponse response = provider.map(mock,
-                                                   AuthenticationResponse.builder()
-                                                           .user(Subject.builder()
-                                                                         .principal(Principal.create(username))
-                                                                         .build())
-                                                           .build())
-                .toCompletableFuture()
-                .join();
+                AuthenticationResponse.builder()
+                                      .user(Subject.builder()
+                                                   .principal(Principal.create(username))
+                                                   .build())
+                                      .build());
 
-        Subject subject = response.user()
-                .get();
+        Subject subject = response.user().get();
 
         List<Role> grants = subject.grants(Role.class);
 
@@ -85,13 +82,11 @@ class IdcsRoleMapperRxProviderTest {
         Role counted = findCounted(grants);
         Role additionalCounted = findAdditionalCounted(grants);
         response = provider.map(mock,
-                                AuthenticationResponse.builder()
-                                        .user(Subject.builder()
-                                                      .principal(Principal.create(username))
-                                                      .build())
-                                        .build())
-                .toCompletableFuture()
-                .join();
+                AuthenticationResponse.builder()
+                                      .user(Subject.builder()
+                                                   .principal(Principal.create(username))
+                                                   .build())
+                                      .build());
         grants = response.user().get().grants(Role.class);
         assertThat(grants, iterableWithSize(5));
         Role counted2 = findCounted(grants);
@@ -120,24 +115,25 @@ class IdcsRoleMapperRxProviderTest {
         return null;
     }
 
-    private static final class TestProvider extends IdcsRoleMapperRxProvider {
+    private static final class TestProvider extends IdcsRoleMapperProvider {
         private static final AtomicInteger COUNTER = new AtomicInteger();
+
         private TestProvider(Builder<?> builder) {
             super(builder);
         }
 
         @Override
-        protected Single<List<? extends Grant>> getGrantsFromServer(Subject subject) {
+        protected List<? extends Grant> getGrantsFromServer(Subject subject) {
             String id = subject.principal().id();
-            return Single.just(List.of(Role.create("counted_"+ COUNTER.incrementAndGet()),
-                                       Role.create("fixed"),
-                                       Role.create(id)));
+            return List.of(Role.create("counted_" + COUNTER.incrementAndGet()),
+                    Role.create("fixed"),
+                    Role.create(id));
         }
 
         @Override
-        protected Single<List<? extends Grant>> addAdditionalGrants(Subject subject, List<Grant> idcsGrants) {
-            return Single.just(List.of(Role.create("additional_"+ COUNTER.incrementAndGet()),
-                                       Role.create("additional-fixed")));
+        protected List<? extends Grant> addAdditionalGrants(Subject subject, List<Grant> idcsGrants) {
+            return List.of(Role.create("additional_" + COUNTER.incrementAndGet()),
+                    Role.create("additional-fixed"));
         }
     }
 }

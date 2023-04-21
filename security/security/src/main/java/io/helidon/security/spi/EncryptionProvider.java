@@ -79,7 +79,7 @@ public interface EncryptionProvider<T extends ProviderConfig> extends SecurityPr
          * Encrypt the bytes.
          *
          * @param bytes bytes to encrypt
-         * @return future with the encrypted cipher text
+         * @return encrypted cipher text
          */
         public String encrypt(byte[] bytes) {
             return encryptionFunction.apply(bytes);
@@ -89,7 +89,7 @@ public interface EncryptionProvider<T extends ProviderConfig> extends SecurityPr
          * Decrypt the bytes.
          *
          * @param encrypted cipher text
-         * @return future with the decrypted bytes
+         * @return decrypted bytes
          */
         public byte[] decrypt(String encrypted) {
             return decryptionFunction.apply(encrypted);

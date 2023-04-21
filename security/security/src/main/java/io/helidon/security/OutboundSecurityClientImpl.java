@@ -16,92 +16,88 @@
 
 package io.helidon.security;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import io.helidon.security.internal.SecurityAuditEvent;
 import io.helidon.security.spi.OutboundSecurityProvider;
+
+import static io.helidon.security.AuditEvent.AuditParam.plain;
+import static io.helidon.security.internal.SecurityAuditEvent.error;
+import static io.helidon.security.internal.SecurityAuditEvent.failure;
+import static io.helidon.security.internal.SecurityAuditEvent.success;
 
 /**
  * Outbound security builder and executor.
- *
+ * <br/>
+ * <p>
  * See {@link #submit()}.
  */
 final class OutboundSecurityClientImpl implements SecurityClient<OutboundSecurityResponse> {
+
+    private static final String AUDIT_SUCCESS_FMT = "Provider %s. Request %s. Subject %s";
+    private static final String AUDIT_ERROR_FMT = "Provider %s, Description %s, Request %s. Subject %s";
+    private static final String AUDIT_FAILURE_FMT = "Provider %s, Description %s, Request %s. Subject %s";
+
     private final Security security;
     private final SecurityContextImpl context;
     private final String providerName;
     private final ProviderRequest providerRequest;
-    private final SecurityEnvironment outboundEnv;
-    private final EndpointConfig outboundEpConfig;
+    private final SecurityEnvironment env;
+    private final EndpointConfig config;
 
     OutboundSecurityClientImpl(Security security,
                                SecurityContextImpl context,
                                SecurityRequest request,
                                String providerName,
-                               SecurityEnvironment outboundEnvironment,
-                               EndpointConfig outboundEndpointConfig) {
+                               SecurityEnvironment env,
+                               EndpointConfig config) {
 
         this.security = security;
         this.context = context;
         this.providerName = providerName;
-        this.providerRequest = new ProviderRequest(context,
-                                                   request.resources());
-        this.outboundEnv = outboundEnvironment;
-        this.outboundEpConfig = outboundEndpointConfig;
+        this.providerRequest = new ProviderRequest(context, request.resources());
+        this.env = env;
+        this.config = config;
     }
 
     @Override
-    public CompletionStage<OutboundSecurityResponse> submit() {
-        OutboundSecurityProvider providerInstance = findProvider();
+    public OutboundSecurityResponse submit() {
+        OutboundSecurityProvider provider = findProvider();
 
-        if (null == providerInstance) {
-            return CompletableFuture.completedFuture(OutboundSecurityResponse.empty());
+        if (null == provider) {
+            return OutboundSecurityResponse.empty();
         }
 
-        return providerInstance.outboundSecurity(providerRequest, outboundEnv, outboundEpConfig).thenApply(response -> {
+        try {
+            OutboundSecurityResponse response = provider.outboundSecurity(providerRequest, env, config);
             if (response.status().isSuccess()) {
                 //Audit success
-                context.audit(SecurityAuditEvent.success(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound",
-                                                         "Provider %s. Request %s. Subject %s")
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("provider", providerInstance.getClass().getName()))
-                                      .addParam(AuditEvent.AuditParam.plain("request", this))
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
+                context.audit(success(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound", AUDIT_SUCCESS_FMT)
+                        .addParam(plain("provider", provider.getClass().getName()))
+                        .addParam(plain("request", this))
+                        .addParam(plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
             } else {
-                context.audit(SecurityAuditEvent.failure(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound",
-                                                         "Provider %s, Description %s, Request %s. Subject %s")
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("provider", providerInstance.getClass().getName()))
-                                      .addParam(AuditEvent.AuditParam.plain("request", this))
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("message", response.description().orElse(null)))
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("exception", response.throwable().orElse(null)))
-                                      .addParam(AuditEvent.AuditParam
-                                                        .plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
+                context.audit(failure(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound", AUDIT_FAILURE_FMT)
+                        .addParam(plain("provider", provider.getClass().getName()))
+                        .addParam(plain("request", this))
+                        .addParam(plain("message", response.description().orElse(null)))
+                        .addParam(plain("exception", response.throwable().orElse(null)))
+                        .addParam(plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
             }
-
             return response;
-        }).exceptionally(e -> {
-            context.audit(SecurityAuditEvent.error(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound",
-                                                   "Provider %s, Description %s, Request %s. Subject %s")
-                                  .addParam(AuditEvent.AuditParam.plain("provider", providerInstance.getClass().getName()))
-                                  .addParam(AuditEvent.AuditParam.plain("request", this))
-                                  .addParam(AuditEvent.AuditParam.plain("message", e.getMessage()))
-                                  .addParam(AuditEvent.AuditParam.plain("exception", e))
-                                  .addParam(AuditEvent.AuditParam
-                                                    .plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
+        } catch (Throwable e) {
+            context.audit(error(AuditEvent.OUTBOUND_TYPE_PREFIX + ".outbound", AUDIT_ERROR_FMT)
+                    .addParam(plain("provider", provider.getClass().getName()))
+                    .addParam(plain("request", this))
+                    .addParam(plain("message", e.getMessage()))
+                    .addParam(plain("exception", e))
+                    .addParam(plain("subject", context.user().orElse(SecurityContext.ANONYMOUS))));
             throw new SecurityException("Failed to process security", e);
-        });
+        }
     }
 
     private OutboundSecurityProvider findProvider() {
         return security.resolveOutboundProvider(providerName)
-                .stream()
-                .filter(p -> p.isOutboundSupported(providerRequest, outboundEnv, outboundEpConfig))
-                .findFirst()
-                .orElse(null);
+                       .stream()
+                       .filter(p -> p.isOutboundSupported(providerRequest, env, config))
+                       .findFirst()
+                       .orElse(null);
     }
 }

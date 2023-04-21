@@ -18,7 +18,6 @@ package io.helidon.security;
 
 import java.net.URI;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
@@ -59,7 +58,7 @@ public class SecurityFromConfigTest {
 
         context.env(envBuilder);
 
-        AuthenticationResponse authenticate = context.atnClientBuilder().buildAndGet();
+        AuthenticationResponse authenticate = context.atnClientBuilder().submit();
 
         // current thread should have the correct subject
         assertThat(authenticate.user(), is(Optional.of(SecurityTest.SYSTEM)));
@@ -74,7 +73,7 @@ public class SecurityFromConfigTest {
     }
 
     @Test
-    public void testSecurityProviderAuthz() throws ExecutionException, InterruptedException {
+    public void testSecurityProviderAuthz() {
         SecurityContext context = security.contextBuilder("unitTest").build();
         SecurityEnvironment.Builder envBuilder = context.env()
                 .derive()
@@ -84,12 +83,12 @@ public class SecurityFromConfigTest {
 
         context.env(envBuilder.addAttribute("resourceType", "SECOND_DENY"));
         // default authorizationClient
-        AuthorizationResponse response = context.atzClientBuilder().buildAndGet();
+        AuthorizationResponse response = context.atzClientBuilder().submit();
 
         assertThat(response.status().isSuccess(), is(false));
 
         context.env(envBuilder.addAttribute("resourceType", "PERMIT"));
-        response = context.atzClientBuilder().buildAndGet();
+        response = context.atzClientBuilder().submit();
 
         assertThat(response.status().isSuccess(), is(true));
 
@@ -97,14 +96,14 @@ public class SecurityFromConfigTest {
         // non-default authorizationClient
         response = context.atzClientBuilder()
                 .explicitProvider("FirstInstance")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(false));
 
         context.env(envBuilder.addAttribute("resourceType", "SECOND_DENY"));
         response = context.atzClientBuilder()
                 .explicitProvider("FirstInstance")
-                .buildAndGet();
+                .submit();
 
         assertThat(response.status().isSuccess(), is(true));
     }

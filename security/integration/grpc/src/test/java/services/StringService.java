@@ -19,9 +19,10 @@ package services;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import io.helidon.grpc.server.CollectingObserver;
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
+import com.google.protobuf.Descriptors;
+import io.helidon.nima.grpc.webserver.CollectingObserver;
+import io.helidon.nima.grpc.webserver.GrpcService;
+
 import io.helidon.grpc.server.test.Strings;
 import io.helidon.grpc.server.test.Strings.StringMessage;
 
@@ -30,16 +31,20 @@ import io.grpc.stub.StreamObserver;
 import static io.helidon.grpc.core.ResponseHelper.complete;
 import static io.helidon.grpc.core.ResponseHelper.stream;
 
-public class StringService
-        implements GrpcService {
+public class StringService implements GrpcService {
+
     @Override
-    public void update(ServiceDescriptor.Rules rules) {
-        rules.proto(Strings.getDescriptor())
-                .unary("Upper", this::upper)
-                .unary("Lower", this::lower)
-                .serverStreaming("Split", this::split)
-                .clientStreaming("Join", this::join)
-                .bidirectional("Echo", this::echo);
+    public Descriptors.FileDescriptor proto() {
+        return Strings.getDescriptor();
+    }
+
+    @Override
+    public void update(Routing routing) {
+        routing.unary("Upper", this::upper)
+               .unary("Lower", this::lower)
+               .serverStream("Split", this::split)
+               .clientStream("Join", this::join)
+               .bidi("Echo", this::echo);
     }
 
     // ---- service methods -------------------------------------------------
@@ -66,7 +71,7 @@ public class StringService
     }
 
     private StreamObserver<StringMessage> echo(StreamObserver<StringMessage> observer) {
-        return new StreamObserver<StringMessage>() {
+        return new StreamObserver<>() {
             public void onNext(StringMessage value) {
                 observer.onNext(value);
             }
@@ -86,5 +91,4 @@ public class StringService
     private StringMessage response(String text) {
         return StringMessage.newBuilder().setText(text).build();
     }
-
 }

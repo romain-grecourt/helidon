@@ -18,6 +18,7 @@ package io.helidon.security.examples.spi;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import io.helidon.security.EndpointConfig;
 import io.helidon.security.OutboundSecurityResponse;
@@ -33,9 +34,9 @@ import io.helidon.security.spi.SynchronousProvider;
  */
 public class OutboundProviderSync extends SynchronousProvider implements OutboundSecurityProvider {
     @Override
-    protected OutboundSecurityResponse syncOutbound(ProviderRequest providerRequest,
-                                                    SecurityEnvironment outboundEnv,
-                                                    EndpointConfig outboundEndpointConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                        SecurityEnvironment outboundEnv,
+                                                                        EndpointConfig outboundEndpointConfig) {
 
         // let's just add current user's id as a custom header, otherwise do nothing
         return providerRequest.securityContext()

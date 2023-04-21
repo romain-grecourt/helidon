@@ -19,8 +19,8 @@ package io.helidon.security.providers.oidc.common;
 import java.net.URI;
 
 import io.helidon.common.Errors;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.security.WebClientSecurity;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1Client.Http1ClientBuilder;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityException;
 import io.helidon.security.jwt.jwk.JwkKeys;
@@ -29,10 +29,6 @@ import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 import io.helidon.security.providers.httpauth.HttpBasicOutboundConfig;
 
 import jakarta.json.JsonObject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.WebTarget;
-import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
 
 /**
  * Holder of the tenant configuration resolved at runtime. Used for OIDC lazy loading.
@@ -44,9 +40,7 @@ public final class Tenant {
     private final String authorizationEndpointUri;
     private final URI logoutEndpointUri;
     private final String issuer;
-    private final Client appClient;
-    private final WebClient appWebClient;
-    private final WebTarget tokenEndpoint;
+    private final Http1Client appWebClient;
     private final JwkKeys signJwk;
     private final URI introspectUri;
 
@@ -55,9 +49,7 @@ public final class Tenant {
                    URI authorizationEndpointUri,
                    URI logoutEndpointUri,
                    String issuer,
-                   Client appClient,
-                   WebClient appWebClient,
-                   WebTarget tokenEndpoint,
+                   Http1Client appWebClient,
                    JwkKeys signJwk,
                    URI introspectUri) {
         this.tenantConfig = tenantConfig;
@@ -65,9 +57,7 @@ public final class Tenant {
         this.authorizationEndpointUri = authorizationEndpointUri.toString();
         this.logoutEndpointUri = logoutEndpointUri;
         this.issuer = issuer;
-        this.appClient = appClient;
         this.appWebClient = appWebClient;
-        this.tokenEndpoint = tokenEndpoint;
         this.signJwk = signJwk;
         this.introspectUri = introspectUri;
     }
@@ -80,7 +70,7 @@ public final class Tenant {
      * @return new instance with resolved OIDC metadata
      */
     public static Tenant create(OidcConfig oidcConfig, TenantConfig tenantConfig) {
-        WebClient webClient = oidcConfig.generalWebClient();
+        Http1Client webClient = oidcConfig.generalClient();
 
         Errors.Collector collector = Errors.collector();
 
@@ -112,14 +102,14 @@ public final class Tenant {
                 .orElse(null);
 
         collector.collect().checkValid();
-        WebClient.Builder webClientBuilder = oidcConfig.webClientBuilderSupplier().get();
-        ClientBuilder clientBuilder = oidcConfig.jaxrsClientBuilderSupplier().get();
+        Http1ClientBuilder webClientBuilder = oidcConfig.webClientBuilderSupplier().get();
 
         if (tenantConfig.tokenEndpointAuthentication() == OidcConfig.ClientAuthentication.CLIENT_SECRET_BASIC) {
-            HttpAuthenticationFeature basicAuth = HttpAuthenticationFeature.basicBuilder()
-                    .credentials(tenantConfig.clientId(), tenantConfig.clientSecret())
-                    .build();
-            clientBuilder.register(basicAuth);
+            // FIXME
+//            HttpAuthenticationFeature basicAuth = HttpAuthenticationFeature.basicBuilder()
+//                    .credentials(tenantConfig.clientId(), tenantConfig.clientSecret())
+//                    .build();
+//            clientBuilder.register(basicAuth);
 
             HttpBasicAuthProvider httpBasicAuth = HttpBasicAuthProvider.builder()
                     .addOutboundTarget(OutboundTarget.builder("oidc")
@@ -133,12 +123,13 @@ public final class Tenant {
                     .addOutboundSecurityProvider(httpBasicAuth)
                     .build();
 
-            webClientBuilder.addService(WebClientSecurity.create(tokenOutboundSecurity));
+            // TODO
+//            webClientBuilder.addService(WebClientSecurity.create(tokenOutboundSecurity));
         }
 
-        Client appClient = clientBuilder.build();
-        WebClient appWebClient = webClientBuilder.build();
-        WebTarget tokenEndpoint = appClient.target(tokenEndpointUri);
+//        Client appClient = clientBuilder.build();
+        Http1Client appWebClient = webClientBuilder.build();
+//        WebTarget tokenEndpoint = appClient.target(tokenEndpointUri);
 
         JwkKeys signJwk = tenantConfig.tenantSignJwk().orElseGet(() -> {
             if (tenantConfig.validateJwtWithJwk()) {
@@ -158,8 +149,7 @@ public final class Tenant {
                         return JwkKeys.builder()
                                 .json(webClient.get()
                                               .uri(jwkUri)
-                                              .request(JsonObject.class)
-                                              .await())
+                                              .request(JsonObject.class))
                                 .build();
                     }
                 }
@@ -178,9 +168,7 @@ public final class Tenant {
                           authorizationEndpointUri,
                           logoutEndpointUri,
                           issuer,
-                          appClient,
                           appWebClient,
-                          tokenEndpoint,
                           signJwk,
                           introspectUri);
     }
@@ -235,7 +223,7 @@ public final class Tenant {
      *
      * @return client for communicating with OIDC identity server
      */
-    public WebClient appWebClient() {
+    public Http1Client appWebClient() {
         return appWebClient;
     }
 
@@ -260,22 +248,22 @@ public final class Tenant {
         return introspectUri;
     }
 
-    /**
-     * Token endpoint of the OIDC server.
-     *
-     * @return target the endpoint is on
-     */
-    WebTarget tokenEndpoint() {
-        return tokenEndpoint;
-    }
-
-    /**
-     * Client with configured proxy and security of this OIDC client.
-     *
-     * @return client for communication with OIDC server
-     */
-    Client appClient() {
-        return appClient;
-    }
+//    /**
+//     * Token endpoint of the OIDC server.
+//     *
+//     * @return target the endpoint is on
+//     */
+//    WebTarget tokenEndpoint() {
+//        return tokenEndpoint;
+//    }
+//
+//    /**
+//     * Client with configured proxy and security of this OIDC client.
+//     *
+//     * @return client for communication with OIDC server
+//     */
+//    Client appClient() {
+//        return appClient;
+//    }
 
 }

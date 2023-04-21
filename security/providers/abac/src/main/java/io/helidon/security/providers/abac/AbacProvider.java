@@ -43,7 +43,6 @@ import io.helidon.security.providers.abac.spi.AbacValidator;
 import io.helidon.security.providers.abac.spi.AbacValidatorService;
 import io.helidon.security.spi.AuthorizationProvider;
 import io.helidon.security.spi.SecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 import jakarta.annotation.security.DenyAll;
 import jakarta.annotation.security.PermitAll;
@@ -58,7 +57,7 @@ import jakarta.annotation.security.RolesAllowed;
  * @see #builder()
  * @see #create(Config)
  */
-public final class AbacProvider extends SynchronousProvider implements AuthorizationProvider {
+public final class AbacProvider implements AuthorizationProvider {
 
     private final List<AbacValidator<? extends AbacValidatorConfig>> validators = new ArrayList<>();
     private final Set<Class<? extends Annotation>> supportedAnnotations;
@@ -128,7 +127,7 @@ public final class AbacProvider extends SynchronousProvider implements Authoriza
     }
 
     @Override
-    protected AuthorizationResponse syncAuthorize(ProviderRequest providerRequest) {
+    public AuthorizationResponse authorize(ProviderRequest providerRequest) {
         //let's find attributes to be validated
         Errors.Collector collector = Errors.collector();
         List<RuntimeAttribute> attributes = new ArrayList<>();
@@ -156,9 +155,8 @@ public final class AbacProvider extends SynchronousProvider implements Authoriza
                 // only configure this validator if its config key exists
                 // or it has a supported annotation
                 abacConfig.flatMap(it -> it.get(configKey).asNode().asOptional())
-                        .ifPresentOrElse(attribConfig -> {
-                            attributes.add(new RuntimeAttribute(validator, validator.fromConfig(attribConfig)));
-                        },
+                        .ifPresentOrElse(attribConfig -> attributes.add(
+                                new RuntimeAttribute(validator, validator.fromConfig(attribConfig))),
                         () -> {
                             List<Annotation> annotationConfig = new ArrayList<>();
                             for (SecurityLevel securityLevel : epConfig.securityLevels()) {
@@ -243,7 +241,7 @@ public final class AbacProvider extends SynchronousProvider implements Authoriza
     }
 
     private void validateAbacConfig(Config abacConfig, Errors.Collector collector) {
-        // we need to iterate first level subkeys to see if they are supported
+        // we need to iterate first level sub keys to see if they are supported
         List<String> keys = abacConfig.asNodeList()
                 .orElseGet(List::of)
                 .stream()
@@ -253,7 +251,7 @@ public final class AbacProvider extends SynchronousProvider implements Authoriza
         Set<String> uniqueKeys = new HashSet<>(keys);
 
         if (uniqueKeys.size() != keys.size()) {
-            collector.fatal(keys, "There are duplicit keys under \"abac\" node in configuration.");
+            collector.fatal(keys, "There are duplicated keys under \"abac\" node in configuration.");
         }
 
         int attributes = 0;
@@ -335,6 +333,7 @@ public final class AbacProvider extends SynchronousProvider implements Authoriza
     /**
      * A fluent API builder for {@link AbacProvider}.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured(prefix = AbacProviderService.PROVIDER_CONFIG_KEY,
                 description = "Attribute Based Access Control provider",
                 provides = {SecurityProvider.class, AuthorizationProvider.class})

@@ -16,15 +16,22 @@
 
 package io.helidon.security;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
+import io.helidon.security.spi.AuthorizationProvider;
 
-import io.helidon.security.internal.SecurityAuditEvent;
+import static io.helidon.security.AuditEvent.AuditParam.plain;
+import static io.helidon.security.internal.SecurityAuditEvent.error;
+import static io.helidon.security.internal.SecurityAuditEvent.failure;
+import static io.helidon.security.internal.SecurityAuditEvent.success;
 
 /**
  * Authorizer.
  */
 final class AuthorizationClientImpl implements SecurityClient<AuthorizationResponse> {
+    private static final AuthorizationProvider DEFAULT_PROVIDER = new DefaultAtzProvider();
+    private static final String AUDIT_SUCCESS_FMT = "Path %s. Provider %s. Subject %s";
+    private static final String AUDIT_ERROR_FMT =  "Path %s. Provider %s, Description %s, Request %s. Subject %s. %s: %s";
+    private static final String AUDIT_FAILURE_FMT = "Path %s. Provider %s, Description %s, Request %s. Subject %s";
+
     private final Security security;
     private final SecurityContextImpl context;
     private final SecurityRequest request;
@@ -39,57 +46,51 @@ final class AuthorizationClientImpl implements SecurityClient<AuthorizationRespo
         this.context = context;
         this.request = request;
         this.providerName = providerName;
-        this.providerRequest = new ProviderRequest(context,
-                                                   request.resources());
+        this.providerRequest = new ProviderRequest(context, request.resources());
     }
 
     @Override
-    public CompletionStage<AuthorizationResponse> submit() {
+    public AuthorizationResponse submit() {
         // TODO ABAC - if annotated with Attribute meta annot, make sure that all are processed
-        return security.resolveAtzProvider(providerName)
-                .map(providerInstance -> providerInstance.authorize(providerRequest).thenApply(response -> {
-                    if (response.status().isSuccess()) {
-                        //Audit success
-                        context.audit(SecurityAuditEvent.success(
-                                AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize",
-                                "Path %s. Provider %s. Subject %s")
-                                              .addParam(AuditEvent.AuditParam.plain("path", providerRequest.env().path()))
-                                              .addParam(AuditEvent.AuditParam
-                                                                .plain("provider", providerInstance.getClass().getName()))
-                                              .addParam(AuditEvent.AuditParam.plain("subject",
-                                                                                    context.user())));
-                    } else {
-                        //Audit failure
-                        context.audit(SecurityAuditEvent.failure(
-                                AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize",
-                                "Path %s. Provider %s, Description %s, Request %s. Subject %s")
-                                              .addParam(AuditEvent.AuditParam.plain("path", providerRequest.env().path()))
-                                              .addParam(AuditEvent.AuditParam
-                                                                .plain("provider", providerInstance.getClass().getName()))
-                                              .addParam(AuditEvent.AuditParam.plain("request", this))
-                                              .addParam(AuditEvent.AuditParam.plain("subject", context.user()))
-                                              .addParam(AuditEvent.AuditParam
-                                                                .plain("message", response.description().orElse(null)))
-                                              .addParam(AuditEvent.AuditParam
-                                                                .plain("exception", response.throwable().orElse(null))));
-                    }
 
-                    return response;
-                }).exceptionally(throwable -> {
-                    //Audit failure
-                    context.audit(SecurityAuditEvent.error(
-                            AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize",
-                            "Path %s. Provider %s, Description %s, Request %s. Subject %s. %s: %s")
-                                          .addParam(AuditEvent.AuditParam.plain("path", providerRequest.env().path()))
-                                          .addParam(AuditEvent.AuditParam
-                                                            .plain("provider", providerInstance.getClass().getName()))
-                                          .addParam(AuditEvent.AuditParam.plain("description", "Audit failure"))
-                                          .addParam(AuditEvent.AuditParam.plain("request", this))
-                                          .addParam(AuditEvent.AuditParam.plain("subject", context.user()))
-                                          .addParam(AuditEvent.AuditParam.plain("message", throwable.getMessage()))
-                                          .addParam(AuditEvent.AuditParam.plain("exception", throwable)));
-                    throw new SecurityException(throwable);
-                }))
-                .orElse(CompletableFuture.completedFuture(AuthorizationResponse.permit()));
+        AuthorizationProvider provider = security.resolveAtzProvider(providerName).orElse(DEFAULT_PROVIDER);
+
+        try {
+            AuthorizationResponse response = provider.authorize(providerRequest);
+
+            if (response.status().isSuccess()) {
+                context.audit(success(AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize", AUDIT_SUCCESS_FMT)
+                        .addParam(plain("path", providerRequest.env().path()))
+                        .addParam(plain("provider", provider.getClass().getName()))
+                        .addParam(plain("subject", context.user())));
+            } else {
+                context.audit(failure(AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize", AUDIT_FAILURE_FMT)
+                        .addParam(plain("path", providerRequest.env().path()))
+                        .addParam(plain("provider", provider.getClass().getName()))
+                        .addParam(plain("request", this))
+                        .addParam(plain("subject", context.user()))
+                        .addParam(plain("message", response.description().orElse(null)))
+                        .addParam(plain("exception", response.throwable().orElse(null))));
+            }
+
+            return response;
+        } catch (Throwable throwable) {
+            context.audit(error(AuditEvent.AUTHZ_TYPE_PREFIX + ".authorize", AUDIT_ERROR_FMT)
+                    .addParam(plain("path", providerRequest.env().path()))
+                    .addParam(plain("provider", provider.getClass().getName()))
+                    .addParam(plain("description", "Audit failure"))
+                    .addParam(plain("request", this))
+                    .addParam(plain("subject", context.user()))
+                    .addParam(plain("message", throwable.getMessage()))
+                    .addParam(plain("exception", throwable)));
+            throw new SecurityException(throwable);
+        }
+    }
+
+    private static class DefaultAtzProvider implements AuthorizationProvider {
+        @Override
+        public AuthorizationResponse authorize(ProviderRequest context) {
+            return AuthorizationResponse.permit();
+        }
     }
 }

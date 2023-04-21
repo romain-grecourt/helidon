@@ -17,16 +17,13 @@
 package io.helidon.security.providers.httpsign;
 
 import java.net.URI;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.EndpointConfig;
 import io.helidon.security.OutboundSecurityResponse;
@@ -49,13 +46,13 @@ import static org.mockito.Mockito.when;
 /**
  * Unit test for {@link HttpSignProvider}.
  */
+@SuppressWarnings({"HttpUrlsUsage", "SpellCheckingInspection"})
 abstract class CurrentHttpSignProviderTest {
-    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
     abstract HttpSignProvider getProvider();
 
     @Test
-    void testInboundSignatureRsa() throws ExecutionException, InterruptedException {
+    void testInboundSignatureRsa() {
         Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         headers.put("Signature",
@@ -84,7 +81,7 @@ abstract class CurrentHttpSignProviderTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AuthenticationResponse atnResponse = Single.create(provider.authenticate(request)).await(TIMEOUT);
+        AuthenticationResponse atnResponse = provider.authenticate(request);
 
         assertThat(atnResponse.description().orElse("Unknown problem"),
                    atnResponse.status(),
@@ -100,7 +97,7 @@ abstract class CurrentHttpSignProviderTest {
     }
 
     @Test
-    void testInboundSignatureHmac() throws InterruptedException, ExecutionException {
+    void testInboundSignatureHmac() {
         Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         headers.put("Signature",
@@ -126,7 +123,7 @@ abstract class CurrentHttpSignProviderTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AuthenticationResponse atnResponse = Single.create(provider.authenticate(request)).await(TIMEOUT);
+        AuthenticationResponse atnResponse = provider.authenticate(request);
 
         assertThat(atnResponse.description().orElse("Unknown problem"),
                    atnResponse.status(),
@@ -141,7 +138,7 @@ abstract class CurrentHttpSignProviderTest {
     }
 
     @Test
-    void testOutboundSignatureRsa() throws ExecutionException, InterruptedException {
+    void testOutboundSignatureRsa() {
         Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         // the generated host contains port as well, so we must explicitly define it here
@@ -164,8 +161,7 @@ abstract class CurrentHttpSignProviderTest {
         boolean outboundSupported = getProvider().isOutboundSupported(request, outboundEnv, outboundEp);
         assertThat("Outbound should be supported", outboundSupported, is(true));
 
-        OutboundSecurityResponse response = Single.create(getProvider().outboundSecurity(request, outboundEnv, outboundEp))
-                .await(TIMEOUT);
+        OutboundSecurityResponse response = getProvider().outboundSecurity(request, outboundEnv, outboundEp);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
 
@@ -186,7 +182,7 @@ abstract class CurrentHttpSignProviderTest {
     }
 
     @Test
-    void testOutboundSignatureHmac() throws ExecutionException, InterruptedException {
+    void testOutboundSignatureHmac() {
         Map<String, List<String>> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
         // the generated host contains port as well, so we must explicitly define it here
@@ -209,8 +205,7 @@ abstract class CurrentHttpSignProviderTest {
         boolean outboundSupported = getProvider().isOutboundSupported(request, outboundEnv, outboundEp);
         assertThat("Outbound should be supported", outboundSupported, is(true));
 
-        OutboundSecurityResponse response = Single.create(getProvider().outboundSecurity(request, outboundEnv, outboundEp))
-                                                                  .await(TIMEOUT);
+        OutboundSecurityResponse response = getProvider().outboundSecurity(request, outboundEnv, outboundEp);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
 

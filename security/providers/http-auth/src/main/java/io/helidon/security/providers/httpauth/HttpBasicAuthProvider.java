@@ -49,14 +49,13 @@ import io.helidon.security.providers.httpauth.spi.UserStoreService;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.OutboundSecurityProvider;
 import io.helidon.security.spi.SecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 import io.helidon.security.util.TokenHandler;
 
 /**
  * Http authentication security provider.
  * Provides support for username and password authentication, with support for roles list.
  */
-public class HttpBasicAuthProvider extends SynchronousProvider implements AuthenticationProvider, OutboundSecurityProvider {
+public class HttpBasicAuthProvider implements AuthenticationProvider, OutboundSecurityProvider {
     /**
      * Configure this for outbound requests to override user to use.
      */
@@ -126,7 +125,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
 
     @Override
     public boolean isOutboundSupported(ProviderRequest providerRequest,
-                                       SecurityEnvironment outbondEnv,
+                                       SecurityEnvironment outboundEnv,
                                        EndpointConfig outboundEp) {
 
         // explicitly overridden username and/or password
@@ -138,9 +137,9 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
     }
 
     @Override
-    protected OutboundSecurityResponse syncOutbound(ProviderRequest providerRequest,
-                                                    SecurityEnvironment outboundEnv,
-                                                    EndpointConfig outboundEp) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                                        SecurityEnvironment outboundEnv,
+                                                                        EndpointConfig outboundEp) {
 
         // explicit username in request properties
         Optional<Object> maybeUsername = outboundEp.abacAttribute(EP_PROPERTY_OUTBOUND_USER);
@@ -209,7 +208,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
     }
 
     @Override
-    protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         Map<String, List<String>> headers = providerRequest.env().headers();
         List<String> authorizationHeader = headers.get(HEADER_AUTHENTICATION);
 
@@ -309,6 +308,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
     /**
      * {@link HttpBasicAuthProvider} fluent API builder.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured(prefix = HttpBasicAuthService.PROVIDER_CONFIG_KEY,
                 description = "HTTP Basic Authentication provider",
                 provides = {SecurityProvider.class, AuthenticationProvider.class})
@@ -339,7 +339,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
             // now users may not be configured at all
             Config usersConfig = config.get("users");
             if (usersConfig.exists()) {
-                // or it may be jst an empty list (e.g. users: with no subnodes).
+                // or it may be jst an empty list (e.g. users: with no sub-nodes).
                 if (!usersConfig.isLeaf()) {
                     loader.addService(new UserStoreService() {
                         @Override
@@ -358,10 +358,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
             }
 
             // when creating an instance from configuration, we also want to load user stores from service loader
-            loader.build()
-                    .forEach(userStoreService -> {
-                        addUserStore(userStoreService.create(config.get(userStoreService.configKey())));
-                    });
+            loader.build().forEach(svc -> addUserStore(svc.create(config.get(svc.configKey()))));
 
             config.get("outbound").asList(OutboundTarget::create)
                     .ifPresent(it -> it.forEach(outboundBuilder::addTarget));
@@ -383,13 +380,12 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
         @ConfiguredOption(key = "principal-type", value = "USER")
         public Builder subjectType(SubjectType subjectType) {
             this.subjectType = subjectType;
-
             switch (subjectType) {
-            case USER:
-            case SERVICE:
-                break;
-            default:
-                throw new SecurityException("Invalid configuration. Principal type not supported: " + subjectType);
+                case USER:
+                case SERVICE:
+                    break;
+                default:
+                    throw new SecurityException("Invalid configuration. Principal type not supported: " + subjectType);
             }
 
             return this;
@@ -460,14 +456,7 @@ public class HttpBasicAuthProvider extends SynchronousProvider implements Authen
     }
 
     // need to store this information to be able to propagate to outbound
-    private static final class BasicPrivateCredentials {
-        private final String username;
-        private final char[] password;
-
-        private BasicPrivateCredentials(String username, char[] password) {
-            this.username = username;
-            this.password = password;
-        }
+    private record BasicPrivateCredentials(String username, char[] password) {
     }
 
 }

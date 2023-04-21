@@ -16,8 +16,6 @@
 
 package io.helidon.security.spi;
 
-import java.util.concurrent.CompletionStage;
-
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.Principal;
 import io.helidon.security.ProviderRequest;
@@ -40,6 +38,7 @@ public interface AuthenticationProvider extends SecurityProvider {
      * Do not throw exception for normal processing (e.g. invalid credentials; you may throw an exception in case of
      * misconfiguration).
      *
+     * <br/>
      * This method will be invoked for inbound requests ONLY.
      *
      * <p>
@@ -50,5 +49,5 @@ public interface AuthenticationProvider extends SecurityProvider {
      * @return response that either authenticates the request, fails authentication or abstains from authentication
      * @see AuthenticationResponse#success(Subject)
      */
-    CompletionStage<AuthenticationResponse> authenticate(ProviderRequest providerRequest);
+    AuthenticationResponse authenticate(ProviderRequest providerRequest);
 }

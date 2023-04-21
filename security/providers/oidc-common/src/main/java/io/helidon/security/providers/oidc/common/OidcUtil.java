@@ -18,17 +18,14 @@ package io.helidon.security.providers.oidc.common;
 
 import java.lang.System.Logger.Level;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.Errors;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.Proxy;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.tracing.WebClientTracing;
+import io.helidon.common.socket.SocketOptions;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.http.media.jsonp.JsonpSupport;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1Client.Http1ClientBuilder;
 import io.helidon.security.providers.common.OutboundConfig;
-
-import jakarta.ws.rs.client.ClientBuilder;
-import org.glassfish.jersey.client.ClientProperties;
 
 final class OidcUtil {
     private static final System.Logger LOGGER = System.getLogger(OidcUtil.class.getName());
@@ -50,39 +47,27 @@ final class OidcUtil {
         return serverType;
     }
 
-    static ClientBuilder clientBaseBuilder(String proxyProtocol, String proxyHost, int proxyPort) {
-        ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-
-        clientBuilder.property(OutboundConfig.PROPERTY_DISABLE_OUTBOUND, Boolean.TRUE);
-
-        if (proxyHost != null) {
-            clientBuilder.property(ClientProperties.PROXY_URI, proxyProtocol
-                    + "://"
-                    + proxyHost
-                    + ":"
-                    + proxyPort);
-        }
-
-        return clientBuilder;
-    }
-
-    static WebClient.Builder webClientBaseBuilder(String proxyHost,
-                                                  int proxyPort,
-                                                  boolean relativeUris,
-                                                  Duration clientTimeout) {
-        WebClient.Builder webClientBuilder = WebClient.builder()
-                .addService(WebClientTracing.create())
-                .addMediaSupport(JsonpSupport.create())
-                .connectTimeout(clientTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                .readTimeout(clientTimeout.toMillis(), TimeUnit.MILLISECONDS)
-                .relativeUris(relativeUris);
+    static Http1ClientBuilder webClientBaseBuilder(String proxyHost,
+                                                               int proxyPort,
+                                                               boolean relativeUris,
+                                                   Duration clientTimeout) {
+        Http1ClientBuilder webClientBuilder = Http1Client.builder()
+//                .addService(WebClientTracing.create()) FIXME
+                                                         .mediaContext(MediaContext.builder()
+                                                                                   .addMediaSupport(JsonpSupport.create())
+                                                                                   .build())
+                                                         .channelOptions(SocketOptions.builder()
+                                                                                      .connectTimeout(clientTimeout)
+                                                                                      .readTimeout(clientTimeout).build());
+                                                         //.relativeUris(relativeUris); FIXME
 
         if (proxyHost != null) {
-            webClientBuilder.proxy(Proxy.builder()
-                                           .type(Proxy.ProxyType.HTTP)
-                                           .host(proxyHost)
-                                           .port(proxyPort)
-                                           .build());
+            // FIXME
+//            webClientBuilder.proxy(Proxy.builder()
+//                                           .type(Proxy.ProxyType.HTTP)
+//                                           .host(proxyHost)
+//                                           .port(proxyPort)
+//                                           .build());
         }
         return webClientBuilder;
     }

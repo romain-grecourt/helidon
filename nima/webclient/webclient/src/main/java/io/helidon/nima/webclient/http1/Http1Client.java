@@ -193,8 +193,8 @@ public interface Http1Client extends HttpClient<Http1ClientRequest, Http1ClientR
             return new Http1ClientImpl(this);
         }
 
-        public void config(Config webclient) {
-
+        public Http1ClientBuilder config(Config config) {
+            throw new UnsupportedOperationException("Not implemented yet");
         }
     }
 

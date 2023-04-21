@@ -16,8 +16,6 @@
 
 package io.helidon.security;
 
-import java.util.concurrent.CompletionStage;
-
 /**
  * Common methods for security clients.
  *
@@ -33,17 +31,5 @@ public interface SecurityClient<T extends SecurityResponse> {
      * SecurityResponse.SecurityStatus#isSuccess()}
      * Otherwise security request failed or could not be processed.
      */
-    CompletionStage<T> submit();
-
-    /**
-     * Synchronous complement to {@link #submit()}.
-     * Timeout is now hardcoded to 1 minute.
-     *
-     * @return response of the current security operation
-     * @throws SecurityException in case of timeout, interrupted call or exception during future processing
-     */
-    default T get() {
-        return SecurityResponse.get(submit());
-    }
-
+    T submit();
 }

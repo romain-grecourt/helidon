@@ -60,6 +60,7 @@ import static org.mockito.Mockito.when;
 @AddBean(JwtAuthTest.MyApp.class)
 @AddBean(JwtAuthTest.MyResource.class)
 @AddBean(JwtAuthTest.ResourceWithPublicMethod.class)
+@SuppressWarnings({"unused", "CdiInjectionPointsInspection", "SpellCheckingInspection"})
 class JwtAuthTest {
     @Inject
     private WebTarget target;
@@ -104,7 +105,7 @@ class JwtAuthTest {
 
         assertThat(provider.isOutboundSupported(request, outboundEnv, outboundEp), is(true));
 
-        OutboundSecurityResponse response = provider.syncOutbound(request, outboundEnv, outboundEp);
+        OutboundSecurityResponse response = provider.outboundSecurity(request, outboundEnv, outboundEp);
 
         String signedToken = response.requestHeaders().get("Authorization").get(0);
 

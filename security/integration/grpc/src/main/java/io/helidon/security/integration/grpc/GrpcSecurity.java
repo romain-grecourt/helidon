@@ -29,16 +29,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import io.helidon.common.context.Contexts;
 import io.helidon.config.Config;
-import io.helidon.grpc.core.GrpcTracingContext;
-import io.helidon.grpc.core.InterceptorPriorities;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.grpc.webserver.GrpcService;
 import io.helidon.security.EndpointConfig;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityContext;
 import io.helidon.security.SecurityEnvironment;
-import io.helidon.tracing.Span;
 import io.helidon.tracing.SpanContext;
 
 import io.grpc.Context;
@@ -55,7 +51,7 @@ import jakarta.annotation.Priority;
 /**
  * Integration of security into the gRPC Server.
  * <p>
- * Methods that start with "from" are to register GrpcSecurity with {@link io.helidon.grpc.server.GrpcServer}
+ * Methods that start with "from" are to register GrpcSecurity with {@link GrpcRouting}
  * - to create {@link SecurityContext} for requests:
  * <ul>
  * <li>{@link #create(Security)}</li>
@@ -95,15 +91,14 @@ import jakarta.annotation.Priority;
  * <pre>
  * // continue from example above...
  * // create a gate for method GET: authenticate all paths under /user and require role "user" for authorization
- * .intercept({@link io.helidon.grpc.server.GrpcService}, GrpcSecurity.{@link GrpcSecurity#rolesAllowed(String...)
+ * .intercept({@link GrpcService}, GrpcSecurity.{@link GrpcSecurity#rolesAllowed(String...)
  * rolesAllowed("user")})
  * </pre>
  */
 // we need to have all fields optional and this is cleaner than checking for null
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-@Priority(InterceptorPriorities.AUTHENTICATION)
-public final class GrpcSecurity
-        implements ServerInterceptor, ServiceDescriptor.Configurer {
+@SuppressWarnings({"OptionalUsedAsFieldOrParameterType"})
+@Priority(2000) // InterceptorPriorities.AUTHENTICATION
+public final class GrpcSecurity implements ServerInterceptor {
     private static final System.Logger LOGGER = System.getLogger(GrpcSecurity.class.getName());
 
     /**
@@ -111,7 +106,7 @@ public final class GrpcSecurity
      * This will be used to obtain multi-value string map (a map of string to list of strings) from context (appropriate
      * to the integration).
      */
-    public static final Context.Key<Map> CONTEXT_ADD_HEADERS = Context.key("security.addHeaders");
+    public static final Context.Key<Map<String, List<String>>> CONTEXT_ADD_HEADERS = Context.key("security.addHeaders");
 
     /**
      * The SecurityContext gRPC metadata header key.
@@ -167,7 +162,7 @@ public final class GrpcSecurity
     }
 
     /**
-     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#register(GrpcService)}) registered} with
+     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#service(GrpcService)}) registered} with
      * gRPC server routing to process security requests.
      * This method is to be used together with other routing methods to protect gRPC service or methods programmatically.
      * Example:
@@ -183,7 +178,7 @@ public final class GrpcSecurity
     }
 
     /**
-     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#register(GrpcService) registered} with
+     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#service(GrpcService)}) registered} with
      * gRPC server routing to process security requests.
      * This method configures security and gRPC server integration from a config instance
      *
@@ -196,7 +191,7 @@ public final class GrpcSecurity
     }
 
     /**
-     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#register(GrpcService) registered} with
+     * Create a consumer of gRPC routing config to be {@link GrpcRouting.Builder#service(GrpcService)}) registered} with
      * gRPC server routing to process security requests.
      * This method expects initialized security and creates gRPC server integration from a config instance
      *
@@ -270,7 +265,7 @@ public final class GrpcSecurity
      * <li>Audit: not modified</li>
      * </ul>
      *
-     * @param explicitAuthenticator name of authenticator as configured in {@link io.helidon.security.Security}
+     * @param explicitAuthenticator name of authenticator as configured in {@link Security}
      * @return {@link GrpcSecurityHandler} instance
      */
     public static GrpcSecurityHandler authenticator(String explicitAuthenticator) {
@@ -288,7 +283,7 @@ public final class GrpcSecurity
      * <li>Audit: not modified</li>
      * </ul>
      *
-     * @param explicitAuthorizer name of authorizer as configured in {@link io.helidon.security.Security}
+     * @param explicitAuthorizer name of authorizer as configured in {@link Security}
      * @return {@link GrpcSecurityHandler} instance
      */
     public static GrpcSecurityHandler authorizer(String explicitAuthorizer) {
@@ -373,18 +368,17 @@ public final class GrpcSecurity
     }
 
     /**
-     * If the {@link #config} field is set then modify the {@link ServiceDescriptor.Rules}
+     * If the {@link #config} field is set then modify the {@link GrpcRouting.Builder}
      * with any applicable security configuration.
      *
-     * @param rules  the {@link ServiceDescriptor.Rules} to modify
+     * @param rules  the {@link GrpcRouting.Builder} to modify
      */
-    @Override
-    public void configure(ServiceDescriptor.Rules rules) {
+    public void configure(GrpcRouting.Builder rules) {
         config.ifPresent(grpcConfig -> modifyServiceDescriptorConfig(rules, grpcConfig));
     }
 
-    private void modifyServiceDescriptorConfig(ServiceDescriptor.Rules rules, Config grpcConfig) {
-        String serviceName = rules.name();
+    private void modifyServiceDescriptorConfig(GrpcRouting.Builder rules, Config grpcConfig) {
+        String serviceName = "foobar"; // FIXME
 
         grpcConfig.get("services")
                 .asNodeList()
@@ -399,7 +393,7 @@ public final class GrpcSecurity
                 .orElse(null);
     }
 
-    private void configureServiceSecurity(ServiceDescriptor.Rules rules, Config grpcServiceConfig) {
+    private void configureServiceSecurity(GrpcRouting.Builder rules, Config grpcServiceConfig) {
         if (grpcServiceConfig.exists()) {
             GrpcSecurityHandler defaults;
 
@@ -448,13 +442,12 @@ public final class GrpcSecurity
         }
     }
 
-    @SuppressWarnings("unchecked")
     <ReqT, RespT> Context registerContext(ServerCall<ReqT, RespT> call, Metadata headers) {
         Context grpcContext;
 
         if (SECURITY_CONTEXT.get() == null) {
             SocketAddress remoteSocket = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);
-            String address = null;
+            String address;
             int port = -1;
 
             if (remoteSocket instanceof InetSocketAddress) {
@@ -465,15 +458,15 @@ public final class GrpcSecurity
             }
 
             Map<String, List<String>> headerMap = new HashMap<>();
-            Map mapExtra = CONTEXT_ADD_HEADERS.get();
+            Map<String, List<String>> mapExtra = CONTEXT_ADD_HEADERS.get();
 
             if (mapExtra != null) {
                 headerMap.putAll(mapExtra);
             }
 
             for (String name : headers.keys()) {
-                Metadata.Key key = Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER);
-                Iterable<Object> iterable = headers.getAll(key);
+                Metadata.Key<String> key = Metadata.Key.of(name, Metadata.ASCII_STRING_MARSHALLER);
+                Iterable<String> iterable = headers.getAll(key);
                 List<String> values = new ArrayList<>();
 
                 if (iterable != null) {
@@ -501,8 +494,10 @@ public final class GrpcSecurity
 
             EndpointConfig ec = EndpointConfig.builder().build();
 
-            Span span = GrpcTracingContext.SPAN_KEY.get();
-            SpanContext spanContext = span == null ? null : span.context();
+            SpanContext spanContext = Contexts.context()
+                                              .flatMap(context -> context.get(SpanContext.class))
+                                              .orElse(null);
+
             SecurityContext context = security.contextBuilder(String.valueOf(SECURITY_COUNTER.incrementAndGet()))
                     .tracingSpan(spanContext)
                     .env(env)
@@ -520,11 +515,11 @@ public final class GrpcSecurity
     }
 
     /**
-     * Obtain the {@link io.helidon.security.Security} instance being used.
+     * Obtain the {@link Security} instance being used.
      *
-     * @return  the {@link io.helidon.security.Security} instance being used
+     * @return  the {@link Security} instance being used
      */
-    Security getSecurity() {
+    Security security() {
         return security;
     }
 
@@ -533,72 +528,72 @@ public final class GrpcSecurity
      *
      * @return  the default {@link GrpcSecurityHandler}
      */
-    GrpcSecurityHandler getDefaultHandler() {
+    GrpcSecurityHandler defaultHandler() {
         return defaultHandler;
     }
 
-
     /**
-     * Implementation of {@link io.grpc.ForwardingServerCallListener} that attaches a context before
+     * Implementation of {@link ForwardingServerCallListener} that attaches a context before
      * dispatching calls to the delegate and detaches them after the call completes.
      */
-    private static class ContextualizedServerCallListener<ReqT> extends
-        ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT> {
-      private final Context context;
+    private static class ContextualizedServerCallListener<ReqT>
+            extends ForwardingServerCallListener.SimpleForwardingServerCallListener<ReqT> {
 
-      private ContextualizedServerCallListener(ServerCall.Listener<ReqT> delegate, Context context) {
-        super(delegate);
-        this.context = context;
-      }
+        private final Context context;
 
-      @Override
-      public void onMessage(ReqT message) {
-        Context previous = context.attach();
-        try {
-          super.onMessage(message);
-        } finally {
-          context.detach(previous);
+        private ContextualizedServerCallListener(ServerCall.Listener<ReqT> delegate, Context context) {
+            super(delegate);
+            this.context = context;
         }
-      }
 
-      @Override
-      public void onHalfClose() {
-        Context previous = context.attach();
-        try {
-          super.onHalfClose();
-        } finally {
-          context.detach(previous);
+        @Override
+        public void onMessage(ReqT message) {
+            Context previous = context.attach();
+            try {
+                super.onMessage(message);
+            } finally {
+                context.detach(previous);
+            }
         }
-      }
 
-      @Override
-      public void onCancel() {
-        Context previous = context.attach();
-        try {
-          super.onCancel();
-        } finally {
-          context.detach(previous);
+        @Override
+        public void onHalfClose() {
+            Context previous = context.attach();
+            try {
+                super.onHalfClose();
+            } finally {
+                context.detach(previous);
+            }
         }
-      }
 
-      @Override
-      public void onComplete() {
-        Context previous = context.attach();
-        try {
-          super.onComplete();
-        } finally {
-          context.detach(previous);
+        @Override
+        public void onCancel() {
+            Context previous = context.attach();
+            try {
+                super.onCancel();
+            } finally {
+                context.detach(previous);
+            }
         }
-      }
 
-      @Override
-      public void onReady() {
-        Context previous = context.attach();
-        try {
-          super.onReady();
-        } finally {
-          context.detach(previous);
+        @Override
+        public void onComplete() {
+            Context previous = context.attach();
+            try {
+                super.onComplete();
+            } finally {
+                context.detach(previous);
+            }
         }
-      }
+
+        @Override
+        public void onReady() {
+            Context previous = context.attach();
+            try {
+                super.onReady();
+            } finally {
+                context.detach(previous);
+            }
+        }
     }
 }

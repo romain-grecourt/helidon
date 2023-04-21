@@ -738,11 +738,8 @@ public abstract class RestApiBase implements RestApi {
             // we should only update request builder once - if a retry is done, it should not be reset
             Http1ClientRequest clientRequest = requestBuilder;
             if (updated.compareAndSet(false, true)) {
-                clientRequest.headers(headers -> {
-                    HttpMediaType mediaType = request.responseMediaType().orElse(HttpMediaType.APPLICATION_JSON);
-                    headers.accept(mediaType).contentType(mediaType);
-                    return headers;
-                });
+                HttpMediaType mediaType = request.responseMediaType().orElse(HttpMediaType.APPLICATION_JSON);
+                clientRequest.accept(mediaType).contentType(mediaType);
                 clientRequest = updateRequestBuilder(requestBuilder,
                         path,
                         request,
@@ -778,12 +775,9 @@ public abstract class RestApiBase implements RestApi {
             // we should only update request builder once - if a retry is done, it should not be reset
             Http1ClientRequest clientRequest = requestBuilder;
             if (updated.compareAndSet(false, true)) {
-                clientRequest.headers(headers -> {
-                    Optional<HttpMediaType> mediaType = request.responseMediaType();
-                    headers.accept(mediaType.orElse(HttpMediaType.APPLICATION_JSON))
-                           .contentType(mediaType.orElse(HttpMediaType.APPLICATION_OCTET_STREAM));
-                    return headers;
-                });
+                Optional<HttpMediaType> mediaType = request.responseMediaType();
+                clientRequest.accept(mediaType.orElse(HttpMediaType.APPLICATION_JSON))
+                             .contentType(mediaType.orElse(HttpMediaType.APPLICATION_OCTET_STREAM));
                 clientRequest = updateRequestBuilderBytesPayload(requestBuilder, path, request, method, requestId);
             }
             return clientRequest.submit(is);

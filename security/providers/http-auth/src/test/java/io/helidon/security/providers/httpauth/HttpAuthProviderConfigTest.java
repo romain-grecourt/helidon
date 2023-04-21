@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,18 @@
 package io.helidon.security.providers.httpauth;
 
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
-import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.jersey.JerseySupport;
-import io.helidon.security.Security;
-import io.helidon.security.integration.jersey.JerseySecurityFeature;
+import io.helidon.microprofile.tests.junit5.AddBean;
+import io.helidon.microprofile.tests.junit5.AddConfig;
+import io.helidon.microprofile.tests.junit5.HelidonTest;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.ExceptionMapper;
 import org.glassfish.jersey.client.authentication.HttpAuthenticationFeature;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.glassfish.jersey.client.authentication.HttpAuthenticationFeature.HTTP_AUTHENTICATION_PASSWORD;
@@ -46,69 +40,33 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+// TODO use straight se/nima instead of Jersey
+
 /**
  * Unit test for {@link HttpBasicAuthProvider} and {@link HttpDigestAuthProvider}.
  */
+@HelidonTest
+@AddBean(TestResource.class)
+@AddConfig(key = "security.jersey.authorize-annotated-only", value = "true")
 public class HttpAuthProviderConfigTest {
 
     private static final Client authFeatureClient = ClientBuilder.newClient()
             .register(HttpAuthenticationFeature.universalBuilder().build());
     private static final Client client = ClientBuilder.newClient();
 
-    private static String serverBase;
-    private static String digestUri;
-    private static String digestOldUri;
+    private final String serverBase;
+    private final String digestUri;
+    private final String digestOldUri;
 
-    private static WebServer server;
-
-    @BeforeAll
-    public static void startIt() throws Throwable {
-        startServer(Security.create(Config.create().get("security")));
-
-        serverBase = "http://localhost:" + server.port();
+    @Inject
+    HttpAuthProviderConfigTest(WebTarget target) {
+        serverBase = target.getUri().toString();
         digestUri = serverBase + "/digest";
         digestOldUri = serverBase + "/digest_old";
     }
 
-    private static void startServer(Security security) throws Throwable {
-        server = WebServer.create(Routing.builder()
-                .register(JerseySupport.builder()
-                                  .register(TestResource.class)
-                                  .register(JerseySecurityFeature.builder(security).authorizeAnnotatedOnly(true).build())
-                                  .register(new ExceptionMapper<Exception>() {
-                                      @Override
-                                      public Response toResponse(Exception exception) {
-                                          exception.printStackTrace();
-                                          return Response.serverError().build();
-                                      }
-                                  })
-                                  .build())
-                .build());
-        CountDownLatch cdl = new CountDownLatch(1);
-        AtomicReference<Throwable> th = new AtomicReference<>();
-        server.start().whenComplete((webServer, throwable) -> {
-            th.set(throwable);
-            cdl.countDown();
-        });
-
-        cdl.await();
-
-        if (th.get() != null) {
-            throw th.get();
-        }
-    }
-
     @AfterAll
-    public static void stopIt() throws InterruptedException {
-        CountDownLatch cdl = new CountDownLatch(1);
-
-        server.shutdown()
-                .whenComplete((webServer, throwable) -> {
-                    cdl.countDown();
-                    ;
-                });
-
-        cdl.await(10, TimeUnit.SECONDS);
+    public static void stopIt() {
         authFeatureClient.close();
     }
 

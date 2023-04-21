@@ -18,8 +18,6 @@ package io.helidon.security.integration.jersey;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.ProviderRequest;
@@ -47,9 +45,11 @@ import static org.mockito.Mockito.when;
  * Test for an issue (JC-304):
  * Example in microprofile: idcs/IdcsResource, method "getCurrentSubject" has authentication optional, yet it redirects even
  * when not logged in.
+ * <br/>
  *
  * Current behavior: we are redirected to login page
  * Correct behavior: we should get an empty subject
+ * <br/>
  *
  * This must be fixed in integration with Jersey/web server, when we receive a FINISH command, we should check if optional...
  */
@@ -80,7 +80,7 @@ class OptionalSecurityTest {
                 .build();
 
         clientBuilder = mock(SecurityClientBuilder.class);
-        when(clientBuilder.buildAndGet()).thenReturn(atr);
+        when(clientBuilder.build().submit()).thenReturn(atr);
 
         tracing = SecurityTracing.get();
     }
@@ -143,13 +143,11 @@ class OptionalSecurityTest {
         };
     }
 
-    private static CompletionStage<AuthenticationResponse> authenticate(ProviderRequest request) {
-        AuthenticationResponse res = AuthenticationResponse.builder()
+    private static AuthenticationResponse authenticate(ProviderRequest request) {
+        return AuthenticationResponse.builder()
                 .status(SecurityResponse.SecurityStatus.FAILURE_FINISH)
                 .statusCode(301)
                 .build();
-
-        return CompletableFuture.completedFuture(res);
     }
 
     @Path("/")

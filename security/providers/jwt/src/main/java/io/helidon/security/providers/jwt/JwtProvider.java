@@ -53,7 +53,6 @@ import io.helidon.security.providers.common.TokenCredential;
 import io.helidon.security.spi.AuthenticationProvider;
 import io.helidon.security.spi.OutboundSecurityProvider;
 import io.helidon.security.spi.SecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 import io.helidon.security.util.TokenHandler;
 
 /**
@@ -64,7 +63,7 @@ import io.helidon.security.util.TokenHandler;
  * Verification and signatures of tokens is done through JWK standard - two separate
  * JWK files are expected (one for verification, one for signatures).
  */
-public final class JwtProvider extends SynchronousProvider implements AuthenticationProvider, OutboundSecurityProvider {
+public final class JwtProvider implements AuthenticationProvider, OutboundSecurityProvider {
     private static final System.Logger LOGGER = System.getLogger(JwtProvider.class.getName());
 
     /**
@@ -144,7 +143,7 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
     }
 
     @Override
-    protected AuthenticationResponse syncAuthenticate(ProviderRequest providerRequest) {
+    public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
         if (!authenticate) {
             return AuthenticationResponse.abstain();
         }
@@ -222,12 +221,10 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
         }
 
         Optional<List<String>> scopes = jwt.scopes();
-        scopes.ifPresent(scopeList -> {
-            scopeList.forEach(scope -> subjectBuilder.addGrant(Grant.builder()
-                                                                       .name(scope)
-                                                                       .type("scope")
-                                                                       .build()));
-        });
+        scopes.ifPresent(scopeList -> scopeList.forEach(scope -> subjectBuilder.addGrant(Grant.builder()
+                                                                                          .name(scope)
+                                                                                          .type("scope")
+                                                                                          .build())));
 
         return subjectBuilder.build();
 
@@ -267,9 +264,9 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
     }
 
     @Override
-    protected OutboundSecurityResponse syncOutbound(ProviderRequest providerRequest,
-                                                    SecurityEnvironment outboundEnv,
-                                                    EndpointConfig outboundEndpointConfig) {
+    public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
+                                                     SecurityEnvironment outboundEnv,
+                                                     EndpointConfig outboundEndpointConfig) {
 
         Optional<Object> maybeUsername = outboundEndpointConfig.abacAttribute(EP_PROPERTY_OUTBOUND_USER);
         return maybeUsername
@@ -347,9 +344,8 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
 
         Jwt.Builder builder = Jwt.builder();
 
-        principal.abacAttributeNames().forEach(name -> {
-            principal.abacAttribute(name).ifPresent(val -> builder.addPayloadClaim(name, val));
-        });
+        principal.abacAttributeNames()
+                 .forEach(name -> principal.abacAttribute(name).ifPresent(val -> builder.addPayloadClaim(name, val)));
 
         principal.abacAttribute("full_name")
                 .ifPresentOrElse(name -> builder.addPayloadClaim("name", name),
@@ -523,7 +519,7 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
             }
 
             /**
-             * Outbound token hanlder to insert the token into outbound request headers.
+             * Outbound token handler to insert the token into outbound request headers.
              *
              * @param outboundHandler handler to use
              * @return updated builder instance
@@ -595,6 +591,7 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
     /**
      * Fluent API builder for {@link JwtProvider}.
      */
+    @SuppressWarnings("UnusedReturnValue")
     @Configured(prefix = JwtProviderService.PROVIDER_CONFIG_KEY,
                 description = "JWT authentication provider",
                 provides = {SecurityProvider.class, AuthenticationProvider.class})
@@ -672,10 +669,10 @@ public final class JwtProvider extends SynchronousProvider implements Authentica
          * set to {@code none} and no {@code kid} defined will be accepted.
          * Note that this has serious security impact - if JWT can be sent
          *  from a third party, this allows the third party to send ANY JWT
-         *  and it would be accpted as valid.
+         *  and it would be accepted as valid.
          *
          * @param allowUnsigned to allow unsigned (insecure) JWT
-         * @return updated builder insdtance
+         * @return updated builder instance
          */
         @ConfiguredOption("false")
         public Builder allowUnsigned(boolean allowUnsigned) {
