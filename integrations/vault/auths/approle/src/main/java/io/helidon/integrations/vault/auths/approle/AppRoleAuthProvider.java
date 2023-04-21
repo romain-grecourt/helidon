@@ -43,6 +43,12 @@ public class AppRoleAuthProvider implements AuthMethodProvider<AppRoleAuth>,
         INJECTABLES = List.copyOf(injectables);
     }
 
+    /**
+     * Create a new instance.
+     */
+    public AppRoleAuthProvider() {
+    }
+
     @Override
     public AuthMethod<AppRoleAuth> supportedMethod() {
         return AppRoleAuth.AUTH_METHOD;

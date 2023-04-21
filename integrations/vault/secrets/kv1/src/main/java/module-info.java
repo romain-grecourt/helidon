@@ -30,9 +30,9 @@ module io.helidon.integrations.vault.secrets.kvone {
 
     requires java.logging;
 
-    requires io.helidon.integrations.vault;
+    requires transitive io.helidon.integrations.vault;
     requires io.helidon.integrations.common.rest;
-    requires io.helidon.security;
+    requires transitive io.helidon.security;
 
     exports io.helidon.integrations.vault.secrets.kv1;
 

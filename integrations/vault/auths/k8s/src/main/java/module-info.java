@@ -28,7 +28,7 @@ import io.helidon.common.features.api.HelidonFlavor;
 module io.helidon.integrations.vault.auths.k8s {
     requires static io.helidon.common.features.api;
 
-    requires io.helidon.integrations.vault;
+    requires transitive io.helidon.integrations.vault;
     requires io.helidon.integrations.common.rest;
     requires io.helidon.integrations.vault.auths.common;
     requires io.helidon.common.http;

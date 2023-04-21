@@ -42,6 +42,12 @@ public class K8sAuthProvider implements AuthMethodProvider<K8sAuth>,
         INJECTABLES = List.copyOf(injectables);
     }
 
+    /**
+     * Create a new instance.
+     */
+    public K8sAuthProvider() {
+    }
+
     @Override
     public AuthMethod<K8sAuth> supportedMethod() {
         return K8sAuth.AUTH_METHOD;

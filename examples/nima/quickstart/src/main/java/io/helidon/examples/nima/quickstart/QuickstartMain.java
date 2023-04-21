@@ -66,9 +66,7 @@ public class QuickstartMain {
                                                                   .build()))
                 .build();
 
-        GreetService greetService = new GreetService();
-
-        routing.register("/greet", greetService)
-                .addFeature(observe);
+        routing.register("/greet", GreetService::new)
+               .addFeature(observe);
     }
 }

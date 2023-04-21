@@ -24,6 +24,7 @@ import io.helidon.integrations.common.rest.RestApi;
 import io.helidon.integrations.vault.Vault;
 import io.helidon.integrations.vault.VaultApiException;
 import io.helidon.integrations.vault.spi.VaultAuth;
+import io.helidon.nima.webclient.http1.Http1Client;
 
 /**
  * Java Service Loader implementation for creating an unauthenticated Vault instance.
@@ -52,16 +53,17 @@ public class NoVaultAuth implements VaultAuth {
             return Optional.empty();
         }
 
-        String address = vaultBuilder.address().orElseThrow(() -> new VaultApiException("Address must be defined"));
+        String address = vaultBuilder.address()
+                                     .orElseThrow(() -> new VaultApiException("Address must be defined"));
 
         return Optional.of(VaultRestApi.builder()
-                                   .webClientBuilder(webclient -> {
-                                       webclient.baseUri(address + "/v1");
-                                       vaultBuilder.baseNamespace()
-                                               .ifPresent(ns -> webclient.addHeader("X-Vault-Namespace", ns));
-                                       vaultBuilder.webClientUpdater().accept(webclient);
-                                   })
-                                   .faultTolerance(vaultBuilder.ftHandler())
-                                   .build());
+                                       .webClientBuilder(webclient -> {
+                                           webclient.baseUri(address + "/v1");
+                                           vaultBuilder.baseNamespace()
+                                                       .ifPresent(ns -> webclient.header("X-Vault-Namespace", ns));
+                                           vaultBuilder.webClientUpdater().accept(webclient);
+                                       })
+                                       .faultTolerance(vaultBuilder.ftHandler())
+                                       .build());
     }
 }

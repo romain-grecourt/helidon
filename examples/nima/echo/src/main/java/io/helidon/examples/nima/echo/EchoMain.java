@@ -46,13 +46,12 @@ public class EchoMain {
         LogConfig.configureRuntime();
 
         WebServer.builder()
-                .port(8080)
-                .host("127.0.0.1")
-                .routing(router -> router
-                        .get("/echo/{param}", EchoMain::echo)
-                )
-                .build()
-                .start();
+                 .port(8080)
+                 .host("127.0.0.1")
+                 .routing(router -> router
+                         .get("/echo/{param}", EchoMain::echo))
+                 .build()
+                 .start();
     }
 
     private static void echo(ServerRequest req, ServerResponse res) {

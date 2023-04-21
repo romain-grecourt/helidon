@@ -30,11 +30,10 @@ module io.helidon.integrations.vault.secrets.kv {
 
     requires java.logging;
 
-    requires io.helidon.integrations.vault;
+    requires transitive io.helidon.integrations.vault;
     requires io.helidon.integrations.common.rest;
     requires io.helidon.common.http;
-
-    requires static io.helidon.security;
+    requires transitive io.helidon.security;
 
     exports io.helidon.integrations.vault.secrets.kv2;
 

@@ -92,6 +92,17 @@ public interface ClientRequest<B extends ClientRequest<B, R>, R extends ClientRe
     }
 
     /**
+     * Set an HTTP header.
+     *
+     * @param name  header name
+     * @param value header value
+     * @return updated request
+     */
+    default B header(String name, String value) {
+        return header(Http.Header.create(name), value);
+    }
+
+    /**
      * Update headers.
      *
      * @param headersConsumer consumer of client request headers

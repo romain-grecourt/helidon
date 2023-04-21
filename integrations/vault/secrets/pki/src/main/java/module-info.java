@@ -31,7 +31,7 @@ module io.helidon.integrations.vault.secrets.pki {
     requires java.logging;
 
     requires io.helidon.integrations.common.rest;
-    requires io.helidon.integrations.vault;
+    requires transitive io.helidon.integrations.vault;
     requires io.helidon.common.http;
 
     exports io.helidon.integrations.vault.secrets.pki;

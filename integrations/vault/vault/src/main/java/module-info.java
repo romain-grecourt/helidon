@@ -29,13 +29,12 @@ module io.helidon.integrations.vault {
     requires static io.helidon.common.features.api;
 
     requires transitive jakarta.json;
-
     requires transitive io.helidon.config;
 
     requires io.helidon.common;
-    requires io.helidon.integrations.common.rest;
-    requires io.helidon.nima.webclient;
-    requires io.helidon.nima.faulttolerance;
+    requires transitive io.helidon.integrations.common.rest;
+    requires transitive io.helidon.nima.webclient;
+    requires transitive io.helidon.nima.faulttolerance;
 
     exports io.helidon.integrations.vault;
     exports io.helidon.integrations.vault.spi;

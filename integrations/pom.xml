@@ -62,6 +62,8 @@
                     <configuration>
                         <compilerArgs>
                             <arg>-Xlint:all</arg>
+                            <arg>-Xlint:-missing-explicit-ctor</arg>
+                            <arg>-Xlint:-serial</arg>
                             <arg>-parameters</arg>
                         </compilerArgs>
                     </configuration>

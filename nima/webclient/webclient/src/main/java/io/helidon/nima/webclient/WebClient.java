@@ -20,6 +20,7 @@ import java.net.URI;
 import java.util.function.Supplier;
 
 import io.helidon.common.socket.SocketOptions;
+import io.helidon.config.Config;
 import io.helidon.nima.common.tls.Tls;
 import io.helidon.nima.webclient.http1.Http1;
 import io.helidon.nima.webclient.http1.Http1Client;
@@ -151,6 +152,14 @@ public interface WebClient {
             return (B) this;
         }
 
+        public B config(Config config) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public B header(String s, String ns) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
         /**
          * Channel options.
          *
@@ -185,6 +194,5 @@ public interface WebClient {
         DnsAddressLookup dnsAddressLookup() {
             return dnsAddressLookup;
         }
-
     }
 }

@@ -44,6 +44,12 @@ public class TokenAuthProvider implements AuthMethodProvider<TokenAuth>,
         INJECTABLES = List.copyOf(injectables);
     }
 
+    /**
+     * Create a new instance.
+     */
+    public TokenAuthProvider() {
+    }
+
     @Override
     public AuthMethod<TokenAuth> supportedMethod() {
         return TokenAuth.AUTH_METHOD;
