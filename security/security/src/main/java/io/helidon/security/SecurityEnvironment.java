@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 
+import io.helidon.common.http.Headers;
+import io.helidon.common.http.Http;
+import io.helidon.common.uri.UriPath;
 import io.helidon.common.uri.UriQuery;
 import io.helidon.common.uri.UriQueryWriteable;
 import io.helidon.security.util.AbacSupport;
@@ -283,6 +286,20 @@ public class SecurityEnvironment implements AbacSupport {
         }
 
         /**
+         * Transport headers (such as HTTP headers, JMS headers).
+         * Headers are case insensitive.
+         *
+         * @param headers header map
+         * @return this instance
+         */
+        public Builder headers(Headers headers) {
+            for (Http.HeaderValue header : headers) {
+                this.headers.put(header.name(), header.allValues());
+            }
+            return this;
+        }
+
+        /**
          * We may want to clear existing headers, such as when deriving an environment
          * for outbound calls.
          *
@@ -343,6 +360,17 @@ public class SecurityEnvironment implements AbacSupport {
         }
 
         /**
+         * Path that is requested.
+         *
+         * @param path the path
+         * @return this instance
+         */
+        public Builder path(UriPath path) {
+            this.path = path.rawPathNoParams();
+            return this;
+        }
+
+        /**
          * Method that is requested (such as GET/POST for http).
          * Default is {@value #DEFAULT_METHOD}.
          *
@@ -351,6 +379,18 @@ public class SecurityEnvironment implements AbacSupport {
          */
         public Builder method(String method) {
             this.method = method;
+            return this;
+        }
+
+        /**
+         * Method that is requested (such as GET/POST for http).
+         * Default is {@value #DEFAULT_METHOD}.
+         *
+         * @param method the method
+         * @return this instance
+         */
+        public Builder method(Http.Method method) {
+            this.method = method.toString();
             return this;
         }
 

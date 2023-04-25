@@ -16,6 +16,9 @@
 
 package io.helidon.nima.webclient.http1;
 
+import io.helidon.common.http.Http;
+import io.helidon.common.uri.UriPath;
+import io.helidon.common.uri.UriQuery;
 import io.helidon.nima.webclient.ClientRequest;
 
 /**
@@ -23,4 +26,9 @@ import io.helidon.nima.webclient.ClientRequest;
  */
 public interface Http1ClientRequest extends ClientRequest<Http1ClientRequest, Http1ClientResponse> {
 
+    Http.Method method();
+
+    UriPath path();
+
+    UriQuery query();
 }

@@ -26,6 +26,8 @@ module io.helidon.security.integration.nima {
     requires io.helidon.common.context;
     requires io.helidon.nima.webserver;
     requires io.helidon.security.integration.common;
+    requires io.helidon.nima.webclient;
+    requires io.helidon.security.providers.common;
 
     exports io.helidon.security.integration.nima;
 }

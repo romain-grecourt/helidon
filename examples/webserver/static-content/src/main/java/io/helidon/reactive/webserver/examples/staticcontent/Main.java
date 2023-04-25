@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,11 @@
 package io.helidon.reactive.webserver.examples.staticcontent;
 
 import io.helidon.common.http.Http;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.staticcontent.StaticContentSupport;
+import io.helidon.nima.http.media.jsonp.JsonpSupport;
+import io.helidon.nima.webserver.Routing;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
+import io.helidon.nima.webserver.staticcontent.StaticContentService;
 
 /**
  * Application demonstrates combination of the static content with a simple REST API. It counts accesses and display it
@@ -33,44 +34,36 @@ public class Main {
     }
 
     /**
-     * Creates new {@link Routing}.
-     *
-     * @return the new instance
-     */
-    static Routing createRouting() {
-        return Routing.builder()
-                .any("/", (req, res) -> {
-                    // showing the capability to run on any path, and redirecting from root
-                    res.status(Http.Status.MOVED_PERMANENTLY_301);
-                    res.headers().set(UI_REDIRECT);
-                    res.send();
-                })
-                .register("/ui", new CounterService())
-                .register("/ui", StaticContentSupport.builder("WEB")
-                        .welcomeFileName("index.html")
-                        .build())
-                .build();
-    }
-
-    /**
      * A java main class.
      *
      * @param args command line arguments.
      */
     public static void main(String[] args) {
-        WebServer server = WebServer.builder(createRouting())
-                .port(8080)
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        WebServer server = WebServer.builder()
+                                    .port(8080)
+                                    .routing(Main::createRouting)
+                                    .addMediaSupport(JsonpSupport.create())
+                                    .start();
 
-        // Start the server and print some info.
-        server.start().thenAccept(ws -> {
-            System.out.println("WEB server is up! http://localhost:" + ws.port());
-        });
+        System.out.println("WEB server is up! http://localhost:" + server.port());
+    }
 
-        // Server threads are not demon. NO need to block. Just react.
-        server.whenShutdown()
-                .thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-
+    /**
+     * Creates new {@link Routing}.
+     *
+     * @return the new instance
+     */
+    static Routing createRouting(HttpRouting.Builder routing) {
+        return routing.any("/", (req, res) -> {
+                          // showing the capability to run on any path, and redirecting from root
+                          res.status(Http.Status.MOVED_PERMANENTLY_301);
+                          res.headers().set(UI_REDIRECT);
+                          res.send();
+                      })
+                      .register("/ui", new CounterService())
+                      .register("/ui", StaticContentService.builder("web")
+                                                           .welcomeFileName("index.html")
+                                                           .build())
+                      .build();
     }
 }

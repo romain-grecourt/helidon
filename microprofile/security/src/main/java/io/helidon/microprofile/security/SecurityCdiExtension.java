@@ -27,8 +27,6 @@ import io.helidon.microprofile.server.ServerCdiExtension;
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.ProviderRequest;
 import io.helidon.security.Security;
-import io.helidon.security.integration.jersey.JerseySecurityFeature;
-import io.helidon.security.integration.jersey.SecurityDisabledFeature;
 import io.helidon.security.integration.nima.SecurityFeature;
 import io.helidon.security.providers.abac.AbacProvider;
 import io.helidon.security.spi.AuthenticationProvider;

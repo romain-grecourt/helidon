@@ -20,10 +20,10 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
@@ -32,29 +32,29 @@ import jakarta.json.JsonObject;
 /**
  * Counts access to the WEB service.
  */
-public class CounterService implements Service {
+public class CounterService implements HttpService {
 
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
     private final LongAdder allAccessCounter = new LongAdder();
     private final AtomicInteger apiAccessCounter = new AtomicInteger();
 
     @Override
-    public void update(Routing.Rules routingRules) {
-        routingRules.any(this::handleAny)
+    public void routing(HttpRules rules) {
+        rules.any(this::handleAny)
                     .get("/api/counter", this::handleGet);
     }
 
-    private void handleAny(ServerRequest request, ServerResponse response) {
+    private void handleAny(ServerRequest req, ServerResponse res) {
         allAccessCounter.increment();
-        request.next();
+        res.next();
     }
 
-    private void handleGet(ServerRequest request, ServerResponse response) {
+    private void handleGet(ServerRequest req, ServerResponse res) {
         int apiAcc = apiAccessCounter.incrementAndGet();
         JsonObject result = JSON.createObjectBuilder()
                                 .add("all", allAccessCounter.longValue())
                                 .add("api", apiAcc)
                                 .build();
-        response.send(result);
+        res.send(result);
     }
 }

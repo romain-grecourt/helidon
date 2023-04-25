@@ -19,6 +19,7 @@ package io.helidon.nima.webclient;
 import java.net.URI;
 import java.util.function.Supplier;
 
+import io.helidon.common.Builder;
 import io.helidon.common.socket.SocketOptions;
 import io.helidon.config.Config;
 import io.helidon.nima.common.tls.Tls;
@@ -157,6 +158,10 @@ public interface WebClient {
         }
 
         public B header(String s, String ns) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public B service(ClientService server) {
             throw new UnsupportedOperationException("Not implemented yet");
         }
 

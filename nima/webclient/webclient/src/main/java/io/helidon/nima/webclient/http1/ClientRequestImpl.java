@@ -30,6 +30,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Function;
 
 import io.helidon.common.GenericType;
+import io.helidon.common.LazyValue;
 import io.helidon.common.buffers.BufferData;
 import io.helidon.common.buffers.Bytes;
 import io.helidon.common.buffers.DataReader;
@@ -45,6 +46,8 @@ import io.helidon.common.http.Http1HeadersParser;
 import io.helidon.common.http.WritableHeaders;
 import io.helidon.common.socket.SocketOptions;
 import io.helidon.common.uri.UriEncoding;
+import io.helidon.common.uri.UriPath;
+import io.helidon.common.uri.UriQuery;
 import io.helidon.common.uri.UriQueryWriteable;
 import io.helidon.nima.common.tls.Tls;
 import io.helidon.nima.http.media.EntityWriter;
@@ -64,6 +67,7 @@ class ClientRequestImpl implements Http1ClientRequest {
     private final Http1ClientImpl client;
     private final Http.Method method;
     private final UriHelper uri;
+    private final UriPath path;
     private final boolean defaultKeepAlive = true;
     private final SocketOptions channelOptions;
     private final BufferData writeBuffer = BufferData.growing(128);
@@ -85,7 +89,7 @@ class ClientRequestImpl implements Http1ClientRequest {
         this.client = client;
         this.method = method;
         this.uri = helper;
-
+        this.path = UriPath.create(uri.path());
         this.tls = client.tls();
         this.channelOptions = client.socketOptions();
         this.query = query;
@@ -115,6 +119,21 @@ class ClientRequestImpl implements Http1ClientRequest {
         }
 
         return this;
+    }
+
+    @Override
+    public Http.Method method() {
+        return method;
+    }
+
+    @Override
+    public UriPath path() {
+        return path;
+    }
+
+    @Override
+    public UriQuery query() {
+        return query;
     }
 
     @Override

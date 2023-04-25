@@ -42,8 +42,6 @@ public class IdcsRoleMapperProviderService implements SecurityProviderService {
         if (config.get("multitenant").asBoolean().orElse(true)) {
             return IdcsMtRoleMapperProvider.create(config);
         }
-        // we now use the new reactive implementation by default
-        // the behavior is backward compatible (and configuration as well)
         return IdcsRoleMapperProvider.create(config);
     }
 }

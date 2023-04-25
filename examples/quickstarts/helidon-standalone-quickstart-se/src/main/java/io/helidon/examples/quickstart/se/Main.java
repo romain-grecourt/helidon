@@ -16,15 +16,18 @@
 
 package io.helidon.examples.quickstart.se;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.health.checks.HealthChecks;
+import io.helidon.health.checks.DeadlockHealthCheck;
+import io.helidon.health.checks.DiskSpaceHealthCheck;
+import io.helidon.health.checks.HeapMemoryHealthCheck;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.observe.health.HealthFeature;
+import io.helidon.nima.observe.health.HealthObserveProvider;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
+
+import jakarta.json.JsonException;
 
 /**
  * The application main class.
@@ -39,63 +42,39 @@ public final class Main {
 
     /**
      * Application main entry point.
+     *
      * @param args command line arguments.
      */
-    public static void main(final String[] args) {
-        startServer();
-    }
-
-    /**
-     * Start the server.
-     * @return the created {@link WebServer} instance
-     */
-    static Single<WebServer> startServer() {
-
+    public static void main(String[] args) {
         // load logging configuration
         LogConfig.configureRuntime();
 
         // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
 
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        WebServer server = WebServer.builder()
+                                    .routing(rules -> routing(rules, config))
+                                    .start();
 
-        Single<WebServer> webserver = server.start();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        webserver.thenAccept(ws -> {
-                    System.out.println("WEB server is up! http://localhost:" + ws.port() + "/greet");
-                    ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-                .exceptionallyAccept(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
-
-        return webserver;
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Creates new {@link Routing}.
-     *
-     * @return routing configured with JSON support, a health check, and a service
-     * @param config configuration of this server
+     * Updates HTTP Routing.
      */
-    private static Routing createRouting(Config config) {
+    static void routing(HttpRouting.Builder routing, Config config) {
+        ObserveFeature observe = ObserveFeature.builder()
+               .useSystemServices(false)
+               .addProvider(HealthObserveProvider.create(HealthFeature.builder()
+                                    .useSystemServices(false)
+                                    .addCheck(HeapMemoryHealthCheck.create())
+                                    .addCheck(DiskSpaceHealthCheck.create())
+                                    .addCheck(DeadlockHealthCheck.create())
+                                    .build()))
+               .build();
 
-        MetricsSupport metrics = MetricsSupport.create();
-        GreetService greetService = new GreetService(config);
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())   // Adds a convenient set of checks
-                .build();
-
-        return Routing.builder()
-                .register(health)                   // Health at "/health"
-                .register(metrics)                  // Metrics at "/metrics"
-                .register("/greet", greetService)
-                .build();
+        routing.register("/greet", () -> new GreetService(config))
+               .addFeature(observe)
+               .error(JsonException.class, new JsonErrorHandler());
     }
 }

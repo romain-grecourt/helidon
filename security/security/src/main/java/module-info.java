@@ -43,6 +43,7 @@ module io.helidon.security {
     requires io.helidon.security.util;
     requires io.helidon.common.context;
     requires io.helidon.common.uri;
+    requires io.helidon.common.http;
 
     exports io.helidon.security;
     exports io.helidon.security.spi;
@@ -50,7 +51,7 @@ module io.helidon.security {
     exports io.helidon.security.internal to io.helidon.security.integration.jersey,
             io.helidon.security.integration.webserver,
             io.helidon.security.integration.nima,
-            io.helidon.security.integration.grpc;
+            io.helidon.security.integration.grpc, io.helidon.microprofile.security;
 
     // needed for CDI integration
     opens io.helidon.security to weld.core.impl, io.helidon.microprofile.cdi;

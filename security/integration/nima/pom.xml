@@ -49,12 +49,20 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>io.helidon.nima.webclient</groupId>
+            <artifactId>helidon-nima-webclient</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.security</groupId>
             <artifactId>helidon-security-util</artifactId>
         </dependency>
         <dependency>
             <groupId>io.helidon.nima.webserver</groupId>
             <artifactId>helidon-nima-webserver-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.security.providers</groupId>
+            <artifactId>helidon-security-providers-common</artifactId>
         </dependency>
         <dependency>
             <groupId>io.helidon.config</groupId>
@@ -86,16 +94,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.helidon.reactive.webclient</groupId>
-            <artifactId>helidon-reactive-webclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.reactive.webclient</groupId>
-            <artifactId>helidon-reactive-webclient-security</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
@@ -113,6 +111,11 @@
         <dependency>
             <groupId>io.helidon.common.testing</groupId>
             <artifactId>helidon-common-testing-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.testing.junit5</groupId>
+            <artifactId>helidon-nima-testing-junit5-webserver</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

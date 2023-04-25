@@ -16,20 +16,19 @@
 
 package io.helidon.security.integration.nima;
 
-import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 import io.helidon.common.context.Contexts;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.HttpMediaType;
 import io.helidon.config.Config;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.webclient.WebClient;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.nima.webserver.WebServer;
 import io.helidon.nima.webserver.context.ContextFeature;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webclient.security.WebClientSecurity;
 import io.helidon.security.AuditEvent;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityContext;
@@ -49,26 +48,26 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Unit test for {@link SecurityFeature}.
  */
+@SuppressWarnings("resource")
+@ServerTest
 class WebSecurityBuilderGateDefaultsTest {
-    private static final Duration TIMEOUT = Duration.ofSeconds(10);
-
     private static io.helidon.security.integration.nima.UnitTestAuditProvider myAuditProvider;
     private static WebServer server;
-    private static WebClient securitySetup;
-    private static WebClient webClient;
+    private static Http1Client securitySetup;
+    private static Http1Client webClient;
     private static String serverBaseUri;
 
     @BeforeAll
     static void setupClients() {
         Security clientSecurity = Security.builder()
-                .addProvider(HttpBasicAuthProvider.builder().build())
-                .build();
+                                          .addProvider(HttpBasicAuthProvider.builder().build())
+                                          .build();
 
         securitySetup = WebClient.builder()
-                .addService(WebClientSecurity.create(clientSecurity))
-                .build();
+                                 .service(ClientSecurity.create(clientSecurity))
+                                 .build();
 
-        webClient = WebClient.create();
+        webClient = WebClient.builder().build();
     }
 
     @BeforeAll
@@ -79,35 +78,35 @@ class WebSecurityBuilderGateDefaultsTest {
         Config config = Config.create();
 
         Security security = Security.builder(config.get("security"))
-                .addAuditProvider(myAuditProvider).build();
+                                    .addAuditProvider(myAuditProvider).build();
 
         server = WebServer.builder()
-                .routing(builder -> builder.addFeature(ContextFeature.create())
-                        .addFeature(SecurityFeature.create(security)
-                                          .securityDefaults(SecurityFeature.rolesAllowed("admin").audit()))
-                        // will only accept admin (due to gate defaults)
-                        .get("/noRoles", SecurityFeature.authenticate())
-                        .get("/user[/{*}]", SecurityFeature.rolesAllowed("user"))
-                        .get("/admin", SecurityFeature.rolesAllowed("admin"))
-                        // will also accept admin (due to gate defaults)
-                        .get("/deny", SecurityFeature.rolesAllowed("deny"))
-                        // audit is on from gate defaults
-                        .get("/auditOnly", SecurityFeature
-                                .enforce()
-                                .skipAuthentication()
-                                .skipAuthorization()
-                                .auditEventType("unit_test")
-                                .auditMessageFormat(WebSecurityTests.AUDIT_MESSAGE_FORMAT)
-                        )
-                        .get("/{*}", (req, res) -> {
-                            Optional<SecurityContext> securityContext = Contexts.context()
-                                    .flatMap(it -> it.get(SecurityContext.class));
-                            res.headers().contentType(HttpMediaType.PLAINTEXT_UTF_8);
-                            res.send("Hello, you are: \n" + securityContext
-                                    .map(ctx -> ctx.user().orElse(SecurityContext.ANONYMOUS).toString())
-                                    .orElse("Security context is null"));
-                        }))
-                .build();
+                          .routing(builder -> builder.addFeature(ContextFeature.create())
+                                                     .addFeature(SecurityFeature.create(security)
+                                                                                .securityDefaults(SecurityFeature.rolesAllowed("admin").audit()))
+                                                     // will only accept admin (due to gate defaults)
+                                                     .get("/noRoles", SecurityFeature.authenticate())
+                                                     .get("/user[/{*}]", SecurityFeature.rolesAllowed("user"))
+                                                     .get("/admin", SecurityFeature.rolesAllowed("admin"))
+                                                     // will also accept admin (due to gate defaults)
+                                                     .get("/deny", SecurityFeature.rolesAllowed("deny"))
+                                                     // audit is on from gate defaults
+                                                     .get("/auditOnly", SecurityFeature
+                                                             .enforce()
+                                                             .skipAuthentication()
+                                                             .skipAuthorization()
+                                                             .auditEventType("unit_test")
+                                                             .auditMessageFormat(WebSecurityTests.AUDIT_MESSAGE_FORMAT)
+                                                     )
+                                                     .get("/{*}", (req, res) -> {
+                                                         Optional<SecurityContext> securityContext = Contexts.context()
+                                                                                                             .flatMap(it -> it.get(SecurityContext.class));
+                                                         res.headers().contentType(HttpMediaType.PLAINTEXT_UTF_8);
+                                                         res.send("Hello, you are: \n" + securityContext
+                                                                 .map(ctx -> ctx.user().orElse(SecurityContext.ANONYMOUS).toString())
+                                                                 .orElse("Security context is null"));
+                                                     }))
+                          .build();
 
         server.start();
         serverBaseUri = "http://localhost:" + server.port();
@@ -119,14 +118,13 @@ class WebSecurityBuilderGateDefaultsTest {
     }
 
     @Test
-    public void testCustomizedAudit() throws InterruptedException {
+    public void testCustomizedAudit() {
         // even though I send username and password, this MUST NOT require authentication
         // as then audit is called twice - first time with 401 (challenge) and second time with 200 (correct request)
         // and that intermittently breaks this test
-        WebClientResponse response = webClient.get()
-                .uri(serverBaseUri + "/auditOnly")
-                .request()
-                .await(TIMEOUT);
+        Http1ClientResponse response = webClient.get()
+                                                .uri(serverBaseUri + "/auditOnly")
+                                                .request();
 
         assertThat(response.status(), is(Http.Status.OK_200));
 
@@ -138,7 +136,7 @@ class WebSecurityBuilderGateDefaultsTest {
     }
 
     @Test
-    void basicTestJohn() throws ExecutionException, InterruptedException {
+    void basicTestJohn() {
         String username = "john";
         String password = "password";
 
@@ -149,43 +147,43 @@ class WebSecurityBuilderGateDefaultsTest {
     }
 
     @Test
-    void basicTestJack() throws ExecutionException, InterruptedException {
+    void basicTestJack() {
         String username = "jack";
         String password = "jackIsGreat";
 
         testProtected(serverBaseUri + "/noRoles",
-                      username,
-                      password,
-                      Set.of("user", "admin"),
-                      Set.of());
+                username,
+                password,
+                Set.of("user", "admin"),
+                Set.of());
         testProtected(serverBaseUri + "/user",
-                      username,
-                      password,
-                      Set.of("user", "admin"),
-                      Set.of());
+                username,
+                password,
+                Set.of("user", "admin"),
+                Set.of());
         testProtected(serverBaseUri + "/admin",
-                      username,
-                      password,
-                      Set.of("user", "admin"),
-                      Set.of());
+                username,
+                password,
+                Set.of("user", "admin"),
+                Set.of());
         testProtected(serverBaseUri + "/deny",
-                      username,
-                      password,
-                      Set.of("user", "admin"),
-                      Set.of());
+                username,
+                password,
+                Set.of("user", "admin"),
+                Set.of());
     }
 
     @Test
-    void basicTestJill() throws ExecutionException, InterruptedException {
+    void basicTestJill() {
         String username = "jill";
         String password = "password";
 
         testForbidden(serverBaseUri + "/noRoles", username, password);
         testProtected(serverBaseUri + "/user",
-                      username,
-                      password,
-                      Set.of("user"),
-                      Set.of("admin"));
+                username,
+                password,
+                Set.of("user"),
+                Set.of("admin"));
         testForbidden(serverBaseUri + "/admin", username, password);
         testForbidden(serverBaseUri + "/deny", username, password);
     }
@@ -193,21 +191,20 @@ class WebSecurityBuilderGateDefaultsTest {
     @Test
     void basicTest401() {
         // here we call the endpoint
-        WebClientResponse response = webClient.get()
-                .uri(serverBaseUri + "/noRoles")
-                .request()
-                .await(TIMEOUT);
+        Http1ClientResponse response = webClient.get()
+                                                .uri(serverBaseUri + "/noRoles")
+                                                .request();
 
         if (response.status() != Http.Status.UNAUTHORIZED_401) {
-            assertThat("Response received: " + response.content().as(String.class).await(TIMEOUT),
-                       response.status(),
-                       is(Http.Status.UNAUTHORIZED_401));
+            assertThat("Response received: " + response.entity().as(String.class),
+                    response.status(),
+                    is(Http.Status.UNAUTHORIZED_401));
         }
 
         Optional<String> authenticate = response.headers().first(Http.Header.WWW_AUTHENTICATE);
         assertThat(authenticate, optionalValue(is("Basic realm=\"mic\"")));
 
-        WebClientResponse webClientResponse = callProtected(serverBaseUri + "/noRoles", "invalidUser", "invalidPassword");
+        Http1ClientResponse webClientResponse = callProtected(serverBaseUri + "/noRoles", "invalidUser", "invalidPassword");
         assertThat(webClientResponse.status(), is(Http.Status.UNAUTHORIZED_401));
         authenticate = webClientResponse.headers().first(Http.Header.WWW_AUTHENTICATE);
 
@@ -215,10 +212,10 @@ class WebSecurityBuilderGateDefaultsTest {
     }
 
     private void testForbidden(String uri, String username, String password) {
-        WebClientResponse response = callProtected(uri, username, password);
+        Http1ClientResponse response = callProtected(uri, username, password);
         assertThat(uri + " for user " + username + " should be forbidden",
-                   response.status(),
-                   is(Http.Status.FORBIDDEN_403));
+                response.status(),
+                is(Http.Status.FORBIDDEN_403));
     }
 
     private void testProtected(String uri,
@@ -227,12 +224,10 @@ class WebSecurityBuilderGateDefaultsTest {
                                Set<String> expectedRoles,
                                Set<String> invalidRoles) {
 
-        WebClientResponse response = callProtected(uri, username, password);
+        Http1ClientResponse response = callProtected(uri, username, password);
         assertThat(response.status(), is(Http.Status.OK_200));
 
-        String entity = response.content()
-                .as(String.class)
-                .await(TIMEOUT);
+        String entity = response.entity().as(String.class);
 
         // check login
         assertThat(entity, containsString("id='" + username + "'"));
@@ -242,13 +237,12 @@ class WebSecurityBuilderGateDefaultsTest {
 
     }
 
-    private WebClientResponse callProtected(String uri, String username, String password) {
+    private Http1ClientResponse callProtected(String uri, String username, String password) {
         // here we call the endpoint
         return securitySetup.get()
-                .uri(uri)
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, username)
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, password)
-                .request()
-                .await(TIMEOUT);
+                            .uri(uri)
+                            .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, username)
+                            .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, password)
+                            .request();
     }
 }

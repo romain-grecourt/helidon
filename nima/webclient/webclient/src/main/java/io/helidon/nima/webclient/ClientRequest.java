@@ -19,6 +19,7 @@ package io.helidon.nima.webclient;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.util.Map;
 import java.util.function.Function;
 
 import io.helidon.common.http.ClientRequestHeaders;
@@ -203,6 +204,14 @@ public interface ClientRequest<B extends ClientRequest<B, R>, R extends ClientRe
      * @return updated client request
      */
     B connection(ClientConnection connection);
+
+    default B property(String prop, String value) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    default Map<String, String> properties() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 
     /**
      * Handle output stream.
