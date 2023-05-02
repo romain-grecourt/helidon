@@ -34,6 +34,7 @@
     <modules>
         <module>neo4j</module>
         <module>health</module>
+        <module>health-cdi</module>
         <module>metrics</module>
     </modules>
 </project>

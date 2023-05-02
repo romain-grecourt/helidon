@@ -17,34 +17,30 @@
 package io.helidon.examples.integrations.neo4j.se;
 
 import io.helidon.examples.integrations.neo4j.se.domain.MovieRepository;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 /**
  * The Movie service.
- *
  */
-public class MovieService implements Service {
+public class MovieService implements HttpService {
 
     private final MovieRepository movieRepository;
 
     /**
      * The movies service.
+     *
      * @param movieRepository
      */
     public MovieService(MovieRepository movieRepository) {
         this.movieRepository = movieRepository;
     }
 
-    /**
-     * Main routing done here.
-     *
-     * @param rules
-     */
+
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules.get("/api/movies", this::findMoviesHandler);
     }
 

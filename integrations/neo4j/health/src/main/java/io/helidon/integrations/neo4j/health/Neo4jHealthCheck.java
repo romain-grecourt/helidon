@@ -16,24 +16,17 @@
 
 package io.helidon.integrations.neo4j.health;
 
-import io.helidon.microprofile.health.BuiltInHealthCheck;
+import io.helidon.health.HealthCheck;
+import io.helidon.health.HealthCheckResponse;
+import io.helidon.health.HealthCheckResponse.Status;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.eclipse.microprofile.health.HealthCheck;
-import org.eclipse.microprofile.health.HealthCheckResponse;
-import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
-import org.eclipse.microprofile.health.Readiness;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Session;
 
 
 /**
- * Health support module for Neo4j. Follows the standard MicroProfile HealthCheck pattern.
+ * Health support module for Neo4j.
  */
-@Readiness
-@ApplicationScoped
-@BuiltInHealthCheck
 public class Neo4jHealthCheck implements HealthCheck {
 
     /**
@@ -48,7 +41,6 @@ public class Neo4jHealthCheck implements HealthCheck {
      *
      * @param driver Neo4j.
      */
-    @Inject //will be ignored out of CDI
     Neo4jHealthCheck(Driver driver) {
         this.driver = driver;
     }
@@ -63,10 +55,9 @@ public class Neo4jHealthCheck implements HealthCheck {
         return new Neo4jHealthCheck(driver);
     }
 
-    private HealthCheckResponse runHealthCheckQuery(HealthCheckResponseBuilder builder) {
+    private HealthCheckResponse runHealthCheckQuery(HealthCheckResponse.Builder builder) {
 
         try (Session session = this.driver.session()) {
-
             return session.writeTransaction(tx -> {
                 var result = tx.run(CYPHER);
 
@@ -75,27 +66,32 @@ public class Neo4jHealthCheck implements HealthCheck {
                 var serverInfo = resultSummary.server();
 
                 var responseBuilder = builder
-                        .withData("server", serverInfo.version() + "@" + serverInfo.address())
-                        .withData("edition", edition);
+                        .detail("server", serverInfo.version() + "@" + serverInfo.address())
+                        .detail("edition", edition);
 
                 var databaseInfo = resultSummary.database();
                 if (!databaseInfo.name().trim().isBlank()) {
-                    responseBuilder.withData("database", databaseInfo.name().trim());
+                    responseBuilder.detail("database", databaseInfo.name().trim());
                 }
 
-                return responseBuilder.up().build();
+                return responseBuilder.status(Status.UP).build();
             });
         }
     }
 
     @Override
-    public HealthCheckResponse call() {
+    public String name() {
+        return "Neo4j connection health check";
+    }
 
-        var builder = HealthCheckResponse.named("Neo4j connection health check");
+    @Override
+    public HealthCheckResponse call() {
+        var builder = HealthCheckResponse.builder();
         try {
             return runHealthCheckQuery(builder);
         } catch (Exception ex) {
-            return builder.down().withData("reason", ex.getMessage()).build();
+            return builder.status(Status.DOWN)
+                          .detail("reason", ex.getMessage()).build();
         }
     }
 }

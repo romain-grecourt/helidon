@@ -18,16 +18,11 @@ package io.helidon.grpc.examples.basics;
 
 import io.helidon.config.Config;
 import io.helidon.grpc.examples.common.GreetService;
-import io.helidon.grpc.examples.common.GreetServiceJava;
 import io.helidon.grpc.examples.common.StringService;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
-import io.helidon.health.checks.HealthChecks;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * A basic example of a Helidon gRPC server.
@@ -40,7 +35,7 @@ public class Server {
     /**
      * The main program entry point.
      *
-     * @param args  the program arguments
+     * @param args the program arguments
      */
     public static void main(String[] args) {
         // By default this will pick up application.yaml from the classpath
@@ -49,57 +44,24 @@ public class Server {
         // load logging configuration
         LogConfig.configureRuntime();
 
-        // Get gRPC server config from the "grpc" section of application.yaml
-        GrpcServerConfiguration serverConfig =
-                GrpcServerConfiguration.builder(config.get("grpc")).build();
+        WebServer server = WebServer.builder()
+                                    .config(config.get("server"))
+                                    .routing(routing -> routing.addFeature(ObserveFeature.create()))
+                                    .addRouting(createRouting(config))
+                                    .start();
 
-        GrpcServer grpcServer = GrpcServer.create(serverConfig, createRouting(config));
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        grpcServer.start()
-                .thenAccept(s -> {
-                    System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                    s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                });
-
-        // add support for standard and gRPC health checks
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())
-                .addLiveness(grpcServer.healthChecks())
-                .build();
-
-        // start web server with health endpoint
-        Routing routing = Routing.builder()
-                .register(health)
-                .build();
-
-        WebServer.create(routing, config.get("webserver"))
-                .start()
-                .thenAccept(s -> {
-                    System.out.println("HTTP server is UP! http://localhost:" + s.port());
-                    s.whenShutdown().thenRun(() -> System.out.println("HTTP server is DOWN. Good bye!"));
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                });
+        System.out.println("gRPC server is UP! http://localhost:" + server.port());
     }
 
     private static GrpcRouting createRouting(Config config) {
         GreetService greetService = new GreetService(config);
-        GreetServiceJava greetServiceJava = new GreetServiceJava(config);
+        // TODO
+        // GreetServiceJava greetServiceJava = new GreetServiceJava(config);
 
         return GrpcRouting.builder()
-                .register(greetService)
-                .register(greetServiceJava)
-                .register(new StringService())
-                .build();
+                          .service(greetService)
+//                .service(greetServiceJava)
+                          .service(new StringService())
+                          .build();
     }
 }

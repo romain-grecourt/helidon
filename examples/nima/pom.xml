@@ -35,7 +35,6 @@
         <module>quickstart</module>
         <module>quickstart-standalone</module>
         <module>echo</module>
-        <module>media</module>
         <module>protocols</module>
         <module>tracing</module>
         <module>observe</module>

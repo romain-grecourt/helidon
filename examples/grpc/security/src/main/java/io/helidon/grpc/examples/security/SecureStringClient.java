@@ -63,23 +63,24 @@ public class SecureStringClient {
 
         // create the gRPC client security call credentials
         // setting the properties used by the basic auth provider for user name and password
-        GrpcClientSecurity clientSecurity = GrpcClientSecurity.builder(security.createContext("test.client"))
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, user)
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, password)
-                .build();
-
-        // Create the client service descriptor and add the call credentials
-        ClientServiceDescriptor descriptor = ClientServiceDescriptor
-                .builder(StringServiceGrpc.getServiceDescriptor())
-                .callCredentials(clientSecurity)
-                .build();
-
-        // create the client for the service
-        GrpcServiceClient client = GrpcServiceClient.create(channel, descriptor);
-
-        Strings.StringMessage request = Strings.StringMessage.newBuilder().setText("ABCDE").build();
-        Strings.StringMessage response = client.blockingUnary("Lower", request);
-
-        System.out.println("Response from Lower method call is '" + response.getText() + "'");
+        // TODO
+//        GrpcClientSecurity clientSecurity = GrpcClientSecurity.builder(security.createContext("test.client"))
+//                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, user)
+//                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, password)
+//                .build();
+//
+//        // Create the client service descriptor and add the call credentials
+//        ClientServiceDescriptor descriptor = ClientServiceDescriptor
+//                .builder(StringServiceGrpc.getServiceDescriptor())
+//                .callCredentials(clientSecurity)
+//                .build();
+//
+//        // create the client for the service
+//        GrpcServiceClient client = GrpcServiceClient.create(channel, descriptor);
+//
+//        Strings.StringMessage request = Strings.StringMessage.newBuilder().setText("ABCDE").build();
+//        Strings.StringMessage response = client.blockingUnary("Lower", request);
+//
+//        System.out.println("Response from Lower method call is '" + response.getText() + "'");
     }
 }

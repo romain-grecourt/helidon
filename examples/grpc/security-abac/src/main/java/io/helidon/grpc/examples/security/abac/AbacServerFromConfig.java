@@ -18,10 +18,9 @@ package io.helidon.grpc.examples.security.abac;
 
 import io.helidon.config.Config;
 import io.helidon.grpc.examples.common.StringService;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
 import io.helidon.logging.common.LogConfig;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.Security;
 import io.helidon.security.integration.grpc.GrpcSecurity;
 
@@ -42,7 +41,7 @@ public class AbacServerFromConfig {
     /**
      * Main entry point.
      *
-     * @param args  the program arguments
+     * @param args the program arguments
      */
     public static void main(String[] args) {
         LogConfig.configureRuntime();
@@ -52,22 +51,14 @@ public class AbacServerFromConfig {
         Security security = Security.create(config.get("security"));
 
         GrpcRouting grpcRouting = GrpcRouting.builder()
-                .intercept(GrpcSecurity.create(security, config.get("security")))
-                .register(new StringService())
-                .build();
+                                             .intercept(GrpcSecurity.create(security, config.get("security")))
+                                             .service(new StringService())
+                                             .build();
 
-        GrpcServerConfiguration serverConfig = GrpcServerConfiguration.create(config.get("grpc"));
-        GrpcServer grpcServer = GrpcServer.create(serverConfig, grpcRouting);
-
-        grpcServer.start()
-                .thenAccept(s -> {
-                        System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                        s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                        })
-                .exceptionally(t -> {
-                        System.err.println("Startup failed: " + t.getMessage());
-                        t.printStackTrace(System.err);
-                        return null;
-                        });
+        WebServer server = WebServer.builder()
+                                    .config(config.get("server"))
+                                    .addRouting(grpcRouting)
+                                    .start();
+        System.out.println("gRPC server is UP! http://localhost:" + server.port());
     }
 }

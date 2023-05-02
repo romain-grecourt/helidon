@@ -39,6 +39,10 @@ public interface ServerResponse {
      */
     ServerResponse status(Http.Status status);
 
+    default ServerResponse status(int status) {
+        return status(Http.Status.create(status));
+    }
+
     /**
      * Configured HTTP status, if not configured, returns {@link Http.Status#OK_200}.
      *
@@ -199,8 +203,8 @@ public interface ServerResponse {
      * Returns a sink from this response based on the sink type, if available.
      *
      * @param sinkType type of sink
+     * @param <T>      type of sink returned
      * @return sink or {@code null} if not available
-     * @param <T> type of sink returned
      */
     default <T extends Sink<?>> T sink(GenericType<T> sinkType) {
         throw new UnsupportedOperationException("No sink available for type " + sinkType);

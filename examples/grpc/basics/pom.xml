@@ -14,7 +14,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-    
+
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -40,17 +40,17 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.helidon.nima.webserver</groupId>
+            <artifactId>helidon-nima-webserver</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.grpc</groupId>
+            <artifactId>helidon-nima-grpc-webserver</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.examples.grpc</groupId>
             <artifactId>helidon-examples-grpc-common</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.grpc</groupId>
-            <artifactId>helidon-grpc-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.grpc</groupId>
-            <artifactId>helidon-grpc-client</artifactId>
         </dependency>
         <dependency>
           <groupId>io.helidon.health</groupId>
@@ -59,6 +59,10 @@
         <dependency>
             <groupId>io.helidon.bundles</groupId>
             <artifactId>helidon-bundles-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.observe</groupId>
+            <artifactId>helidon-nima-observe</artifactId>
         </dependency>
     </dependencies>
 

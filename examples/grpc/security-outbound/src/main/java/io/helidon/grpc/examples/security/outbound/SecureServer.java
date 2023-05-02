@@ -16,51 +16,48 @@
 
 package io.helidon.grpc.examples.security.outbound;
 
+import java.net.InetSocketAddress;
 import java.util.Optional;
 
 import io.helidon.common.context.Context;
+import io.helidon.common.context.Contexts;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.grpc.core.GrpcHelper;
 import io.helidon.grpc.examples.common.Greet;
 import io.helidon.grpc.examples.common.StringService;
 import io.helidon.grpc.examples.common.StringServiceGrpc;
 import io.helidon.grpc.examples.common.Strings;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webclient.security.WebClientSecurity;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.grpc.webserver.GrpcService;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityContext;
 import io.helidon.security.integration.grpc.GrpcClientSecurity;
 import io.helidon.security.integration.grpc.GrpcSecurity;
-import io.helidon.security.integration.webserver.WebSecurity;
+import io.helidon.security.integration.nima.ClientSecurity;
+import io.helidon.security.integration.nima.SecurityFeature;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
+import com.google.protobuf.Descriptors;
 import io.grpc.Channel;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
-import static io.helidon.grpc.core.ResponseHelper.complete;
+import static io.helidon.nima.grpc.webserver.ResponseHelper.complete;
 
 /**
  * An example server that configures services with outbound security.
  */
 public class SecureServer {
-
-    private static GrpcServer grpcServer;
 
     private static WebServer webServer;
 
@@ -78,75 +75,30 @@ public class SecureServer {
         Config config = Config.create();
 
         Security security = Security.builder()
-                .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
-                .build();
+                                    .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
+                                    .build();
 
-        grpcServer = createGrpcServer(config.get("grpc"), security);
-        webServer = createWebServer(config.get("webserver"), security);
-    }
-
-    /**
-     * Create the gRPC server.
-     */
-    private static GrpcServer createGrpcServer(Config config, Security security) {
-
-        GrpcRouting grpcRouting = GrpcRouting.builder()
-                // Add the security interceptor with a default of allowing any authenticated user
-                .intercept(GrpcSecurity.create(security).securityDefaults(GrpcSecurity.authenticate()))
-                // add the StringService with required role "admin"
-                .register(new StringService(), GrpcSecurity.rolesAllowed("admin"))
-                // add the GreetService (picking up the default security of any authenticated user)
-                .register(new GreetService())
-                .build();
-
-        GrpcServer grpcServer = GrpcServer.create(GrpcServerConfiguration.create(config), grpcRouting);
-
-        grpcServer.start()
-                .thenAccept(s -> {
-                        System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                        s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                        })
-                .exceptionally(t -> {
-                        System.err.println("gRPC server startup failed: " + t.getMessage());
-                        t.printStackTrace(System.err);
-                        return null;
-                        });
-
-        return grpcServer;
-    }
-
-    /**
-     * Create the web server.
-     */
-    private static WebServer createWebServer(Config config, Security security) {
-
-        Routing routing = Routing.builder()
-                                 .register(WebSecurity.create(security).securityDefaults(WebSecurity.authenticate()))
-                                 .register(new RestService())
-                                 .build();
-
-        WebServer webServer = WebServer.create(routing, config);
-
-        webServer.start()
-                .thenAccept(s -> {
-                        System.out.println("Web server is UP! http://localhost:" + s.port());
-                        s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                        })
-                .exceptionally(t -> {
-                        System.err.println("Web server startup failed: " + t.getMessage());
-                        t.printStackTrace(System.err);
-                        return null;
-                        });
-
-        return webServer;
+        webServer = WebServer.builder()
+                             .config(config.get("server"))
+                             .routing(routing ->
+                                     routing.addFeature(SecurityFeature.create(security)
+                                                                       .securityDefaults(SecurityFeature.authenticate()))
+                                            .register(new RestService()))
+                             .addRouting(GrpcRouting.builder()
+                                                    // Add the security interceptor with a default of allowing any authenticated user
+                                                    .intercept(GrpcSecurity.create(security).securityDefaults(GrpcSecurity.authenticate()))
+                                                    // add the StringService with required role "admin"
+                                                    .service(new StringService(), GrpcSecurity.rolesAllowed("admin"))
+                                                    // add the GreetService (picking up the default security of any authenticated user)
+                                                    .service(new GreetService()))
+                             .start();
     }
 
     /**
      * A gRPC greet service that uses outbound security to
      * access a ReST API.
      */
-    public static class GreetService
-            implements GrpcService {
+    public static class GreetService implements GrpcService {
 
         /**
          * The current greeting.
@@ -156,26 +108,30 @@ public class SecureServer {
         /**
          * The Helidon WebClient to use to make ReST calls.
          */
-        private WebClient client;
+        private Http1Client client;
 
         private GreetService() {
-            client = WebClient.builder()
-                    .addService(WebClientSecurity.create())
-                    .build();
+            client = Http1Client.builder()
+                                .service(ClientSecurity.create())
+                                .build();
         }
 
         @Override
-        public void update(ServiceDescriptor.Rules rules) {
-            rules.proto(Greet.getDescriptor())
-                    .unary("Greet", this::greet)
-                    .unary("SetGreeting", this::setGreeting);
+        public Descriptors.FileDescriptor proto() {
+            return Greet.getDescriptor();
+        }
+
+        @Override
+        public void update(Routing routing) {
+            routing.unary("Greet", this::greet)
+                   .unary("SetGreeting", this::setGreeting);
         }
 
         /**
          * This method calls a secure ReST endpoint using the caller's credentials.
          *
-         * @param request   the request
-         * @param observer  the observer to send the response to
+         * @param request  the request
+         * @param observer the observer to send the response to
          */
         private void greet(Greet.GreetRequest request, StreamObserver<Greet.GreetResponse> observer) {
             // Obtain the greeting name from the request (default to "World".
@@ -186,27 +142,38 @@ public class SecureServer {
             Context context = Context.builder().id("example").build();
             context.register(securityContext);
 
-            // Use the current credentials call the "lower" ReST endpoint which will call
-            // the "Lower" method on the secure gRPC StringService.
-            client.get()
-                    .uri("http://localhost:" + webServer.port())
-                    .path("lower")
-                    .queryParam("value", name)
-                    .context(context)
-                    .request()
-                    .thenAccept(it -> handleResponse(it, observer))
-                    .exceptionally(throwable -> {
-                        observer.onError(throwable);
-                        return null;
-                    });
+            Contexts.runInContext(context, () -> {
+                // Use the current credentials call the "lower" ReST endpoint which will call
+                // the "Lower" method on the secure gRPC StringService.
+                Http1ClientResponse response = client.get()
+                                                     .uri("http://localhost:" + webServer.port())
+                                                     .path("lower")
+                                                     .queryParam("value", name)
+                                                     .request();
+
+                Http.Status status = response.status();
+                if (status == Http.Status.OK_200) {
+                    // Send the response to the caller of the current greeting and lower case name
+                    String str = response.entity().as(String.class);
+                    Greet.GreetResponse build = Greet.GreetResponse.newBuilder().setMessage(str).build();
+                    complete(observer, build);
+                }
+
+                if (status == Http.Status.UNAUTHORIZED_401 || status == Http.Status.FORBIDDEN_403) {
+                    observer.onError(Status.PERMISSION_DENIED.asRuntimeException());
+                } else {
+                    String str = response.entity().as(String.class);
+                    observer.onError(Status.INTERNAL.withDescription(str).asRuntimeException());
+                }
+            });
         }
 
         /**
          * This method calls a secure ReST endpoint overriding the caller's credentials and
          * using the admin user's credentials.
          *
-         * @param request   the request
-         * @param observer  the observer to send the response to
+         * @param request  the request
+         * @param observer the observer to send the response to
          */
         private void setGreeting(Greet.SetGreetingRequest request, StreamObserver<Greet.SetGreetingResponse> observer) {
             // Obtain the greeting name from the request (default to "hello".
@@ -217,101 +184,82 @@ public class SecureServer {
             Context context = Context.builder().id("example").build();
             context.register(securityContext);
 
-            // Use the admin user's credentials call the "upper" ReST endpoint which will call
-            // the "Upper" method on the secure gRPC StringService.
-            client.get()
-                    .uri("http://127.0.0.1:" + webServer.port())
-                    .path("upper")
-                    .queryParam("value", name)
-                    .context(context)
-                    .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "Ted")
-                    .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "secret")
-                    .request()
-                    .thenAccept(it -> handleResponse(it, observer))
-                    .exceptionally(throwable -> {
-                        observer.onError(throwable);
-                        return null;
-                    });
-        }
+            Contexts.runInContext(context, () -> {
+                // Use the current credentials call the "lower" ReST endpoint which will call
+                // the "Lower" method on the secure gRPC StringService.
+                Http1ClientResponse response = client.get()
+                                                     .uri("http://localhost:" + webServer.port())
+                                                     .path("lower")
+                                                     .queryParam("value", name)
+                                                     .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "Ted")
+                                                     .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "secret")
+                                                     .request();
 
-        private void handleResponse(WebClientResponse response, StreamObserver observer) {
-            if (response.status() == Http.Status.OK_200) {
-                // Send the response to the caller of the current greeting and lower case name
-                response.content()
-                        .as(String.class)
-                        .thenAccept(str -> complete(observer,
-                                                    Greet.SetGreetingResponse.newBuilder().setGreeting(str).build()));
-            } else {
-                completeWithError(response, observer);
-            }
-        }
+                Http.Status status = response.status();
+                if (status == Http.Status.OK_200) {
+                    // Send the response to the caller of the current greeting and lower case name
+                    String str = response.entity().as(String.class);
+                    Greet.SetGreetingResponse build = Greet.SetGreetingResponse.newBuilder().setGreeting(str).build();
+                    complete(observer, build);
+                }
 
-        private void completeWithError(WebClientResponse response, StreamObserver observer) {
-            Http.Status status = response.status();
-
-            if (status == Http.Status.UNAUTHORIZED_401
-                       || status == Http.Status.FORBIDDEN_403){
-                observer.onError(Status.PERMISSION_DENIED.asRuntimeException());
-            } else {
-                response.content()
-                        .as(String.class)
-                        .thenAccept(str -> observer.onError(Status.INTERNAL.withDescription(str).asRuntimeException()));
-            }
-        }
-
-        @Override
-        public String name() {
-            return "GreetService";
+                if (status == Http.Status.UNAUTHORIZED_401 || status == Http.Status.FORBIDDEN_403) {
+                    observer.onError(Status.PERMISSION_DENIED.asRuntimeException());
+                } else {
+                    String str = response.entity().as(String.class);
+                    observer.onError(Status.INTERNAL.withDescription(str).asRuntimeException());
+                }
+            });
         }
     }
 
     /**
      * A ReST service that calls the gRPC StringService to mutate String values.
      */
-    public static class RestService
-            implements Service {
+    public static class RestService implements HttpService {
 
         private Channel channel;
 
+
         @Override
-        public void update(Routing.Rules rules) {
-            rules.get("/lower", WebSecurity.rolesAllowed("user"), this::lower)
-                 .get("/upper", WebSecurity.rolesAllowed("user"), this::upper);
+        public void routing(HttpRules rules) {
+            rules.get("/lower", SecurityFeature.rolesAllowed("user"), this::lower)
+                 .get("/upper", SecurityFeature.rolesAllowed("user"), this::upper);
         }
 
         /**
          * Call the gRPC StringService Lower method overriding the caller's credentials and
          * using the admin user's credentials.
          *
-         * @param req  the http request
-         * @param res  the http response
+         * @param req the http request
+         * @param res the http response
          */
         private void lower(ServerRequest req, ServerResponse res) {
             try {
                 // Create the gRPC client security credentials from the current request
                 // overriding with the admin user's credentials
                 GrpcClientSecurity clientSecurity = GrpcClientSecurity.builder(req)
-                        .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "Ted")
-                        .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "secret")
-                        .build();
+                                                                      .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "Ted")
+                                                                      .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "secret")
+                                                                      .build();
 
                 StringServiceGrpc.StringServiceBlockingStub stub = StringServiceGrpc.newBlockingStub(ensureChannel())
-                        .withCallCredentials(clientSecurity);
+                                                                                    .withCallCredentials(clientSecurity);
 
-                String value = req.queryParams().first("value").orElse(null);
+                String value = req.query().first("value").orElse(null);
                 Strings.StringMessage response = stub.lower(Strings.StringMessage.newBuilder().setText(value).build());
 
-                res.status(200).send(response.getText());
+                res.status(Http.Status.OK_200).send(response.getText());
             } catch (StatusRuntimeException e) {
-                res.status(GrpcHelper.toHttpResponseStatus(e.getStatus())).send();
+                res.status(Http.Status.create(e.getStatus().getCode().value()));
             }
         }
 
         /**
          * Call the gRPC StringService Upper method using the current caller's credentials.
          *
-         * @param req  the http request
-         * @param res  the http response
+         * @param req the http request
+         * @param res the http response
          */
         private void upper(ServerRequest req, ServerResponse res) {
             try {
@@ -319,20 +267,21 @@ public class SecureServer {
                 GrpcClientSecurity clientSecurity = GrpcClientSecurity.create(req);
 
                 StringServiceGrpc.StringServiceBlockingStub stub = StringServiceGrpc.newBlockingStub(ensureChannel())
-                        .withCallCredentials(clientSecurity);
+                                                                                    .withCallCredentials(clientSecurity);
 
-                String value = req.queryParams().first("value").orElse(null);
+                String value = req.query().first("value").orElse(null);
                 Strings.StringMessage response = stub.upper(Strings.StringMessage.newBuilder().setText(value).build());
 
-                res.status(200).send(response.getText());
+                res.status(Http.Status.OK_200).send(response.getText());
             } catch (StatusRuntimeException e) {
-                res.status(GrpcHelper.toHttpResponseStatus(e.getStatus())).send();
+                res.status(Http.Status.create(e.getStatus().getCode().value()));
             }
         }
 
         private synchronized Channel ensureChannel() {
             if (channel == null) {
-                channel = InProcessChannelBuilder.forName(grpcServer.configuration().name()).build();
+                InetSocketAddress ina = new InetSocketAddress("localhost", webServer.port());
+                channel = InProcessChannelBuilder.forAddress(ina).build();
             }
             return channel;
         }

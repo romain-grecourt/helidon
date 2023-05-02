@@ -19,19 +19,18 @@ package io.helidon.grpc.examples.common;
 import java.util.Optional;
 
 import io.helidon.config.Config;
-import io.helidon.grpc.core.JsonbMarshaller;
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
+import io.helidon.nima.grpc.webserver.GrpcService;
 
+import com.google.protobuf.Descriptors;
 import io.grpc.stub.StreamObserver;
 
-import static io.helidon.grpc.core.ResponseHelper.complete;
+import static io.helidon.nima.grpc.webserver.ResponseHelper.complete;
 
 /**
  * A plain Java implementation of the GreetService.
  */
-public class GreetServiceJava
-        implements GrpcService {
+public class GreetServiceJava implements GrpcService {
+
     /**
      * The config value for the key {@code greeting}.
      */
@@ -47,10 +46,17 @@ public class GreetServiceJava
     }
 
     @Override
-    public void update(ServiceDescriptor.Rules rules) {
-        rules.marshallerSupplier(new JsonbMarshaller.Supplier())
-                .unary("Greet", this::greet)
-                .unary("SetGreeting", this::setGreeting);
+    public Descriptors.FileDescriptor proto() {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public void update(Routing routing) {
+        routing
+//                .marshallerSupplier(new JsonbMarshaller.Supplier())
+             .unary("Greet", this::greet)
+             .unary("SetGreeting", this::setGreeting);
     }
 
     // ---- service methods -------------------------------------------------

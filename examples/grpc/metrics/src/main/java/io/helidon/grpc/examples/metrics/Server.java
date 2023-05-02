@@ -19,14 +19,10 @@ package io.helidon.grpc.examples.metrics;
 import io.helidon.config.Config;
 import io.helidon.grpc.examples.common.GreetService;
 import io.helidon.grpc.examples.common.StringService;
-import io.helidon.grpc.metrics.GrpcMetrics;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * A basic example of a Helidon gRPC server.
@@ -50,51 +46,20 @@ public class Server {
         // load logging configuration
         LogConfig.configureRuntime();
 
-        // Get gRPC server config from the "grpc" section of application.yaml
-        GrpcServerConfiguration serverConfig =
-                GrpcServerConfiguration.builder(config.get("grpc")).build();
+        GrpcRouting grpcRouting =
+                GrpcRouting.builder()
+                           // TODO
+                           //.intercept(GrpcMetrics.counted()) // global metrics - all service methods counted
+                           .service(new GreetService(config))  // GreetService uses global metrics so all methods are counted
+                           .service(new StringService())
+                           // .intercept(StringService.class, GrpcMetrics.timed()) TODO
+                           .build();
 
-        GrpcRouting grpcRouting = GrpcRouting.builder()
-                        .intercept(GrpcMetrics.counted()) // global metrics - all service methods counted
-                        .register(new GreetService(config))  // GreetService uses global metrics so all methods are counted
-                        .register(new StringService(), rules -> {
-                            // service level metrics - StringService overrides global so that its methods are timed
-                            rules.intercept(GrpcMetrics.timed())
-                                 // method level metrics - overrides service and global
-                                 .intercept("Upper", GrpcMetrics.histogram());
-                        })
-                        .build();
-
-        GrpcServer grpcServer = GrpcServer.create(serverConfig, grpcRouting);
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        grpcServer.start()
-                .thenAccept(s -> {
-                    System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                    s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                });
-
-        // start web server with the metrics endpoints
-        Routing routing = Routing.builder()
-                .register(MetricsSupport.create())
-                .build();
-
-        WebServer.create(routing, config.get("webserver"))
-                .start()
-                .thenAccept(s -> {
-                    System.out.println("HTTP server is UP! http://localhost:" + s.port());
-                    s.whenShutdown().thenRun(() -> System.out.println("HTTP server is DOWN. Good bye!"));
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                });
+        WebServer server = WebServer.builder()
+                                    .config(config.get("server"))
+                .routing(routing -> routing.addFeature(ObserveFeature.create()))
+                                    .addRouting(grpcRouting)
+                                    .start();
+        System.out.println("gRPC server is UP! http://localhost:" + server.port());
     }
 }

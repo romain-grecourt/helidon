@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import io.helidon.integrations.vault.Secret;
 import io.helidon.integrations.vault.secrets.cubbyhole.CreateCubbyhole;
-import io.helidon.integrations.vault.secrets.cubbyhole.CubbyholeSecretsRx;
+import io.helidon.integrations.vault.secrets.cubbyhole.CubbyholeSecrets;
 import io.helidon.integrations.vault.secrets.cubbyhole.DeleteCubbyhole;
 
 import jakarta.inject.Inject;
@@ -37,10 +37,10 @@ import jakarta.ws.rs.core.Response;
  */
 @Path("/cubbyhole")
 public class CubbyholeResource {
-    private final CubbyholeSecretsRx secrets;
+    private final CubbyholeSecrets secrets;
 
     @Inject
-    CubbyholeResource(CubbyholeSecretsRx secrets) {
+    CubbyholeResource(CubbyholeSecrets secrets) {
         this.secrets = secrets;
     }
 
@@ -89,7 +89,6 @@ public class CubbyholeResource {
         Optional<Secret> secret = secrets.get(path);
 
         if (secret.isPresent()) {
-            Secret kv1Secret = secret.get();
             return Response.ok()
                     .entity("Secret: " + secret.get().values().toString())
                     .build();

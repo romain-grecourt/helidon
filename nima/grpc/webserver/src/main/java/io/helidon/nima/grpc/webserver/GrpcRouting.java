@@ -108,6 +108,16 @@ public class GrpcRouting implements Routing {
         }
 
         /**
+         * Configure grpc service.
+         *
+         * @param service service to add
+         * @return updated builder
+         */
+        public Builder service(GrpcService service, ServerInterceptor interceptor) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        /**
          * Unary route.
          *
          * @param proto       proto descriptor
@@ -182,11 +192,19 @@ public class GrpcRouting implements Routing {
             return route(Grpc.clientStream(proto, serviceName, methodName, method));
         }
 
-        public void intercept(ServerInterceptor interceptor) {
+        public Builder intercept(ServerInterceptor interceptor) {
             throw new UnsupportedOperationException("Not implemented yet");
         }
 
-        public void intercept(String name, ServerInterceptor interceptor) {
+        public Builder intercept(String name, ServerInterceptor interceptor) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public Builder intercept(Class<? extends GrpcService> svc, ServerInterceptor interceptor) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public Builder intercept(Class<? extends GrpcService> svc, String name, ServerInterceptor interceptor) {
             throw new UnsupportedOperationException("Not implemented yet");
         }
 

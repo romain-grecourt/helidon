@@ -14,7 +14,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-    
+
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -40,17 +40,21 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.helidon.nima.webserver</groupId>
+            <artifactId>helidon-nima-webserver</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.grpc</groupId>
+            <artifactId>helidon-nima-grpc-webserver</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.examples.grpc</groupId>
             <artifactId>helidon-examples-grpc-common</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>io.helidon.grpc</groupId>
-            <artifactId>helidon-grpc-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.grpc</groupId>
-            <artifactId>helidon-grpc-server</artifactId>
+            <artifactId>helidon-grpc-client</artifactId>
         </dependency>
         <dependency>
             <groupId>io.helidon.bundles</groupId>
@@ -63,14 +67,6 @@
         <dependency>
             <groupId>io.helidon.security.providers</groupId>
             <artifactId>helidon-security-providers-http-auth</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.grpc</groupId>
-            <artifactId>helidon-grpc-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>

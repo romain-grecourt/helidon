@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,11 @@
 
 package io.helidon.security.examples.idcs;
 
-import java.net.UnknownHostException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * IDCS login example utilities.
@@ -31,44 +29,29 @@ public class IdcsUtil {
     // do not change this constant, unless you modify configuration
     // of IDCS application redirect URI
     static final int PORT = 7987;
-    private static final int START_TIMEOUT_SECONDS = 10;
 
     private IdcsUtil() {
     }
 
-    static WebServer startIt(Supplier<? extends Routing> routing) throws UnknownHostException {
-        return WebServer.builder(routing)
-                .port(PORT)
-                .bindAddress("localhost")
-                .build();
+    static WebServer startIt(Consumer<HttpRouting.Builder> routing) {
+        return WebServer.builder()
+                        .routing(routing)
+                        .port(PORT)
+                        .host("localhost")
+                        .build();
     }
 
     static WebServer start(WebServer webServer) {
-        long t = System.nanoTime();
+        long beforeStart = System.nanoTime();
+        webServer.start();
+        long time = System.nanoTime() - beforeStart;
 
-        CountDownLatch cdl = new CountDownLatch(1);
-
-        webServer.start()
-                .thenAccept(it -> whenStarted(it, t))
-                .thenRun(cdl::countDown);
-
-        try {
-            cdl.await(START_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Failed to start server within defined timeout: " + START_TIMEOUT_SECONDS + " seconds", e);
-        }
-
+        System.out.printf("Server started in %d ms%n", TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS));
+        System.out.printf("Started server on localhost:%d%n", webServer.port());
+        System.out.printf("You can access this example at http://localhost:%d/rest/profile%n", webServer.port());
+        System.out.println();
+        System.out.println();
+        System.out.println("Check application.yaml in case you are behind a proxy to configure it");
         return webServer;
-    }
-
-    static void whenStarted(WebServer webServer, long startNanoTime) {
-            long time = System.nanoTime() - startNanoTime;
-
-            System.out.printf("Server started in %d ms%n", TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS));
-            System.out.printf("Started server on localhost:%d%n", webServer.port());
-            System.out.printf("You can access this example at http://localhost:%d/rest/profile%n", webServer.port());
-            System.out.println();
-            System.out.println();
-            System.out.println("Check application.yaml in case you are behind a proxy to configure it");
     }
 }

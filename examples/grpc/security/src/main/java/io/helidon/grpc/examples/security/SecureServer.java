@@ -19,11 +19,9 @@ package io.helidon.grpc.examples.security;
 import io.helidon.config.Config;
 import io.helidon.grpc.examples.common.GreetService;
 import io.helidon.grpc.examples.common.StringService;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
-import io.helidon.grpc.server.ServiceDescriptor;
 import io.helidon.logging.common.LogConfig;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.Security;
 import io.helidon.security.integration.grpc.GrpcSecurity;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
@@ -50,30 +48,19 @@ public class SecureServer {
                 .addProvider(HttpBasicAuthProvider.create(config.get("http-basic-auth")))
                 .build();
 
-        ServiceDescriptor greetService1 = ServiceDescriptor.builder(new GreetService(config))
-                .name("GreetService")
-                .intercept(GrpcSecurity.rolesAllowed("user"))
-                .intercept("SetGreeting", GrpcSecurity.rolesAllowed("admin"))
-                .build();
-
         GrpcRouting grpcRouting = GrpcRouting.builder()
-                .intercept(GrpcSecurity.create(security).securityDefaults(GrpcSecurity.authenticate()))
-                .register(greetService1)
-                .register(new StringService())
-                .build();
+                                             .intercept(GrpcSecurity.create(security)
+                                                                    .securityDefaults(GrpcSecurity.authenticate()))
+                                             .intercept(GreetService.class, GrpcSecurity.rolesAllowed("user"))
+                                             .intercept(GreetService.class, "SetGreeting", GrpcSecurity.rolesAllowed("admin"))
+                                             .service(new GreetService(config))
+                                             .service(new StringService())
+                                             .build();
 
-        GrpcServerConfiguration serverConfig = GrpcServerConfiguration.create(config.get("grpc"));
-        GrpcServer grpcServer = GrpcServer.create(serverConfig, grpcRouting);
-
-        grpcServer.start()
-                .thenAccept(s -> {
-                        System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                        s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                        })
-                .exceptionally(t -> {
-                        System.err.println("Startup failed: " + t.getMessage());
-                        t.printStackTrace(System.err);
-                        return null;
-                        });
+        WebServer server = WebServer.builder()
+                                    .config(config.get("grpc"))
+                                    .addRouting(grpcRouting)
+                                    .start();
+        System.out.println("gRPC server is UP! http://localhost:" + server.port());
     }
 }

@@ -20,11 +20,9 @@ import java.time.DayOfWeek;
 import java.time.LocalTime;
 
 import io.helidon.grpc.examples.common.StringService;
-import io.helidon.grpc.server.GrpcRouting;
-import io.helidon.grpc.server.GrpcServer;
-import io.helidon.grpc.server.GrpcServerConfiguration;
-import io.helidon.grpc.server.ServiceDescriptor;
 import io.helidon.logging.common.LogConfig;
+import io.helidon.nima.grpc.webserver.GrpcRouting;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.Security;
 import io.helidon.security.SubjectType;
 import io.helidon.security.abac.policy.PolicyValidator;
@@ -49,70 +47,59 @@ public class AbacServer {
     /**
      * Main entry point.
      *
-     * @param args  the program arguments
+     * @param args the program arguments
      */
     public static void main(String[] args) {
         LogConfig.configureRuntime();
 
         Security security = Security.builder()
-                .addProvider(AtnProvider.builder().build())   // add out custom provider
-                .addProvider(AbacProvider.builder().build())  // add the ABAC provider
-                .build();
+                                    .addProvider(AtnProvider.builder().build())   // add out custom provider
+                                    .addProvider(AbacProvider.builder().build())  // add the ABAC provider
+                                    .build();
 
         // Create the time validator that will be used by the ABAC security provider
         TimeValidator.TimeConfig validTimes = TimeValidator.TimeConfig.builder()
-                .addBetween(LocalTime.of(8, 15), LocalTime.of(12, 0))
-                .addBetween(LocalTime.of(12, 30), LocalTime.of(17, 30))
-                .addDaysOfWeek(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
-                .build();
+                                                                      .addBetween(LocalTime.of(8, 15), LocalTime.of(12, 0))
+                                                                      .addBetween(LocalTime.of(12, 30), LocalTime.of(17, 30))
+                                                                      .addDaysOfWeek(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+                                                                      .build();
 
         // Create the policy validator that will be used by the ABAC security provider
         PolicyValidator.PolicyConfig validPolicy = PolicyValidator.PolicyConfig.builder()
-                .statement("${env.time.year >= 2017}")
-                .build();
+                                                                               .statement("${env.time.year >= 2017}")
+                                                                               .build();
 
         // Create the scope validator that will be used by the ABAC security provider
         ScopeValidator.ScopesConfig validScopes = ScopeValidator.ScopesConfig.create("calendar_read", "calendar_edit");
 
         // Create the Atn config that will be used by out custom security provider
         AtnProvider.AtnConfig atnConfig = AtnProvider.AtnConfig.builder()
-                .addAuth(AtnProvider.Auth.builder("user")
-                                 .type(SubjectType.USER)
-                                 .roles("user_role")
-                                 .scopes("calendar_read", "calendar_edit")
-                                 .build())
-                .addAuth(AtnProvider.Auth.builder("service")
-                                 .type(SubjectType.SERVICE)
-                                 .roles("service_role")
-                                 .scopes("calendar_read", "calendar_edit")
-                                 .build())
-                .build();
+                                                               .addAuth(AtnProvider.Auth.builder("user")
+                                                                                        .type(SubjectType.USER)
+                                                                                        .roles("user_role")
+                                                                                        .scopes("calendar_read", "calendar_edit")
+                                                                                        .build())
+                                                               .addAuth(AtnProvider.Auth.builder("service")
+                                                                                        .type(SubjectType.SERVICE)
+                                                                                        .roles("service_role")
+                                                                                        .scopes("calendar_read", "calendar_edit")
+                                                                                        .build())
+                                                               .build();
 
-        ServiceDescriptor stringService = ServiceDescriptor.builder(new StringService())
-                .intercept("Upper", GrpcSecurity.secure()
-                                                            .customObject(atnConfig)
-                                                            .customObject(validScopes)
-                                                            .customObject(validTimes)
-                                                            .customObject(validPolicy))
-                .build();
+        GrpcRouting.Builder routing =
+                GrpcRouting.builder()
+                           .intercept(GrpcSecurity.create(security)
+                                                  .securityDefaults(GrpcSecurity.secure()))
+                           .intercept(StringService.class, "Upper", GrpcSecurity.secure()
+                                                                                .customObject(atnConfig)
+                                                                                .customObject(validScopes)
+                                                                                .customObject(validTimes)
+                                                                                .customObject(validPolicy))
+                           .service(new StringService());
 
-        GrpcRouting grpcRouting = GrpcRouting.builder()
-                .intercept(GrpcSecurity.create(security).securityDefaults(GrpcSecurity.secure()))
-                .register(stringService)
-                .build();
-
-        GrpcServerConfiguration serverConfig = GrpcServerConfiguration.builder().build();
-        GrpcServer grpcServer = GrpcServer.create(serverConfig, grpcRouting);
-
-        grpcServer.start()
-                .thenAccept(s -> {
-                        System.out.println("gRPC server is UP! http://localhost:" + s.port());
-                        s.whenShutdown().thenRun(() -> System.out.println("gRPC server is DOWN. Good bye!"));
-                        })
-                .exceptionally(t -> {
-                        System.err.println("Startup failed: " + t.getMessage());
-                        t.printStackTrace(System.err);
-                        return null;
-                        });
+        WebServer server = WebServer.builder()
+                                    .addRouting(routing)
+                                    .start();
+        System.out.println("gRPC server is UP! http://localhost:" + server.port());
     }
 }

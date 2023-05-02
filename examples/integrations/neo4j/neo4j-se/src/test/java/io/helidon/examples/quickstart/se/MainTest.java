@@ -19,10 +19,13 @@ package io.helidon.examples.quickstart.se;
 import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.http.Http;
+import io.helidon.config.Config;
 import io.helidon.examples.integrations.neo4j.se.Main;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.http.HttpRouting;
 import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
 import io.helidon.reactive.webserver.WebServer;
 
 import jakarta.json.JsonArray;
@@ -38,29 +41,32 @@ import static org.hamcrest.MatcherAssert.assertThat;
 /**
  * Main test class for Neo4j Helidon SE quickstarter.
  */
+@ServerTest
 public class MainTest {
 
     private static WebServer webServer;
-    private static WebClient webClient;
 
     private static Neo4j embeddedDatabaseServer;
 
+    private final Http1Client client;
+
+    MainTest(Http1Client client) {
+        this.client = client;
+    }
+
     @BeforeAll
     static void startTheServer() {
-
         embeddedDatabaseServer = Neo4jBuilders.newInProcessBuilder()
                 .withDisabledServer()
                 .withFixture(FIXTURE)
                 .build();
 
         System.setProperty("neo4j.uri", embeddedDatabaseServer.boltURI().toString());
+    }
 
-        webServer = Main.startServer().await();
-
-        webClient = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port())
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+    @SetUpRoute
+    static void routing(HttpRouting.Builder builder) {
+        Main.routing(builder, Config.empty());
     }
 
     @AfterAll

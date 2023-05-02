@@ -18,15 +18,15 @@ package io.helidon.grpc.examples.common;
 
 import java.util.Optional;
 
+import com.google.protobuf.Descriptors;
 import io.helidon.config.Config;
 import io.helidon.grpc.examples.common.Greet.GreetRequest;
 import io.helidon.grpc.examples.common.Greet.GreetResponse;
 import io.helidon.grpc.examples.common.Greet.SetGreetingRequest;
 import io.helidon.grpc.examples.common.Greet.SetGreetingResponse;
-import io.helidon.grpc.server.GrpcService;
-import io.helidon.grpc.server.ServiceDescriptor;
 
 import io.grpc.stub.StreamObserver;
+import io.helidon.nima.grpc.webserver.GrpcService;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 
 import static io.helidon.grpc.core.ResponseHelper.complete;
@@ -43,18 +43,22 @@ public class GreetService implements GrpcService {
     /**
      * Create a {@link GreetService}.
      *
-     * @param config  the service configuration
+     * @param config the service configuration
      */
     public GreetService(Config config) {
         this.greeting = config.get("app.greeting").asString().orElse("Ciao");
     }
 
     @Override
-    public void update(ServiceDescriptor.Rules rules) {
-        rules.proto(Greet.getDescriptor())
-                .unary("Greet", this::greet)
-                .unary("SetGreeting", this::setGreeting)
-                .healthCheck(this::healthCheck);
+    public Descriptors.FileDescriptor proto() {
+        return Greet.getDescriptor();
+    }
+
+    @Override
+    public void update(Routing routing) {
+        routing.unary("Greet", this::greet)
+               .unary("SetGreeting", this::setGreeting);
+               //.healthCheck(this::healthCheck); // TODO
     }
 
     // ---- service methods -------------------------------------------------
@@ -74,7 +78,7 @@ public class GreetService implements GrpcService {
 
     private HealthCheckResponse healthCheck() {
         return HealthCheckResponse
-                .named(name())
+                .named("GreetService")
                 .up()
                 .withData("time", System.currentTimeMillis())
                 .withData("greeting", greeting)
