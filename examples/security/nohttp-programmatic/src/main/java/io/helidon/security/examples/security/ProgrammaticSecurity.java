@@ -18,7 +18,6 @@ package io.helidon.security.examples.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.concurrent.ExecutionException;
 
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.AuthorizationResponse;
@@ -38,10 +37,8 @@ public class ProgrammaticSecurity {
      * Entry point to this example.
      *
      * @param args no needed
-     * @throws ExecutionException   if asynchronous security fails
-     * @throws InterruptedException if asynchronous security gets interrupted
      */
-    public static void main(String[] args) throws ExecutionException, InterruptedException {
+    public static void main(String[] args) {
         ProgrammaticSecurity instance = new ProgrammaticSecurity();
 
         /*
@@ -58,9 +55,9 @@ public class ProgrammaticSecurity {
         instance.propagate();
 
         /*
-         * More complex - multithreaded application
+         * More complex - multi threaded application
          */
-        instance.multithreaded(subject);
+        instance.multiThreaded(subject);
 
     }
 
@@ -69,7 +66,7 @@ public class ProgrammaticSecurity {
                 .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
     }
 
-    private void multithreaded(Subject subject) {
+    private void multiThreaded(Subject subject) {
         Thread thread = new Thread(() -> {
             try {
                 SecurityContext context = security.contextBuilder("newThread")
@@ -93,19 +90,15 @@ public class ProgrammaticSecurity {
     }
 
     private void propagate() {
-        OutboundSecurityResponse response = CONTEXT.get().outboundClientBuilder().buildAndGet();
+        OutboundSecurityResponse response = CONTEXT.get().outboundClientBuilder().submit();
 
         switch (response.status()) {
-        case SUCCESS:
-            //we should have "Authorization" header present and just need to update request headers of our outbound call
-            System.out.println("Authorization header: " + response.requestHeaders().get("Authorization"));
-            break;
-        case SUCCESS_FINISH:
-            System.out.println("Identity propagation done, request sent...");
-            break;
-        default:
-            System.out.println("Failed in identity propagation provider: " + response.description().orElse(null));
-            break;
+            case SUCCESS ->
+                //we should have "Authorization" header present and just need to update request headers of our outbound call
+                    System.out.println("Authorization header: " + response.requestHeaders().get("Authorization"));
+            case SUCCESS_FINISH -> System.out.println("Identity propagation done, request sent...");
+            default ->
+                    System.out.println("Failed in identity propagation provider: " + response.description().orElse(null));
         }
     }
 
@@ -121,7 +114,7 @@ public class ProgrammaticSecurity {
                                .addAttribute("resourceType", "CustomResourceType"));
 
         //check authorization through provider
-        AuthorizationResponse response = context.atzClientBuilder().buildAndGet();
+        AuthorizationResponse response = context.atzClientBuilder().submit();
 
         if (response.status().isSuccess()) {
             //ok, process resource
@@ -137,7 +130,7 @@ public class ProgrammaticSecurity {
                                        .path("/some/path")
                                        .header("Authorization", buildBasic("aUser", "aPassword")));
 
-        AuthenticationResponse response = securityContext.atnClientBuilder().buildAndGet();
+        AuthenticationResponse response = securityContext.atnClientBuilder().submit();
 
         if (response.status().isSuccess()) {
             return response.user().orElseThrow(() -> new IllegalStateException("No user authenticated!"));

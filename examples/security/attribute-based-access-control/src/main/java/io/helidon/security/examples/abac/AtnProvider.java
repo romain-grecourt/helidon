@@ -41,7 +41,6 @@ import io.helidon.security.SecurityLevel;
 import io.helidon.security.Subject;
 import io.helidon.security.SubjectType;
 import io.helidon.security.spi.AuthenticationProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 /**
  * Example authentication provider that reads annotation to create a subject.

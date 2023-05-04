@@ -36,9 +36,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test for {@link OutboundProviderSync}.
+ * Unit test for {@link OutboundProvider}.
  */
-public class OutboundProviderSyncTest {
+public class OutboundProviderTest {
     @Test
     public void testAbstain() {
         SecurityContext context = mock(SecurityContext.class);
@@ -51,8 +51,8 @@ public class OutboundProviderSyncTest {
         when(request.securityContext()).thenReturn(context);
         when(request.env()).thenReturn(se);
 
-        OutboundProviderSync ops = new OutboundProviderSync();
-        OutboundSecurityResponse response = ops.syncOutbound(request, SecurityEnvironment.create(), EndpointConfig.create());
+        OutboundProvider ops = new OutboundProvider();
+        OutboundSecurityResponse response = ops.outboundSecurity(request, SecurityEnvironment.create(), EndpointConfig.create());
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.ABSTAIN));
     }
@@ -72,8 +72,8 @@ public class OutboundProviderSyncTest {
         when(request.securityContext()).thenReturn(context);
         when(request.env()).thenReturn(se);
 
-        OutboundProviderSync ops = new OutboundProviderSync();
-        OutboundSecurityResponse response = ops.syncOutbound(request, SecurityEnvironment.create(), EndpointConfig.create());
+        OutboundProvider ops = new OutboundProvider();
+        OutboundSecurityResponse response = ops.outboundSecurity(request, SecurityEnvironment.create(), EndpointConfig.create());
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
         assertThat(response.requestHeaders().get("X-AUTH-USER"), is(List.of(username)));

@@ -31,9 +31,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test for {@link AtzProviderSync}.
+ * Unit test for {@link AtzProvider}.
  */
-public class AtzProviderSyncTest {
+public class AtzProviderTest {
     @Test
     public void testPublic() {
         SecurityEnvironment se = SecurityEnvironment.builder()
@@ -45,9 +45,9 @@ public class AtzProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtzProviderSync provider = new AtzProviderSync();
+        AtzProvider provider = new AtzProvider();
 
-        AuthorizationResponse response = provider.syncAuthorize(request);
+        AuthorizationResponse response = provider.authorize(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
     }
@@ -61,9 +61,9 @@ public class AtzProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtzProviderSync provider = new AtzProviderSync();
+        AtzProvider provider = new AtzProvider();
 
-        AuthorizationResponse response = provider.syncAuthorize(request);
+        AuthorizationResponse response = provider.authorize(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.ABSTAIN));
     }
@@ -83,9 +83,9 @@ public class AtzProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtzProviderSync provider = new AtzProviderSync();
+        AtzProvider provider = new AtzProvider();
 
-        AuthorizationResponse response = provider.syncAuthorize(request);
+        AuthorizationResponse response = provider.authorize(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
     }
@@ -105,9 +105,9 @@ public class AtzProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtzProviderSync provider = new AtzProviderSync();
+        AtzProvider provider = new AtzProvider();
 
-        AuthorizationResponse response = provider.syncAuthorize(request);
+        AuthorizationResponse response = provider.authorize(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.SUCCESS));
     }

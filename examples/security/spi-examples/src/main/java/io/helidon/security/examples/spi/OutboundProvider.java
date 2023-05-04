@@ -18,7 +18,6 @@ package io.helidon.security.examples.spi;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import io.helidon.security.EndpointConfig;
 import io.helidon.security.OutboundSecurityResponse;
@@ -27,12 +26,11 @@ import io.helidon.security.ProviderRequest;
 import io.helidon.security.SecurityEnvironment;
 import io.helidon.security.Subject;
 import io.helidon.security.spi.OutboundSecurityProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 /**
  * Example of a simplistic outbound security provider.
  */
-public class OutboundProviderSync extends SynchronousProvider implements OutboundSecurityProvider {
+public class OutboundProvider implements OutboundSecurityProvider {
     @Override
     public OutboundSecurityResponse outboundSecurity(ProviderRequest providerRequest,
                                                                         SecurityEnvironment outboundEnv,

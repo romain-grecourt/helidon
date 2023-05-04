@@ -19,7 +19,6 @@
  */
 module io.helidon.lra.coordinator.client {
     requires microprofile.lra.api;
-    requires io.helidon.common.reactive;
     requires io.helidon.common.http;
 
     exports io.helidon.lra.coordinator.client;

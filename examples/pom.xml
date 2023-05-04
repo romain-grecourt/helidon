@@ -42,7 +42,7 @@
     <modules>
         <module>config</module>
         <module>graphql</module>
-        <module>grpc</module>
+<!--        <module>grpc</module>-->
         <module>health</module>
         <module>quickstarts</module>
         <module>microprofile</module>

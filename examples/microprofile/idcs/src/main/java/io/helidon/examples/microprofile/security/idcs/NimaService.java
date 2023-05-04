@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 package io.helidon.examples.microprofile.security.idcs;
 
 import io.helidon.microprofile.server.RoutingPath;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.security.Principal;
 import io.helidon.security.SecurityContext;
 import io.helidon.security.Subject;
@@ -27,18 +27,18 @@ import io.helidon.security.Subject;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
- * Reactive service implementation.
+ * Nima service implementation.
  */
 @ApplicationScoped
-@RoutingPath("/reactive")
-public class ReactiveService implements Service {
+@RoutingPath("/nima")
+public class NimaService implements HttpService {
 
     @Override
-    public void update(Routing.Rules rules) {
-        rules.get(this::reactiveRoute);
+    public void routing(HttpRules rules) {
+        rules.get(this::nimaRoute);
     }
 
-    private void reactiveRoute(ServerRequest req, ServerResponse res) {
+    private void nimaRoute(ServerRequest req, ServerResponse res) {
         String username = req.context()
                 .get(SecurityContext.class)
                 .flatMap(SecurityContext::user)
@@ -46,6 +46,6 @@ public class ReactiveService implements Service {
                 .map(Principal::getName)
                 .orElse("not authenticated");
 
-        res.send("Hello from reactive service, you are " + username);
+        res.send("Hello from nima service, you are " + username);
     }
 }

@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package io.helidon.examples.quickstart.se;
-
-import java.util.concurrent.TimeUnit;
+package io.helidon.examples.integrations.neo4j.se;
 
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.examples.integrations.neo4j.se.Main;
 import io.helidon.nima.testing.junit5.webserver.ServerTest;
 import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
 import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.nima.webserver.http.HttpRouting;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.WebServer;
 
 import jakarta.json.JsonArray;
 import org.junit.jupiter.api.AfterAll;
@@ -39,12 +35,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Main test class for Neo4j Helidon SE quickstarter.
+ * Main test class for Neo4j Helidon SE quickstart.
  */
 @ServerTest
 public class MainTest {
-
-    private static WebServer webServer;
 
     private static Neo4j embeddedDatabaseServer;
 
@@ -57,9 +51,9 @@ public class MainTest {
     @BeforeAll
     static void startTheServer() {
         embeddedDatabaseServer = Neo4jBuilders.newInProcessBuilder()
-                .withDisabledServer()
-                .withFixture(FIXTURE)
-                .build();
+                                              .withDisabledServer()
+                                              .withFixture(FIXTURE)
+                                              .build();
 
         System.setProperty("neo4j.uri", embeddedDatabaseServer.boltURI().toString());
     }
@@ -71,10 +65,6 @@ public class MainTest {
 
     @AfterAll
     static void stopServer() {
-        if (webServer != null) {
-            webServer.shutdown()
-                    .await(10, TimeUnit.SECONDS);
-        }
         if (embeddedDatabaseServer != null) {
             embeddedDatabaseServer.close();
         }
@@ -82,32 +72,27 @@ public class MainTest {
 
     @Test
     void testMovies() {
-
-        JsonArray result = webClient.get()
-                .path("api/movies")
-                .request(JsonArray.class)
-                .await();
+        JsonArray result = client.get()
+                                 .path("api/movies")
+                                 .request(JsonArray.class);
 
         assertThat(result.getJsonObject(0).getString("title"), is("The Matrix Reloaded"));
     }
 
     @Test
     public void testHealth() {
-
-        WebClientResponse response = webClient.get()
-                .path("/health")
-                .request()
-                .await();
+        Http1ClientResponse response = client.get()
+                                             .path("/health")
+                                             .request();
 
         assertThat(response.status(), is(Http.Status.OK_200));
     }
 
     @Test
     public void testMetrics() {
-        WebClientResponse response = webClient.get()
-                .path("/metrics")
-                .request()
-                .await();
+        Http1ClientResponse response = client.get()
+                                              .path("/metrics")
+                                              .request();
 
         assertThat(response.status(), is(Http.Status.OK_200));
     }

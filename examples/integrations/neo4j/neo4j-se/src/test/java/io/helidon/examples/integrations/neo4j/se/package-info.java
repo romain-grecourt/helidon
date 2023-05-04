@@ -17,4 +17,4 @@
 /**
  * Tests for Neo4j Helidon SE app.
  */
-package io.helidon.examples.quickstart.se;
+package io.helidon.examples.integrations.neo4j.se;

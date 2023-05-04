@@ -31,24 +31,26 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.helidon.common.LazyValue;
+import io.helidon.common.http.ClientRequestHeaders;
 import io.helidon.common.http.Headers;
+import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.metrics.api.RegistryFactory;
-import io.helidon.reactive.webclient.WebClientRequestHeaders;
 
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 import org.eclipse.microprofile.metrics.Counter;
 import org.eclipse.microprofile.metrics.MetricRegistry;
 import org.eclipse.microprofile.metrics.Timer;
 
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_ENDED_CONTEXT_HEADER;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_PARENT_CONTEXT_HEADER;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_RECOVERY_HEADER;
+import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
 
 class Lra {
 
     private static final System.Logger LOGGER = System.getLogger(Lra.class.getName());
+    private static final Http.HeaderName LRA_HTTP_CONTEXT_HEADER = Http.Header.create(LRA.LRA_HTTP_CONTEXT_HEADER);
+    private static final Http.HeaderName LRA_HTTP_ENDED_CONTEXT_HEADER = Http.Header.create(LRA.LRA_HTTP_ENDED_CONTEXT_HEADER);
+    private static final Http.HeaderName LRA_HTTP_PARENT_CONTEXT_HEADER = Http.Header.create(LRA.LRA_HTTP_PARENT_CONTEXT_HEADER);
+    private static final Http.HeaderName LRA_HTTP_RECOVERY_HEADER = Http.Header.create(LRA.LRA_HTTP_RECOVERY_HEADER);
     private final LazyValue<URI> coordinatorURL;
 
     private long timeout;
@@ -161,7 +163,7 @@ class Lra {
         lra.isChild = true;
     }
 
-    Function<WebClientRequestHeaders, Headers> headers() {
+    Function<ClientRequestHeaders, Headers> headers() {
         return headers -> {
             headers.add(LRA_HTTP_CONTEXT_HEADER, lraContextId());
             headers.add(LRA_HTTP_ENDED_CONTEXT_HEADER, lraContextId());

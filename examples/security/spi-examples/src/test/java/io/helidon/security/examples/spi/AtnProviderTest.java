@@ -43,9 +43,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit test for {@link AtnProviderSync}.
+ * Unit test for {@link AtnProvider}.
  */
-public class AtnProviderSyncTest {
+public class AtnProviderTest {
     private static final String VALUE = "aValue";
     private static final int SIZE = 16;
 
@@ -63,16 +63,16 @@ public class AtnProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtnProviderSync provider = new AtnProviderSync();
+        AtnProvider provider = new AtnProvider();
 
-        AuthenticationResponse response = provider.syncAuthenticate(request);
+        AuthenticationResponse response = provider.authenticate(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.ABSTAIN));
     }
 
     @Test
     public void testAnnotationSuccess() {
-        AtnProviderSync.AtnAnnot annot = new AtnProviderSync.AtnAnnot() {
+        AtnProvider.AtnAnnot annot = new AtnProvider.AtnAnnot() {
             @Override
             public String value() {
                 return VALUE;
@@ -85,7 +85,7 @@ public class AtnProviderSyncTest {
 
             @Override
             public Class<? extends Annotation> annotationType() {
-                return AtnProviderSync.AtnAnnot.class;
+                return AtnProvider.AtnAnnot.class;
             }
         };
 
@@ -96,7 +96,7 @@ public class AtnProviderSyncTest {
         SecurityEnvironment se = SecurityEnvironment.create();
 
         SecurityLevel level = SecurityLevel.create("mock")
-                .withClassAnnotations(Map.of(AtnProviderSync.AtnAnnot.class, List.of(annot)))
+                .withClassAnnotations(Map.of(AtnProvider.AtnAnnot.class, List.of(annot)))
                 .build();
 
         EndpointConfig ep = EndpointConfig.builder()
@@ -113,7 +113,7 @@ public class AtnProviderSyncTest {
 
     @Test
     public void testCustomObjectSuccess() {
-        AtnProviderSync.AtnObject obj = new AtnProviderSync.AtnObject();
+        AtnProvider.AtnObject obj = new AtnProvider.AtnObject();
         obj.setSize(SIZE);
         obj.setValue(VALUE);
 
@@ -123,7 +123,7 @@ public class AtnProviderSyncTest {
 
         SecurityEnvironment se = SecurityEnvironment.create();
         EndpointConfig ep = EndpointConfig.builder()
-                .customObject(AtnProviderSync.AtnObject.class, obj)
+                .customObject(AtnProvider.AtnObject.class, obj)
                 .build();
 
         ProviderRequest request = mock(ProviderRequest.class);
@@ -179,9 +179,9 @@ public class AtnProviderSyncTest {
         when(request.env()).thenReturn(se);
         when(request.endpointConfig()).thenReturn(ep);
 
-        AtnProviderSync provider = new AtnProviderSync();
+        AtnProvider provider = new AtnProvider();
 
-        AuthenticationResponse response = provider.syncAuthenticate(request);
+        AuthenticationResponse response = provider.authenticate(request);
 
         assertThat(response.status(), is(SecurityResponse.SecurityStatus.FAILURE));
     }
@@ -189,7 +189,7 @@ public class AtnProviderSyncTest {
     @Test
     public void integrationTest() {
         Security security = Security.builder()
-                .addProvider(new AtnProviderSync())
+                .addProvider(new AtnProvider())
                 .build();
 
         // this part is usually done by container integration component
@@ -197,8 +197,8 @@ public class AtnProviderSyncTest {
         // in Web server you have access to security context through context
         SecurityContext context = security.createContext("unit-test");
         context.endpointConfig(EndpointConfig.builder()
-                                          .customObject(AtnProviderSync.AtnObject.class,
-                                                        AtnProviderSync.AtnObject.from(VALUE, SIZE)));
+                                          .customObject(AtnProvider.AtnObject.class,
+                                                        AtnProvider.AtnObject.from(VALUE, SIZE)));
         AuthenticationResponse response = context.authenticate();
 
         validateResponse(response);
@@ -217,9 +217,9 @@ public class AtnProviderSyncTest {
     }
 
     private void testSuccess(ProviderRequest request) {
-        AtnProviderSync provider = new AtnProviderSync();
+        AtnProvider provider = new AtnProvider();
 
-        AuthenticationResponse response = provider.syncAuthenticate(request);
+        AuthenticationResponse response = provider.authenticate(request);
         validateResponse(response);
     }
 }

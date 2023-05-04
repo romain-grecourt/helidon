@@ -40,7 +40,7 @@ public class AuditerTest {
         Auditer auditer = new Auditer();
 
         Security sec = Security.builder()
-                .addAuthorizationProvider(new AtzProviderSync())
+                .addAuthorizationProvider(new AtzProvider())
                 .addAuditProvider(auditer)
                 .build();
 

@@ -75,6 +75,11 @@ public interface WritableHeaders<B extends WritableHeaders<B>> extends Headers {
         return add(Http.Header.create(header, value));
     }
 
+    default B addAll(Headers headers) {
+        headers.forEach(this::add);
+        return (B) this;
+    }
+
     /**
      * Remove a header.
      *

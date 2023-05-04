@@ -42,7 +42,7 @@ import io.helidon.security.spi.AuthenticationProvider;
  * Example of an authentication provider implementation - synchronous.
  * This is a full-blows example of a provider that requires additional configuration on a resource.
  */
-public class AtnProviderSync implements AuthenticationProvider {
+public class AtnProvider implements AuthenticationProvider {
     @Override
     public AuthenticationResponse authenticate(ProviderRequest providerRequest) {
 

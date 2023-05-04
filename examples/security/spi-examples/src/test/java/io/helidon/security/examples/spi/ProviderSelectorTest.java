@@ -31,8 +31,8 @@ public class ProviderSelectorTest {
     public void integrateIt() {
         Security security = Security.builder()
                 .providerSelectionPolicy(ProviderSelector::create)
-                .addProvider(new AtnProviderSync())
-                .addProvider(new AtzProviderSync())
+                .addProvider(new AtnProvider())
+                .addProvider(new AtzProvider())
                 .build();
 
         SecurityContext context = security.createContext("unit-test");
