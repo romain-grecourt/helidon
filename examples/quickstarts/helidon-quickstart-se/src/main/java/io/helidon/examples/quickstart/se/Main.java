@@ -63,18 +63,18 @@ public final class Main {
      * Updates HTTP Routing.
      */
     static void routing(HttpRouting.Builder routing, Config config) {
-        ObserveFeature observe = ObserveFeature.builder()
-                                               .useSystemServices(false)
-                                               .addProvider(HealthObserveProvider.create(HealthFeature.builder()
-                                                                                                      .useSystemServices(false)
-                                                                                                      .addCheck(HeapMemoryHealthCheck.create())
-                                                                                                      .addCheck(DiskSpaceHealthCheck.create())
-                                                                                                      .addCheck(DeadlockHealthCheck.create())
-                                                                                                      .build()))
-                                               .build();
+//        ObserveFeature observe = ObserveFeature.builder()
+//                                               .useSystemServices(false)
+//                                               .addProvider(HealthObserveProvider.create(HealthFeature.builder()
+//                                                                                                      .useSystemServices(false)
+//                                                                                                      .addCheck(HeapMemoryHealthCheck.create())
+//                                                                                                      .addCheck(DiskSpaceHealthCheck.create())
+//                                                                                                      .addCheck(DeadlockHealthCheck.create())
+//                                                                                                      .build()))
+//                                               .build();
 
         routing.register("/greet", () -> new GreetService(config))
-               .addFeature(observe)
+               .addFeature(ObserveFeature.create())
                .error(JsonException.class, new JsonErrorHandler());
     }
 }

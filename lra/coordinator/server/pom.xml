@@ -76,8 +76,8 @@
             <artifactId>helidon-scheduling</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.reactive.dbclient</groupId>
-            <artifactId>helidon-reactive-dbclient-jdbc</artifactId>
+            <groupId>io.helidon.dbclient</groupId>
+            <artifactId>helidon-dbclient-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.eclipse.parsson</groupId>
@@ -112,8 +112,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common-reactive</artifactId>
+            <groupId>io.helidon.nima.webclient</groupId>
+            <artifactId>helidon-nima-webclient</artifactId>
         </dependency>
     </dependencies>
 

@@ -13,7 +13,7 @@ java -jar target/helidon-quickstart-se.jar
 ## Exercise the application
 
 ```
-curl -X GET http://localhost:8080/greet
+1
 {"message":"Hello World!"}
 
 curl -X GET http://localhost:8080/greet/Joe

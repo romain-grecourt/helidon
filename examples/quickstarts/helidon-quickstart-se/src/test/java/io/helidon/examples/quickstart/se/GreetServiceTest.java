@@ -16,6 +16,7 @@
 
 package io.helidon.examples.quickstart.se;
 
+import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.nima.testing.junit5.webserver.ServerTest;
 import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
@@ -49,7 +50,7 @@ class GreetServiceTest {
 
     @SetUpRoute
     static void routing(HttpRouting.Builder builder) {
-        Main.routing(builder, Config.empty());
+        Main.routing(builder, Config.create());
     }
 
     @Test
@@ -76,18 +77,19 @@ class GreetServiceTest {
                            .path("/greet/Joe")
                            .request(JsonObject.class);
         assertThat(jsonObject.getString("message"), is("Hola Joe!"));
+    }
 
-        try (Http1ClientResponse response = client.get()
-                                                  .path("/health")
-                                                  .request()) {
-            assertThat(response.status().code(), is(200));
-        }
-
-        try (Http1ClientResponse response = client.get()
-                                                  .path("/metrics")
-                                                  .request()) {
-            assertThat(response.status().code(), is(200));
+    @Test
+    void testHealthObserver() {
+        try (Http1ClientResponse response = client.get("/observe/health").request()) {
+            assertThat(response.status(), is(Http.Status.NO_CONTENT_204));
         }
     }
 
+    @Test
+    void testDeadlockHealthCheck() {
+        try (Http1ClientResponse response = client.get("/observe/health/live/deadlock").request()) {
+            assertThat(response.status(), is(Http.Status.NO_CONTENT_204));
+        }
+    }
 }

@@ -16,10 +16,10 @@
 
 package io.helidon.lra.coordinator;
 
-import io.helidon.common.reactive.Multi;
+import java.util.Collection;
 
 /**
- * Persistable lra registry.
+ * Persist-able lra registry.
  */
 interface LraPersistentRegistry {
 
@@ -57,10 +57,10 @@ interface LraPersistentRegistry {
     void remove(String lraId);
 
     /**
-     * Stream of all Lras.
+     * All Lras.
      *
-     * @return stream of all the Lras
+     * @return all the Lras
      */
-    Multi<Lra> stream();
+    Collection<Lra> all();
 
 }

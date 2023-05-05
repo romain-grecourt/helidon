@@ -30,9 +30,9 @@ import io.helidon.lra.coordinator.CoordinatorService;
 import io.helidon.microprofile.server.RoutingName;
 import io.helidon.microprofile.server.RoutingPath;
 import io.helidon.microprofile.server.ServerCdiExtension;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.nima.webserver.http.HttpService;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -82,7 +82,7 @@ public class CoordinatorClusterDeploymentService {
         coordinatorBPort.complete(serverCdiExtension.port(COORDINATOR_B_NAME));
 
         // Setup loadbalancer for coordinators
-        coordinators = new URI[] {
+        coordinators = new URI[]{
                 URI.create("http://localhost:" + getCoordinatorAPort().await() + "/lra-coordinator/start"),
                 URI.create("http://localhost:" + getCoordinatorBPort().await() + "/lra-coordinator/start")
         };
@@ -113,28 +113,30 @@ public class CoordinatorClusterDeploymentService {
     public HttpService coordinatorLoadBalancerService() {
         return rules ->
                 rules.post("/start", (req, res) -> {
-                            WebClientResponse response = WebClient.builder()
-                                    .baseUri(coordinators[roundRobinIndex.getAndUpdate(o -> o > 0 ? o - 1 :
-                                            coordinators.length - 1)])
-                                    .build()
-                                    .method(req.prologue().method())
-                                    .headers(req.headers())
-                                    .queryParams(req.query())
-                                    //.submit(req.content().as(String.class))
-                                    .request()
-                                    .await(TIMEOUT);
-                            response.headers().forEach(res.headers()::set);
-                            res.status(response.status())
-                                    .send(response.content().as(String.class).await(TIMEOUT));
-                        })
-                        .any((req, res) -> {
-                            String path = req.path().absolute().path();
-                            if (!path.contains("/start")) {
-                                LOGGER.log(Level.ERROR, "Loadbalancer should be called only for starting LRA. " + path);
-                                forbiddenLoadBalancerCall.set(req.prologue().method().name() + " " + path);
-                            }
-                            res.next();
-                        });
+                         Http1ClientResponse response = Http1Client.builder()
+                                                                   .baseUri(coordinators[roundRobinIndex.getAndUpdate(o -> o > 0 ? o - 1 :
+                                                                           coordinators.length - 1)])
+                                                                   .build()
+                                                                   .method(req.prologue().method())
+                                                                   .headers(headers -> {
+                                                                       headers.addAll(req.headers());
+                                                                       return headers;
+                                                                   })
+                                                                   .queryParams(req.query())
+                                                                   //.submit(req.content().as(String.class))
+                                                                   .request();
+                         response.headers().forEach(res.headers()::set);
+                         res.status(response.status())
+                            .send(response.entity().as(String.class));
+                     })
+                     .any((req, res) -> {
+                         String path = req.path().absolute().path();
+                         if (!path.contains("/start")) {
+                             LOGGER.log(Level.ERROR, "Loadbalancer should be called only for starting LRA. " + path);
+                             forbiddenLoadBalancerCall.set(req.prologue().method().name() + " " + path);
+                         }
+                         res.next();
+                     });
     }
 
     @Produces
@@ -143,9 +145,9 @@ public class CoordinatorClusterDeploymentService {
     @RoutingPath("/lra-coordinator")
     public HttpService coordinatorServiceA() {
         return CoordinatorService.builder()
-                .url(() -> URI.create("http://localhost:" + getCoordinatorAPort().await() + "/lra-coordinator"))
-                .config(configForCoordinator(COORDINATOR_A_NAME))
-                .build();
+                                 .url(() -> URI.create("http://localhost:" + getCoordinatorAPort().await() + "/lra-coordinator"))
+                                 .config(configForCoordinator(COORDINATOR_A_NAME))
+                                 .build();
     }
 
     @Produces
@@ -154,25 +156,25 @@ public class CoordinatorClusterDeploymentService {
     @RoutingPath("/lra-coordinator")
     public HttpService coordinatorServiceB() {
         return CoordinatorService.builder()
-                .url(() -> URI.create("http://localhost:" + getCoordinatorBPort().await() + "/lra-coordinator"))
-                .config(configForCoordinator(COORDINATOR_B_NAME))
-                .build();
+                                 .url(() -> URI.create("http://localhost:" + getCoordinatorBPort().await() + "/lra-coordinator"))
+                                 .config(configForCoordinator(COORDINATOR_B_NAME))
+                                 .build();
     }
 
     private Config configForCoordinator(String coordinatorName) {
         return Config.create(
                 ConfigSources.create(Config.builder()
-                        // Coordinator config file
-                        .addSource(ConfigSources.classpath("application.yaml"))
-                        .addFilter((key, old) ->
-                                // Replace jdbc url to avoid collision between coordinators
-                                // use inmemory db with different name
-                                old.contains("jdbc:h2:file")
-                                        ? "jdbc:h2:mem:lra-" + coordinatorName + ";DB_CLOSE_DELAY=-1"
-                                        : old
-                        )
-                        .build()
-                        .get(CoordinatorService.CONFIG_PREFIX).detach())
+                                           // Coordinator config file
+                                           .addSource(ConfigSources.classpath("application.yaml"))
+                                           .addFilter((key, old) ->
+                                                   // Replace jdbc url to avoid collision between coordinators
+                                                   // use inmemory db with different name
+                                                   old.contains("jdbc:h2:file")
+                                                           ? "jdbc:h2:mem:lra-" + coordinatorName + ";DB_CLOSE_DELAY=-1"
+                                                           : old
+                                           )
+                                           .build()
+                                           .get(CoordinatorService.CONFIG_PREFIX).detach())
         );
     }
 

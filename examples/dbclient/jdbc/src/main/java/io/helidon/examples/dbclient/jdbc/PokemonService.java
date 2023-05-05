@@ -20,7 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import io.helidon.examples.dbclient.common.AbstractPokemonService;
-import io.helidon.reactive.dbclient.DbClient;
+import io.helidon.dbclient.DbClient;
 import io.helidon.reactive.webserver.ServerRequest;
 import io.helidon.reactive.webserver.ServerResponse;
 

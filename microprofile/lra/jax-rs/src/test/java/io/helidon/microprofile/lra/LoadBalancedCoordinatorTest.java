@@ -53,9 +53,9 @@ import io.helidon.microprofile.tests.junit5.AddConfig;
 import io.helidon.microprofile.tests.junit5.AddExtension;
 import io.helidon.microprofile.tests.junit5.DisableDiscovery;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
 
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
@@ -162,11 +162,11 @@ public class LoadBalancedCoordinatorTest {
     }
 
     public <T> T await(String key, URI lraId) {
-        return Single.<T>create(getCompletable(key, lraId), true).await(TIMEOUT_SEC, TimeUnit.SECONDS);
+        return Single.<T>create(getCompletable(key, lraId), true).await(Duration.ofSeconds(TIMEOUT_SEC));
     }
 
     public <T> T await(String key) {
-        return Single.<T>create(getCompletable(key), true).await(TIMEOUT_SEC, TimeUnit.SECONDS);
+        return Single.<T>create(getCompletable(key), true).await(Duration.ofSeconds(TIMEOUT_SEC));
     }
 
     @Test
@@ -436,7 +436,7 @@ public class LoadBalancedCoordinatorTest {
                 .get(TIMEOUT_SEC, TimeUnit.SECONDS);
         assertThat(response.getStatus(), AnyOf.anyOf(is(200), is(204)));
         URI lraId = await(DontEnd.CS_START_LRA);
-        assertThat(coordinatorClient.status(lraId, PropagatedHeaders.noop()).await(TIMEOUT_SEC, TimeUnit.SECONDS), is(LRAStatus.Active));
+        assertThat(coordinatorClient.status(lraId, PropagatedHeaders.noop()), is(LRAStatus.Active));
         assertThat(target.path(DontEnd.PATH_BASE)
                 .path(DontEnd.PATH_START_SECOND_LRA)
                 .request()
@@ -551,7 +551,7 @@ public class LoadBalancedCoordinatorTest {
 
     private void assertClosedOrNotFound(URI lraId) {
         try {
-            assertThat(coordinatorClient.status(lraId, PropagatedHeaders.noop()).await(TIMEOUT_SEC, TimeUnit.SECONDS), is(LRAStatus.Closed));
+            assertThat(coordinatorClient.status(lraId, PropagatedHeaders.noop()), is(LRAStatus.Closed));
         } catch (NotFoundException e) {
             // in case coordinator don't retain closed lra long enough
         }
@@ -569,20 +569,18 @@ public class LoadBalancedCoordinatorTest {
     private void waitForRecovery(URI lraId) {
         URI coordinatorPath = coordinatorPath(lraId);
         for (int i = 0; i < 10; i++) {
-            WebClient client = WebClient.builder()
-                    .baseUri(coordinatorPath)
-                    .build();
+            Http1Client client = Http1Client.builder()
+                                          .baseUri(coordinatorPath)
+                                          .build();
 
-            WebClientResponse response = client
+            Http1ClientResponse response = client
                     .get()
                     .path("recovery")
-                    .submit()
-                    .await(TIMEOUT_SEC, TimeUnit.SECONDS);
+                    .request();
 
             String recoveringLras = response
-                    .content()
-                    .as(String.class)
-                    .await(TIMEOUT_SEC, TimeUnit.SECONDS);
+                    .entity()
+                    .as(String.class);
             response.close();
             if (!recoveringLras.contains(lraId.toASCIIString())) {
                 LOGGER.log(Level.DEBUG, "LRA is no longer among those recovering " + lraId.toASCIIString());

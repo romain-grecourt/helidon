@@ -494,7 +494,7 @@ curl -s -X GET http://localhost:8080/health
                             </map>
                         </list>
                         <list key="Main-helidon-imports">
-                            <value>io.helidon.reactive.dbclient.health.DbClientHealthCheck</value>
+                            <value>health.io.helidon.dbclient.DbClientHealthCheck</value>
                         </list>
                         <list key="Main-healthBuilder">
                             <value><![CDATA[                .add(DbClientHealthCheck.create(dbClient, dbConfig.get("health-check")))]]></value>

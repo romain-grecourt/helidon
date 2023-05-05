@@ -27,6 +27,7 @@ import io.helidon.common.http.Http;
 import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.http.WritableHeaders;
 import io.helidon.common.uri.UriEncoding;
+import io.helidon.common.uri.UriQuery;
 import io.helidon.nima.common.tls.Tls;
 
 /**
@@ -154,6 +155,11 @@ public interface ClientRequest<B extends ClientRequest<B, R>, R extends ClientRe
      * @return updated request
      */
     B queryParam(String name, String... values);
+
+    default B queryParams(UriQuery query) {
+        query.toMap().forEach((k, v) -> queryParam(k, v.toArray(new String[0])));
+        return (B) this;
+    }
 
     /**
      * Request without an entity.

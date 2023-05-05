@@ -23,18 +23,20 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
 
+import io.helidon.nima.webclient.WebClient;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 import org.eclipse.microprofile.lra.annotation.ParticipantStatus;
+import org.eclipse.microprofile.lra.annotation.ws.rs.LRA;
 
 import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.Active;
 import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.Compensated;
@@ -44,14 +46,14 @@ import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.Completi
 import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.FailedToCompensate;
 import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.FailedToComplete;
 import static org.eclipse.microprofile.lra.annotation.ParticipantStatus.valueOf;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_CONTEXT_HEADER;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_ENDED_CONTEXT_HEADER;
-import static org.eclipse.microprofile.lra.annotation.ws.rs.LRA.LRA_HTTP_RECOVERY_HEADER;
 
 class Participant {
 
     private static final int RETRY_CNT = 60;
     private static final int SYNCHRONOUS_RETRY_CNT = 5;
+    private static final Http.HeaderName LRA_HTTP_CONTEXT_HEADER = Http.Header.create(LRA.LRA_HTTP_CONTEXT_HEADER);
+    private static final Http.HeaderName LRA_HTTP_RECOVERY_HEADER = Http.Header.create(LRA.LRA_HTTP_RECOVERY_HEADER);
+    private static final Http.HeaderName LRA_HTTP_ENDED_CONTEXT_HEADER = Http.Header.create(LRA.LRA_HTTP_ENDED_CONTEXT_HEADER);
 
     private static final System.Logger LOGGER = System.getLogger(Participant.class.getName());
     private final AtomicReference<CompensateStatus> compensateCalled = new AtomicReference<>(CompensateStatus.NOT_SENT);
@@ -62,7 +64,7 @@ class Participant {
     private final AtomicInteger remainingAfterLraAttempts = new AtomicInteger(RETRY_CNT);
 
     private final AtomicReference<Status> status = new AtomicReference<>(Status.ACTIVE);
-    private final Map<String, WebClient> webClientMap = new HashMap<>();
+    private final Map<String, Http1Client> webClientMap = new HashMap<>();
     private final Map<String, URI> compensatorLinks = new HashMap<>();
     private final long timeout;
 
@@ -120,32 +122,32 @@ class Participant {
     }
 
     enum SendingStatus {
-        SENDING, NOT_SENDING;
+        SENDING, NOT_SENDING
     }
 
     enum AfterLraStatus {
-        NOT_SENT, SENDING, SENT;
+        NOT_SENT, SENDING, SENT
     }
 
     enum ForgetStatus {
-        NOT_SENT, SENDING, SENT;
+        NOT_SENT, SENDING, SENT
     }
 
     enum CompensateStatus {
-        NOT_SENT, SENDING, SENT;
+        NOT_SENT, SENDING, SENT
     }
 
     Participant(Config config) {
         timeout = config.get("timeout")
-                .asLong()
-                .orElse(500L);
+                        .asLong()
+                        .orElse(500L);
     }
 
     void parseCompensatorLinks(String compensatorLinks) {
         Stream.of(compensatorLinks.split(","))
-                .filter(s -> !s.isBlank())
-                .map(Link::valueOf)
-                .forEach(link -> this.compensatorLinks.put(link.rel(), link.uri()));
+              .filter(s -> !s.isBlank())
+              .map(Link::valueOf)
+              .forEach(link -> this.compensatorLinks.put(link.rel(), link.uri()));
     }
 
     Optional<URI> getCompensatorLink(String rel) {
@@ -277,13 +279,13 @@ class Participant {
 
     boolean sendCancel(Lra lra) {
         Optional<URI> endpointURI = getCompensateURI();
-        for (AtomicInteger i = new AtomicInteger(0); i.getAndIncrement() < SYNCHRONOUS_RETRY_CNT;) {
+        for (AtomicInteger i = new AtomicInteger(0); i.getAndIncrement() < SYNCHRONOUS_RETRY_CNT; ) {
             if (!sendingStatus.compareAndSet(SendingStatus.NOT_SENDING, SendingStatus.SENDING)) return false;
             if (!compensateCalled.compareAndSet(CompensateStatus.NOT_SENT, CompensateStatus.SENDING)) return false;
             LOGGER.log(Level.DEBUG, () -> "Sending compensate, sync retry: " + i.get()
                     + ", status: " + status.get().name()
                     + " statusUri: " + getStatusURI().map(URI::toASCIIString).orElse(null));
-            WebClientResponse response = null;
+            Http1ClientResponse response = null;
             try {
                 // call for client status only on retries and when status uri is known
                 if (!status.get().equals(Status.ACTIVE) && getStatusURI().isPresent()) {
@@ -309,7 +311,7 @@ class Participant {
                         return false;
                     } else if (remainingCloseAttempts.decrementAndGet() <= 0) {
                         LOGGER.log(Level.INFO, "Participant didnt report final status after {0} status call retries.",
-                                new Object[] {RETRY_CNT});
+                                RETRY_CNT);
                         status.set(Status.FAILED_TO_COMPENSATE);
                         return true;
                     } else {
@@ -322,31 +324,27 @@ class Participant {
                 response = getWebClient(endpointURI.get())
                         .put()
                         .headers(lra.headers())
-                        .submit(LRAStatus.Cancelled.name())
-                        .await(timeout, TimeUnit.MILLISECONDS);
+                        .submit(LRAStatus.Cancelled.name());
                 // When timeout occur we loose track of the participant status
                 // next retry will attempt to retrieve participant status if status uri is available
 
                 switch (response.status().code()) {
                     // complete or compensated
-                    case 200:
-                    case 410:
+                    case 200, 410 -> {
                         LOGGER.log(Level.INFO, "Compensated participant of LRA {0} {1}",
-                                new Object[] {lra.lraId(), this.getCompensateURI()});
+                                lra.lraId(), this.getCompensateURI());
                         status.set(Status.COMPENSATED);
                         compensateCalled.set(CompensateStatus.SENT);
                         return true;
+                    }
 
                     // retryable
-                    case 202:
+                    case 202 -> {
                         // Still compensating, check with @Status later
                         this.status.set(Status.CLIENT_COMPENSATING);
                         return false;
-                    case 409:
-                    case 404:
-                    case 503:
-                    default:
-                        throw new Exception(response.status().code() + " " + response.status().reasonPhrase());
+                    }
+                    default -> throw new Exception(response.status().code() + " " + response.status().reasonPhrase());
                 }
 
             } catch (Exception e) {
@@ -355,14 +353,14 @@ class Participant {
                                 + endpointURI.map(URI::toASCIIString).orElse("unknown"), e);
                 if (remainingCloseAttempts.decrementAndGet() <= 0) {
                     LOGGER.log(Level.WARNING, "Failed to compensate participant of LRA {0} {1} {2}",
-                            new Object[] {lra.lraId(), this.getCompensateURI(), e.getMessage()});
+                            lra.lraId(), this.getCompensateURI(), e.getMessage());
                     status.set(Status.FAILED_TO_COMPENSATE);
                 } else {
                     status.set(Status.COMPENSATING);
                 }
 
             } finally {
-                Optional.ofNullable(response).ifPresent(WebClientResponse::close);
+                Optional.ofNullable(response).ifPresent(Http1ClientResponse::close);
                 sendingStatus.set(SendingStatus.NOT_SENDING);
                 compensateCalled.compareAndSet(CompensateStatus.SENDING, CompensateStatus.NOT_SENT);
             }
@@ -372,12 +370,12 @@ class Participant {
 
     boolean sendComplete(Lra lra) {
         Optional<URI> endpointURI = getCompleteURI();
-        for (AtomicInteger i = new AtomicInteger(0); i.getAndIncrement() < SYNCHRONOUS_RETRY_CNT;) {
+        for (AtomicInteger i = new AtomicInteger(0); i.getAndIncrement() < SYNCHRONOUS_RETRY_CNT; ) {
             if (!sendingStatus.compareAndSet(SendingStatus.NOT_SENDING, SendingStatus.SENDING)) return false;
             LOGGER.log(Level.DEBUG, () -> "Sending complete, sync retry: " + i.get()
                     + ", status: " + status.get().name()
                     + " statusUri: " + getStatusURI().map(URI::toASCIIString).orElse(null));
-            WebClientResponse response = null;
+            Http1ClientResponse response = null;
             try {
                 if (status.get().isFinal()) {
                     return true;
@@ -403,7 +401,7 @@ class Participant {
                         return false;
                     } else if (remainingCloseAttempts.decrementAndGet() <= 0) {
                         LOGGER.log(Level.INFO, "Participant didnt report final status after {0} status call retries.",
-                                new Object[] {RETRY_CNT});
+                                RETRY_CNT);
                         status.set(Status.FAILED_TO_COMPLETE);
                         return true;
                     } else {
@@ -414,28 +412,24 @@ class Participant {
                 response = getWebClient(endpointURI.get())
                         .put()
                         .headers(lra.headers())
-                        .submit(LRAStatus.Closed.name())
-                        .await(timeout, TimeUnit.MILLISECONDS);
+                        .submit(LRAStatus.Closed.name());
                 // When timeout occur we loose track of the participant status
                 // next retry will attempt to retrieve participant status if status uri is available
 
                 switch (response.status().code()) {
                     // complete or compensated
-                    case 200:
-                    case 410:
+                    case 200, 410 -> {
                         status.set(Status.COMPLETED);
                         return true;
+                    }
 
                     // retryable
-                    case 202:
+                    case 202 -> {
                         // Still completing, check with @Status later
                         this.status.set(Status.CLIENT_COMPLETING);
                         return false;
-                    case 409:
-                    case 404:
-                    case 503:
-                    default:
-                        throw new Exception(response.status().code() + " " + response.status().reasonPhrase());
+                    }
+                    default -> throw new Exception(response.status().code() + " " + response.status().reasonPhrase());
                 }
 
             } catch (Exception e) {
@@ -444,14 +438,14 @@ class Participant {
                                                                                            .orElse("unknown"), e);
                 if (remainingCloseAttempts.decrementAndGet() <= 0) {
                     LOGGER.log(Level.WARNING, "Failed to complete participant of LRA {0} {1} {2}",
-                            new Object[]{lra.lraId(),
-                            this.getCompleteURI(), e.getMessage()});
+                            lra.lraId(),
+                            this.getCompleteURI(), e.getMessage());
                     status.set(Status.FAILED_TO_COMPLETE);
                 } else {
                     status.set(Status.COMPLETING);
                 }
             } finally {
-                Optional.ofNullable(response).ifPresent(WebClientResponse::close);
+                Optional.ofNullable(response).ifPresent(Http1ClientResponse::close);
                 sendingStatus.set(SendingStatus.NOT_SENDING);
             }
         }
@@ -465,15 +459,14 @@ class Participant {
             // LRA in right state
             if (!(Set.of(LRAStatus.Closed, LRAStatus.Cancelled).contains(lra.status().get()))) return false;
 
-            WebClientResponse response = null;
+            Http1ClientResponse response = null;
             try {
                 Optional<URI> afterURI = getAfterURI();
                 if (afterURI.isPresent() && afterLRACalled.compareAndSet(AfterLraStatus.NOT_SENT, AfterLraStatus.SENDING)) {
                     response = getWebClient(afterURI.get())
                             .put()
                             .headers(lra.headers())
-                            .submit(lra.status().get().name())
-                            .await(timeout, TimeUnit.MILLISECONDS);
+                            .submit(lra.status().get().name());
 
                     if (response.status().code() == 200) {
                         afterLRACalled.set(AfterLraStatus.SENT);
@@ -489,7 +482,7 @@ class Participant {
                     afterLRACalled.set(AfterLraStatus.NOT_SENT);
                 }
             } finally {
-                Optional.ofNullable(response).ifPresent(WebClientResponse::close);
+                Optional.ofNullable(response).ifPresent(Http1ClientResponse::close);
             }
             if (afterLRACalled.get() == AfterLraStatus.SENT) return true;
         }
@@ -499,39 +492,38 @@ class Participant {
 
     Optional<ParticipantStatus> retrieveStatus(Lra lra, ParticipantStatus inProgressStatus) {
         URI statusURI = this.getStatusURI().get();
-        try {
-            WebClientResponse response = getWebClient(statusURI)
-                    .get()
-                    .headers(h -> {
-                        // Dont send parent!
-                        h.add(LRA_HTTP_CONTEXT_HEADER, lra.lraContextId());
-                        h.add(LRA_HTTP_RECOVERY_HEADER, lra.lraContextId() + "/recovery");
-                        h.add(LRA_HTTP_ENDED_CONTEXT_HEADER, lra.lraContextId());
-                        return h;
-                    })
-                    .request()
-                    .await(timeout, TimeUnit.MILLISECONDS);
+        try (Http1ClientResponse response = getWebClient(statusURI)
+                .get()
+                .headers(h -> {
+                    // Dont send parent!
+                    h.add(LRA_HTTP_CONTEXT_HEADER, lra.lraContextId());
+                    h.add(LRA_HTTP_RECOVERY_HEADER, lra.lraContextId() + "/recovery");
+                    h.add(LRA_HTTP_ENDED_CONTEXT_HEADER, lra.lraContextId());
+                    return h;
+                })
+                .request()) {
 
             int code = response.status().code();
             switch (code) {
-                case 202:
+                case 202 -> {
                     return Optional.of(inProgressStatus);
-                case 410: //GONE
+                }
+                case 410 -> { //GONE
                     //Completing -> FailedToComplete ...
                     return status.get().failedFinalStatus();
-                case 503:
-                case 500:
-                    throw new IllegalStateException(String.format("Client reports unexpected status %s %s, "
-                                    + "current participant state is %s, "
-                                    + "lra: %s "
-                                    + "status uri: %s",
-                            code,
-                            response.content().as(String.class),
-                            status.get(),
-                            lra.lraId(),
-                            statusURI.toASCIIString()));
-                default:
-                    ParticipantStatus reportedStatus = valueOf(response.content().as(String.class).await());
+                }
+                case 503, 500 ->
+                        throw new IllegalStateException(String.format("Client reports unexpected status %s %s, "
+                                        + "current participant state is %s, "
+                                        + "lra: %s "
+                                        + "status uri: %s",
+                                code,
+                                response.entity().as(String.class),
+                                status.get(),
+                                lra.lraId(),
+                                statusURI.toASCIIString()));
+                default -> {
+                    ParticipantStatus reportedStatus = valueOf(response.entity().as(String.class));
                     Status currentStatus = status.get();
                     if (currentStatus.validateNextStatus(reportedStatus)) {
                         return Optional.of(reportedStatus);
@@ -541,9 +533,10 @@ class Participant {
                                         + "current participant state is {2}, "
                                         + "lra: {3} "
                                         + "status uri: {4}",
-                                new Object[] {code, reportedStatus, currentStatus, lra.lraId(), statusURI.toASCIIString()});
+                                code, reportedStatus, currentStatus, lra.lraId(), statusURI.toASCIIString());
                         return Optional.empty();
                     }
+                }
             }
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Error when getting participant status. " + statusURI, e);
@@ -554,12 +547,10 @@ class Participant {
 
     boolean sendForget(Lra lra) {
         if (!forgetCalled.compareAndSet(ForgetStatus.NOT_SENT, ForgetStatus.SENDING)) return false;
-        try {
-            WebClientResponse response = getWebClient(getForgetURI().get())
-                    .delete()
-                    .headers(lra.headers())
-                    .submit()
-                    .await(timeout, TimeUnit.MILLISECONDS);
+        try (Http1ClientResponse response = getWebClient(getForgetURI().get())
+                .delete()
+                .headers(lra.headers())
+                .request()) {
 
             int responseStatus = response.status().code();
             if (responseStatus == 200 || responseStatus == 410) {
@@ -569,7 +560,7 @@ class Participant {
             }
         } catch (Throwable e) {
             LOGGER.log(Level.WARNING, "Unable to send forget of lra {0} to {1}",
-                    new Object[] {lra.lraId(), getForgetURI().get()});
+                    lra.lraId(), getForgetURI().get());
             forgetCalled.set(ForgetStatus.NOT_SENT);
         }
         return forgetCalled.get() == ForgetStatus.SENT;
@@ -577,8 +568,8 @@ class Participant {
 
     boolean equalCompensatorUris(String compensatorUris) {
         Set<Link> links = Arrays.stream(compensatorUris.split(","))
-                .map(Link::valueOf)
-                .collect(Collectors.toSet());
+                                .map(Link::valueOf)
+                                .collect(Collectors.toSet());
 
         for (Link link : links) {
             Optional<URI> participantsLink = getCompensatorLink(link.rel());
@@ -594,11 +585,11 @@ class Participant {
         return false;
     }
 
-    private WebClient getWebClient(URI baseUri) {
+    private Http1Client getWebClient(URI baseUri) {
         return webClientMap.computeIfAbsent(baseUri.toASCIIString(), unused -> WebClient.builder()
-                // Workaround for #3242
-                .keepAlive(false)
-                .baseUri(baseUri)
-                .build());
+                                                                                        // Workaround for #3242
+                                                                                        //.keepAlive(false)
+                                                                                        .baseUri(baseUri)
+                                                                                        .build());
     }
 }

@@ -184,6 +184,7 @@
         <module>common</module>
         <module>config</module>
         <module>security</module>
+        <module>dbclient</module>
         <module>lra</module>
         <module>microprofile</module>
         <module>tracing</module>

@@ -18,24 +18,24 @@ package io.helidon.examples.dbclient.common;
 import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import io.helidon.common.http.Http;
-import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbRow;
-import io.helidon.reactive.webserver.Handler;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.common.parameters.Parameters;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbRow;
+import io.helidon.nima.webserver.http.Handler;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 import jakarta.json.JsonObject;
 
 /**
  * Common methods that do not differ between JDBC and MongoDB.
  */
-public abstract class AbstractPokemonService implements Service {
+public abstract class AbstractPokemonService implements HttpService {
     private static final Logger LOGGER = Logger.getLogger(AbstractPokemonService.class.getName());
 
     private final DbClient dbClient;
@@ -49,8 +49,9 @@ public abstract class AbstractPokemonService implements Service {
         this.dbClient = dbClient;
     }
 
+
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules
                 .get("/", this::listPokemons)
                 // create new
@@ -81,158 +82,154 @@ public abstract class AbstractPokemonService implements Service {
     /**
      * This method is left unimplemented to show differences between native statements that can be used.
      *
-     * @param request Server request
-     * @param response Server response
+     * @param req  Server request
+     * @param res Server response
      */
-    protected abstract void deleteAllPokemons(ServerRequest request, ServerResponse response);
+    protected abstract void deleteAllPokemons(ServerRequest req, ServerResponse res);
 
     /**
      * Insert new pokemon with specified name.
      *
-     * @param request  the server request
-     * @param response the server response
+     * @param pokemon pokemon request entity
+     * @param res the server response
      */
-    private void insertPokemon(ServerRequest request, ServerResponse response, Pokemon pokemon) {
-        dbClient.execute(exec -> exec
+    private void insertPokemon(Pokemon pokemon, ServerResponse res) {
+        long count = dbClient.execute(exec -> exec
                 .createNamedInsert("insert2")
                 .namedParam(pokemon)
-                .execute())
-                .thenAccept(count -> response.send("Inserted: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+                .execute());
+        res.send("Inserted: " + count + " values");
     }
 
     /**
      * Insert new pokemon with specified name.
      *
-     * @param request  the server request
-     * @param response the server response
+     * @param req  the server request
+     * @param res the server response
      */
-    private void insertPokemonSimple(ServerRequest request, ServerResponse response) {
+    private void insertPokemonSimple(ServerRequest req, ServerResponse res) {
+        Parameters params = req.path().pathParameters();
         // Test Pokemon POJO mapper
-        Pokemon pokemon = new Pokemon(request.path().param("name"), request.path().param("type"));
+        Pokemon pokemon = new Pokemon(params.value("name"), params.value("type"));
 
-        dbClient.execute(exec -> exec
+        long count = dbClient.execute(exec -> exec
                 .createNamedInsert("insert2")
                 .namedParam(pokemon)
-                .execute())
-                .thenAccept(count -> response.send("Inserted: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+                .execute());
+        res.send("Inserted: " + count + " values");
     }
 
     /**
      * Get a single pokemon by name.
      *
-     * @param request  server request
-     * @param response server response
+     * @param req  server request
+     * @param res server response
      */
-    private void getPokemon(ServerRequest request, ServerResponse response) {
-        String pokemonName = request.path().param("name");
-
+    private void getPokemon(ServerRequest req, ServerResponse res) {
+        String pokemonName = req.path().pathParameters().value("name");
         dbClient.execute(exec -> exec.namedGet("select-one", pokemonName))
-                .thenAccept(opt -> opt.ifPresentOrElse(it -> sendRow(it, response),
-                                                       () -> sendNotFound(response, "Pokemon "
-                                                               + pokemonName
-                                                               + " not found")))
-                .exceptionally(throwable -> sendError(throwable, response));
+                .ifPresentOrElse(it -> sendRow(it, res),
+                        () -> sendNotFound(res, "Pokemon "
+                                + pokemonName
+                                + " not found"));
     }
 
     /**
      * Return JsonArray with all stored pokemons or pokemons with matching attributes.
      *
-     * @param request  the server request
-     * @param response the server response
+     * @param req  the server request
+     * @param res the server response
      */
-    private void listPokemons(ServerRequest request, ServerResponse response) {
-        Multi<JsonObject> rows = dbClient.execute(exec -> exec.namedQuery("select-all"))
-                .map(it -> it.as(JsonObject.class));
+    private void listPokemons(ServerRequest req, ServerResponse res) {
+        Stream<JsonObject> rows = dbClient.execute(exec -> exec.namedQuery("select-all"))
+                                          .map(it -> it.as(JsonObject.class));
 
-        response.send(rows, JsonObject.class);
+        // TODO
+        res.send(rows);
     }
 
     /**
      * Update a pokemon.
      * Uses a transaction.
      *
-     * @param request  the server request
-     * @param response the server response
+     * @param req  the server request
+     * @param res the server response
      */
-    private void updatePokemonType(ServerRequest request, ServerResponse response) {
-        final String name = request.path().param("name");
-        final String type = request.path().param("type");
+    private void updatePokemonType(ServerRequest req, ServerResponse res) {
+        Parameters params = req.path().pathParameters();
+        final String name = params.value("name");
+        final String type = params.value("type");
 
-        dbClient.execute(exec -> exec
+        long count = dbClient.execute(exec -> exec
                 .createNamedUpdate("update")
                 .addParam("name", name)
                 .addParam("type", type)
-                .execute())
-                .thenAccept(count -> response.send("Updated: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+                .execute());
+        res.send("Updated: " + count + " values");
     }
 
-    private void transactional(ServerRequest request, ServerResponse response, Pokemon pokemon) {
-
-        dbClient.inTransaction(tx -> tx
+    private void transactional(Pokemon pokemon, ServerResponse res) {
+        long count = dbClient.transaction(tx -> tx
                 .createNamedGet("select-for-update")
                 .namedParam(pokemon)
                 .execute()
-                .flatMapSingle(maybeRow -> maybeRow.map(dbRow -> tx.createNamedUpdate("update")
-                        .namedParam(pokemon).execute())
-                        .orElseGet(() -> Single.just(0L)))
-        ).thenAccept(count -> response.send("Updated " + count + " records"));
+                .map(dbRow -> tx.createNamedUpdate("update")
+                                .namedParam(pokemon)
+                                .execute())
+                .orElse(0L));
+        res.send("Updated " + count + " records");
 
     }
 
     /**
      * Delete pokemon with specified name (key).
      *
-     * @param request  the server request
-     * @param response the server response
+     * @param req  the server request
+     * @param res the server response
      */
-    private void deletePokemon(ServerRequest request, ServerResponse response) {
-        final String name = request.path().param("name");
-
-        dbClient.execute(exec -> exec.namedDelete("delete", name))
-                .thenAccept(count -> response.send("Deleted: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+    private void deletePokemon(ServerRequest req, ServerResponse res) {
+        final String name = req.path().pathParameters().value("name");
+        long count = dbClient.execute(exec -> exec.namedDelete("delete", name));
+        res.send("Deleted: " + count + " values");
     }
 
     /**
      * Send a 404 status code.
      *
-     * @param response the server response
-     * @param message entity content
+     * @param res the server response
+     * @param message  entity content
      */
-    protected void sendNotFound(ServerResponse response, String message) {
-        response.status(Http.Status.NOT_FOUND_404);
-        response.send(message);
+    protected void sendNotFound(ServerResponse res, String message) {
+        res.status(Http.Status.NOT_FOUND_404);
+        res.send(message);
     }
 
     /**
      * Send a single DB row as JSON object.
      *
-     * @param row row as read from the database
-     * @param response server response
+     * @param row      row as read from the database
+     * @param res server response
      */
-    protected void sendRow(DbRow row, ServerResponse response) {
-        response.send(row.as(JsonObject.class));
+    protected void sendRow(DbRow row, ServerResponse res) {
+        res.send(row.as(JsonObject.class));
     }
 
     /**
      * Send a 500 response code and a few details.
      *
      * @param throwable throwable that caused the issue
-     * @param response server response
-     * @param <T> type of expected response, will be always {@code null}
+     * @param res  server response
+     * @param <T>       type of expected response, will be always {@code null}
      * @return {@code Void} so this method can be registered as a lambda
-     *      with {@link java.util.concurrent.CompletionStage#exceptionally(java.util.function.Function)}
+     * with {@link java.util.concurrent.CompletionStage#exceptionally(java.util.function.Function)}
      */
-    protected <T> T sendError(Throwable throwable, ServerResponse response) {
+    protected <T> T sendError(Throwable throwable, ServerResponse res) {
         Throwable realCause = throwable;
         if (throwable instanceof CompletionException) {
             realCause = throwable.getCause();
         }
-        response.status(Http.Status.INTERNAL_SERVER_ERROR_500);
-        response.send("Failed to process request: " + realCause.getClass().getName() + "(" + realCause.getMessage() + ")");
+        res.status(Http.Status.INTERNAL_SERVER_ERROR_500);
+        res.send("Failed to process request: " + realCause.getClass().getName() + "(" + realCause.getMessage() + ")");
         LOGGER.log(Level.WARNING, "Failed to process request", throwable);
         return null;
     }

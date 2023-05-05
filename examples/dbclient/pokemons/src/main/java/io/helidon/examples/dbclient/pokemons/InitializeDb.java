@@ -16,8 +16,8 @@
 package io.helidon.examples.dbclient.pokemons;
 
 import io.helidon.common.reactive.Single;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbExecute;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
 
 /**
  * Initialize JDBC database schema and populate it with sample data.

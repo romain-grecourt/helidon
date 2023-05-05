@@ -32,8 +32,8 @@ import java.util.stream.Collectors;
 
 import io.helidon.common.LazyValue;
 import io.helidon.common.http.ClientRequestHeaders;
-import io.helidon.common.http.Headers;
 import io.helidon.common.http.Http;
+import io.helidon.common.http.WritableHeaders;
 import io.helidon.config.Config;
 import io.helidon.metrics.api.RegistryFactory;
 
@@ -163,7 +163,7 @@ class Lra {
         lra.isChild = true;
     }
 
-    Function<ClientRequestHeaders, Headers> headers() {
+    Function<ClientRequestHeaders, WritableHeaders<?>> headers() {
         return headers -> {
             headers.add(LRA_HTTP_CONTEXT_HEADER, lraContextId());
             headers.add(LRA_HTTP_ENDED_CONTEXT_HEADER, lraContextId());

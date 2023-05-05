@@ -257,7 +257,7 @@ application.yaml.
 .Create a DbClient in the Main.startServer method:
 ----
 import io.helidon.reactive.dbclient.metrics.DbClientMetrics; // <1>
-import io.helidon.reactive.dbclient.DbClient;
+import io.helidon.dbclient.DbClient;
 
 Config config = Config.create(); // Landmark to add DB client
 
@@ -303,7 +303,7 @@ registered in the `createRouting` method.
 [source,java]
 .Modify the createRouting method:
 ----
-import io.helidon.reactive.dbclient.health.DbClientHealthCheck;
+import health.io.helidon.dbclient.DbClientHealthCheck;
 
 WebServer server = WebServer.builder(createRouting(config, dbClient))   // <1>
                 .config(config.get("server"))
@@ -342,7 +342,7 @@ Create LibraryService class into `io.helidon.examples.quickstart.se` package.
 package io.helidon.examples.quickstart.se;
 
 import io.helidon.common.http.Http;     // <1>
-import io.helidon.reactive.dbclient.DbClient;
+import io.helidon.dbclient.DbClient;
 import io.helidon.reactive.webserver.Routing;
 import io.helidon.reactive.webserver.ServerRequest;
 import io.helidon.reactive.webserver.ServerResponse;

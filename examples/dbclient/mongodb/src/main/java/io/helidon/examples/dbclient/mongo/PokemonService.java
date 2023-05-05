@@ -17,22 +17,22 @@
 package io.helidon.examples.dbclient.mongo;
 
 import io.helidon.examples.dbclient.common.AbstractPokemonService;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
+import io.helidon.dbclient.DbClient;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 /**
  * A simple service to greet you. Examples:
- *
+ * <p>
  * Get default greeting message:
  * curl -X GET http://localhost:8080/greet
- *
+ * <p>
  * Get greeting message for Joe:
  * curl -X GET http://localhost:8080/greet/Joe
- *
+ * <p>
  * Change greeting
  * curl -X PUT http://localhost:8080/greet/greeting/Hola
- *
+ * <p>
  * The message is returned as a JSON object
  */
 
@@ -42,18 +42,11 @@ public class PokemonService extends AbstractPokemonService {
         super(dbClient);
     }
 
-    /**
-     * Delete all pokemons.
-     *
-     * @param request  the server request
-     * @param response the server response
-     */
     @Override
-    protected void deleteAllPokemons(ServerRequest request, ServerResponse response) {
-        dbClient().execute(exec -> exec
+    protected void deleteAllPokemons(ServerRequest req, ServerResponse res) {
+        long count = dbClient().execute(exec -> exec
                 .createNamedDelete("delete-all")
-                .execute())
-                .thenAccept(count -> response.send("Deleted: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+                .execute());
+        res.send("Deleted: " + count + " values");
     }
 }

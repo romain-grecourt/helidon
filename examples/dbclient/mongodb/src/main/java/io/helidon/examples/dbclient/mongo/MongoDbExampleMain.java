@@ -18,18 +18,13 @@ package io.helidon.examples.dbclient.mongo;
 
 import io.helidon.config.Config;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbStatementType;
-import io.helidon.reactive.dbclient.health.DbClientHealthCheck;
-import io.helidon.reactive.dbclient.metrics.DbClientMetrics;
-import io.helidon.reactive.dbclient.tracing.DbClientTracing;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.media.jsonb.JsonbSupport;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.tracing.TracerBuilder;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbStatementType;
+import io.helidon.dbclient.metrics.DbClientMetrics;
+import io.helidon.dbclient.tracing.DbClientTracing;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * Simple Hello World rest application.
@@ -64,58 +59,42 @@ public final class MongoDbExampleMain {
         // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
 
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .tracer(TracerBuilder.create("mongo-db").build())
-                .addMediaSupport(JsonpSupport.create())
-                .addMediaSupport(JsonbSupport.create())
-                .build();
+        WebServer server = WebServer.builder()
+                                    .routing(routing -> routing(routing, config))
+                                    .config(config.get("server"))
+                                    //.tracer(TracerBuilder.create("mongo-db").build())
+                                    .start();
 
-        // Start the server and print some info.
-        server.start().thenAccept(ws -> {
-            System.out.println(
-                    "WEB server is up! http://localhost:" + ws.port() + "/");
-        });
 
-        // Server threads are not daemon. NO need to block. Just react.
-        server.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/");
         return server;
     }
 
     /**
-     * Creates new {@link io.helidon.reactive.webserver.Routing}.
+     * Setup routing.
      *
      * @param config configuration of this server
-     * @return routing configured with JSON support, a health check, and a service
      */
-    private static Routing createRouting(Config config) {
+    private static void routing(HttpRouting.Builder routing, Config config) {
         Config dbConfig = config.get("db");
 
         DbClient dbClient = DbClient.builder(dbConfig)
-                // add an interceptor to named statement(s)
-                .addService(DbClientMetrics.counter().statementNames("select-all", "select-one"))
-                // add an interceptor to statement type(s)
-                .addService(DbClientMetrics.timer()
-                                    .statementTypes(DbStatementType.DELETE, DbStatementType.UPDATE, DbStatementType.INSERT))
-                // add an interceptor to all statements
-                .addService(DbClientTracing.create())
-                .build();
+                                    // add an interceptor to named statement(s)
+                                    .addService(DbClientMetrics.counter().statementNames("select-all", "select-one"))
+                                    // add an interceptor to statement type(s)
+                                    .addService(DbClientMetrics.timer()
+                                                               .statementTypes(DbStatementType.DELETE, DbStatementType.UPDATE, DbStatementType.INSERT))
+                                    // add an interceptor to all statements
+                                    .addService(DbClientTracing.create())
+                                    .build();
 
-        HealthSupport health = HealthSupport.builder()
-                .add(DbClientHealthCheck.create(dbClient, dbConfig.get("health-check")))
-                .build();
-
-        return Routing.builder()
-                .register(health)                   // Health at "/health"
-                .register(MetricsSupport.create())  // Metrics at "/metrics"
-                .register("/db", new PokemonService(dbClient))
-                .build();
+        routing.register("/db", new PokemonService(dbClient))
+               .addFeature(ObserveFeature.create());
     }
 
     private static IllegalStateException noConfigError(String key) {
         return new IllegalStateException("Attempting to create a Pokemon service with no configuration"
-                                                 + ", config key: " + key);
+                + ", config key: " + key);
     }
 
 }

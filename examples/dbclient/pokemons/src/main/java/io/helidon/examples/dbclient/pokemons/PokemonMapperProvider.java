@@ -18,8 +18,8 @@ package io.helidon.examples.dbclient.pokemons;
 import java.util.Optional;
 
 import io.helidon.common.Weight;
-import io.helidon.reactive.dbclient.DbMapper;
-import io.helidon.reactive.dbclient.spi.DbMapperProvider;
+import io.helidon.dbclient.DbMapper;
+import io.helidon.dbclient.spi.DbMapperProvider;
 
 /**
  * Provides pokemon mappers.
