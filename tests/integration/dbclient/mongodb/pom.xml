@@ -65,7 +65,7 @@
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-reactivestreams</artifactId>
+            <artifactId>mongodb-driver-sync</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -18,28 +18,15 @@ package io.helidon.jersey.connector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Optional;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Flow;
-import java.util.function.Function;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.media.type.MediaTypes;
-import io.helidon.common.reactive.IoMulti;
-import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.OutputStreamMulti;
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.media.common.ContentWriters;
-import io.helidon.reactive.media.common.MessageBodyWriter;
-import io.helidon.reactive.media.common.MessageBodyWriterContext;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
-import io.helidon.reactive.webclient.WebClientResponse;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 
 import jakarta.ws.rs.ProcessingException;
-import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientRequest;
+
+import static org.glassfish.jersey.client.ClientProperties.OUTBOUND_CONTENT_LENGTH_BUFFER;
 
 /**
  * A utility class that converts outbound client entity to a class understandable by Helidon.
@@ -72,66 +59,36 @@ class HelidonEntity {
     }
 
     /**
-     * Get optional entity writer to be registered by the Helidon Client. For some default providers,
-     * nothing is needed to be registered.
-     * @param type the type of the entity class that works best for the Http Client request use case.
-     * @return possible writer to be registerd by the Helidon Client.
-     */
-    static Optional<MessageBodyWriter<?>> helidonWriter(HelidonEntityType type) {
-        switch (type) {
-            case BYTE_ARRAY_OUTPUT_STREAM:
-                return Optional.of(new OutputStreamBodyWriter());
-            case OUTPUT_STREAM_MULTI:
-            case READABLE_BYTE_CHANNEL:
-            default:
-                return Optional.empty();
-        }
-    }
-
-    /**
      * Convert Jersey {@code OutputStream} to an entity based on the client request use case and submits to the provided
-     * {@code WebClientRequestBuilder}.
-     * @param type the type of the Helidon entity.
-     * @param requestContext Jersey {@link ClientRequest} providing the entity {@code OutputStream}.
-     * @param requestBuilder Helidon {@code WebClientRequestBuilder} which is used to submit the entity
+     * {@code Http1ClientRequest}.
+     *
+     * @param type            the type of the Helidon entity.
+     * @param requestContext  Jersey {@link ClientRequest} providing the entity {@code OutputStream}.
+     * @param request         Helidon {@code WebClientRequestBuilder} which is used to submit the entity
      * @param executorService {@link ExecutorService} that fills the entity instance for Helidon with data from Jersey
-     *                      {@code OutputStream}.
+     *                        {@code OutputStream}.
      * @return Helidon Client response completion stage.
      */
-    static CompletionStage<WebClientResponse> submit(HelidonEntityType type,
-                                                     ClientRequest requestContext,
-                                                     WebClientRequestBuilder requestBuilder,
-                                                     ExecutorService executorService) {
-        CompletionStage<WebClientResponse> stage = null;
-        if (type != null) {
-            final int bufferSize = requestContext.resolveProperty(
-                    ClientProperties.OUTBOUND_CONTENT_LENGTH_BUFFER, 8192);
-            switch (type) {
-                case BYTE_ARRAY_OUTPUT_STREAM:
-                    final ByteArrayOutputStream baos = new ByteArrayOutputStream(bufferSize);
-                    requestContext.setStreamProvider(contentLength -> baos);
-                    ((ProcessingRunnable) requestContext::writeEntity).run();
-                    stage = requestBuilder.submit(baos);
-                    break;
-                case READABLE_BYTE_CHANNEL:
-                    final OutputStreamChannel channel = new OutputStreamChannel(bufferSize);
-                    requestContext.setStreamProvider(contentLength -> channel);
-                    executorService.execute((ProcessingRunnable) requestContext::writeEntity);
-                    stage = requestBuilder.submit(channel);
-                    break;
-                case OUTPUT_STREAM_MULTI:
-                    final OutputStreamMulti publisher = IoMulti.outputStreamMulti();
-                    requestContext.setStreamProvider(contentLength -> publisher);
-                    executorService.execute((ProcessingRunnable) () -> {
-                        requestContext.writeEntity();
-                        publisher.close();
-                    });
-                    stage = requestBuilder.submit(Multi.create(publisher).map(DataChunk::create));
-                    break;
-                default:
+    static Http1ClientResponse submit(HelidonEntityType type,
+                                      ClientRequest requestContext,
+                                      Http1ClientRequest request,
+                                      ExecutorService executorService) {
+        final int bufferSize = requestContext.resolveProperty(OUTBOUND_CONTENT_LENGTH_BUFFER, 8192);
+        switch (type) {
+            case BYTE_ARRAY_OUTPUT_STREAM -> {
+                final ByteArrayOutputStream baos = new ByteArrayOutputStream(bufferSize);
+                requestContext.setStreamProvider(contentLength -> baos);
+                ((ProcessingRunnable) requestContext::writeEntity).run();
+                return request.submit(baos.toByteArray());
             }
+            case READABLE_BYTE_CHANNEL -> {
+                final OutputStreamChannel channel = new OutputStreamChannel(bufferSize);
+                requestContext.setStreamProvider(contentLength -> channel);
+                executorService.execute((ProcessingRunnable) requestContext::writeEntity);
+                return request.submit(channel);
+            }
+            default -> throw new UnsupportedOperationException("Unsupported entity type: " + type);
         }
-        return stage;
     }
 
     @FunctionalInterface
@@ -144,32 +101,6 @@ class HelidonEntity {
                 runOrThrow();
             } catch (IOException e) {
                 throw new ProcessingException("Error writing entity:", e);
-            }
-        }
-    }
-
-    private static class OutputStreamBodyWriter implements MessageBodyWriter<ByteArrayOutputStream> {
-        private OutputStreamBodyWriter() {
-        }
-
-        @Override
-        public Flow.Publisher<DataChunk> write(
-                Single<? extends ByteArrayOutputStream> content,
-                GenericType<? extends ByteArrayOutputStream> type,
-                MessageBodyWriterContext context) {
-            context.contentType(MediaTypes.APPLICATION_OCTET_STREAM);
-            return content.flatMap(new ByteArrayOutputStreamToChunks());
-        }
-
-        @Override
-        public PredicateResult accept(GenericType<?> type, MessageBodyWriterContext messageBodyWriterContext) {
-            return PredicateResult.supports(ByteArrayOutputStream.class, type);
-        }
-
-        private static class ByteArrayOutputStreamToChunks implements Function<ByteArrayOutputStream, Flow.Publisher<DataChunk>> {
-            @Override
-            public Flow.Publisher<DataChunk> apply(ByteArrayOutputStream byteArrayOutputStream) {
-                return ContentWriters.writeBytes(byteArrayOutputStream.toByteArray(), false);
             }
         }
     }

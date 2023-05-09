@@ -18,12 +18,13 @@ package io.helidon.tests.integration.webclient;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
-import java.util.concurrent.ExecutionException;
 
-import io.helidon.reactive.media.common.MediaContext;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.http.media.jsonp.JsonpSupport;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
 
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -49,138 +51,120 @@ public class MediaContextTest extends TestParent {
         DEFAULT_GREETING = CONFIG.get("app.greeting").asString().orElse("Hello");
 
         JSON_GREETING = JSON_BUILDER.createObjectBuilder()
-                .add("message", DEFAULT_GREETING + " World!")
-                .build();
+                                    .add("message", DEFAULT_GREETING + " World!")
+                                    .build();
 
         JSON_NEW_GREETING = JSON_BUILDER.createObjectBuilder()
-                .add("greeting", "Hola")
-                .build();
+                                        .add("greeting", "Hola")
+                                        .build();
         JSON_OLD_GREETING = JSON_BUILDER.createObjectBuilder()
-                .add("greeting", CONFIG.get("app.greeting").asString().orElse("Hello"))
-                .build();
+                                        .add("greeting", CONFIG.get("app.greeting").asString().orElse("Hello"))
+                                        .build();
+    }
+
+    MediaContextTest(WebServer server, Http1Client client) {
+        super(server, client);
     }
 
     @Test
-    public void testMediaSupportDefaults() throws Exception {
-        WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .build();
+    public void testMediaSupportDefaults() {
+        Http1Client client = Http1Client.builder()
+                                        .baseUri("http://localhost:" + server.port() + "/greet")
+                                        .build();
 
-        client.get()
-                .request(String.class)
-                .thenAccept(it -> assertThat(it, is(JSON_GREETING.toString())))
-                .toCompletableFuture()
-                .get();
+        String greeting = client.get().request(String.class);
+        assertThat(greeting, is(JSON_GREETING.toString()));
     }
 
     @Test
-    public void testMediaSupportWithoutDefaults() throws Exception {
-        WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .mediaContext(MediaContext.empty())
-                .build();
+    public void testMediaSupportWithoutDefaults() {
+        Http1Client client = Http1Client.builder()
+                                        .baseUri("http://localhost:" + server.port() + "/greet")
+                                        .mediaContext(MediaContext.builder()
+                                                                  .discoverServices(false)
+                                                                  .build())
+                                        .build();
 
-        client.get()
-                .request(String.class)
-                .thenAccept(it -> fail("No reader for String should be registered!"))
-                .exceptionally(ex -> {
-                    assertThat(ex.getCause().getMessage(), is("No reader found for type: class java.lang.String"));
-                    return null;
-                })
-                .toCompletableFuture()
-                .get();
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            client.get().request(String.class);
+            fail("No reader for String should be registered!");
+        });
+        assertThat(ex.getMessage(), is("No reader found for type: class java.lang.String"));
     }
 
     @Test
-    public void testReaderRegisteredOnClient() throws Exception {
-        WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .addReader(JsonpSupport.reader())
-                .build();
+    public void testReaderRegisteredOnClient() {
+        Http1Client client = Http1Client.builder()
+                                        .baseUri("http://localhost:" + server.port() + "/greet")
+                                        .mediaContext(MediaContext.builder()
+                                                                  .addMediaSupport(JsonpSupport.create())
+                                                                  .discoverServices(false)
+                                                                  .build())
+                                        .build();
 
-        client.get()
-                .request(JsonObject.class)
-                .thenAccept(it -> assertThat(it, is(JSON_GREETING)))
-                .thenCompose(it -> client.put()
-                        .path("/greeting")
-                        .submit(JSON_NEW_GREETING))
-                .thenAccept(it -> fail("No writer for String should be registered!"))
-                .exceptionally(ex -> {
-                    assertThat(ex.getCause().getMessage(),
-                               is("Transformation failed!"));
-                    return null;
-                })
-                .toCompletableFuture()
-                .get();
+        JsonObject jsonObject = client.get().request(JsonObject.class);
+        assertThat(jsonObject, is(JSON_GREETING));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            try (Http1ClientResponse ignored = client.put()
+                                                     .path("/greeting")
+                                                     .submit(JSON_NEW_GREETING)) {
+                fail("No writer for String should be registered!");
+            }
+        });
+        assertThat(ex.getCause().getMessage(), is("Transformation failed!"));
     }
 
     @Test
-    public void testWriterRegisteredOnClient() throws Exception {
-        WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .addWriter(JsonpSupport.writer())
-                .build();
+    public void testWriterRegisteredOnClient() {
+        Http1Client client = Http1Client.builder()
+                                        .baseUri("http://localhost:" + server.port() + "/greet")
+                                        .mediaContext(MediaContext.builder()
+                                                                  .addMediaSupport(JsonpSupport.create())
+                                                                  .discoverServices(false)
+                                                                  .build())
+                                        .build();
 
-        client.put()
-                .path("/greeting")
-                .submit(JSON_NEW_GREETING)
-                .thenCompose(it -> client.get().request(JsonObject.class))
-                .thenAccept(it -> fail("JsonReader should not be registered!"))
-                .exceptionally(ex -> {
-                    assertThat(ex.getCause().getMessage(),
-                               is("No reader found for type: interface jakarta.json.JsonObject"));
-                    return null;
-                })
-                .thenCompose(it -> client.put().path("/greeting").submit(JSON_OLD_GREETING)) //Cleanup
-                .toCompletableFuture()
-                .get();
+        // TODO can't register just a writer, so the test will always fail with the current API.
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            try (Http1ClientResponse ignored = client.put()
+                                                     .path("/greeting")
+                                                     .submit(JSON_NEW_GREETING)) {
+                fail("JsonReader should not be registered!");
+            }
+        });
+        assertThat(ex.getMessage(), is("No reader found for type: interface jakarta.json.JsonObject"));
+
+        try (Http1ClientResponse res = client.put().path("/greeting").submit(JSON_OLD_GREETING)) {
+            assertThat(res.status().code(), is(200));
+        }
     }
 
     @Test
-    public void testRequestSpecificReader() throws Exception {
-        WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .build();
+    public void testRequestSpecificReader() {
+        Http1Client client = Http1Client.builder()
+                                        .baseUri("http://localhost:" + server.port() + "/greet")
+                                        .build();
 
-        client.get()
-                .request(JsonObject.class)
-                .thenAccept(it -> fail("JsonObject should not have been handled."))
-                .thenCompose(it -> {
-                    WebClientRequestBuilder requestBuilder = client.get();
-                    requestBuilder.readerContext().registerReader(JsonpSupport.reader());
-                    return requestBuilder.request(JsonObject.class);
-                })
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is(DEFAULT_GREETING + " World!")))
-                .thenCompose(it -> client.get()
-                        .request(JsonObject.class))
-                .thenAccept(it -> fail("JsonObject should not have been handled."))
-                .exceptionally(throwable -> {
-                    assertThat(throwable.getCause().getMessage(),
-                               is("No reader found for type: interface jakarta.json.JsonObject"));
-                    return null;
-                })
-                .toCompletableFuture()
-                .get();
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> {
+            client.get().request(JsonObject.class);
+            fail("JsonObject should not have been handled.");
+        });
+        assertThat(ex.getMessage(), is("No reader found for type: interface jakarta.json.JsonObject"));
+
+        Http1ClientRequest req = client.get();
+//        req.readerContext().registerReader(JsonpSupport.reader());
+        JsonObject jsonObject = req.request(JsonObject.class);
+        assertThat(jsonObject.getString("message"), is(DEFAULT_GREETING + " World!"));
     }
 
     @Test
-    public void testInputStreamDifferentThread() throws IOException, ExecutionException, InterruptedException {
-        InputStream is = webClient.get()
-                .request(InputStream.class)
-                .toCompletableFuture()
-                .get();
-        assertThat(new String(is.readAllBytes()), is("{\"message\":\"Hello World!\"}"));
+    public void testInputStreamDifferentThreadContentAs() throws IOException {
+        try (Http1ClientResponse res = client.get().request()) {
+            InputStream is = res.inputStream();
+            assertThat(new String(is.readAllBytes()), is("{\"message\":\"Hello World!\"}"));
+        }
     }
-
-    @Test
-    public void testInputStreamDifferentThreadContentAs() throws IOException, ExecutionException, InterruptedException {
-        InputStream is = webClient.get()
-                .request()
-                .thenCompose(it -> it.content().as(InputStream.class))
-                .toCompletableFuture()
-                .get();
-        assertThat(new String(is.readAllBytes()), is("{\"message\":\"Hello World!\"}"));
-    }
-
 
 }

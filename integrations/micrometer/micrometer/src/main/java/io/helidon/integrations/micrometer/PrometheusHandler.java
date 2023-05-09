@@ -30,16 +30,16 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 /**
  * Handler for dealing with HTTP requests to the Micrometer endpoint that specify prometheus as the registry type.
  */
-class NimaPrometheusHandler implements Handler {
+class PrometheusHandler implements Handler {
 
     private final PrometheusMeterRegistry registry;
 
-    private NimaPrometheusHandler(PrometheusMeterRegistry registry) {
+    private PrometheusHandler(PrometheusMeterRegistry registry) {
         this.registry = registry;
     }
 
-    static NimaPrometheusHandler create(MeterRegistry registry) {
-        return new NimaPrometheusHandler(PrometheusMeterRegistry.class.cast(registry));
+    static PrometheusHandler create(MeterRegistry registry) {
+        return new PrometheusHandler((PrometheusMeterRegistry) registry);
     }
 
     @Override
@@ -52,12 +52,11 @@ class NimaPrometheusHandler implements Handler {
             res.send(registry.scrape());
         } else if (method == Http.Method.OPTIONS) {
             StringWriter writer = new StringWriter();
-
             MicrometerPrometheusRegistrySupport.metadata(writer, registry);
             res.send(writer.toString());
         } else {
             res.status(Http.Status.NOT_IMPLEMENTED_501)
-                    .send();
+               .send();
         }
     }
 }

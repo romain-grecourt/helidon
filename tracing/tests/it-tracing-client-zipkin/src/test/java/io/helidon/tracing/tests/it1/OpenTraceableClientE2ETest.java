@@ -17,7 +17,6 @@
 package io.helidon.tracing.tests.it1;
 
 import java.lang.System.Logger;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,8 +26,10 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.tracing.TracingFeature;
 import io.helidon.tracing.Span;
 import io.helidon.tracing.jersey.client.ClientTracingFilter;
 import io.helidon.tracing.opentracing.OpenTracing;
@@ -65,33 +66,37 @@ import static org.junit.jupiter.api.Assertions.fail;
  * 4. Server creates a "content-write" span - parent is (3.), same trace ID - server
  *
  */
-class OpentraceableClientE2ETest {
+@ServerTest
+class OpenTraceableClientE2ETest {
     /**
      * We expect two client spans and two server spans.
      */
     private static final int EXPECTED_TRACE_EVENTS_COUNT = 4;
-    private static final Logger LOGGER = System.getLogger(OpentraceableClientE2ETest.class.getName());
+    private static final Logger LOGGER = System.getLogger(OpenTraceableClientE2ETest.class.getName());
     private static final Logger.Level LEVEL = Logger.Level.DEBUG;
     private static final List<zipkin2.Span> CLIENT_SPANS = Collections.synchronizedList(new ArrayList<>());
     private static final List<zipkin2.Span> SERVER_SPANS = Collections.synchronizedList(new ArrayList<>());
-    private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
     private static WebServer server;
     private static Client client;
     private static CountDownLatch eventsLatch;
 
+    OpenTraceableClientE2ETest(WebServer server) {
+        this.server = server;
+    }
+
+    @SetUpServer
     @BeforeAll
-    static void startServerInitClient() {
-        server = startWebServer();
+    static void startServerInitClient(WebServer.Builder builder) {
+        builder.host("localhost")
+               .routing(routing -> routing
+                       .any((req, res) -> res.send("OK"))
+                       .addFeature(TracingFeature.create(tracer("test-server"))));
         client = ClientBuilder.newClient(new ClientConfig(ClientTracingFilter.class));
     }
 
     @AfterAll
     static void stopAndClose() {
-        if (server != null) {
-            server.shutdown().await(TIMEOUT);
-        }
-
         if (client != null) {
             client.close();
         }
@@ -108,13 +113,13 @@ class OpentraceableClientE2ETest {
     void e2e() throws Exception {
         io.helidon.tracing.Tracer tracer = tracer("test-client");
         Span clientSpan = tracer.spanBuilder("client-call")
-                .kind(Span.Kind.CLIENT)
-                .start();
+                                .kind(Span.Kind.CLIENT)
+                                .start();
         Response response = client.target("http://localhost:" + server.port())
-                .property(ClientTracingFilter.TRACER_PROPERTY_NAME, tracer)
-                .property(ClientTracingFilter.CURRENT_SPAN_CONTEXT_PROPERTY_NAME, clientSpan.context())
-                .request()
-                .get();
+                                  .property(ClientTracingFilter.TRACER_PROPERTY_NAME, tracer)
+                                  .property(ClientTracingFilter.CURRENT_SPAN_CONTEXT_PROPERTY_NAME, clientSpan.context())
+                                  .request()
+                                  .get();
 
         assertThat(response.getStatus(), is(200));
 
@@ -122,17 +127,17 @@ class OpentraceableClientE2ETest {
 
         if (!eventsLatch.await(10, TimeUnit.SECONDS)) {
             fail("Timed out waiting to detect expected "
-                         + EXPECTED_TRACE_EVENTS_COUNT
-                         + "; remaining latch count: "
-                         + eventsLatch.getCount());
+                    + EXPECTED_TRACE_EVENTS_COUNT
+                    + "; remaining latch count: "
+                    + eventsLatch.getCount());
         }
 
         assertThat("Client spans reported. Client: " + printSpans(CLIENT_SPANS) + ", Server: " + printSpans(SERVER_SPANS),
-                   CLIENT_SPANS,
-                   hasSize(2));
+                CLIENT_SPANS,
+                hasSize(2));
         assertThat("Server spans reported. Client: " + printSpans(CLIENT_SPANS) + ", Server: " + printSpans(SERVER_SPANS),
-                   SERVER_SPANS,
-                   hasSize(2));
+                SERVER_SPANS,
+                hasSize(2));
 
         TraceContext traceContext = ((BraveSpanContext) clientSpan.unwrap(io.opentracing.Span.class).context()).unwrap();
 
@@ -147,11 +152,11 @@ class OpentraceableClientE2ETest {
         // top level client span
         zipkin2.Span clientTopLevelSpan = spansById.get(traceContext.spanIdString());
         assertThat("Manual client span with id " + traceContext.spanIdString() + " was not found in "
-                           + printSpans(spansById), clientTopLevelSpan, notNullValue());
+                + printSpans(spansById), clientTopLevelSpan, notNullValue());
         assertAll("Manual client span",
-                  () -> assertThat("Should not have a parent", clientTopLevelSpan.parentId(), nullValue()),
-                  () -> assertThat("Correct name", clientTopLevelSpan.name(), is("client-call")),
-                  () -> assertThat("Trace ID is not null", clientTopLevelSpan.traceId(), notNullValue())
+                () -> assertThat("Should not have a parent", clientTopLevelSpan.parentId(), nullValue()),
+                () -> assertThat("Correct name", clientTopLevelSpan.name(), is("client-call")),
+                () -> assertThat("Trace ID is not null", clientTopLevelSpan.traceId(), notNullValue())
         );
 
         String manualClientId = clientTopLevelSpan.id();
@@ -160,11 +165,11 @@ class OpentraceableClientE2ETest {
         // JAR-RS client span
         var clientJaxRsSpan = spansByName.get("get");
         assertThat("JAX-RS GET client span was not found in "
-                           + printSpans(spansByName), clientJaxRsSpan, notNullValue());
+                + printSpans(spansByName), clientJaxRsSpan, notNullValue());
         assertAll("JAX-RS GET client span",
-                  () -> assertThat("Parent should be manual span", clientJaxRsSpan.parentId(), is(manualClientId)),
-                  () -> assertThat("TraceID should be the same for all spans", clientJaxRsSpan.traceId(), is(traceId)),
-                  () -> assertThat("Correct name", clientJaxRsSpan.name(), is("get"))
+                () -> assertThat("Parent should be manual span", clientJaxRsSpan.parentId(), is(manualClientId)),
+                () -> assertThat("TraceID should be the same for all spans", clientJaxRsSpan.traceId(), is(traceId)),
+                () -> assertThat("Correct name", clientJaxRsSpan.name(), is("get"))
         );
 
         /*
@@ -177,11 +182,11 @@ class OpentraceableClientE2ETest {
         // WebServer span
         var serverRequestSpan = spansByName.get("http request");
         assertThat("Server \"http request\" span was not found in "
-                           + printSpans(spansByName), serverRequestSpan, notNullValue());
+                + printSpans(spansByName), serverRequestSpan, notNullValue());
         assertAll("Server \"http request\" span",
-                  () -> assertThat("Parent should be manual span", serverRequestSpan.parentId(), is(manualClientId)),
-                  () -> assertThat("TraceID should be the same for all spans", serverRequestSpan.traceId(), is(traceId)),
-                  () -> assertThat("Correct name", serverRequestSpan.name(), is("http request"))
+                () -> assertThat("Parent should be manual span", serverRequestSpan.parentId(), is(manualClientId)),
+                () -> assertThat("TraceID should be the same for all spans", serverRequestSpan.traceId(), is(traceId)),
+                () -> assertThat("Correct name", serverRequestSpan.name(), is("http request"))
         );
 
         String serverRequestId = serverRequestSpan.id();
@@ -189,11 +194,11 @@ class OpentraceableClientE2ETest {
         // WebServer span
         var serverContentSpan = spansByName.get("content-write");
         assertThat("Server \"content-write\" span was not found in "
-                           + printSpans(spansByName), serverContentSpan, notNullValue());
+                + printSpans(spansByName), serverContentSpan, notNullValue());
         assertAll("Server \"content-write\" span",
-                  () -> assertThat("Parent should be server request span", serverContentSpan.parentId(), is(serverRequestId)),
-                  () -> assertThat("TraceID should be the same for all spans", serverContentSpan.traceId(), is(traceId)),
-                  () -> assertThat("Correct name", serverContentSpan.name(), is("content-write"))
+                () -> assertThat("Parent should be server request span", serverContentSpan.parentId(), is(serverRequestId)),
+                () -> assertThat("TraceID should be the same for all spans", serverContentSpan.traceId(), is(traceId)),
+                () -> assertThat("Correct name", serverContentSpan.name(), is("content-write"))
         );
     }
 
@@ -224,47 +229,36 @@ class OpentraceableClientE2ETest {
      */
     private static io.helidon.tracing.Tracer tracer(String serviceName) {
         Tracing braveTracing = Tracing.newBuilder()
-                .localServiceName(serviceName)
-                .spanReporter(span -> {
-                    if (span.kind() == zipkin2.Span.Kind.CLIENT) {
-                        CLIENT_SPANS.add(span);
-                    } else {
-                        SERVER_SPANS.add(span);
-                    }
+                                      .localServiceName(serviceName)
+                                      .spanReporter(span -> {
+                                          if (span.kind() == zipkin2.Span.Kind.CLIENT) {
+                                              CLIENT_SPANS.add(span);
+                                          } else {
+                                              SERVER_SPANS.add(span);
+                                          }
 
-                    eventsLatch.countDown();
-                    if (LOGGER.isLoggable(LEVEL)) {
-                        LOGGER.log(LEVEL, String.format(
-                                """
-                                        Service %10s recorded span %14s/%s, %s kind, parent %s, trace %s; \
-                                        client map size: %d; server map size: %d; remaining latch count: %d \
-                                        """,
-                                serviceName,
-                                span.name(),
-                                span.id(),
-                                span.kind(),
-                                span.parentId(),
-                                span.traceId(),
-                                CLIENT_SPANS.size(),
-                                SERVER_SPANS.size(),
-                                eventsLatch.getCount()));
-                    }
-                })
-                .build();
+                                          eventsLatch.countDown();
+                                          if (LOGGER.isLoggable(LEVEL)) {
+                                              LOGGER.log(LEVEL, String.format(
+                                                      """
+                                                              Service %10s recorded span %14s/%s, %s kind, parent %s, trace %s; \
+                                                              client map size: %d; server map size: %d; remaining latch count: %d \
+                                                              """,
+                                                      serviceName,
+                                                      span.name(),
+                                                      span.id(),
+                                                      span.kind(),
+                                                      span.parentId(),
+                                                      span.traceId(),
+                                                      CLIENT_SPANS.size(),
+                                                      SERVER_SPANS.size(),
+                                                      eventsLatch.getCount()));
+                                          }
+                                      })
+                                      .build();
 
         // use this to create an OpenTracing Tracer
         return OpenTracing.create(new ZipkinTracer(BraveTracer.create(braveTracing), List.of()));
-    }
-
-    private static WebServer startWebServer() {
-        return WebServer.builder()
-                .host("localhost")
-                .routing(Routing.builder()
-                                 .any((req, res) -> res.send("OK")))
-                .tracer(tracer("test-server"))
-                .build()
-                .start()
-                .await(Duration.ofSeconds(10));
     }
 
     private String printSpans(Map<String, zipkin2.Span> spans) {

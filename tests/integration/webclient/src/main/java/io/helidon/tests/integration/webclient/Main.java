@@ -16,14 +16,13 @@
 
 package io.helidon.tests.integration.webclient;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.security.integration.webserver.WebSecurity;
-import io.helidon.tracing.opentracing.OpenTracing;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
+import io.helidon.nima.webserver.tracing.TracingFeature;
+import io.helidon.security.integration.nima.SecurityFeature;
 
+import io.helidon.tracing.opentracing.OpenTracing;
 import io.opentracing.Tracer;
 
 /**
@@ -42,18 +41,7 @@ public final class Main {
     }
 
     public static void main(String[] args) {
-        startServer().ignoreElement();
-    }
-
-    static Single<WebServer> startServer(Tracer tracer) {
-        // By default this will pick up application.yaml from the classpath
-        Config config = Config.create();
-
-        // Get webserver config from the "server" section of application.yaml
-        WebServer.Builder builder = WebServer.builder()
-                .tracer(OpenTracing.create(tracer));
-
-        return startIt(config, builder);
+        startServer();
     }
 
     /**
@@ -61,49 +49,40 @@ public final class Main {
      *
      * @return the created {@link WebServer} instance
      */
-    static Single<WebServer> startServer() {
-        // By default this will pick up application.yaml from the classpath
-        Config config = Config.create();
-
-        // Get webserver config from the "server" section of application.yaml
-
-        WebServer.Builder builder = WebServer.builder();
-
-        return startIt(config, builder);
-    }
-
-    private static Single<WebServer> startIt(Config config, WebServer.Builder serverBuilder) {
-        serverBuilder.config(config.get("server"));
-        webServer = serverBuilder.routing(createRouting(config))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        return webServer.start()
-                .peek(ws -> {
-                    serverPort = ws.port();
-                    System.out.println(
-                            "WEB server is up! http://localhost:" + ws.port() + "/greet");
-                    ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-                .onError(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
+    static WebServer startServer() {
+        return startServer(null);
     }
 
     /**
-     * Creates new {@link Routing}.
+     * Start the server.
+     *
+     * @param tracer tracer, may be {@code null}
+     * @return the created {@link WebServer} instance
+     */
+    static WebServer startServer(Tracer tracer) {
+        WebServer.Builder builder = WebServer.builder();
+        Config config = Config.create();
+        builder.config(config.get("server"));
+        builder.routing(routing -> routing(routing, config, tracer));
+        webServer = builder.start();
+        serverPort = webServer.port();
+        System.out.println("WEB server is up! http://localhost:" + serverPort + "/greet");
+        return webServer;
+    }
+
+    /**
+     * Setup routing.
      *
      * @param config configuration of this server
+     * @param tracer tracer, may be {@code null}
      * @return routing configured with JSON support, a health check, and a service
      */
-    private static Routing createRouting(Config config) {
+    static void routing(HttpRouting.Builder routing, Config config, Tracer tracer) {
         GreetService greetService = new GreetService(config);
-        return Routing.builder()
-                .register(WebSecurity.create(config.get("security")))
-                .register("/greet", greetService)
-                .build();
+        routing.addFeature(SecurityFeature.create(config.get("security")))
+               .register("/greet", greetService);
+        if (tracer != null){
+            routing.addFeature(TracingFeature.create(OpenTracing.create(tracer)));
+        }
     }
 }

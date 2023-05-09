@@ -18,8 +18,6 @@
  * Prometheus support.
  */
 module io.helidon.metrics.prometheus {
-    requires io.helidon.reactive.webserver;
-
     // prometheus :(
     requires simpleclient;
     requires io.helidon.nima.servicecommon;

@@ -55,8 +55,8 @@
     <dependencies>
         <!-- We depend on bookstore app to make sure it is built first -->
         <dependency>
-            <groupId>io.helidon.tests.apps.bookstore.bookstore-se</groupId>
-            <artifactId>bookstore-se</artifactId>
+            <groupId>io.helidon.tests.apps.bookstore.bookstore-nima</groupId>
+            <artifactId>bookstore-nima</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
@@ -64,16 +64,6 @@
             <groupId>io.helidon.tests.apps.bookstore.bookstore-mp</groupId>
             <artifactId>bookstore-mp</artifactId>
             <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.reactive.media</groupId>
-            <artifactId>helidon-reactive-media-jsonp</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.reactive.webclient</groupId>
-            <artifactId>helidon-reactive-webclient</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -94,6 +84,11 @@
         <dependency>
             <groupId>com.oracle.bedrock</groupId>
             <artifactId>bedrock-testing-support</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.webclient</groupId>
+            <artifactId>helidon-nima-webclient</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

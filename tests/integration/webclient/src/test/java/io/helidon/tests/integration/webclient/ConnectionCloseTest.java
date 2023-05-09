@@ -16,16 +16,16 @@
 
 package io.helidon.tests.integration.webclient;
 
+import java.io.UncheckedIOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import io.helidon.common.http.DataChunk;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientException;
-import io.helidon.reactive.webclient.WebClientResponse;
 
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.WebServer;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 
@@ -33,22 +33,22 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class ConnectionCloseTest extends TestParent {
 
+    ConnectionCloseTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
+
     @Test
     void testCutConnection() throws ExecutionException, InterruptedException, TimeoutException {
-        WebClient webClient = createNewClient();
+        Http1Client webClient = createNewClient();
         CompletableFuture<Throwable> actualErrorCf = new CompletableFuture<>();
         // Expecting WebClientException: Connection reset by the host
         webClient.get()
                 .path("/connectionClose")
                 .request()
-                .flatMap(WebClientResponse::content)
-                .map(DataChunk::bytes)
-                .map(String::new)
-                .log()
-                .onError(actualErrorCf::complete)
-                .ignoreElements();
+                .entity()
+                .as(String.class);
 
         Throwable actual = actualErrorCf.get(10, TimeUnit.SECONDS);
-        assertThat(actual, Matchers.instanceOf(WebClientException.class));
+        assertThat(actual, Matchers.instanceOf(UncheckedIOException.class));
     }
 }

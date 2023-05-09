@@ -19,25 +19,22 @@ package io.helidon.jersey.connector;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.net.URI;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.logging.Logger;
 
 import io.helidon.common.Version;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
-import io.helidon.reactive.webclient.WebClientResponse;
+import io.helidon.common.http.Http;
+import io.helidon.common.socket.SocketOptions;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1Client.Http1ClientBuilder;
 
-import jakarta.ws.rs.ProcessingException;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.Configuration;
 import jakarta.ws.rs.core.Response;
@@ -62,14 +59,14 @@ class HelidonConnector implements Connector {
             + PropertiesHelper.getSystemProperty("java.runtime.version") + ")";
     static final Logger LOGGER = Logger.getLogger(HelidonConnector.class.getName());
 
-    private final WebClient webClient;
+    private final Http1Client webClient;
 
     private final ExecutorServiceKeeper executorServiceKeeper;
     private final HelidonEntity.HelidonEntityType entityType;
 
     private static final InputStream NO_CONTENT_INPUT_STREAM = new InputStream() {
         @Override
-        public int read() throws IOException {
+        public int read() {
             return -1;
         }
     };
@@ -84,17 +81,14 @@ class HelidonConnector implements Connector {
         executorServiceKeeper = new ExecutorServiceKeeper(client);
         entityType = getEntityType(config);
 
-        final WebClient.Builder webClientBuilder = WebClient.builder();
-
-        webClientBuilder.addReader(HelidonStructures.createInputStreamBodyReader());
-        HelidonEntity.helidonWriter(entityType).ifPresent(webClientBuilder::addWriter);
-
-        HelidonStructures.createProxy(config).ifPresent(webClientBuilder::proxy);
-
+        final Http1ClientBuilder webClientBuilder = Http1Client.builder();
+//        HelidonStructures.createProxy(config).ifPresent(webClientBuilder::proxy);
         HelidonStructures.helidonConfig(config).ifPresent(webClientBuilder::config);
 
-        webClientBuilder.connectTimeout(ClientProperties.getValue(config.getProperties(),
-                ClientProperties.CONNECT_TIMEOUT, 10000), TimeUnit.MILLISECONDS);
+        int connectTimeout = ClientProperties.getValue(config.getProperties(), ClientProperties.CONNECT_TIMEOUT, 1000);
+        webClientBuilder.channelOptions(SocketOptions.builder()
+                                                     .connectTimeout(Duration.ofMillis(connectTimeout))
+                                                     .build());
 
         HelidonStructures.createSSL(client.getSslContext()).ifPresent(webClientBuilder::tls);
 
@@ -103,25 +97,18 @@ class HelidonConnector implements Connector {
 
     @Override
     public ClientResponse apply(ClientRequest request) {
-        try {
-            return applyInternal(request).toCompletableFuture().get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new ProcessingException(e);
-        }
+        return applyInternal(request);
     }
 
     @Override
     public Future<?> apply(ClientRequest request, AsyncConnectorCallback callback) {
-        final BiConsumer<? super ClientResponse, ? super Throwable> action = (r, th) -> {
-            if (th == null) {
-                callback.response(r);
-            } else {
-                callback.failure(th);
-            }
-        };
-        return applyInternal(request)
-                .whenCompleteAsync(action, executorServiceKeeper.getExecutorService(request))
-                .toCompletableFuture();
+        try {
+            callback.response(applyInternal(request));
+            return CompletableFuture.completedFuture(null);
+        } catch (Throwable th) {
+            callback.failure(th);
+            return CompletableFuture.failedFuture(th);
+        }
     }
 
     @Override
@@ -134,52 +121,54 @@ class HelidonConnector implements Connector {
 
     }
 
-    private CompletionStage<ClientResponse> applyInternal(ClientRequest request) {
-        final WebClientRequestBuilder webClientRequestBuilder = webClient.method(request.getMethod());
-        webClientRequestBuilder.uri(request.getUri());
+    private ClientResponse applyInternal(ClientRequest request) {
+        final Http1ClientRequest webClientRequest = webClient.method(Http.Method.create(request.getMethod()));
+        webClientRequest.uri(request.getUri());
 
-        webClientRequestBuilder.headers(HelidonStructures.createHeaders(request.getRequestHeaders()));
+        webClientRequest.headers(headers -> {
+            headers.addAll(HelidonStructures.createHeaders(request.getRequestHeaders()));
+            return headers;
+        });
 
         for (String propertyName : request.getConfiguration().getPropertyNames()) {
             Object property = request.getConfiguration().getProperty(propertyName);
-            if (!propertyName.startsWith("jersey") && String.class.isInstance(property)) {
-                webClientRequestBuilder.property(propertyName, (String) property);
+            if (!propertyName.startsWith("jersey") && property instanceof String) {
+                webClientRequest.property(propertyName, (String) property);
             }
         }
 
         for (String propertyName : request.getPropertyNames()) {
             Object property = request.resolveProperty(propertyName, Object.class);
-            if (!propertyName.startsWith("jersey") && String.class.isInstance(property)) {
-                webClientRequestBuilder.property(propertyName, (String) property);
+            if (!propertyName.startsWith("jersey") && property instanceof String) {
+                webClientRequest.property(propertyName, (String) property);
             }
         }
 
         // TODO
         // HelidonStructures.createProxy(request).ifPresent(webClientRequestBuilder::proxy);
 
-        webClientRequestBuilder.followRedirects(request.resolveProperty(ClientProperties.FOLLOW_REDIRECTS, true));
-        webClientRequestBuilder.readTimeout(request.resolveProperty(ClientProperties.READ_TIMEOUT, 10000), TimeUnit.MILLISECONDS);
+//        webClientRequestBuilder.followRedirects(request.resolveProperty(ClientProperties.FOLLOW_REDIRECTS, true));
+//        webClientRequestBuilder.readTimeout(request.resolveProperty(ClientProperties.READ_TIMEOUT, 10000), TimeUnit.MILLISECONDS);
 
-        CompletionStage<WebClientResponse> responseStage = null;
-
+        Http1ClientResponse response;
         if (request.hasEntity()) {
-            responseStage = HelidonEntity.submit(
-                    entityType, request, webClientRequestBuilder, executorServiceKeeper.getExecutorService(request)
-            );
+            response = HelidonEntity.submit(
+                    entityType, request, webClientRequest, executorServiceKeeper.getExecutorService(request));
         } else {
-            responseStage = webClientRequestBuilder.submit();
+            response = webClientRequest.request();
         }
 
-        return responseStage.thenCompose((a) -> convertResponse(request, a));
+        return convertResponse(request, webClientRequest.resolvedUri(), response);
     }
 
-    private CompletionStage<ClientResponse> convertResponse(final ClientRequest requestContext,
-                                                            final WebClientResponse webClientResponse) {
+    private ClientResponse convertResponse(ClientRequest requestContext,
+                                           URI resolvedUri,
+                                           Http1ClientResponse response) {
 
         final ClientResponse responseContext = new ClientResponse(new Response.StatusType() {
             @Override
             public int getStatusCode() {
-                return webClientResponse.status().code();
+                return response.status().code();
             }
 
             @Override
@@ -189,63 +178,58 @@ class HelidonConnector implements Connector {
 
             @Override
             public String getReasonPhrase() {
-                return webClientResponse.status().reasonPhrase();
+                return response.status().reasonPhrase();
             }
         }, requestContext);
 
-        for (Map.Entry<String, List<String>> entry : webClientResponse.headers().toMap().entrySet()) {
-            for (String value : entry.getValue()) {
-                responseContext.getHeaders().add(entry.getKey(), value);
+        response.headers().forEach(it -> {
+            for (String value : it.allValues()) {
+                responseContext.getHeaders().add(it.name(), value);
             }
-        }
-
-        responseContext.setResolvedRequestUri(webClientResponse.lastEndpointURI());
-
-        final CompletionStage<InputStream> stream = HelidonStructures.hasEntity(webClientResponse)
-                ? webClientResponse.content().as(InputStream.class)
-                : CompletableFuture.supplyAsync(() -> NO_CONTENT_INPUT_STREAM,
-                                                executorServiceKeeper.getExecutorService(requestContext));
-
-        return stream.thenApply((a) -> {
-            responseContext.setEntityStream(new FilterInputStream(a) {
-                private final AtomicBoolean closed = new AtomicBoolean(false);
-
-                @Override
-                public void close() throws IOException {
-                    // Avoid idempotent close in the underlying input stream
-                    if (!closed.compareAndSet(false, true)) {
-                        super.close();
-                    }
-                }
-            });
-            return responseContext;
         });
+
+        responseContext.setResolvedRequestUri(resolvedUri);
+
+        final InputStream is = HelidonStructures.hasEntity(response)
+                ? response.entity().as(InputStream.class)
+                : NO_CONTENT_INPUT_STREAM;
+
+        responseContext.setEntityStream(new FilterInputStream(is) {
+            private final AtomicBoolean closed = new AtomicBoolean(false);
+
+            @Override
+            public void close() throws IOException {
+                // Avoid idempotent close in the underlying input stream
+                if (!closed.compareAndSet(false, true)) {
+                    super.close();
+                }
+            }
+        });
+        return responseContext;
     }
 
     private static HelidonEntity.HelidonEntityType getEntityType(final Configuration config) {
         final String helidonType = ClientProperties.getValue(config.getProperties(),
                 INTERNAL_ENTITY_TYPE, HelidonEntity.HelidonEntityType.READABLE_BYTE_CHANNEL.name());
-        final HelidonEntity.HelidonEntityType entityType = HelidonEntity.HelidonEntityType.valueOf(helidonType);
-
-        return entityType;
+        return HelidonEntity.HelidonEntityType.valueOf(helidonType);
     }
 
     private static class ExecutorServiceKeeper {
-        private Optional<ExecutorService> executorService;
+        private ExecutorService executorService;
 
         private ExecutorServiceKeeper(Client client) {
             final ClientConfig config = ((JerseyClient) client).getConfiguration();
-            executorService = Optional.ofNullable(config.getExecutorService());
+            executorService = config.getExecutorService();
         }
 
         private ExecutorService getExecutorService(ClientRequest request) {
-            if (!executorService.isPresent()) {
+            if (executorService == null) {
                 // cache for multiple requests
-                executorService = Optional.ofNullable(request.getInjectionManager()
-                        .getInstance(ExecutorServiceProvider.class, ClientAsyncExecutorLiteral.INSTANCE).getExecutorService());
+                this.executorService = request.getInjectionManager()
+                                              .getInstance(ExecutorServiceProvider.class, ClientAsyncExecutorLiteral.INSTANCE)
+                                              .getExecutorService();
             }
-
-            return executorService.get();
+            return executorService;
         }
     }
 }

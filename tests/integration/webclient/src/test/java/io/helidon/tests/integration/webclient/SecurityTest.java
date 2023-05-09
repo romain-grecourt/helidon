@@ -44,14 +44,14 @@ public class SecurityTest extends TestParent {
 
     private void performOperation(String path) {
         try {
-            webClient.get()
-                    .path(path)
-                    .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
-                    .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
-                    .request(JsonObject.class)
-                    .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello jack!")))
-                    .toCompletableFuture()
-                    .get();
+            client.get()
+                  .path(path)
+                  .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
+                  .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
+                  .request(JsonObject.class)
+                  .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello jack!")))
+                  .toCompletableFuture()
+                  .get();
         } catch (Exception e) {
             fail(e);
         }

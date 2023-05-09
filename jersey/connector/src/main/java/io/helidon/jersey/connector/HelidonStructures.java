@@ -17,7 +17,6 @@
 
 package io.helidon.jersey.connector;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -30,17 +29,15 @@ import io.helidon.common.http.Headers;
 import io.helidon.common.http.Http;
 import io.helidon.common.http.WritableHeaders;
 import io.helidon.config.Config;
-import io.helidon.reactive.media.common.DefaultMediaSupport;
-import io.helidon.reactive.media.common.MessageBodyReader;
-import io.helidon.reactive.webclient.Proxy;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webclient.WebClientTls;
+import io.helidon.nima.common.tls.Tls;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 
-import io.netty.handler.codec.http.HttpHeaderValues;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.core.Configuration;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.client.ClientRequest;
+
+import static io.helidon.common.http.Http.HeaderValues.TRANSFER_ENCODING_CHUNKED;
 
 /**
  * Helidon specific classes and implementations.
@@ -54,10 +51,6 @@ class HelidonStructures {
         WritableHeaders<?> headers = WritableHeaders.create();
         data.forEach((key, value) -> headers.set(Http.Header.create(key), value));
         return headers;
-    }
-
-    static MessageBodyReader<InputStream> createInputStreamBodyReader() {
-        return DefaultMediaSupport.inputStreamReader();
     }
 
     static Optional<Config> helidonConfig(Configuration configuration) {
@@ -76,88 +69,88 @@ class HelidonStructures {
         return Optional.empty();
     }
 
-    static Optional<Proxy> createProxy(Configuration config) {
-        return ProxyBuilder.createProxy(config);
+//    static Optional<Proxy> createProxy(Configuration config) {
+//        return ProxyBuilder.createProxy(config);
+//    }
+
+//    static Optional<Proxy> createProxy(ClientRequest request) {
+//        return ProxyBuilder.createProxy(request);
+//    }
+
+    static Optional<Tls> createSSL(SSLContext context) {
+        return context == null ? Optional.empty() : Optional.of(Tls.builder().sslContext(context).build());
     }
 
-    static Optional<Proxy> createProxy(ClientRequest request) {
-        return ProxyBuilder.createProxy(request);
-    }
-
-    static Optional<WebClientTls> createSSL(SSLContext context) {
-        return context == null ? Optional.empty() : Optional.of(WebClientTls.builder().sslContext(context).build());
-    }
-
-    static boolean hasEntity(WebClientResponse webClientResponse) {
-        final Headers headers = webClientResponse.content().readerContext().headers();
-        final Optional<String> contentLenth = headers.first(Http.Header.CONTENT_LENGTH);
+    static boolean hasEntity(Http1ClientResponse response) {
+        final Headers headers = response.headers();
+        final Optional<String> contentLength = headers.first(Http.Header.CONTENT_LENGTH);
         final Optional<String> encoding = headers.first(Http.Header.TRANSFER_ENCODING);
 
-        return ((contentLenth.isPresent() && !contentLenth.get().equals("0"))
-                || (encoding.isPresent() && encoding.get().equals(HttpHeaderValues.CHUNKED.toString())));
+        return ((contentLength.isPresent() && !contentLength.get().equals("0"))
+                || (encoding.isPresent() && encoding.get().equals(TRANSFER_ENCODING_CHUNKED.toString())));
     }
 
-    private static class ProxyBuilder {
-        private static Optional<Proxy> createProxy(Configuration config) {
-            final Object proxyUri = config.getProperty(ClientProperties.PROXY_URI);
-            final String userName
-                    = ClientProperties.getValue(config.getProperties(), ClientProperties.PROXY_USERNAME, String.class);
-            final String password
-                    = ClientProperties.getValue(config.getProperties(), ClientProperties.PROXY_PASSWORD, String.class);
-            return createProxy(proxyUri, userName, password);
-        }
-
-        private static Optional<Proxy> createProxy(ClientRequest clientRequest) {
-            final Object proxyUri = clientRequest.resolveProperty(ClientProperties.PROXY_URI, Object.class);
-            final String userName = clientRequest.resolveProperty(ClientProperties.PROXY_USERNAME, String.class);
-            final String password = clientRequest.resolveProperty(ClientProperties.PROXY_PASSWORD, String.class);
-            return createProxy(proxyUri, userName, password);
-        }
-
-        private static Optional<Proxy> createProxy(Object proxyUri, String userName, String password) {
-            if (proxyUri != null) {
-                final URI u = getProxyUri(proxyUri);
-                final Proxy.Builder builder = Proxy.builder();
-                if (u.getScheme().toUpperCase(Locale.ROOT).equals("DIRECT")) {
-                    builder.type(Proxy.ProxyType.NONE);
-                } else {
-                    builder.host(u.getHost()).port(u.getPort());
-                    switch (u.getScheme().toUpperCase(Locale.ROOT)) {
-                        case "HTTP":
-                            builder.type(Proxy.ProxyType.HTTP);
-                            break;
-                        case "SOCKS":
-                            builder.type(Proxy.ProxyType.SOCKS_4);
-                            break;
-                        case "SOCKS5":
-                            builder.type(Proxy.ProxyType.SOCKS_5);
-                            break;
-                        default:
-                            HelidonConnector.LOGGER.warning(String.format("Proxy schema %s not supported.", u.getScheme()));
-                            return Optional.empty();
-                    }
-                }
-                if (userName != null) {
-                    builder.username(userName);
-
-                    if (password != null) {
-                        builder.password(password.toCharArray());
-                    }
-                }
-                return Optional.of(builder.build());
-            } else {
-                return Optional.empty();
-            }
-        }
-
-        private static URI getProxyUri(final Object proxy) {
-            if (proxy instanceof URI) {
-                return (URI) proxy;
-            } else if (proxy instanceof String) {
-                return URI.create((String) proxy);
-            } else {
-                throw new ProcessingException("The proxy URI (" + proxy + ") property MUST be an instance of String or URI");
-            }
-        }
-    }
+//    private static class ProxyBuilder {
+//        private static Optional<Proxy> createProxy(Configuration config) {
+//            final Object proxyUri = config.getProperty(ClientProperties.PROXY_URI);
+//            final String userName
+//                    = ClientProperties.getValue(config.getProperties(), ClientProperties.PROXY_USERNAME, String.class);
+//            final String password
+//                    = ClientProperties.getValue(config.getProperties(), ClientProperties.PROXY_PASSWORD, String.class);
+//            return createProxy(proxyUri, userName, password);
+//        }
+//
+//        private static Optional<Proxy> createProxy(ClientRequest clientRequest) {
+//            final Object proxyUri = clientRequest.resolveProperty(ClientProperties.PROXY_URI, Object.class);
+//            final String userName = clientRequest.resolveProperty(ClientProperties.PROXY_USERNAME, String.class);
+//            final String password = clientRequest.resolveProperty(ClientProperties.PROXY_PASSWORD, String.class);
+//            return createProxy(proxyUri, userName, password);
+//        }
+//
+//        private static Optional<Proxy> createProxy(Object proxyUri, String userName, String password) {
+//            if (proxyUri != null) {
+//                final URI u = getProxyUri(proxyUri);
+//                final Proxy.Builder builder = Proxy.builder();
+//                if (u.getScheme().toUpperCase(Locale.ROOT).equals("DIRECT")) {
+//                    builder.type(Proxy.ProxyType.NONE);
+//                } else {
+//                    builder.host(u.getHost()).port(u.getPort());
+//                    switch (u.getScheme().toUpperCase(Locale.ROOT)) {
+//                        case "HTTP":
+//                            builder.type(Proxy.ProxyType.HTTP);
+//                            break;
+//                        case "SOCKS":
+//                            builder.type(Proxy.ProxyType.SOCKS_4);
+//                            break;
+//                        case "SOCKS5":
+//                            builder.type(Proxy.ProxyType.SOCKS_5);
+//                            break;
+//                        default:
+//                            HelidonConnector.LOGGER.warning(String.format("Proxy schema %s not supported.", u.getScheme()));
+//                            return Optional.empty();
+//                    }
+//                }
+//                if (userName != null) {
+//                    builder.username(userName);
+//
+//                    if (password != null) {
+//                        builder.password(password.toCharArray());
+//                    }
+//                }
+//                return Optional.of(builder.build());
+//            } else {
+//                return Optional.empty();
+//            }
+//        }
+//
+//        private static URI getProxyUri(final Object proxy) {
+//            if (proxy instanceof URI) {
+//                return (URI) proxy;
+//            } else if (proxy instanceof String) {
+//                return URI.create((String) proxy);
+//            } else {
+//                throw new ProcessingException("The proxy URI (" + proxy + ") property MUST be an instance of String or URI");
+//            }
+//        }
+//    }
 }

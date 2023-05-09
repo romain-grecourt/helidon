@@ -33,7 +33,7 @@
     <name>Helidon Security Integration Project</name>
 
     <modules>
-        <module>grpc</module>
+<!--        <module>grpc</module>-->
         <module>common</module>
         <module>nima</module>
     </modules>

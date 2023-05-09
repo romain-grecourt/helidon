@@ -32,8 +32,8 @@ public class MicrometerTestAddingMeters {
                 .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS, PrometheusConfig.DEFAULT)
                 .build();
 
-        MicrometerSupport support = MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(factory)
+        MicrometerFeature support = MicrometerFeature.builder()
+                .meterRegistryFactory(factory)
                 .build();
 
         Counter counter1 = support.registry().counter("testCounter", "number", "one");

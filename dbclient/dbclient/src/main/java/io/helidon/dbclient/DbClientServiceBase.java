@@ -22,8 +22,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 
 /**
  * A base implementation of a client service that supports configuration
@@ -121,8 +122,12 @@ public abstract class DbClientServiceBase implements DbClientService {
          */
         public B config(Config config) {
             config.get("statement-names").asList(String.class).ifPresent(this::statementNames);
-            config.get("statement-types").asList(cfg -> cfg.asString().map(DbStatementType::valueOf).get())
-                    .ifPresent(this::statementTypes);
+            config.get("statement-types")
+                  .asNodeList()
+                  .map(list -> list.stream()
+                                   .flatMap(c -> c.asString().map(DbStatementType::valueOf).stream())
+                                   .collect(Collectors.toList()))
+                  .ifPresent(this::statementTypes);
             config.get("enabled").asBoolean().ifPresent(this::enabled);
             return me;
         }
@@ -238,8 +243,8 @@ public abstract class DbClientServiceBase implements DbClientService {
             }
 
             List<Pattern> namePatterns = statementNames.stream()
-                    .map(Pattern::compile)
-                    .toList();
+                                                       .map(Pattern::compile)
+                                                       .toList();
 
             Set<DbStatementType> types = EnumSet.copyOf(statementTypes);
 

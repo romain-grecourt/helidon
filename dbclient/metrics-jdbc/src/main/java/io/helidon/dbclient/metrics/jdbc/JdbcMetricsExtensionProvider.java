@@ -15,7 +15,7 @@
  */
 package io.helidon.dbclient.metrics.jdbc;
 
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.dbclient.jdbc.HikariCpExtension;
 import io.helidon.dbclient.jdbc.spi.HikariCpExtensionProvider;
 

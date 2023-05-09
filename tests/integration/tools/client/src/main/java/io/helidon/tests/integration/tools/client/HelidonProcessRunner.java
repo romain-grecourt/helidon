@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.System.Logger.Level;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -30,8 +31,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
-import io.netty.util.internal.SocketUtils;
 
 /**
  * Process runner to start Helidon application.
@@ -98,11 +97,11 @@ public class HelidonProcessRunner {
      * @param execType type of execution
      * @param moduleName name of the application module (JPMS), used for {@link HelidonProcessRunner.ExecType#MODULE_PATH}
      * @param mainClassModuleName name of the module of the main class (JPMS) - if the same, you can use
-     *          {@link #create(HelidonProcessRunner.ExecType, String, String, String, Runnable, Runnable)},
+     *          {@link #create(ExecType, String, String, String, String[], Runnable, Runnable)} ,
      *                            used for {@link HelidonProcessRunner.ExecType#MODULE_PATH}
      * @param mainClass name of the main class to run - if this is MP and you want to use the default
      *                  {@code io.helidon.microprofile.cdi.Main}, you can use
-     *                  {@link #createMp(HelidonProcessRunner.ExecType, String, String, Runnable, Runnable)},
+     *                  {@link #createMp(ExecType, String, String, String[], Runnable, Runnable)} ,
      *                  used for {@link HelidonProcessRunner.ExecType#MODULE_PATH}
      * @param finalName final name of the artifact - this is the expected name of the native image and jar file
      * @param args arguments passed to main method
@@ -130,23 +129,14 @@ public class HelidonProcessRunner {
         processBuilder.environment().put("SERVER_PORT", String.valueOf(port));
 
         switch (execType) {
-        case CLASS_PATH:
-            addClasspathCommand(finalName, args, processBuilder);
-            break;
-        case MODULE_PATH:
-            addModulePathCommand(finalName, moduleName, mainClassModuleName, mainClass, args, processBuilder);
-            break;
-        case NATIVE:
-            addNativeCommand(finalName, args, processBuilder);
-            break;
-        case JLINK_CLASS_PATH:
-            addJlinkCommand(finalName, args, processBuilder);
-            break;
-        case JLINK_MODULE_PATH:
-            addJlinkModuleCommand(finalName, moduleName, mainClassModuleName, mainClass, args, processBuilder);
-            break;
-        default:
-            throw new IllegalArgumentException("Unsupported exec type: " + execType);
+            case CLASS_PATH -> addClasspathCommand(finalName, args, processBuilder);
+            case MODULE_PATH ->
+                    addModulePathCommand(finalName, moduleName, mainClassModuleName, mainClass, args, processBuilder);
+            case NATIVE -> addNativeCommand(finalName, args, processBuilder);
+            case JLINK_CLASS_PATH -> addJlinkCommand(finalName, args, processBuilder);
+            case JLINK_MODULE_PATH ->
+                    addJlinkModuleCommand(finalName, moduleName, mainClassModuleName, mainClass, args, processBuilder);
+            default -> throw new IllegalArgumentException("Unsupported exec type: " + execType);
         }
         AtomicReference<Process> process = new AtomicReference<>();
         Runnable startCommand = () -> {
@@ -215,7 +205,7 @@ public class HelidonProcessRunner {
      * @param mainClassModuleName name of the application module with the main class (JPMS)
      * @param mainClass name of the main class to run - if this is MP and you want to use the default
      *                  {@code io.helidon.microprofile.cdi.Main}, you can use
-     *                  {@link #createMp(HelidonProcessRunner.ExecType, String, String, Runnable, Runnable)},
+     *                  {@link #createMp(ExecType, String, String, String[], Runnable, Runnable)} ,
      *                  used for {@link HelidonProcessRunner.ExecType#MODULE_PATH}
      * @param finalName final name of the artifact - this is the expected name of the native image and jar file
      * @param args arguments passed to main method
@@ -274,9 +264,8 @@ public class HelidonProcessRunner {
     }
 
     private static boolean portOpen(int port) {
-        SocketAddress sa = SocketUtils.socketAddress("localhost", port);
-        try {
-            Socket socket = new Socket();
+        SocketAddress sa = new InetSocketAddress("localhost", port);
+        try (Socket socket = new Socket()) {
             socket.connect(sa, 1000);
             LOGGER.log(Level.TRACE, () -> String.format("Socket localhost:%d is ready", port));
             return true;

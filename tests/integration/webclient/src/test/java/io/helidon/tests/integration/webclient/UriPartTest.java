@@ -33,69 +33,69 @@ class UriPartTest extends TestParent {
 
     @Test
     void testQuerySpace() {
-        String response = webClient.get()
-                .path("obtainedQuery")
-                .queryParam("param", "test")
-                .queryParam("test", EXPECTED_QUERY)
-                .request(String.class)
-                .await();
+        String response = client.get()
+                                .path("obtainedQuery")
+                                .queryParam("param", "test")
+                                .queryParam("test", EXPECTED_QUERY)
+                                .request(String.class)
+                                .await();
         assertThat(response.trim(), is(EXPECTED_QUERY));
-        assertThrows(IllegalArgumentException.class, () -> webClient.get()
-                .path("obtainedQuery")
-                .queryParam("test", EXPECTED_QUERY)
-                .skipUriEncoding()
-                .request(String.class)
-                .await());
+        assertThrows(IllegalArgumentException.class, () -> client.get()
+                                                                 .path("obtainedQuery")
+                                                                 .queryParam("test", EXPECTED_QUERY)
+                                                                 .skipUriEncoding()
+                                                                 .request(String.class)
+                                                                 .await());
     }
 
     @Test
     void testQueryKeySpace() {
         String queryNameWithSpace = "query name with space";
-        String response = webClient.get()
-                .path("obtainedQuery")
-                .queryParam("param", queryNameWithSpace)
-                .queryParam(queryNameWithSpace, EXPECTED_QUERY)
-                .request(String.class)
-                .await();
+        String response = client.get()
+                                .path("obtainedQuery")
+                                .queryParam("param", queryNameWithSpace)
+                                .queryParam(queryNameWithSpace, EXPECTED_QUERY)
+                                .request(String.class)
+                                .await();
         assertThat(response.trim(), is(EXPECTED_QUERY));
-        assertThrows(IllegalArgumentException.class, () -> webClient.get()
-                .path("obtainedQuery")
-                .queryParam("param", queryNameWithSpace)
-                .skipUriEncoding()
-                .request(String.class)
-                .await());
+        assertThrows(IllegalArgumentException.class, () -> client.get()
+                                                                 .path("obtainedQuery")
+                                                                 .queryParam("param", queryNameWithSpace)
+                                                                 .skipUriEncoding()
+                                                                 .request(String.class)
+                                                                 .await());
     }
 
     @Test
     void testPathWithSpace() {
-        String response = webClient.get()
-                .path("pattern with space")
-                .request(String.class)
-                .await();
+        String response = client.get()
+                                .path("pattern with space")
+                                .request(String.class)
+                                .await();
         assertThat(response.trim(), is("{\"message\":\"Hello World!\"}"));
-        assertThrows(IllegalArgumentException.class, () -> webClient.get()
-                .path("pattern with space")
-                .skipUriEncoding()
-                .request(String.class)
-                .await());
+        assertThrows(IllegalArgumentException.class, () -> client.get()
+                                                                 .path("pattern with space")
+                                                                 .skipUriEncoding()
+                                                                 .request(String.class)
+                                                                 .await());
     }
 
     @Test
     void testFragment() {
         String fragment = "super fragment#&?/";
-        String response = webClient.get()
-                .path("obtainedQuery")
-                .queryParam("param", "empty")
-                .queryParam("empty", "")
-                .fragment("super fragment#&?/")
-                .request(String.class)
-                .await();
+        String response = client.get()
+                                .path("obtainedQuery")
+                                .queryParam("param", "empty")
+                                .queryParam("empty", "")
+                                .fragment("super fragment#&?/")
+                                .request(String.class)
+                                .await();
         assertThat(response.trim(), is(fragment));
-        assertThrows(IllegalArgumentException.class, () -> webClient.get()
-                .fragment("super fragment#&?/")
-                .skipUriEncoding()
-                .request(String.class)
-                .await());
+        assertThrows(IllegalArgumentException.class, () -> client.get()
+                                                                 .fragment("super fragment#&?/")
+                                                                 .skipUriEncoding()
+                                                                 .request(String.class)
+                                                                 .await());
     }
 
     @Test

@@ -68,7 +68,7 @@ public class WebclientServiceValuePropagationTest extends TestParent {
         public Single<WebClientServiceRequest> request(WebClientServiceRequest request) {
             request.schema("http");
             request.host("localhost");
-            request.port(webServer.port());
+            request.port(server.port());
             request.path("/greet/valuesPropagated");
             request.queryParams().add("param", "Hi");
             request.fragment("Test");

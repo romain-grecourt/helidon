@@ -17,8 +17,9 @@
 package io.helidon.tests.integration.webclient;
 
 import io.helidon.common.http.Http;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
 import org.junit.jupiter.api.Test;
@@ -28,15 +29,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class ContextCheckTest extends TestParent {
 
+    ContextCheckTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
+
     @Test
     void testContextCheck() {
-        WebClient webClient = createNewClient();
-        WebClientResponse r = webClient.get()
-                .path("/contextCheck")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
-                .request()
-                .await();
-        assertThat(r.status().code(), is(Http.Status.OK_200.code()));
+        Http1Client webClient = createNewClient();
+        try (Http1ClientResponse r = webClient.get()
+                                              .path("/contextCheck")
+                                              .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
+                                              .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
+                                              .request()) {
+            assertThat(r.status().code(), is(Http.Status.OK_200.code()));
+        }
     }
 }

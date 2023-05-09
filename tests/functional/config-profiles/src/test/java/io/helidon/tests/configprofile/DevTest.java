@@ -16,15 +16,32 @@
 
 package io.helidon.tests.configprofile;
 
-import jakarta.json.JsonObject;
+import io.helidon.config.Config;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpRoute;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.http.HttpRouting;
 
+import jakarta.json.JsonObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class DevTest extends BaseTest {
+@ServerTest
+public class DevTest {
+
+    private Http1Client client;
+
+    public DevTest(Http1Client client) {
+        this.client = client;
+    }
+
+    @SetUpRoute
+    static void setup(HttpRouting.Builder routing) {
+        Main.routing(routing, Config.create());
+    }
 
     /**
      * This test will only succeed if the 'dev' profile is enabled and the
@@ -33,10 +50,7 @@ public class DevTest extends BaseTest {
     @Test
     @EnabledIfSystemProperty(named = "config.profile", matches = "dev")
     public void testHelloDevWorld() {
-        JsonObject jsonObject = webClient().get()
-                .path("/greet")
-                .request(JsonObject.class)
-                .await();
+        JsonObject jsonObject = client.get("/greet").request(JsonObject.class);
         assertThat(jsonObject.getString("message"), is("Hello Dev World!"));
     }
 }

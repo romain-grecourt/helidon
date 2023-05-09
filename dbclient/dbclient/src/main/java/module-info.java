@@ -37,8 +37,8 @@ module io.helidon.dbclient {
     requires static io.helidon.common.features.api;
 
     requires java.logging;
-    requires transitive io.helidon.config;
     requires transitive io.helidon.common;
+    requires transitive io.helidon.common.config;
     requires transitive io.helidon.common.context;
     requires transitive io.helidon.common.mapper;
     requires java.sql;

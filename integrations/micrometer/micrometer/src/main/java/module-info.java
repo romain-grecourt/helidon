@@ -36,8 +36,6 @@ module io.helidon.integrations.micrometer {
 
     requires io.helidon.config;
     requires io.helidon.common.http;
-    requires io.helidon.reactive.servicecommon;
-    requires io.helidon.reactive.webserver.cors;
     requires io.helidon.nima.servicecommon;
     requires io.helidon.nima.webserver.cors;
 

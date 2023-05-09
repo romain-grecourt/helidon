@@ -26,7 +26,7 @@ import java.util.Optional;
 class TestUser implements SecureUserStore.User {
     private final String username;
     private final char[] password;
-    private Collection<String> roles;
+    private final Collection<String> roles;
 
     TestUser(String username, char[] password) {
         this.username = username;

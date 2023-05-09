@@ -56,64 +56,64 @@ class RequestTest extends TestParent {
 
     @Test
     public void testHelloWorld() throws ExecutionException, InterruptedException {
-        webClient.get()
-                .request(JsonObject.class)
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello World!")))
-                .toCompletableFuture()
-                .get();
+        client.get()
+              .request(JsonObject.class)
+              .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello World!")))
+              .toCompletableFuture()
+              .get();
     }
 
     @Test
     public void testIncorrect() throws ExecutionException, InterruptedException {
-        webClient.get()
-                .path("/incorrect")
-                .request()
-                .thenAccept(response -> {
+        client.get()
+              .path("/incorrect")
+              .request()
+              .thenAccept(response -> {
                     if (response.status() != Http.Status.NOT_FOUND_404) {
                         fail("This request should be 404!");
                     }
                     response.close();
                 })
-                .toCompletableFuture()
-                .get();
+              .toCompletableFuture()
+              .get();
     }
 
     @Test
     public void testFollowRedirect() throws ExecutionException, InterruptedException {
-        webClient.get()
-                .path("/redirect")
-                .request(JsonObject.class)
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello World!")))
-                .toCompletableFuture()
-                .get();
+        client.get()
+              .path("/redirect")
+              .request(JsonObject.class)
+              .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello World!")))
+              .toCompletableFuture()
+              .get();
 
-        WebClientResponse response = webClient.get()
-                .path("/redirect")
-                .followRedirects(false)
-                .request()
-                .toCompletableFuture()
-                .get();
+        WebClientResponse response = client.get()
+                                           .path("/redirect")
+                                           .followRedirects(false)
+                                           .request()
+                                           .toCompletableFuture()
+                                           .get();
         assertThat(response.status(), is(Http.Status.MOVED_PERMANENTLY_301));
     }
 
     @Test
     public void testFollowRedirectPath() {
-        JsonObject jsonObject = webClient.get()
-                .path("/redirectPath")
-                .request(JsonObject.class)
-                .await();
+        JsonObject jsonObject = client.get()
+                                      .path("/redirectPath")
+                                      .request(JsonObject.class)
+                                      .await();
         assertThat(jsonObject.getString("message"), is("Hello World!"));
     }
 
     @Test
     public void testFollowRedirectInfinite() {
         try {
-            webClient.get()
-                    .path("/redirect/infinite")
-                    .request(JsonObject.class)
-                    .thenAccept(jsonObject -> fail("This should have failed!"))
-                    .toCompletableFuture()
-                    .get();
+            client.get()
+                  .path("/redirect/infinite")
+                  .request(JsonObject.class)
+                  .thenAccept(jsonObject -> fail("This should have failed!"))
+                  .toCompletableFuture()
+                  .get();
         } catch (ExecutionException e) {
             if (e.getCause() instanceof WebClientException) {
                 WebClientException clientException = (WebClientException) e.getCause();
@@ -128,33 +128,33 @@ class RequestTest extends TestParent {
 
     @Test
     public void testPut() throws Exception {
-        webClient.put()
-                .path("/greeting")
-                .submit(JSON_NEW_GREETING)
-                .thenAccept(response -> assertThat(response.status().code(), is(204)))
-                .thenCompose(nothing -> webClient.get()
-                        .request(JsonObject.class))
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hola World!")))
-                .thenCompose(nothing -> webClient.put()
-                        .path("/greeting")
-                        .submit(JSON_OLD_GREETING))
-                .thenAccept(response -> assertThat(response.status().code(), is(204)))
-                .exceptionally(throwable -> {
+        client.put()
+              .path("/greeting")
+              .submit(JSON_NEW_GREETING)
+              .thenAccept(response -> assertThat(response.status().code(), is(204)))
+              .thenCompose(nothing -> client.get()
+                                            .request(JsonObject.class))
+              .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hola World!")))
+              .thenCompose(nothing -> client.put()
+                                            .path("/greeting")
+                                            .submit(JSON_OLD_GREETING))
+              .thenAccept(response -> assertThat(response.status().code(), is(204)))
+              .exceptionally(throwable -> {
                     fail(throwable);
                     return null;
                 })
-                .toCompletableFuture()
-                .get();
+              .toCompletableFuture()
+              .get();
     }
 
     @Test
     public void testEntityNotHandled() {
         try {
-            webClient.get()
-                    .path("/incorrect")
-                    .request(JsonObject.class)
-                    .toCompletableFuture()
-                    .get();
+            client.get()
+                  .path("/incorrect")
+                  .request(JsonObject.class)
+                  .toCompletableFuture()
+                  .get();
         } catch (ExecutionException e) {
             WebClientException ce = (WebClientException) e.getCause();
             assertThat(ce.getMessage(), startsWith("Request failed with code 404"));
@@ -170,29 +170,29 @@ class RequestTest extends TestParent {
         URI defaultTemplate = URI.create("http://localhost:" + Main.serverPort + "/greet");
         URI redirectTemplate = URI.create("http://localhost:" + Main.serverPort + "/greet/redirect");
 
-        WebClientResponse response = webClient.get()
-                .path("/redirect")
-                .request()
-                .toCompletableFuture()
-                .get();
+        WebClientResponse response = client.get()
+                                           .path("/redirect")
+                                           .request()
+                                           .toCompletableFuture()
+                                           .get();
 
         assertThat(response.lastEndpointURI(), is(defaultTemplate));
         response.close();
 
-        response = webClient.get()
-                .path("/redirect")
-                .followRedirects(false )
-                .request()
-                .toCompletableFuture()
-                .get();
+        response = client.get()
+                         .path("/redirect")
+                         .followRedirects(false )
+                         .request()
+                         .toCompletableFuture()
+                         .get();
 
         assertThat(response.lastEndpointURI(), is(redirectTemplate));
         response.close();
 
-        response = webClient.get()
-                .request()
-                .toCompletableFuture()
-                .get();
+        response = client.get()
+                         .request()
+                         .toCompletableFuture()
+                         .get();
 
         assertThat(response.lastEndpointURI(), is(defaultTemplate));
         response.close();
@@ -200,7 +200,7 @@ class RequestTest extends TestParent {
 
     @Test
     public void reuseRequestBuilder() {
-        WebClientRequestBuilder requestBuilder = webClient.get();
+        WebClientRequestBuilder requestBuilder = client.get();
         JsonObject response = requestBuilder
                 .request(JsonObject.class)
                 .await();

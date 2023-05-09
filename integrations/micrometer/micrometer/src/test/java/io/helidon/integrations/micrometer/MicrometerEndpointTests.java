@@ -15,17 +15,17 @@
  */
 package io.helidon.integrations.micrometer;
 
-import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 
 import io.helidon.common.http.Http;
-import io.helidon.common.media.type.MediaTypes;
+import io.helidon.common.http.HttpMediaType;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.integrations.micrometer.MeterRegistryFactory.BuiltInRegistryType;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Test;
@@ -34,75 +34,73 @@ import static org.hamcrest.Matchers.is;
 
 public class MicrometerEndpointTests {
 
-    private static Config overallTestConfig = Config.create(ConfigSources.classpath("/micrometerTestData.json"));
+    private static final Config OVERALL_TEST_CONFIG = Config.create(ConfigSources.classpath("/micrometerTestData.json"));
 
 
     @Test
-    public void testDefaultEndpoint() throws ExecutionException, InterruptedException {
-        runTest(MicrometerSupport.DEFAULT_CONTEXT, MicrometerSupport::create);
+    public void testDefaultEndpoint() {
+        runTest(MicrometerFeature.DEFAULT_CONTEXT, MicrometerFeature::create);
     }
 
     @Test
-    public void testExplicitEndpointWithDefaultBuiltInRegistryViaConfig() throws ExecutionException, InterruptedException {
+    public void testExplicitEndpointWithDefaultBuiltInRegistryViaConfig() {
         String context = "/aa";
-        runTest(context, () -> MicrometerSupport.builder()
-                .config(overallTestConfig.get("explicitContext").get("metrics.micrometer"))
-                .build());
+        runTest(context, () -> MicrometerFeature.builder()
+                                                .config(OVERALL_TEST_CONFIG.get("explicitContext").get("metrics.micrometer"))
+                                                .build());
     }
 
     @Test
-    public void testExplicitEndpointWithExplicitBuiltInRegistryViaBuilder() throws ExecutionException, InterruptedException {
+    public void testExplicitEndpointWithExplicitBuiltInRegistryViaBuilder() {
         String context = "/bb";
-        runTest(context, () -> MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(MeterRegistryFactory.builder()
-                        .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS)
-                        .build())
-                .webContext(context)
-                .build());
+        runTest(context, () ->
+                MicrometerFeature.builder()
+                                 .meterRegistryFactory(MeterRegistryFactory.builder()
+                                                                           .enrollBuiltInRegistry(BuiltInRegistryType.PROMETHEUS)
+                                                                           .build())
+                                 .webContext(context)
+                                 .build());
     }
 
     @Test
-    public void testExplicitEndpointWithExplicitBuiltInRegistryViaConfig() throws ExecutionException, InterruptedException {
+    public void testExplicitEndpointWithExplicitBuiltInRegistryViaConfig() {
         String context = "/cc";
-        runTest(context, () -> MicrometerSupport.builder()
-                .config(overallTestConfig.get("explicitContextWithExplicitBuiltIn").get("metrics.micrometer"))
-                .build());
+        runTest(context, () ->
+                MicrometerFeature.builder()
+                                 .config(OVERALL_TEST_CONFIG.get("explicitContextWithExplicitBuiltIn")
+                                                            .get("metrics.micrometer"))
+                                 .build());
     }
 
-    private static void runTest(String contextForRequest, Supplier<MicrometerSupport> micrometerSupportSupplier)
-            throws ExecutionException, InterruptedException {
+    private static void runTest(String contextForRequest, Supplier<MicrometerFeature> supplier) {
 
         WebServer webServer = null;
 
         try {
             webServer = WebServer.builder()
-                    .host("localhost")
-                    .port(-1)
-                    .routing(prepareRouting(micrometerSupportSupplier))
-                    .build()
-                    .start()
-                    .await();
+                                 .host("localhost")
+                                 .port(-1)
+                                 .routing(routing -> prepareRouting(routing, supplier))
+                                 .start();
 
-            WebClientResponse webClientResponse = WebClient.builder()
-                    .baseUri(String.format("http://localhost:%d%s", webServer.port(), contextForRequest))
-                    .build()
-                    .get()
-                    .accept(MediaTypes.TEXT_PLAIN)
-                    .request()
-                    .get();
+            Http1ClientResponse webClientResponse =
+                    Http1Client.builder()
+                               .baseUri(String.format("http://localhost:%d%s", webServer.port(), contextForRequest))
+                               .build()
+                               .get()
+                               .accept(HttpMediaType.TEXT_PLAIN)
+                               .request();
 
             MatcherAssert.assertThat(webClientResponse.status(), is(Http.Status.OK_200));
         } finally {
             if (webServer != null) {
-                webServer.shutdown()
-                        .await();
+                webServer.stop();
             }
         }
     }
 
-    private static Routing.Builder prepareRouting(Supplier<MicrometerSupport> micrometerSupportSupplier) {
-        return Routing.builder()
-                .register(micrometerSupportSupplier.get());
+    private static void prepareRouting(HttpRouting.Builder routing, Supplier<MicrometerFeature> supplier) {
+        supplier.get().setup(routing);
     }
 
 }

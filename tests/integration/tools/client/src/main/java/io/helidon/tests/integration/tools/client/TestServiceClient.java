@@ -16,11 +16,9 @@
 package io.helidon.tests.integration.tools.client;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import io.helidon.reactive.media.common.MessageBodyReadableContent;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
 
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
@@ -31,11 +29,9 @@ import jakarta.json.JsonValue;
  */
 public class TestServiceClient extends TestClient {
 
-    private static final System.Logger LOGGER = System.getLogger(TestServiceClient.class.getName());
-
     private final String service;
 
-    private TestServiceClient(final WebClient webClient, String service) {
+    private TestServiceClient(final Http1Client webClient, String service) {
         super(webClient);
         this.service = service;
     }
@@ -64,7 +60,7 @@ public class TestServiceClient extends TestClient {
      * @return data returned by remote test service method
      */
     public JsonValue callServiceAndGetData(final String method) {
-        return callServiceAndGetData(method, (Map) null);
+        return callServiceAndGetData(method, (Map<String, String>) null);
     }
 
     /**
@@ -76,8 +72,8 @@ public class TestServiceClient extends TestClient {
      * @return data returned by remote service
      */
     public JsonObject callServiceAndGetRawData(final String method, final Map<String, String> params) {
-        WebClientRequestBuilder rb = clientGetBuilderWithPath(service, method);
-        rb.headers().add("Accept", "application/json");
+        Http1ClientRequest rb = clientGetBuilderWithPath(service, method);
+        rb.header("Accept", "application/json");
         return callService(rb, params);
     }
 
@@ -100,12 +96,8 @@ public class TestServiceClient extends TestClient {
      * @return data returned by remote service
      */
     public String callServiceAndGetString(final String method) {
-        WebClientRequestBuilder rb = clientGetBuilderWithPath(service, method);
-        final MessageBodyReadableContent content = rb.submit()
-                .await(1, TimeUnit.MINUTES)
-                .content();
-        return content.as(String.class)
-                .await(1, TimeUnit.MINUTES);
+        Http1ClientRequest rb = clientGetBuilderWithPath(service, method);
+        return rb.request(String.class);
     }
 
     /**
@@ -147,7 +139,7 @@ public class TestServiceClient extends TestClient {
         /**
          * Builds test web client initialized with parameters stored in this builder.
          *
-         * @return new {@link WebClient} instance
+         * @return new {@link Http1Client} instance
          */
         public TestServiceClient build() {
             return new TestServiceClient(parentBuilder.buildWebClient(), service);

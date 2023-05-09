@@ -20,7 +20,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.dbclient.spi.DbClientServiceProvider;
 import io.helidon.dbclient.DbClientException;
 import io.helidon.dbclient.DbClientService;
@@ -54,15 +54,11 @@ public class DbClientMetricsProvider implements DbClientServiceProvider {
 
     private DbClientService fromConfig(Config config) {
         String type = config.get("type").asString().orElse("COUNTER");
-        switch (type) {
-        case "COUNTER":
-            return DbClientMetrics.counter().config(config).build();
-        case "METER":
-            return DbClientMetrics.meter().config(config).build();
-        case "TIMER":
-            return DbClientMetrics.timer().config(config).build();
-        default:
-            throw new DbClientException("Metrics type " + type + " is not supported through service loader");
-        }
+        return switch (type) {
+            case "COUNTER" -> DbClientMetrics.counter().config(config).build();
+            case "METER" -> DbClientMetrics.meter().config(config).build();
+            case "TIMER" -> DbClientMetrics.timer().config(config).build();
+            default -> throw new DbClientException("Metrics type " + type + " is not supported through service loader");
+        };
     }
 }

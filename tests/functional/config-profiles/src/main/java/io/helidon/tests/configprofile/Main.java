@@ -16,12 +16,10 @@
 
 package io.helidon.tests.configprofile;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 public final class Main {
 
@@ -29,38 +27,20 @@ public final class Main {
     }
 
     public static void main(final String[] args) {
-        startServer();
-    }
-
-    static Single<WebServer> startServer() {
-
         LogConfig.configureRuntime();
 
         Config config = Config.create();
 
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        WebServer server = WebServer.builder()
+                                    .config(config.get("server"))
+                                    .routing(routing -> routing(routing, config))
+                                    .start();
 
-        Single<WebServer> webserver = server.start();
-
-        webserver.thenAccept(ws -> {
-                    System.out.println("WEB server is up! http://localhost:" + ws.port() + "/greet");
-                    ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-                .exceptionallyAccept(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
-
-        return webserver;
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
-    private static Routing createRouting(Config config) {
+    static void routing(HttpRouting.Builder routing, Config config) {
         GreetService greetService = new GreetService(config);
-        return Routing.builder()
-                .register("/greet", greetService)
-                .build();
+        routing.register("/greet", greetService);
     }
 }

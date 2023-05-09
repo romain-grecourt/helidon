@@ -15,27 +15,37 @@
  */
 package io.helidon.examples.dbclient.pokemons;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonValue;
 
 /**
  * Initialize JDBC database schema and populate it with sample data.
  */
 public class InitializeDb {
 
-    /** Pokemon types source file. */
+    /**
+     * Pokemon types source file.
+     */
     private static final String TYPES = "/Types.json";
-    /** Pokemons source file. */
+    /**
+     * Pokemons source file.
+     */
     private static final String POKEMONS = "/Pokemons.json";
 
     /**
      * Initialize JDBC database schema and populate it with sample data.
-     * @param dbClient database client
+     *
+     * @param dbClient   database client
+     * @param initSchema {@code true} if schema should be initialized
      */
-    static void init(DbClient dbClient) {
+    static void init(DbClient dbClient, boolean initSchema) {
         try {
-            if (!PokemonMain.isMongo()) {
+            if (initSchema) {
                 initSchema(dbClient);
             }
             initData(dbClient);
@@ -50,11 +60,9 @@ public class InitializeDb {
      * @param dbClient database client
      */
     private static void initSchema(DbClient dbClient) {
-        try {
-            dbClient.execute(exec -> exec
-                    .namedDml("create-types")
-                    .flatMapSingle(result -> exec.namedDml("create-pokemons")))
-                    .await();
+        try (DbExecute exec = dbClient.execute()) {
+            exec.namedDml("create-types");
+            exec.namedDml("create-pokemons");
         } catch (Exception ex1) {
             System.out.printf("Could not create tables: %s", ex1.getMessage());
             try {
@@ -72,10 +80,10 @@ public class InitializeDb {
      */
     private static void initData(DbClient dbClient) {
         // Init pokemon types
-        dbClient.execute(exec
-                -> initTypes(exec)
-                        .flatMapSingle(count -> initPokemons(exec)))
-                .await();
+        try (DbExecute exec = dbClient.execute()) {
+            initTypes(exec);
+            initPokemons(exec);
+        }
     }
 
     /**
@@ -84,65 +92,61 @@ public class InitializeDb {
      * @param dbClient database client
      */
     private static void deleteData(DbClient dbClient) {
-        dbClient.execute(exec -> exec
-                .namedDelete("delete-all-pokemons")
-                .flatMapSingle(count -> exec.namedDelete("delete-all-types")))
-                .await();
+        try (DbExecute exec = dbClient.execute()) {
+            exec.namedDelete("delete-all-pokemons");
+            exec.namedDelete("delete-all-types");
+        }
     }
 
     /**
      * Initialize pokemon types.
      * Source data file is JSON file containing array of type objects:
-     *<pre>
+     * <pre>
      * [
      *   { "id": <type_id>, "name": <type_name> },
      *   ...
      * ]
      * </pre>
-     * where {@code id} is JSON number and {@ocde name} is JSON String.
+     * where {@code id} is JSON number and {@code name} is JSON String.
      *
      * @param exec database client executor
-     * @return executed statements future
      */
-    private static Single<Long> initTypes(DbExecute exec) {
-        Single<Long> stage = Single.just(0L);
-        try (jakarta.json.JsonReader reader = jakarta.json.Json.createReader(InitializeDb.class.getResourceAsStream(TYPES))) {
-            jakarta.json.JsonArray types = reader.readArray();
-            for (jakarta.json.JsonValue typeValue : types) {
-                jakarta.json.JsonObject type = typeValue.asJsonObject();
-                stage = stage.flatMapSingle(it -> exec.namedInsert(
-                            "insert-type", type.getInt("id"), type.getString("name")));
+    private static void initTypes(DbExecute exec) {
+        try (JsonReader reader = Json.createReader(InitializeDb.class.getResourceAsStream(TYPES))) {
+            JsonArray types = reader.readArray();
+            for (JsonValue typeValue : types) {
+                JsonObject type = typeValue.asJsonObject();
+                exec.namedInsert("insert-type",
+                        type.getInt("id"),
+                        type.getString("name"));
             }
         }
-        return stage;
     }
 
     /**
-     * Initialize pokemos.
+     * Initialize pokemons.
      * Source data file is JSON file containing array of type objects:
-     *<pre>
+     * <pre>
      * [
      *   { "id": <type_id>, "name": <type_name>, "type": [<type_id>, <type_id>, ...] },
      *   ...
      * ]
      * </pre>
-     * where {@code id} is JSON number and {@ocde name} is JSON String.
+     * where {@code id} is JSON number and {@code name} is JSON String.
      *
      * @param exec database client executor
-     * @return executed statements future
      */
-    private static Single<Long> initPokemons(DbExecute exec) {
-        Single<Long> stage = Single.just(0L);
-        try (jakarta.json.JsonReader reader = jakarta.json.Json.createReader(InitializeDb.class.getResourceAsStream(POKEMONS))) {
-            jakarta.json.JsonArray pokemons = reader.readArray();
-            for (jakarta.json.JsonValue pokemonValue : pokemons) {
-                jakarta.json.JsonObject pokemon = pokemonValue.asJsonObject();
-                stage = stage.flatMapSingle(result -> exec
-                                .namedInsert("insert-pokemon",
-                                        pokemon.getInt("id"), pokemon.getString("name"), pokemon.getInt("idType")));
+    private static void initPokemons(DbExecute exec) {
+        try (JsonReader reader = Json.createReader(InitializeDb.class.getResourceAsStream(POKEMONS))) {
+            JsonArray pokemons = reader.readArray();
+            for (JsonValue pokemonValue : pokemons) {
+                JsonObject pokemon = pokemonValue.asJsonObject();
+                exec.namedInsert("insert-pokemon",
+                        pokemon.getInt("id"),
+                        pokemon.getString("name"),
+                        pokemon.getInt("idType"));
             }
         }
-        return stage;
     }
 
     /**

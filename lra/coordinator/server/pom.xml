@@ -52,6 +52,10 @@
             <artifactId>helidon-nima-webserver</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.helidon.nima.webclient</groupId>
+            <artifactId>helidon-nima-webclient</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.nima.http.media</groupId>
             <artifactId>helidon-nima-http-media-jsonp</artifactId>
         </dependency>
@@ -102,18 +106,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.helidon.nima.webclient</groupId>
-            <artifactId>helidon-nima-webclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>io.helidon.nima.testing.junit5</groupId>
             <artifactId>helidon-nima-testing-junit5-webserver</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.nima.webclient</groupId>
-            <artifactId>helidon-nima-webclient</artifactId>
         </dependency>
     </dependencies>
 

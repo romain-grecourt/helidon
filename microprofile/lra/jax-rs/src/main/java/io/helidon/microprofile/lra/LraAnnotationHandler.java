@@ -21,10 +21,8 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.CompletionException;
 
 import io.helidon.common.context.Contexts;
-import io.helidon.common.reactive.Single;
 import io.helidon.lra.coordinator.client.CoordinatorClient;
 import io.helidon.lra.coordinator.client.CoordinatorConnectionException;
 import io.helidon.lra.coordinator.client.Participant;
@@ -48,15 +46,12 @@ class LraAnnotationHandler implements AnnotationHandler {
     private final InspectionService.Lra annotation;
     private final CoordinatorClient coordinatorClient;
     private final ParticipantService participantService;
-    private final Duration coordinatorTimeout;
 
     LraAnnotationHandler(AnnotationInstance annotation,
                          CoordinatorClient coordinatorClient,
                          InspectionService inspectionService,
-                         ParticipantService participantService,
-                         Duration coordinatorTimeout) {
+                         ParticipantService participantService) {
         this.participantService = participantService;
-        this.coordinatorTimeout = coordinatorTimeout;
         this.annotation = inspectionService.lraAnnotation(annotation);
         this.coordinatorClient = coordinatorClient;
     }
@@ -70,7 +65,6 @@ class LraAnnotationHandler implements AnnotationHandler {
         Optional<URI> existingLraId = getLraContext(reqCtx);
         long timeLimit = Duration.of(annotation.timeLimit(), annotation.timeUnit()).toMillis();
         String clientId = method.getDeclaringClass().getName() + "#" + method.getName();
-
 
 
         final URI lraId;
@@ -144,9 +138,9 @@ class LraAnnotationHandler implements AnnotationHandler {
                                  ResourceInfo resourceInfo) {
 
         Optional<URI> lraId = Optional.ofNullable((URI) reqCtx.getProperty(LRA_HTTP_CONTEXT_HEADER))
-                .or(() -> Contexts.context()
-                        .flatMap(c -> c.get(LRA_HTTP_CONTEXT_HEADER, URI.class))
-                );
+                                      .or(() -> Contexts.context()
+                                                        .flatMap(c -> c.get(LRA_HTTP_CONTEXT_HEADER, URI.class))
+                                      );
 
         PropagatedHeaders propagatedHeaders = participantService.prepareCustomHeaderPropagation(reqCtx.getHeaders());
 
@@ -171,11 +165,19 @@ class LraAnnotationHandler implements AnnotationHandler {
     }
 
     private URI start(String clientId, PropagatedHeaders headers, long timeOut) {
-        return awaitCoordinator(coordinatorClient.start(clientId, headers, timeOut));
+        try {
+            return coordinatorClient.start(clientId, headers, timeOut);
+        } catch (CoordinatorConnectionException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex, ex.status());
+        }
     }
 
     private URI start(URI parentLraId, String clientId, PropagatedHeaders headers, long timeOut) {
-        return awaitCoordinator(coordinatorClient.start(parentLraId, clientId, headers, timeOut));
+        try {
+            return coordinatorClient.start(parentLraId, clientId, headers, timeOut);
+        } catch (CoordinatorConnectionException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex, ex.status());
+        }
     }
 
     private void join(ContainerRequestContext reqCtx,
@@ -183,16 +185,29 @@ class LraAnnotationHandler implements AnnotationHandler {
                       PropagatedHeaders propagatedHeaders,
                       long timeLimit,
                       Participant participant) {
-        awaitCoordinator(coordinatorClient.join(lraId, propagatedHeaders, timeLimit, participant))
-                .ifPresent(uri -> reqCtx.getHeaders().add(LRA_HTTP_RECOVERY_HEADER, uri.toASCIIString()));
+        try {
+            coordinatorClient.join(lraId, propagatedHeaders, timeLimit, participant)
+                             .ifPresent(uri -> reqCtx.getHeaders()
+                                                     .add(LRA_HTTP_RECOVERY_HEADER, uri.toASCIIString()));
+        } catch (CoordinatorConnectionException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex, ex.status());
+        }
     }
 
     private void close(URI lraId, PropagatedHeaders headers) {
-        awaitCoordinator(coordinatorClient.close(lraId, headers));
+        try {
+            coordinatorClient.close(lraId, headers);
+        } catch (CoordinatorConnectionException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex, ex.status());
+        }
     }
 
     private void cancel(URI lraId, PropagatedHeaders headers) {
-        awaitCoordinator(coordinatorClient.cancel(lraId, headers));
+        try {
+            coordinatorClient.cancel(lraId, headers);
+        } catch (CoordinatorConnectionException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex, ex.status());
+        }
     }
 
     private void setHeaderPropagationContext(ContainerRequestContext reqCtx, PropagatedHeaders propagatedHeaders) {
@@ -214,20 +229,5 @@ class LraAnnotationHandler implements AnnotationHandler {
         reqCtx.setProperty(LRA_HTTP_PARENT_CONTEXT_HEADER, lraId);
         Contexts.context()
                 .ifPresent(context -> context.register(LRA_HTTP_PARENT_CONTEXT_HEADER, lraId));
-    }
-
-    private <T> T awaitCoordinator(Single<T> single) {
-        try {
-            // Connection timeout should be handled by client impl separately
-            return single.await(coordinatorTimeout);
-        } catch (CompletionException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof CoordinatorConnectionException) {
-                throw new WebApplicationException(cause.getMessage(), cause.getCause(),
-                        ((CoordinatorConnectionException) cause).status());
-            } else {
-                throw e;
-            }
-        }
     }
 }

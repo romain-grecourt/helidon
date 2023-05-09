@@ -15,14 +15,10 @@
  */
 package io.helidon.integrations.micrometer;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import io.helidon.nima.webserver.WebServer;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
 
 public class MicrometerTestUtil {
 
@@ -33,29 +29,22 @@ public class MicrometerTestUtil {
      * supplied builder.
      *
      * @param builder the {@code OpenAPISupport.Builder} to set up for the
-     * server.
+     *                server.
      * @return the {@code WebServer} set up with OpenAPI support
      */
-    public static WebServer startServer(MicrometerSupport.Builder builder) {
-        try {
-            return startServer(0, builder);
-        } catch (InterruptedException | ExecutionException | TimeoutException ex) {
-            throw new RuntimeException("Error starting server for test", ex);
-        }
+    public static WebServer startServer(MicrometerFeature.Builder builder) {
+        return startServer(0, builder);
     }
 
-    public static WebServer startServer(
-            int port,
-            MicrometerSupport.Builder... builders) throws
-            InterruptedException, ExecutionException, TimeoutException {
-        WebServer result = WebServer.builder(Routing.builder()
-                .register(builders)
-                .build())
-                .port(port)
-                .build()
-                .start()
-                .toCompletableFuture()
-                .get(10, TimeUnit.SECONDS);
+    public static WebServer startServer(int port, MicrometerFeature.Builder... builders) {
+        WebServer result = WebServer.builder()
+                                    .port(port)
+                                    .routing(routing -> {
+                                        for (MicrometerFeature.Builder builder : builders) {
+                                            builder.build().setup(routing);
+                                        }
+                                    })
+                                    .start();
         LOGGER.log(Level.INFO, "Started server at: https://localhost:{0}", result.port());
         return result;
     }

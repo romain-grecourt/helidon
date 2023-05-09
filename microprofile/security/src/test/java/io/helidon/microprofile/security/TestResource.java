@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.security.providers.httpauth;
+package io.helidon.microprofile.security;
 
 import io.helidon.security.SecurityContext;
 import io.helidon.security.annotations.Authenticated;

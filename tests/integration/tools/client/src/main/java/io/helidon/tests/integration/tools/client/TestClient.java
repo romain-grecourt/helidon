@@ -22,12 +22,10 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
-import io.helidon.reactive.media.common.MessageBodyReadableContent;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
 
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
@@ -46,13 +44,13 @@ public class TestClient {
 
     private static final String UTF_8_STR = StandardCharsets.UTF_8.toString();
 
-    private final WebClient webClient;
+    private final Http1Client client;
 
-    TestClient(final WebClient webClient) {
-        this.webClient = webClient;
+    TestClient(final Http1Client client) {
+        this.client = client;
     }
 
-    WebClientRequestBuilder clientGetBuilderWithPath(final String service, final String method) {
+    Http1ClientRequest clientGetBuilderWithPath(final String service, final String method) {
         final StringBuilder sb = new StringBuilder(service.length() + (method != null ? method.length() : 0) + 2);
         sb.append('/');
         sb.append(service);
@@ -60,7 +58,7 @@ public class TestClient {
             sb.append('/');
             sb.append(method);
         }
-        return webClient.get().path(sb.toString());
+        return client.get(sb.toString());
     }
 
     private static String encode(final String str) {
@@ -82,11 +80,9 @@ public class TestClient {
                     () -> String.format("%s: %s", trace.getString("class"), trace.getString("message")));
             JsonArray lines = trace.getJsonArray("trace");
             List<JsonObject> linesList = lines.getValuesAs(JsonObject.class);
-            linesList.forEach((line) -> {
-                LOGGER.log(Level.WARNING, () -> String.format("    at %s$%s (%s:%d)",
-                        line.getString("class"),
-                        line.getString("method"), line.getString("file"), line.getInt("line")));
-            });
+            linesList.forEach((line) -> LOGGER.log(Level.WARNING, () -> String.format("    at %s$%s (%s:%d)",
+                    line.getString("class"),
+                    line.getString("method"), line.getString("file"), line.getInt("line"))));
             if (logMsg == null) {
                 logMsg = message;
             }
@@ -107,15 +103,12 @@ public class TestClient {
      * Call remote test service method and return its data.
      *
      * @param service remote service name
-     * @param method remote test method name
-     * @param params remote test method query parameters
+     * @param method  remote test method name
+     * @param params  remote test method query parameters
      * @return data returned by remote test service method
      */
     public JsonValue callServiceAndGetData(final String service, final String method, final Map<String, String> params) {
-        return evaluateServiceCallResult(
-                callService(
-                        clientGetBuilderWithPath(service, method),
-                        params));
+        return evaluateServiceCallResult(callService(clientGetBuilderWithPath(service, method), params));
     }
 
     /**
@@ -123,11 +116,11 @@ public class TestClient {
      * No query parameters are passed.
      *
      * @param service remote service name
-     * @param method remote test method name
+     * @param method  remote test method name
      * @return data returned by remote test service method
      */
     public JsonValue callServiceAndGetData(final String service, final String method) {
-        return callServiceAndGetData(service, method, (Map) null);
+        return callServiceAndGetData(service, method, null);
     }
 
     /**
@@ -135,13 +128,13 @@ public class TestClient {
      * No response content check is done.
      *
      * @param service remote service name
-     * @param method remote test method name
-     * @param params remote test method query parameters
+     * @param method  remote test method name
+     * @param params  remote test method query parameters
      * @return data returned by remote service
      */
     public JsonObject callServiceAndGetRawData(final String service, final String method, final Map<String, String> params) {
-        WebClientRequestBuilder rb = clientGetBuilderWithPath(service, method);
-        rb.headers().add("Accept", "application/json");
+        Http1ClientRequest rb = clientGetBuilderWithPath(service, method);
+        rb.header("Accept", "application/json");
         return callService(rb, params);
     }
 
@@ -150,7 +143,7 @@ public class TestClient {
      * No response content check is done. No query parameters are passed.
      *
      * @param service remote service name
-     * @param method remote test method name
+     * @param method  remote test method name
      * @return data returned by remote service
      */
     public JsonObject callServiceAndGetRawData(final String service, final String method) {
@@ -162,16 +155,12 @@ public class TestClient {
      * No response content check is done. No query parameters are passed.
      *
      * @param service remote service name
-     * @param method remote test method name
+     * @param method  remote test method name
      * @return data returned by remote service
      */
     public String callServiceAndGetString(final String service, final String method) {
-        WebClientRequestBuilder rb = clientGetBuilderWithPath(service, method);
-        final MessageBodyReadableContent content = rb.submit()
-                .await(1, TimeUnit.MINUTES)
-                .content();
-        return content.as(String.class)
-                .await(1, TimeUnit.MINUTES);
+        Http1ClientRequest rb = clientGetBuilderWithPath(service, method);
+        return rb.request(String.class);
     }
 
     /**
@@ -179,35 +168,27 @@ public class TestClient {
      *
      * @return web client instance
      */
-    public WebClient webClient() {
-        return webClient;
+    public Http1Client client() {
+        return client;
     }
 
-    JsonObject callService(WebClientRequestBuilder rb, Map<String, String> params) {
+    JsonObject callService(Http1ClientRequest rb, Map<String, String> params) {
         if (params != null && !params.isEmpty()) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 rb = rb.queryParam(entry.getKey(), encode(entry.getValue()));
             }
         }
-        final MessageBodyReadableContent content = rb.submit()
-                .await(1, TimeUnit.MINUTES)
-                .content();
-        final String response = content
-                .as(String.class)
-                .await(1, TimeUnit.MINUTES);
+        final String response = rb.request(String.class);
         try {
-
             final JsonReader jsonReader = Json.createReader(new StringReader(response));
             final JsonValue jsonContent = jsonReader.read();
-            switch (jsonContent.getValueType()) {
-                case OBJECT:
-                    return jsonContent.asJsonObject();
-                default:
-                    throw new HelidonTestException(
-                            String.format(
-                                    "Expected JSON object, but got JSON %s",
-                                    jsonContent.getValueType().name().toLowerCase()));
+            if (Objects.requireNonNull(jsonContent.getValueType()) == JsonValue.ValueType.OBJECT) {
+                return jsonContent.asJsonObject();
             }
+            throw new HelidonTestException(
+                    String.format(
+                            "Expected JSON object, but got JSON %s",
+                            jsonContent.getValueType().name().toLowerCase()));
         } catch (JsonException t) {
             LOGGER.log(Level.WARNING,
                     () -> String.format(
@@ -226,13 +207,14 @@ public class TestClient {
     JsonValue evaluateServiceCallResult(final JsonObject testData) {
         String status = testData.getString("status");
         switch (status) {
-            case "OK":
+            case "OK" -> {
                 return testData.get("data");
-            case "exception":
+            }
+            case "exception" -> {
                 logStackTrace(testData);
                 throw new HelidonTestException("Remote test execution failed.", testData.getJsonArray("stacktrace"));
-            default:
-                throw new HelidonTestException(String.format("Unknown response content: %s", testData.toString()));
+            }
+            default -> throw new HelidonTestException(String.format("Unknown response content: %s", testData));
         }
     }
 
@@ -291,26 +273,18 @@ public class TestClient {
          * @return base URL of web client
          */
         String baseUrl() {
-            final String portStr = String.valueOf(port);
-            final StringBuilder sb = new StringBuilder(
-                    HTTP_PREFIX.length() + host.length() + portStr.length() + 1);
-            sb.append(HTTP_PREFIX);
-            sb.append(host);
-            sb.append(':');
-            sb.append(portStr);
-            return sb.toString();
+            return HTTP_PREFIX + host + ':' + port;
         }
 
         /**
          * Builds web client initialized with parameters stored in this builder.
          *
-         * @return new {@link WebClient} instance
+         * @return new {@link Http1Client} instance
          */
-        WebClient buildWebClient() {
-            return WebClient.builder()
-                    .baseUri(baseUrl())
-                    .addMediaSupport(JsonpSupport.create())
-                    .build();
+        Http1Client buildWebClient() {
+            return Http1Client.builder()
+                              .baseUri(baseUrl())
+                              .build();
         }
 
         /**

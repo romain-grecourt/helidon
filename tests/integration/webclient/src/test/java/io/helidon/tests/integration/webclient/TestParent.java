@@ -22,60 +22,56 @@ import java.util.stream.Stream;
 
 import io.helidon.common.context.Context;
 import io.helidon.config.Config;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.spi.WebClientService;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.ClientService;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1Client.Http1ClientBuilder;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.Security;
 import io.helidon.security.SecurityContext;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-
 /**
  * Parent class for integration tests.
  */
+@ServerTest
 class TestParent {
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
     protected static final Config CONFIG = Config.create();
 
-    protected static WebServer webServer;
-    protected static WebClient webClient;
+    protected static WebServer server;
+    protected static Http1Client client;
 
-    @BeforeAll
-    public static void startTheServer() {
-        webServer = Main.startServer().await(TIMEOUT);
-        webClient = createNewClient();
+    TestParent(WebServer server, Http1Client client) {
+        this.server = server;
+        this.client = client;
     }
 
-    @AfterAll
-    static void stopServer() throws Exception {
-        if (webServer != null) {
-            webServer.shutdown()
-                    .toCompletableFuture()
-                    .get(10, TimeUnit.SECONDS);
-        }
+    @SetUpServer
+    public static void startTheServer(WebServer.Builder builder) {
+        Config config = Config.create();
+        builder.config(config);
+        builder.routing(routing -> Main.routing(routing, config, null));
     }
 
-    protected static WebClient createNewClient(WebClientService... clientServices) {
+    protected static Http1Client createNewClient(ClientService... clientServices) {
         Security security = Security.builder()
-                .addProvider(HttpBasicAuthProvider.builder().build())
-                .build();
+                                    .addProvider(HttpBasicAuthProvider.builder().build())
+                                    .build();
 
         SecurityContext securityContext = security.createContext("unit-test");
 
         Context context = Context.builder().id("unit-test").build();
         context.register(securityContext);
 
-        WebClient.Builder builder = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
-                .config(CONFIG.get("client"))
-                .context(context)
-                .addMediaSupport(JsonpSupport.create());
+        Http1ClientBuilder builder = Http1Client.builder()
+                                                .baseUri("http://localhost:" + server.port() + "/greet")
+                                                .config(CONFIG.get("client"));
+//                                                .context(context);
 
-        Stream.of(clientServices).forEach(builder::addService);
+        Stream.of(clientServices).forEach(builder::service);
         return builder.build();
     }
 

@@ -24,8 +24,8 @@ import java.util.function.Function;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigValue;
-import io.helidon.reactive.webserver.Handler;
-import io.helidon.reactive.webserver.ServerRequest;
+import io.helidon.nima.webserver.http.Handler;
+import io.helidon.nima.webserver.http.ServerRequest;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.config.MeterRegistryConfig;
@@ -62,27 +62,7 @@ class MicrometerPrometheusRegistrySupport extends MicrometerBuiltInRegistrySuppo
 
     @Override
     PrometheusMeterRegistry createRegistry(MeterRegistryConfig meterRegistryConfig) {
-        return new PrometheusMeterRegistry(PrometheusConfig.class.cast(meterRegistryConfig));
-    }
-
-    @Override
-    public Function<io.helidon.nima.webserver.http.ServerRequest,
-            Optional<io.helidon.nima.webserver.http.Handler>> requestNimaToHandlerFn(MeterRegistry registry) {
-        /*
-         * Deal with a request if the MediaType is text/plain or the query parameter "type" specifies "prometheus".
-         */
-        return (io.helidon.nima.webserver.http.ServerRequest req) -> {
-            if (req.headers()
-                    .bestAccepted(MediaTypes.TEXT_PLAIN).isPresent()
-                    || req.query()
-                    .first("type")
-                    .orElse("")
-                    .equals("prometheus")) {
-                return Optional.of(NimaPrometheusHandler.create(registry));
-            } else {
-                return Optional.empty();
-            }
-        };
+        return new PrometheusMeterRegistry((PrometheusConfig) meterRegistryConfig);
     }
 
     @Override
@@ -93,11 +73,11 @@ class MicrometerPrometheusRegistrySupport extends MicrometerBuiltInRegistrySuppo
         return (ServerRequest req) -> {
             if (req.headers()
                     .bestAccepted(MediaTypes.TEXT_PLAIN).isPresent()
-                    || req.queryParams()
+                    || req.query()
                     .first("type")
                     .orElse("")
                     .equals("prometheus")) {
-                return Optional.of(ReactivePrometheusHandler.create(registry));
+                return Optional.of(PrometheusHandler.create(registry));
             } else {
                 return Optional.empty();
             }
@@ -127,30 +107,20 @@ class MicrometerPrometheusRegistrySupport extends MicrometerBuiltInRegistrySuppo
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '\\':
-                    writer.append("\\\\");
-                    break;
-                case '\n':
-                    writer.append("\\n");
-                    break;
-                default:
-                    writer.append(c);
+                case '\\' -> writer.append("\\\\");
+                case '\n' -> writer.append("\\n");
+                default -> writer.append(c);
             }
         }
     }
 
     private static String typeString(Collector.Type t) {
-        switch (t) {
-            case GAUGE:
-                return "gauge";
-            case COUNTER:
-                return "counter";
-            case SUMMARY:
-                return "summary";
-            case HISTOGRAM:
-                return "histogram";
-            default:
-                return "untyped";
-        }
+        return switch (t) {
+            case GAUGE -> "gauge";
+            case COUNTER -> "counter";
+            case SUMMARY -> "summary";
+            case HISTOGRAM -> "histogram";
+            default -> "untyped";
+        };
     }
 }

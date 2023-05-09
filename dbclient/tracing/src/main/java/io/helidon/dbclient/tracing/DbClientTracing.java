@@ -19,7 +19,7 @@ package io.helidon.dbclient.tracing;
 import java.util.Map;
 
 import io.helidon.common.context.Context;
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.dbclient.DbClientServiceContext;
 import io.helidon.dbclient.DbClientServiceBase;
 import io.helidon.tracing.config.SpanTracingConfig;

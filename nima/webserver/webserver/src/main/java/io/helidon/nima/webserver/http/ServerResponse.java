@@ -18,6 +18,7 @@ package io.helidon.nima.webserver.http;
 
 import java.io.OutputStream;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.http.Http;
@@ -209,4 +210,9 @@ public interface ServerResponse {
     default <T extends Sink<?>> T sink(GenericType<T> sinkType) {
         throw new UnsupportedOperationException("No sink available for type " + sinkType);
     }
+
+    default <T> void send(Stream<T> rStream, Class<T> cls) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
 }

@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.mapper.MapperManager;
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbClientException;
 import io.helidon.dbclient.DbClientService;
@@ -85,11 +85,13 @@ public final class JdbcDbClientProviderBuilder implements DbClientProviderBuilde
 
     @Override
     public JdbcDbClientProviderBuilder config(Config config) {
-        config.get("connection")
-              .detach()
-              .ifExists(cfg -> connectionPool(ConnectionPool.create(cfg)));
-
-        config.get("statements").as(DbStatements::create).ifPresent(this::statements);
+        Config connConfig = config.get("connection").detach();
+        if (connConfig.exists()) {
+            connectionPool(ConnectionPool.create(connConfig));
+        }
+        config.get("statements")
+              .map(DbStatements::create)
+              .ifPresent(this::statements);
         return this;
     }
 

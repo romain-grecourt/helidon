@@ -39,11 +39,11 @@ public class MicrometerSupportBuilderTest {
     @Test
     public void testValidBuiltInRegistries() {
         MeterRegistryFactory factory = MeterRegistryFactory.builder()
-                .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS, PrometheusConfig.DEFAULT)
-                .build();
-        MicrometerSupport support = MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(factory)
-                .build();
+                                                           .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS, PrometheusConfig.DEFAULT)
+                                                           .build();
+        MicrometerFeature support = MicrometerFeature.builder()
+                                                     .meterRegistryFactory(factory)
+                                                     .build();
 
 
         support.registry().counter("testCounter3").increment(3.0);
@@ -60,12 +60,12 @@ public class MicrometerSupportBuilderTest {
         double inc = 4.0;
         PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         MeterRegistryFactory factory = MeterRegistryFactory.builder()
-                .enrollRegistry(registry, r -> Optional.of((req, resp) -> resp.send(registry.scrape())))
-                .build();
+                                                           .enrollRegistry(registry, r -> Optional.of((req, resp) -> resp.send(registry.scrape())))
+                                                           .build();
 
-        MicrometerSupport support = MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(factory)
-                .build();
+        MicrometerFeature support = MicrometerFeature.builder()
+                                                     .meterRegistryFactory(factory)
+                                                     .build();
 
         assertThat("Did not find expected explicitly enrolled registry", factory.registries(), Matchers.contains(registry));
 
@@ -82,13 +82,13 @@ public class MicrometerSupportBuilderTest {
 
         PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
         MeterRegistryFactory factory = MeterRegistryFactory.builder()
-                .enrollRegistry(registry, r -> Optional.of((req, resp) -> resp.send(registry.scrape())))
-                .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS, PrometheusConfig.DEFAULT)
-                .build();
+                                                           .enrollRegistry(registry, r -> Optional.of((req, resp) -> resp.send(registry.scrape())))
+                                                           .enrollBuiltInRegistry(MeterRegistryFactory.BuiltInRegistryType.PROMETHEUS, PrometheusConfig.DEFAULT)
+                                                           .build();
 
-        MicrometerSupport support = MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(factory)
-                .build();
+        MicrometerFeature support = MicrometerFeature.builder()
+                                                     .meterRegistryFactory(factory)
+                                                     .build();
 
         assertThat("Did not find expected explicitly enrolled registry", factory.registries().contains(registry));
 
@@ -104,15 +104,15 @@ public class MicrometerSupportBuilderTest {
         double inc = 6.0;
         Config config = Config.create(ConfigSources.classpath("/micrometerTestData.json")).get("singleValue");
         MeterRegistryFactory.Builder factoryBuilder = MeterRegistryFactory.builder()
-                .config(config.get("metrics.micrometer"));
+                                                                          .config(config.get("metrics.micrometer"));
 
         assertThat(factoryBuilder.logRecords(), is(empty()));
 
         MeterRegistryFactory factory = factoryBuilder.build();
-        MicrometerSupport support = MicrometerSupport.builder()
-                .config(config.get("metrics.micrometer"))
-                .meterRegistryFactorySupplier(factory)
-                .build();
+        MicrometerFeature support = MicrometerFeature.builder()
+                                                     .config(config.get("metrics.micrometer"))
+                                                     .meterRegistryFactory(factory)
+                                                     .build();
 
         support.registry().counter("testCounter6").increment(inc);
         Counter counter = support.registry().find("testCounter6").counter();
@@ -132,12 +132,12 @@ public class MicrometerSupportBuilderTest {
     public void testBuiltInWithOneBadType() {
         Config config = Config.create(ConfigSources.classpath("/micrometerTestData.json")).get("singleBadValueWithGoodOne");
         MeterRegistryFactory.Builder factoryBuilder = MeterRegistryFactory.builder()
-                .config(config.get("metrics.micrometer"));
+                                                                          .config(config.get("metrics.micrometer"));
         MeterRegistryFactory factory = factoryBuilder.build();
-        MicrometerSupport.Builder builder = MicrometerSupport.builder()
-                .meterRegistryFactorySupplier(factory);
+        MicrometerFeature.Builder builder = MicrometerFeature.builder()
+                                                             .meterRegistryFactory(factory);
 
-        MicrometerSupport support = builder.build();
+        MicrometerFeature support = builder.build();
 
         assertThat("Too many or too few enrolled registries", factory.registries().size(), is(1));
 
@@ -149,25 +149,23 @@ public class MicrometerSupportBuilderTest {
         Config config = Config.create(ConfigSources.classpath("/micrometerTestData.json")).get("structure");
 
         MeterRegistryFactory.Builder factoryBuilder = MeterRegistryFactory.builder()
-                .config(config.get("metrics.micrometer"));
+                                                                          .config(config.get("metrics.micrometer"));
 
         MeterRegistryFactory factory = factoryBuilder.build();
 
-        MicrometerSupport.Builder builder = MicrometerSupport.builder()
-                .config(config.get("metrics.micrometer"))
-                .meterRegistryFactorySupplier(factory);
+        MicrometerFeature.Builder builder = MicrometerFeature.builder()
+                                                             .config(config.get("metrics.micrometer"))
+                                                             .meterRegistryFactory(factory);
 
         assertThat(factoryBuilder.logRecords(), is(empty()));
-        MicrometerSupport support = builder.build();
+        MicrometerFeature support = builder.build();
 
         Set<MeterRegistry> registries = factory.registries();
         assertThat("Unexpectedly found no enrolled registry", registries, is(not(empty())));
 
         assertThat("Did not find expected PrometheusRegistry in MicrometerSupport",
                 registries.stream()
-                    .filter(PrometheusMeterRegistry.class::isInstance)
-                    .findAny()
-                    .isPresent());
+                          .anyMatch(PrometheusMeterRegistry.class::isInstance));
     }
 
     @Test
@@ -175,21 +173,21 @@ public class MicrometerSupportBuilderTest {
         Config config = Config.create(ConfigSources.classpath("/micrometerTestData.json")).get("listOfValues");
 
         MeterRegistryFactory.Builder factoryBuilder = MeterRegistryFactory.builder()
-                .config(config.get("metrics.micrometer"));
+                                                                          .config(config.get("metrics.micrometer"));
 
         MeterRegistryFactory factory = factoryBuilder.build();
 
-        MicrometerSupport.Builder builder = MicrometerSupport.builder()
-                .config(config.get("metrics.micrometer"))
-                .meterRegistryFactorySupplier(factory);
+        MicrometerFeature.Builder builder = MicrometerFeature.builder()
+                                                             .config(config.get("metrics.micrometer"))
+                                                             .meterRegistryFactory(factory);
 
         assertThat(factoryBuilder.logRecords(), is(empty()));
-        MicrometerSupport support = builder.build();
+        MicrometerFeature support = builder.build();
 
         // Even though the test data defines two Prometheus registries, internally we use a map to store
         // them, keyed by the enum. So the map will contain only one.
         assertThat("Did not find expected Prometheus registry",
-            factory.registries().stream()
-                    .anyMatch(PrometheusMeterRegistry.class::isInstance));
+                factory.registries().stream()
+                       .anyMatch(PrometheusMeterRegistry.class::isInstance));
     }
 }

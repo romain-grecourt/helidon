@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.security.providers.httpauth;
+package io.helidon.microprofile.security;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,8 +25,8 @@ import java.util.Optional;
 
 import io.helidon.security.Security;
 import io.helidon.security.SecurityContext;
-import io.helidon.security.integration.jersey.client.ClientSecurity;
-import io.helidon.security.integration.jersey.client.ClientSecurityFilter;
+import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
+import io.helidon.security.providers.httpauth.SecureUserStore;
 
 import jakarta.ws.rs.client.ClientRequestContext;
 import jakarta.ws.rs.core.Configuration;
@@ -46,15 +46,15 @@ import static org.mockito.Mockito.when;
  */
 public class BasicAuthOutboundOverrideTest {
     @Test
-    void testSecureClientOverride() throws IOException {
+    void testSecureClientOverride() {
         String user = "jack";
         String password = "password";
         String base64Encoded = Base64.getEncoder().encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
 
         Security security = Security.builder()
                 .addProvider(HttpBasicAuthProvider.builder()
-                                     .userStore((SecureUserStore) login -> Optional.empty())
-                                     .build(), "http-basic-auth")
+                                                  .userStore(login -> Optional.empty())
+                                                  .build(), "http-basic-auth")
                 .build();
         SecurityContext context = security.createContext(getClass().getName() + ".testSecureClientOverride()");
 

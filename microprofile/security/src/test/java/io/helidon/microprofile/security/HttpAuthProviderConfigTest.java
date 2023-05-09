@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.security.providers.httpauth;
+package io.helidon.microprofile.security;
 
 import java.util.Set;
 
@@ -22,6 +22,8 @@ import io.helidon.microprofile.tests.junit5.AddBean;
 import io.helidon.microprofile.tests.junit5.AddConfig;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
 
+import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
+import io.helidon.security.providers.httpauth.HttpDigestAuthProvider;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -136,7 +138,7 @@ public class HttpAuthProviderConfigTest {
                 .get();
 
         assertThat(response.getStatus(), is(401));
-        String authHeader = response.getHeaderString(HttpBasicAuthProvider.HEADER_AUTHENTICATION_REQUIRED);
+        String authHeader = response.getHeaderString("WWW-Authenticate");
         assertThat(authHeader, notNullValue());
         assertThat(authHeader.toLowerCase(), is("basic realm=\"mic\""));
     }
@@ -149,7 +151,7 @@ public class HttpAuthProviderConfigTest {
                 .get();
 
         assertThat(response.getStatus(), is(401));
-        String authHeader = response.getHeaderString(HttpBasicAuthProvider.HEADER_AUTHENTICATION_REQUIRED);
+        String authHeader = response.getHeaderString("WWW-Authenticate");
         assertThat(authHeader, notNullValue());
         assertThat(authHeader.toLowerCase(), startsWith("digest realm=\"mic\""));
         assertThat(authHeader.toLowerCase(), containsString("qop="));
@@ -163,7 +165,7 @@ public class HttpAuthProviderConfigTest {
                 .get();
 
         assertThat(response.getStatus(), is(401));
-        String authHeader = response.getHeaderString(HttpBasicAuthProvider.HEADER_AUTHENTICATION_REQUIRED);
+        String authHeader = response.getHeaderString("WWW-Authenticate");
         assertThat(authHeader, notNullValue());
         assertThat(authHeader.toLowerCase(), startsWith("digest realm=\"mic\""));
         assertThat(authHeader.toLowerCase(), not(containsString("qop=")));

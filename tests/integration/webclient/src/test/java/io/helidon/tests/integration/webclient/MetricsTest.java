@@ -16,12 +16,9 @@
 package io.helidon.tests.integration.webclient;
 
 import io.helidon.common.http.Http;
-import io.helidon.common.reactive.Single;
-import io.helidon.metrics.RegistryFactory;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webclient.metrics.WebClientMetrics;
-import io.helidon.reactive.webclient.spi.WebClientService;
+import io.helidon.metrics.api.RegistryFactory;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.WebServer;
 
 import org.eclipse.microprofile.metrics.ConcurrentGauge;
 import org.eclipse.microprofile.metrics.Counter;
@@ -39,6 +36,10 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class MetricsTest extends TestParent {
 
     private static final MetricRegistry FACTORY = RegistryFactory.getInstance().getRegistry(MetricRegistry.Type.APPLICATION);
+
+    MetricsTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
 
     @Test
     public void testCounter() {

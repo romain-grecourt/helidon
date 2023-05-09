@@ -31,12 +31,12 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.helidon.reactive.webserver</groupId>
-            <artifactId>helidon-reactive-webserver</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.prometheus</groupId>
             <artifactId>simpleclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.service-common</groupId>
+            <artifactId>helidon-nima-service-common</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -52,15 +52,6 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.reactive.webserver</groupId>
-            <artifactId>helidon-reactive-webserver-test-support</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.nima.service-common</groupId>
-            <artifactId>helidon-nima-service-common</artifactId>
         </dependency>
         <dependency>
             <groupId>io.helidon.nima.testing.junit5</groupId>

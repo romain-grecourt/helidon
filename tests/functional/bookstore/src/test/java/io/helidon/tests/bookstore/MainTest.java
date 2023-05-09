@@ -21,8 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.System.Logger.Level;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,22 +30,23 @@ import java.util.List;
 import java.util.Queue;
 
 import io.helidon.common.http.Http;
+import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.media.type.MediaTypes;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientResponse;
 
 import com.oracle.bedrock.runtime.Application;
 import com.oracle.bedrock.runtime.LocalPlatform;
 import com.oracle.bedrock.runtime.console.CapturingApplicationConsole;
 import com.oracle.bedrock.runtime.options.Arguments;
 import com.oracle.bedrock.runtime.options.Console;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.http.media.jsonp.JsonpSupport;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -87,12 +87,12 @@ class MainTest {
             waitForApplicationDown();
         }
 
-        URL getHealthUrl() throws MalformedURLException {
-            return new URL("http://localhost:" + this.port + "/health");
+        URI healthUri() {
+            return URI.create("http://localhost:" + this.port + "/health");
         }
 
-        URL getBaseUrl() throws MalformedURLException {
-            return new URL("http://localhost:" + this.port);
+        URI baseUri() {
+            return URI.create("http://localhost:" + this.port);
         }
 
         void waitForApplicationDown() throws Exception {
@@ -114,7 +114,7 @@ class MainTest {
             long now = System.currentTimeMillis();
             int count = 0;
             String operation = (toBeUp ? "start" : "stop");
-            URL url = getHealthUrl();
+            URI uri = healthUri();
             LOGGER.log(Level.INFO, "Waiting for application to " + operation);
 
             HttpURLConnection conn = null;
@@ -126,7 +126,7 @@ class MainTest {
                 }
                 try {
                     count++;
-                    conn = (HttpURLConnection) url.openConnection();
+                    conn = (HttpURLConnection) uri.toURL().openConnection();
                     conn.setConnectTimeout(1000);
                     responseCode = conn.getResponseCode();
                     if (toBeUp && responseCode != 200) {
@@ -136,7 +136,7 @@ class MainTest {
                 } catch (Exception ex) {
                     if (toBeUp) {
                         LOGGER.log(Level.INFO, "Waiting for application to " + operation + ": Unable to connect to "
-                                + url.toString() + ": " + ex);
+                                + uri.toString() + ": " + ex);
                     }
                     responseCode = -1;
                 }
@@ -144,7 +144,7 @@ class MainTest {
                     conn.disconnect();
                 }
             } while ((toBeUp && responseCode != 200) || (!toBeUp && responseCode != -1));
-            LOGGER.log(Level.INFO, "Application " + operation + " successful" );
+            LOGGER.log(Level.INFO, "Application " + operation + " successful");
         }
     }
 
@@ -158,9 +158,9 @@ class MainTest {
     /**
      * Start the application using the application jar and classpath
      *
-     * @param appJarPath    Path to jar file with application
-     * @param javaArgs      Additional java arguments to pass
-     * @throws Exception    Error starting the application
+     * @param appJarPath Path to jar file with application
+     * @param javaArgs   Additional java arguments to pass
+     * @throws Exception Error starting the application
      */
     HelidonApplication startTheApplication(String appJarPath, List<String> javaArgs) throws Exception {
         int port = localPlatform.getAvailablePorts().next();
@@ -174,10 +174,10 @@ class MainTest {
     /**
      * Start the application using the application jar and module path
      *
-     * @param appJarPath    Path to jar file with application
-     * @param javaArgs      Additional java arguments to pass
-     * @param moduleName    Name of application's module that contains Main
-     * @throws Exception    Error starting the application
+     * @param appJarPath Path to jar file with application
+     * @param javaArgs   Additional java arguments to pass
+     * @param moduleName Name of application's module that contains Main
+     * @throws Exception Error starting the application
      */
     HelidonApplication startTheApplicationModule(String appJarPath, List<String> javaArgs, String moduleName) throws Exception {
         int port = localPlatform.getAvailablePorts().next();
@@ -214,10 +214,10 @@ class MainTest {
 
         String eol = System.getProperty("line.separator");
         Assertions.fail("quickstart " + edition + " did not exit as expected." + eol
-                                + eol
-                                + "stdOut: " + stdOut + eol
-                                + eol
-                                + " stdErr: " + console.getCapturedErrorLines());
+                + eol
+                + "stdOut: " + stdOut + eol
+                + eol
+                + " stdErr: " + console.getCapturedErrorLines());
         application.close();
     }
 
@@ -284,53 +284,52 @@ class MainTest {
         }
 
         HelidonApplication application = startTheApplication(editionToJarPath(edition), systemPropertyArgs);
-        WebClient webClient = WebClient.builder()
-                .baseUri(application.getBaseUrl())
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        Http1Client webClient = Http1Client.builder()
+                                           .baseUri(application.baseUri())
+                                           .mediaContext(MediaContext.builder()
+                                                                     .addMediaSupport(JsonpSupport.create())
+                                                                     .build())
+                                           .build();
 
-        webClient.get()
-                .path("/books")
-                .request(JsonArray.class)
-                .thenAccept(bookArray -> assertThat("Number of books", bookArray.size(), is(numberOfBooks)))
-                .toCompletableFuture()
-                .get();
+        JsonArray bookArray = webClient.get()
+                                       .path("/books")
+                                       .request(JsonArray.class);
 
-        webClient.post()
-                .path("/books")
-                .submit(json)
-                .thenAccept(it -> assertThat("HTTP response POST", it.status(), is(Http.Status.OK_200)))
-                .thenCompose(it -> webClient.get()
-                        .path("/books/123456")
-                        .request(JsonObject.class))
-                .thenAccept(it -> assertThat("Checking if correct ISBN", it.getString("isbn"), is("123456")))
-                .toCompletableFuture()
-                .get();
+        assertThat("Number of books", bookArray.size(), is(numberOfBooks));
 
-        webClient.get()
-                .path("/books/0000")
-                .request()
-                .thenAccept(it -> assertThat("HTTP response GET bad ISBN", it.status(), is(Http.Status.NOT_FOUND_404)))
-                .toCompletableFuture()
-                .get();
 
-        webClient.get()
-                .path("/books")
-                .request()
-                .thenApply(it -> {
-                    assertThat("HTTP response list books", it.status(), is(Http.Status.OK_200));
-                    return it;
-                })
-                .thenCompose(WebClientResponse::close)
-                .toCompletableFuture()
-                .get();
+        try (Http1ClientResponse response = webClient.post()
+                                                     .path("/books")
+                                                     .submit(json)) {
+            assertThat("HTTP response POST", response.status(), is(Http.Status.OK_200));
+        }
 
-        webClient.delete()
-                .path("/books/123456")
-                .request()
-                .thenAccept(it -> assertThat("HTTP response delete book", it.status(), is(Http.Status.OK_200)))
-                .toCompletableFuture()
-                .get();
+        JsonObject book = webClient.get()
+                                   .path("/books/123456")
+                                   .request(JsonObject.class);
+
+        assertThat("Checking if correct ISBN", book.getString("isbn"), is("123456"));
+
+        try (Http1ClientResponse response = webClient.get()
+                                                     .path("/books/0000")
+                                                     .request()) {
+
+            assertThat("HTTP response GET bad ISBN", response.status(), is(Http.Status.NOT_FOUND_404));
+        }
+
+        try (Http1ClientResponse response = webClient.get()
+                                                     .path("/books")
+                                                     .request()) {
+
+            assertThat("HTTP response list books", response.status(), is(Http.Status.OK_200));
+        }
+
+        try (Http1ClientResponse response = webClient.delete()
+                                                     .path("/books/123456")
+                                                     .request()) {
+
+            assertThat("HTTP response delete book", response.status(), is(Http.Status.OK_200));
+        }
 
         application.stop();
     }
@@ -343,7 +342,7 @@ class MainTest {
      *
      * @param edition     "mp", "se"
      * @param jsonLibrary "jsonp", "jsonb" or "jackson"
-     * @param useModules true to use modulepath, false to use classpath
+     * @param useModules  true to use modulepath, false to use classpath
      * @throws Exception on test failure
      */
     private void runMetricsAndHealthTest(String edition, String jsonLibrary, boolean useModules) throws Exception {
@@ -361,62 +360,52 @@ class MainTest {
             application = startTheApplication(editionToJarPath(edition), systemPropertyArgs);
         }
 
-        WebClient webClient = WebClient.builder()
-                .baseUri(application.getBaseUrl())
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        Http1Client webClient = Http1Client.builder()
+                                           .baseUri(application.baseUri())
+                                           .mediaContext(MediaContext.builder()
+                                                                     .addMediaSupport(JsonpSupport.create())
+                                                                     .build())
+                                           .build();
 
         // Get Prometheus style metrics
-        webClient.get()
-                .accept(MediaTypes.WILDCARD)
-                .path("/metrics")
-                .request(String.class)
-                // Make sure we got prometheus metrics
-                .thenAccept(it -> assertThat("Making sure we got Prometheus format", it, startsWith("# TYPE")))
-                .toCompletableFuture()
-                .get();
+        String metrics = webClient.get()
+                                  .accept(HttpMediaType.create(MediaTypes.WILDCARD))
+                                  .path("/metrics")
+                                  .request(String.class);
+        // Make sure we got prometheus metrics
+        assertThat("Making sure we got Prometheus format", metrics, startsWith("# TYPE"));
 
         // Get JSON encoded metrics
-        webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .path("/metrics")
-                .request(JsonObject.class)
-                // Makes sure we got JSON metrics
-                .thenAccept(it -> assertThat("Checking request count",
-                                             it.getJsonObject("vendor").getInt("requests.count"),
-                                             greaterThan(0)))
-                .toCompletableFuture()
-                .get();
+        JsonObject jsonObject = webClient.get()
+                                          .accept(HttpMediaType.APPLICATION_JSON)
+                                          .path("/metrics")
+                                          .request(JsonObject.class);
+        // Makes sure we got JSON metrics
+        assertThat("Checking request count", jsonObject.getJsonObject("vendor").getInt("requests.count"), greaterThan(0));
 
         // Get JSON encoded metrics/base
-        webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .path("/metrics/base")
-                .request(JsonObject.class)
-                // Makes sure we got JSON metrics
-                .thenAccept(it -> assertThat("Checking request count",
-                                             it.getInt("thread.count"),
-                                             greaterThan(0)))
-                .toCompletableFuture()
-                .get();
+        jsonObject = webClient.get()
+                                      .accept(HttpMediaType.APPLICATION_JSON)
+                                      .path("/metrics/base")
+                                      .request(JsonObject.class);
+        // Makes sure we got JSON metrics
+        assertThat("Checking request count", jsonObject.getInt("thread.count"), greaterThan(0));
 
         // Get JSON encoded health check
-        webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .path("/health")
-                .request(JsonObject.class)
-                .thenAccept(it -> {
-                    assertThat("Checking health status", it.getString("status"), is("UP"));
-                    // Verify that built-in health checks are disabled in MP according to
-                    // 'microprofile-config.properties' setting in bookstore application
-                    if (edition.equals("mp")) {
-                        assertThat("Checking built-in health checks disabled",
-                                   it.getJsonArray("checks").size(),
-                                   is(0));
-                    }
-                })
-                .toCompletableFuture()
-                .get();
+        jsonObject = webClient.get()
+                 .accept(HttpMediaType.APPLICATION_JSON)
+                 .path("/health")
+                 .request(JsonObject.class);
+
+        assertThat("Checking health status", jsonObject.getString("status"), is("UP"));
+
+        // Verify that built-in health checks are disabled in MP according to
+        // 'microprofile-config.properties' setting in bookstore application
+        if (edition.equals("mp")) {
+            assertThat("Checking built-in health checks disabled",
+                    jsonObject.getJsonArray("checks").size(),
+                    is(0));
+        }
 
         application.stop();
     }
@@ -426,34 +415,33 @@ class MainTest {
     void routing(String edition) throws Exception {
 
         HelidonApplication application = startTheApplication(editionToJarPath(edition), Collections.emptyList());
-        WebClient webClient = WebClient.builder()
-                .baseUri(application.getBaseUrl())
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        Http1Client webClient = Http1Client.builder()
+                                       .baseUri(application.baseUri())
+                                           .mediaContext(MediaContext.builder()
+                                                                     .addMediaSupport(JsonpSupport.create())
+                                                                     .build())
+                                       .build();
 
-        webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .skipUriEncoding()
-                .path("/boo%6bs")
-                .request()
-                .thenAccept(it -> {
-                    if ("se".equals(edition) || "nima".equals(edition)) {
-                        assertThat("Checking encode URL response SE", it.status(), is(Http.Status.OK_200));
-                    } else {
-                        // JAXRS does not decode URLs before matching
-                        assertThat("Checking encode URL response MP", it.status(), is(Http.Status.NOT_FOUND_404));
-                    }
-                })
-                .toCompletableFuture()
-                .get();
+        try (Http1ClientResponse response = webClient.get()
+                                                .accept(HttpMediaType.APPLICATION_JSON)
+//                 .skipUriEncoding()
+                                                .path("/boo%6bs")
+                                                .request()) {
+            if ("se".equals(edition) || "nima".equals(edition)) {
+                assertThat("Checking encode URL response SE", response.status(), is(Http.Status.OK_200));
+            } else {
+                // JAXRS does not decode URLs before matching
+                assertThat("Checking encode URL response MP", response.status(), is(Http.Status.NOT_FOUND_404));
+            }
+        }
 
-        webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .path("/badurl")
-                .request()
-                .thenAccept(it -> assertThat("Checking encode URL response", it.status(), is(Http.Status.NOT_FOUND_404)))
-                .toCompletableFuture()
-                .get();
+        try (Http1ClientResponse response = webClient.get()
+                                                .accept(HttpMediaType.APPLICATION_JSON)
+                                                .path("/badurl")
+                                                .request()) {
+
+            assertThat("Checking encode URL response", response.status(), is(Http.Status.NOT_FOUND_404));
+        }
 
         application.stop();
     }
@@ -472,7 +460,7 @@ class MainTest {
         startArgs.add("-Dserver.port=" + port);
         startArgs.add("--enable-preview");
 
-        if (moduleName != null && ! moduleName.isEmpty() ) {
+        if (moduleName != null && !moduleName.isEmpty()) {
             File jarFile = new File(appJarPath);
             // --module-path target/bookstore-se.jar:target/libs -m io.helidon.tests.apps.bookstore.se/io.helidon.tests.apps.bookstore.se.Main
             startArgs.add("--module-path");

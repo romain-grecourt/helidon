@@ -18,7 +18,7 @@ package io.helidon.dbclient.metrics.jdbc;
 import java.lang.System.Logger.Level;
 
 import io.helidon.common.LazyValue;
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.metrics.api.RegistryFactory;
 
 import com.codahale.metrics.Counter;
@@ -31,7 +31,7 @@ import org.eclipse.microprofile.metrics.MetricRegistry;
 
 /**
  * Hikari CP to Helidon metrics mapper.
- *
+ * <br/>
  * Listeners for events from the metrics registry and (un)registers metrics instances in Helidon.
  */
 public class DropwizardMetricsListener implements MetricRegistryListener {

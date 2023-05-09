@@ -56,7 +56,6 @@ interface AnnotationHandler {
         AnnotationHandler make(AnnotationInstance annotationInstance,
                                CoordinatorClient coordinatorClient,
                                InspectionService inspectionService,
-                               ParticipantService participantService,
-                               Duration timeout);
+                               ParticipantService participantService);
     }
 }

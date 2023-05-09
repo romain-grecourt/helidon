@@ -143,7 +143,7 @@ public class MicrometerFeature extends HelidonFeatureSupport {
          * @param meterRegistryFactory the MeterRegistry  to use
          * @return updated builder instance
          */
-        public Builder meterRegistryFactorySupplier(MeterRegistryFactory meterRegistryFactory) {
+        public Builder meterRegistryFactory(MeterRegistryFactory meterRegistryFactory) {
             this.meterRegistryFactorySupplier = () -> meterRegistryFactory;
             return this;
         }

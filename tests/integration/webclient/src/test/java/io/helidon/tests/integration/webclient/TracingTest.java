@@ -47,7 +47,7 @@ class TracingTest extends TestParent {
     @Test
     void testTracingNoServerSuccess() {
         MockTracer mockTracer = new MockTracer();
-        String uri = "http://localhost:" + webServer.port() + "/greet";
+        String uri = "http://localhost:" + server.port() + "/greet";
         Context context = Context.builder().id("tracing-unit-test").build();
         context.register(OpenTracing.create(mockTracer));
 
@@ -91,7 +91,7 @@ class TracingTest extends TestParent {
         context.register(OpenTracing.create(mockTracer));
 
         WebClient client = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port() + "/greet")
+                .baseUri("http://localhost:" + server.port() + "/greet")
                 .context(context)
                 .addMediaSupport(JsonpSupport.create())
                 .config(CONFIG.get("client"))
@@ -111,7 +111,7 @@ class TracingTest extends TestParent {
 
         MockSpan theSpan = mockSpans.get(0);
 
-        assertThat(theSpan.operationName(), is("GET-http://localhost:" + webServer.port() + "/greet/error"));
+        assertThat(theSpan.operationName(), is("GET-http://localhost:" + server.port() + "/greet/error"));
 
         List<MockSpan.LogEntry> logEntries = theSpan.logEntries();
         assertThat(logEntries, iterableWithSize(1));

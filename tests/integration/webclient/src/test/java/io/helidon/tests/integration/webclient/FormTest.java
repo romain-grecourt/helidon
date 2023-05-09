@@ -15,11 +15,17 @@
  */
 package io.helidon.tests.integration.webclient;
 
+import io.helidon.common.http.HttpMediaType;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.common.parameters.Parameters;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.common.http.HttpMediaType.TEXT_PLAIN;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,8 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class FormTest extends TestParent {
 
     private static final Parameters TEST_FORM = Parameters.builder("webclient-form")
-            .add("name", "David Tester")
-            .build();
+                                                          .add("name", "David Tester")
+                                                          .build();
 
     private static final String SPECIAL = "special";
     private static final String MULTIPLE = "multiple";
@@ -40,50 +46,61 @@ public class FormTest extends TestParent {
     private static final String SPECIAL_VALUE = "some &@#/ special value";
 
     private static final Parameters ADVANCED_TEST_FORM = Parameters.builder("webclient-form")
-            .add(SPECIAL, SPECIAL_VALUE)
-            .add(MULTIPLE, "value1", "value2")
-            .add(NO_VALUE)
-            .build();
+                                                                   .add(SPECIAL, SPECIAL_VALUE)
+                                                                   .add(MULTIPLE, "value1", "value2")
+                                                                   .add(NO_VALUE)
+                                                                   .build();
+
+    FormTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
 
     @Test
     public void testHelloWorld() {
-        webClient.post()
-                .path("/form")
-                .submit(TEST_FORM, String.class)
-                .thenAccept(resp -> assertThat(resp, is("Hi David Tester")))
-                .await();
+        try (Http1ClientResponse res = client.post()
+                                             .path("/form")
+                                             .submit(TEST_FORM)) {
+
+            assertThat(res.as(String.class), is("Hi David Tester"));
+        }
     }
 
     @Test
     public void testSpecificContentType() {
-        webClient.post()
-                .path("/form")
-                .contentType(MediaTypes.TEXT_PLAIN)
-                .submit(TEST_FORM, String.class)
-                .thenAccept(resp -> assertThat(resp, is("Hi David Tester")))
-                .await();
+        try (Http1ClientResponse res = client.post()
+                                             .path("/form")
+                                             .submit(TEXT_PLAIN)) {
+
+            assertThat(res.as(String.class), is("Hi David Tester"));
+        }
     }
 
     @Test
     public void testSpecificContentTypeIncorrect() {
-        Exception ex = assertThrows(IllegalStateException.class, () -> webClient.post()
-                .path("/form")
-                .contentType(MediaTypes.APPLICATION_ATOM_XML)
-                .submit(TEST_FORM).await());
+        Exception ex = assertThrows(IllegalStateException.class, () -> {
+            try (Http1ClientResponse ignored = client.post()
+                                                     .path("/form")
+                                                     .contentType(HttpMediaType.create(MediaTypes.APPLICATION_ATOM_XML))
+                                                     .submit(TEST_FORM)) {
+
+                Assertions.fail();
+            }
+        });
 
         assertThat(ex.getCause().getMessage(),
-                   startsWith("No writer found for type: class "));
+                startsWith("No writer found for type: class "));
     }
 
     @Test
     public void testFormContent() {
-        Parameters received = webClient.post()
-                .path("/form/content")
-                .submit(ADVANCED_TEST_FORM, Parameters.class)
-                .await();
+        try (Http1ClientResponse res = client.post()
+                                             .path("/form/content")
+                                             .submit(ADVANCED_TEST_FORM)) {
 
-        assertThat(received.all(SPECIAL), is(ADVANCED_TEST_FORM.all(SPECIAL)));
-        assertThat(received.all(MULTIPLE), is(ADVANCED_TEST_FORM.all(MULTIPLE)));
-        assertThat(received.all(NO_VALUE).size(), is(0));
+            Parameters received = res.as(Parameters.class);
+            assertThat(received.all(SPECIAL), is(ADVANCED_TEST_FORM.all(SPECIAL)));
+            assertThat(received.all(MULTIPLE), is(ADVANCED_TEST_FORM.all(MULTIPLE)));
+            assertThat(received.all(NO_VALUE).size(), is(0));
+        }
     }
 }

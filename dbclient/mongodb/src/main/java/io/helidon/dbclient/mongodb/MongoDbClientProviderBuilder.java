@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.mapper.MapperManager;
-import io.helidon.config.Config;
+import io.helidon.common.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbClientException;
 import io.helidon.dbclient.DbClientService;
@@ -68,15 +68,15 @@ public final class MongoDbClientProviderBuilder implements DbClientProviderBuild
 
     @Override
     public MongoDbClientProviderBuilder config(Config config) {
-        config.get("connection").asNode().ifPresentOrElse(conn -> {
-            conn.get("url").asString().ifPresent(this::url);
-            conn.get("username").asString().ifPresent(this::username);
-            conn.get("password").asString().ifPresent(this::password);
-        }, () -> {
+        Config connConfig = config.get("connection");
+        if (!connConfig.exists()) {
             throw new DbClientException(String.format(
                     "No database connection configuration (%s) was found",
-                    config.get("connection").key()));
-        });
+                    connConfig.key()));
+        }
+        connConfig.get("url").asString().ifPresent(this::url);
+        connConfig.get("username").asString().ifPresent(this::username);
+        connConfig.get("password").asString().ifPresent(this::password);
         config.get("credDb").asString().ifPresent(this::credDb);
         statements = DbStatements.create(config.get("statements"));
         return this;
