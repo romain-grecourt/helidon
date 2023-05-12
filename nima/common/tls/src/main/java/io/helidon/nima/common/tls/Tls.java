@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -408,6 +409,28 @@ public abstract sealed class Tls permits Tls.ExplicitContextTlsConfig, Tls.TlsCo
             this.privateKey = privateKey;
             return this;
         }
+
+        public Builder privateKey(Consumer<KeyConfig.KeystoreBuilder> consumer) {
+            KeyConfig.KeystoreBuilder keystoreBuilder = KeyConfig.keystoreBuilder();
+            consumer.accept(keystoreBuilder);
+            KeyConfig keyConfig = keystoreBuilder.build();
+            privateKey(keyConfig.privateKey().get());
+            privateKeyCertChain(keyConfig.certChain());
+            return this;
+        }
+
+        public Builder certificateTrustStore(KeyConfig keyStore) {
+            Objects.requireNonNull(keyStore);
+            return trustCertificates(keyStore.certs());
+        }
+
+        public Builder certificateTrustStore(Consumer<KeyConfig.KeystoreBuilder> consumer) {
+            KeyConfig.KeystoreBuilder keystoreBuilder = KeyConfig.keystoreBuilder();
+            consumer.accept(keystoreBuilder);
+            KeyConfig keyConfig = keystoreBuilder.build();
+            return trustCertificates(keyConfig.certs());
+        }
+
 
         /**
          * Certificate chain of the private key.

@@ -41,6 +41,14 @@ public class Http2Route implements HttpRoute {
         this.handler = handler;
     }
 
+    public static Http2Route route(Predicate<Http.Method> methodPredicate, PathMatcher pathMatcher, Handler handler) {
+        return new Http2Route(methodPredicate, pathMatcher, handler);
+    }
+
+    public static Http2Route route(PathMatcher pathMatcher, Handler handler, Http.Method... methods) {
+        return new Http2Route(Http.Method.predicate(methods), pathMatcher, handler);
+    }
+
     /**
      * Create a new HTTP/2 only route.
      *

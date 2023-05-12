@@ -19,10 +19,11 @@ package io.helidon.examples.dbclient.jdbc;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import io.helidon.dbclient.DbExecute;
 import io.helidon.examples.dbclient.common.AbstractPokemonService;
 import io.helidon.dbclient.DbClient;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 /**
  * Example service using a database.
@@ -35,32 +36,21 @@ public class PokemonService extends AbstractPokemonService {
 
         // dirty hack to prepare database for our POC
         // MySQL init
-        dbClient.execute(handle -> handle.namedDml("create-table"))
-                .thenAccept(System.out::println)
-                .exceptionally(throwable -> {
-                    LOGGER.log(Level.WARNING, "Failed to create table, maybe it already exists?", throwable);
-                    return null;
-                });
+        try (DbExecute exec = dbClient().execute()) {
+            long count = exec.namedDml("create-table");
+            System.out.println(count);
+        } catch (Throwable th) {
+            LOGGER.log(Level.WARNING, "Failed to create table, maybe it already exists?", th);
+        }
     }
 
-    /**
-     * Delete all pokemons.
-     *
-     * @param request  the server request
-     * @param response the server response
-     */
     @Override
-    protected void deleteAllPokemons(ServerRequest request, ServerResponse response) {
-        dbClient().execute(exec -> exec
-                // this is to show how ad-hoc statements can be executed (and their naming in Tracing and Metrics)
-                .createDelete("DELETE FROM pokemons")
-                .execute())
-                .thenAccept(count -> response.send("Deleted: " + count + " values"))
-                .exceptionally(throwable -> sendError(throwable, response));
+    protected void deleteAllPokemons(ServerRequest req, ServerResponse res) {
+        try (DbExecute exec = dbClient().execute()) {
+            // this is to show how ad-hoc statements can be executed (and their naming in Tracing and Metrics)
+            long count = exec.createDelete("DELETE FROM pokemons")
+                             .execute();
+            res.send("Deleted: " + count + " values");
+        }
     }
-
-
-
-
-
 }

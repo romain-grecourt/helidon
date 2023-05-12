@@ -19,41 +19,29 @@ package io.helidon.tests.integration.nativeimage.se1;
 import java.io.IOException;
 import java.lang.System.Logger.Level;
 
-import jakarta.websocket.Endpoint;
-import jakarta.websocket.EndpointConfig;
-import jakarta.websocket.MessageHandler;
-import jakarta.websocket.Session;
+import io.helidon.nima.websocket.WsListener;
+import io.helidon.nima.websocket.WsSession;
 
 
-public class WebSocketEndpoint extends Endpoint {
+public class WebSocketEndpoint implements WsListener {
 
     private static final System.Logger LOGGER = System.getLogger(WebSocketEndpoint.class.getName());
 
+    private StringBuilder sb = new StringBuilder();
+
     @Override
-    public void onOpen(Session session, EndpointConfig endpointConfig) {
-
-        StringBuilder sb = new StringBuilder();
-
-        LOGGER.log(Level.INFO, "Session " + session.getId());
-        session.addMessageHandler(new MessageHandler.Whole<String>() {
-            @Override
-            public void onMessage(String message) {
-                LOGGER.log(Level.INFO, "WS Receiving " + message);
-                if (message.contains("SEND")) {
-                    sendTextMessage(session, sb.toString());
-                    sb.setLength(0);
-                } else {
-                    sb.append(message);
-                }
-            }
-        });
+    public void onMessage(WsSession session, String text, boolean last) {
+        LOGGER.log(Level.INFO, "WS Receiving " + text);
+        if (text.contains("SEND")) {
+            session.send(sb.toString(), false);
+            sb.setLength(0);
+        } else {
+            sb.append(text);
+        }
     }
 
-    private void sendTextMessage(Session session, String msg) {
-        try {
-            session.getBasicRemote().sendText(msg);
-        } catch (IOException e) {
-            LOGGER.log(Level.ERROR, "Message sending failed", e);
-        }
+    @Override
+    public void onOpen(WsSession session) {
+        LOGGER.log(Level.INFO, "Session " + session);
     }
 }

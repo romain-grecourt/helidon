@@ -16,6 +16,7 @@
 
 package io.helidon.examples.dbclient.mongo;
 
+import io.helidon.dbclient.DbExecute;
 import io.helidon.examples.dbclient.common.AbstractPokemonService;
 import io.helidon.dbclient.DbClient;
 import io.helidon.nima.webserver.http.ServerRequest;
@@ -44,9 +45,10 @@ public class PokemonService extends AbstractPokemonService {
 
     @Override
     protected void deleteAllPokemons(ServerRequest req, ServerResponse res) {
-        long count = dbClient().execute(exec -> exec
-                .createNamedDelete("delete-all")
-                .execute());
-        res.send("Deleted: " + count + " values");
+        try (DbExecute exec = dbClient().execute()) {
+            long count = exec.createNamedDelete("delete-all")
+                             .execute();
+            res.send("Deleted: " + count + " values");
+        }
     }
 }

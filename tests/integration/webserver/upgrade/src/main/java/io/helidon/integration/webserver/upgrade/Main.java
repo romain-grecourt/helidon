@@ -17,15 +17,12 @@
 package io.helidon.integration.webserver.upgrade;
 
 import io.helidon.common.configurable.Resource;
-import io.helidon.common.pki.KeyConfig;
-import io.helidon.common.reactive.Single;
+import io.helidon.common.http.PathMatchers;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webserver.Http1Route;
-import io.helidon.reactive.webserver.PathMatcher;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.WebServerTls;
-import io.helidon.reactive.webserver.http2.Http2Route;
-import io.helidon.reactive.webserver.websocket.WebSocketRouting;
+import io.helidon.microprofile.tyrus.TyrusRouting;
+import io.helidon.nima.http2.webserver.Http2Route;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http1.Http1Route;
 
 import jakarta.websocket.server.ServerEndpointConfig;
 
@@ -37,52 +34,39 @@ import static io.helidon.common.http.Http.Method.PUT;
 public class Main {
 
     public static void main(String[] args) {
-        startServer(8070, true).await();
+        LogConfig.configureRuntime();
+        startServer(true);
     }
 
-    public static Single<WebServer> startServer(int port, boolean ssl) {
-        LogConfig.configureRuntime();
+    public static WebServer startServer(boolean ssl) {
         return WebServer.builder()
-                .defaultSocket(s -> {
-                    s.bindAddress("localhost")
-                            .port(port);
-
-                    if (ssl) {
-                        s.tls(WebServerTls.builder()
-                                .privateKey(KeyConfig.keystoreBuilder()
-                                        .keystorePassphrase("password")
-                                        .keystore(Resource.create("server.p12"))
-                                        .build()));
-                    }
-
-                })
-                .routing(r -> r
-                        .get("/", (req, res) -> res.send("HTTP Version " + req.version() + "\n"))
-
-                        .route(Http1Route.route(GET, "/versionspecific", (req, res) -> res.send("HTTP/1.1 route\n")))
-                        .route(Http2Route.route(GET, "/versionspecific", (req, res) -> res.send("HTTP/2.0 route\n")))
-
-                        .route(Http1Route.route(GET, "/versionspecific1", (req, res) -> res.send("HTTP/1.1 route\n")))
-                        .route(Http2Route.route(GET, "/versionspecific2", (req, res) -> res.send("HTTP/2.0 route\n")))
-
-                        .route(Http1Route.route(
-                                        PathMatcher.create("/multi*"),
-                                        (req, res) -> res.send("HTTP/1.1 route " + req.method().name() + "\n"),
-                                        GET, POST, PUT
-                                )
-                        )
-                        .route(Http2Route.route(
-                                        PathMatcher.create("/multi*"),
-                                        (req, res) -> res.send("HTTP/2.0 route " + req.method().name() + "\n"),
-                                        GET, POST, PUT
-                                )
-                        )
-                )
-                .addRouting(WebSocketRouting.builder()
-                        .endpoint("/ws-conf", ServerEndpointConfig.Builder.create(ConfiguredEndpoint.class, "/echo").build())
-                        .endpoint("/ws-annotated", AnnotatedEndpoint.class)// also /echo
-                )
-                .build()
-                .start();
+                        .defaultSocket(s -> {
+                            s.host("localhost");
+                            if (ssl) {
+                                s.tls(tlsBuilder -> tlsBuilder
+                                        .privateKey(keyConfigBuilder -> keyConfigBuilder
+                                                .keystorePassphrase("password")
+                                                .keystore(Resource.create("server.p12"))));
+                            }
+                        })
+                        .routing(r -> r
+                                .get("/", (req, res) -> res.send("HTTP Version " + req.prologue().protocolVersion() + "\n"))
+                                .route(Http1Route.route(GET, "/versionspecific", (req, res) -> res.send("HTTP/1.1 route\n")))
+                                .route(Http2Route.route(GET, "/versionspecific", (req, res) -> res.send("HTTP/2.0 route\n")))
+                                .route(Http1Route.route(GET, "/versionspecific1", (req, res) -> res.send("HTTP/1.1 route\n")))
+                                .route(Http2Route.route(GET, "/versionspecific2", (req, res) -> res.send("HTTP/2.0 route\n")))
+                                .route(Http1Route.route(
+                                        PathMatchers.create("/multi*"),
+                                        (req, res) -> res.send("HTTP/1.1 route " + req.prologue().method() + "\n"),
+                                        GET, POST, PUT))
+                                .route(Http2Route.route(
+                                        PathMatchers.create("/multi*"),
+                                        (req, res) -> res.send("HTTP/2.0 route " + req.prologue().method() + "\n"),
+                                        GET, POST, PUT)))
+                        .addRouting(TyrusRouting.builder()
+                                                .endpoint("/ws-conf", ServerEndpointConfig.Builder.create(ConfiguredEndpoint.class, "/echo")
+                                                                                                  .build())
+                                                .endpoint("/ws-annotated", AnnotatedEndpoint.class))
+                .start(); // also /echo
     }
 }

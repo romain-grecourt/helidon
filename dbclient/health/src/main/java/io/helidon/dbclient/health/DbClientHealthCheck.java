@@ -126,7 +126,9 @@ public abstract class DbClientHealthCheck implements HealthCheck {
 
         @Override
         protected void execPing() {
-            dbClient().execute(exec -> exec.namedDml(statementName));
+            try (DbExecute exec = dbClient().execute()) {
+                exec.namedDml(statementName);
+            };
         }
 
         // Getter for jUnit tests
@@ -152,7 +154,9 @@ public abstract class DbClientHealthCheck implements HealthCheck {
 
         @Override
         protected void execPing() {
-            dbClient().execute(exec -> exec.dml(statement));
+            try (DbExecute exec = dbClient().execute()) {
+                exec.dml(statement);
+            };
         }
 
         // Getter for jUnit tests

@@ -24,7 +24,6 @@ import io.helidon.common.context.Contexts;
 import io.helidon.security.AuthenticationResponse;
 import io.helidon.security.ProviderRequest;
 import io.helidon.security.spi.AuthenticationProvider;
-import io.helidon.security.spi.SynchronousProvider;
 
 public class RestrictedProvider implements AuthenticationProvider {
 

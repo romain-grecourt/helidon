@@ -16,15 +16,12 @@
 package io.helidon.tests.integration.tools.example;
 
 import java.lang.System.Logger.Level;
-import java.time.Duration;
 
 import io.helidon.logging.common.LogConfig;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.dbclient.DbClient;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * Main Class.
@@ -57,34 +54,21 @@ public class ServerMain {
     }
 
     private static WebServer startServer(final String configFile) {
+        Config config = Config.create(ConfigSources.classpath(configFile));
+        DbClient dbClient = DbClient.builder(config.get("db")).build();
+        LifeCycleService lcResource = new LifeCycleService(dbClient);
 
-        final Config config = Config.create(ConfigSources.classpath(configFile));
-        final DbClient dbClient = DbClient.builder(config.get("db"))
-                .build();
-        final LifeCycleService lcResource = new LifeCycleService(dbClient);
-
-        final Routing routing = Routing.builder()
-                .register("/LifeCycle", lcResource)
-                .register("/HelloWorld", new HelloWorldService(dbClient))
-                .build();
-
-        final WebServer server = WebServer.builder()
-                .routing(routing)
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        WebServer server = WebServer.builder()
+                                    .routing(routing -> routing
+                                            .register("/LifeCycle", lcResource)
+                                            .register("/HelloWorld", new HelloWorldService(dbClient)))
+                                    .config(config.get("server"))
+                                    .start();
 
         // Set server instance to exit resource.
         lcResource.setServer(server);
-        // Start the server and print some info.
-        server.start()
-                .await(Duration.ofSeconds(10));
 
-        System.out.println(String.format("WEB server is up! http://localhost:%d/", server.port()));
-
-        // Server threads are not daemon. NO need to block. Just react.
-        server.whenShutdown().thenRun(
-                () -> System.out.println("WEB server is DOWN. Good bye!"));
+        System.out.printf("WEB server is up! http://localhost:%d/%n", server.port());
 
         return server;
     }

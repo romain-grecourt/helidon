@@ -20,19 +20,19 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.config.Config;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webserver.WebServer;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonReaderFactory;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,32 +42,18 @@ import static org.hamcrest.Matchers.is;
 /**
  * Unit test for {@link Se1Main}.
  */
+@ServerTest
 class Se1MainTest {
-    private static WebServer webServer;
     private static final JsonReaderFactory JSON = Json.createReaderFactory(Collections.emptyMap());
+    private final WebServer server;
 
-    @BeforeAll
-    public static void startTheServer() throws Exception {
-        webServer = Se1Main.startServer();
-
-        long timeout = 2000; // 2 seconds should be enough to start the server
-        long now = System.currentTimeMillis();
-
-        while (!webServer.isRunning()) {
-            Thread.sleep(100);
-            if ((System.currentTimeMillis() - now) > timeout) {
-                Assertions.fail("Failed to start webserver");
-            }
-        }
+    public Se1MainTest(WebServer server) {
+        this.server = server;
     }
 
-    @AfterAll
-    public static void stopServer() throws Exception {
-        if (webServer != null) {
-            webServer.shutdown()
-                    .toCompletableFuture()
-                    .get(10, TimeUnit.SECONDS);
-        }
+    @SetUpServer
+    public static void setup(WebServer.Builder builder) {
+        Se1Main.setup(builder, Config.create());
     }
 
     @Test
@@ -124,7 +110,7 @@ class Se1MainTest {
     }
 
     private HttpURLConnection getURLConnection(String method, String path) throws Exception {
-        URL url = new URL("http://localhost:" + webServer.port() + path);
+        URL url = URI.create("http://localhost:" + server.port() + path).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod(method);
         conn.setRequestProperty("Accept", "application/json");

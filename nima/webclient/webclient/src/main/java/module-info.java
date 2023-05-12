@@ -43,6 +43,7 @@ module io.helidon.nima.webclient {
     requires transitive io.helidon.nima.http.media;
     requires io.helidon.config;
     requires io.helidon.common.context;
+    requires io.helidon.builder;
 
     exports io.helidon.nima.webclient;
     exports io.helidon.nima.webclient.spi;

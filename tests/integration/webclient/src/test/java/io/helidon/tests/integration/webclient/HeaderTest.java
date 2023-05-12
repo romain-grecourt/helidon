@@ -18,9 +18,9 @@ package io.helidon.tests.integration.webclient;
 import java.util.List;
 
 import io.helidon.common.http.Http;
-import io.helidon.nima.webclient.ClientService;
-import io.helidon.nima.webclient.ClientServiceRequest;
-import io.helidon.nima.webclient.ClientServiceResponse;
+import io.helidon.nima.webclient.WebClientService;
+import io.helidon.nima.webclient.WebClientServiceRequest;
+import io.helidon.nima.webclient.WebClientServiceResponse;
 import io.helidon.nima.webclient.http1.Http1Client;
 import io.helidon.nima.webclient.http1.Http1ClientResponse;
 import io.helidon.nima.webserver.WebServer;
@@ -102,19 +102,14 @@ public class HeaderTest extends TestParent {
         }
     }
 
-    private record HeaderTestService(String user) implements ClientService {
+    private record HeaderTestService(String user) implements WebClientService {
 
         @Override
-        public ClientServiceRequest request(ClientServiceRequest request) {
-            return request;
-        }
-
-        @Override
-        public ClientServiceResponse response(ClientServiceRequest request, ClientServiceResponse response) {
+        public WebClientServiceResponse handle(Chain chain, WebClientServiceRequest request) {
             List<String> userAgent = request.headers().all(Http.Header.USER_AGENT, List::of);
             assertThat(userAgent, hasSize(1));
             assertThat(userAgent, contains(user));
-            return response;
+            return chain.proceed(request);
         }
     }
 }

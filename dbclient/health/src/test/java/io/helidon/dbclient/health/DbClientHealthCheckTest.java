@@ -17,7 +17,6 @@ package io.helidon.dbclient.health;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
@@ -42,11 +41,6 @@ public class DbClientHealthCheckTest {
 
         @Override
         public DbTransaction transaction() {
-            throw new UnsupportedOperationException("Not supported in tests.");
-        }
-
-        @Override
-        public <T> T transaction(Function<DbTransaction, T> function) {
             throw new UnsupportedOperationException("Not supported in tests.");
         }
 

@@ -16,7 +16,9 @@
 
 package io.helidon.tests.integration.webclient;
 
-import io.helidon.reactive.webclient.security.WebClientSecurity;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.security.integration.nima.WebClientSecurity;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
 import jakarta.json.JsonObject;
@@ -31,6 +33,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class SecurityTest extends TestParent {
 
+    SecurityTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
+
     @Test
     void testBasic() {
         performOperation("/secure/basic");
@@ -44,14 +50,12 @@ public class SecurityTest extends TestParent {
 
     private void performOperation(String path) {
         try {
-            client.get()
-                  .path(path)
-                  .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
-                  .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
-                  .request(JsonObject.class)
-                  .thenAccept(jsonObject -> assertThat(jsonObject.getString("message"), is("Hello jack!")))
-                  .toCompletableFuture()
-                  .get();
+            JsonObject jsonObject = client.get()
+                                          .path(path)
+                                          .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
+                                          .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
+                                          .request(JsonObject.class);
+            assertThat(jsonObject.getString("message"), is("Hello jack!"));
         } catch (Exception e) {
             fail(e);
         }

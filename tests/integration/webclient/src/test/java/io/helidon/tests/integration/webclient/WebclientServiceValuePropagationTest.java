@@ -15,13 +15,15 @@
  */
 package io.helidon.tests.integration.webclient;
 
-import java.util.concurrent.CompletionException;
+import java.net.URI;
 
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientServiceRequest;
-import io.helidon.reactive.webclient.spi.WebClientService;
-
+import io.helidon.common.http.Http;
+import io.helidon.nima.webclient.UriHelper;
+import io.helidon.nima.webclient.WebClientServiceRequest;
+import io.helidon.nima.webclient.WebClientServiceResponse;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.WebClientService;
+import io.helidon.nima.webserver.WebServer;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -33,55 +35,56 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class WebclientServiceValuePropagationTest extends TestParent {
 
+    WebclientServiceValuePropagationTest(WebServer server, Http1Client client) {
+        super(server, client);
+    }
+
     @Test
     public void testUriPartsPropagation() {
-        WebClient webClient = WebClient.builder()
-                .baseUri("http://invalid")
-                .addService(new UriChangingService())
-                .build();
+        Http1Client webClient = Http1Client.builder()
+                                           .baseUri("http://invalid")
+                                           .service(new UriChangingService())
+                                           .build();
 
         String response = webClient.get()
                 .path("replace/me")
-                .request(String.class)
-                .await();
+                .request(String.class);
 
         assertThat(response, is("Hi Test"));
     }
 
     @Test
     public void testInvalidSchema() {
-        WebClient webClient = WebClient.builder()
+        Http1Client webClient = Http1Client.builder()
                 .baseUri("http://localhost:80")
-                .addService(new InvalidSchemaService())
+                .service(new InvalidSchemaService())
                 .build();
 
-        CompletionException exception = assertThrows(CompletionException.class,
-                                                     () -> webClient.get().request(String.class).await());
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                                                     () -> webClient.get().request(String.class));
 
-        assertThat(exception.getCause().getMessage(), is("invalid transport protocol is not supported!"));
+        assertThat(exception.getMessage(), is("invalid transport protocol is not supported!"));
 
     }
 
     private static final class UriChangingService implements WebClientService {
 
         @Override
-        public Single<WebClientServiceRequest> request(WebClientServiceRequest request) {
-            request.schema("http");
-            request.host("localhost");
-            request.port(server.port());
-            request.path("/greet/valuesPropagated");
-            request.queryParams().add("param", "Hi");
+        public WebClientServiceResponse handle(Chain chain, WebClientServiceRequest request) {
+            request.headers().set(Http.Header.HOST, "localhost");
+            request.uri(UriHelper.create(URI.create("/greet/valuesPropagated"), null));
+            request.query().add("param", "Hi");
             request.fragment("Test");
-            return Single.just(request);
+            return chain.proceed(request);
         }
     }
 
     private static final class InvalidSchemaService implements WebClientService {
 
         @Override
-        public Single<WebClientServiceRequest> request(WebClientServiceRequest request) {
-            request.schema("invalid");
-            return Single.just(request);
+        public WebClientServiceResponse handle(Chain chain, WebClientServiceRequest request) {
+//            request.schema("invalid");
+            return chain.proceed(request);
         }
     }
 

@@ -89,8 +89,8 @@ class HelloWorldIT {
 
     // Test personalHelloWorld service with name from database
     @Test
-    void testpersonalHelloWorld() {
-        LOGGER.log(Level.DEBUG, "Running testpersonalHelloWorld");
+    void testPersonalHelloWorld() {
+        LOGGER.log(Level.DEBUG, "Running testPersonalHelloWorld");
         JsonValue data = testClient.callServiceAndGetData(
                 "personalHelloWorld",
                 Map.of("nick", "Ash"));

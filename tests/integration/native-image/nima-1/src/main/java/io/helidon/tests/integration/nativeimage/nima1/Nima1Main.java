@@ -99,7 +99,7 @@ public final class Nima1Main {
     private static HttpRouting createRouting(Config config) {
 
         GreetService greetService = new GreetService(config);
-        MockZipkinService zipkinService = new MockZipkinService(Set.of("helidon-reactive-webclient"));
+        MockZipkinService zipkinService = new MockZipkinService(Set.of("helidon-nima-webclient"));
         WebClientService webClientService = new WebClientService(config, zipkinService);
         HealthFeature health = HealthFeature.builder()
                 .addCheck(() -> HealthCheckResponse.builder()

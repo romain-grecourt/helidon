@@ -35,6 +35,7 @@ import javax.net.ssl.TrustManagerFactory;
 import com.oracle.bmc.database.Database;
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
+import io.helidon.dbclient.DbExecute;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.HttpService;
 import io.helidon.nima.webserver.http.ServerRequest;
@@ -99,14 +100,13 @@ class AtpService implements HttpService {
         }
 
         DbClient dbClient = createDbClient(walletContent);
-        Optional<DbRow> row = dbClient.execute(exec -> exec.query("SELECT 'Hello world!!' FROM DUAL"))
-                                      .first()
-                                      .toOptionalSingle()
-                                      .await();
-        if (row.isPresent()) {
-            res.send(row.get().column(1).as(String.class));
-        } else {
-            res.status(404).send();
+        try (DbExecute exec = dbClient.execute()) {
+            Optional<DbRow> row = exec.query("SELECT 'Hello world!!' FROM DUAL").findFirst();
+            if (row.isPresent()) {
+                res.send(row.get().column(1).as(String.class));
+            } else {
+                res.status(404).send();
+            }
         }
     }
 

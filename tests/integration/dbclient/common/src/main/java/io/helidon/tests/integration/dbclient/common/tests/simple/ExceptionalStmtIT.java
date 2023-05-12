@@ -18,7 +18,7 @@ package io.helidon.tests.integration.dbclient.common.tests.simple;
 import java.lang.System.Logger.Level;
 import java.util.concurrent.CompletionException;
 
-import io.helidon.reactive.dbclient.DbClientException;
+import io.helidon.dbclient.DbClientException;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;

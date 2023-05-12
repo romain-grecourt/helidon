@@ -22,49 +22,48 @@ import java.lang.System.Logger.Level;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 import io.helidon.common.context.Context;
 import io.helidon.common.http.Http;
-import io.helidon.common.media.type.MediaTypes;
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.reactive.media.jsonb.JsonbSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientException;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.http.media.MediaContext;
+import io.helidon.nima.http.media.jsonb.JsonbSupport;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 import jakarta.json.JsonValue;
 
-public class WebClientService implements Service {
+public class WebClientService implements HttpService {
 
     private static final System.Logger LOGGER = System.getLogger(WebClientService.class.getName());
-    private final WebClient client;
+    private final Http1Client client;
     private final MockZipkinService zipkinService;
     private final String context;
 
     public WebClientService(Config config, MockZipkinService zipkinService) {
         this.zipkinService = zipkinService;
         this.context = "http://localhost:" + config.get("port").asInt().orElse(7076);
-        client = WebClient.builder()
-                .baseUri(context)
-                .addReader(JsonbSupport.reader())
-                .addHeader(Http.HeaderValues.ACCEPT_JSON)
-                .config(config.get("client"))
-                .build();
+        client = Http1Client.builder()
+                            .baseUri(context)
+                            .mediaContext(MediaContext.builder()
+                                                      .addMediaSupport(JsonbSupport.create())
+                                                      .build())
+                            .header(Http.HeaderValues.ACCEPT_JSON)
+                            .config(config.get("client"))
+                            .build();
     }
 
     @Override
-    public void update(final Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules.get("/test", this::getTest)
-                .get("/redirect", this::redirect)
-                .get("/redirect/infinite", this::redirectInfinite)
-                .get("/endpoint", this::getEndpoint);
+             .get("/redirect", this::redirect)
+             .get("/redirect/infinite", this::redirectInfinite)
+             .get("/endpoint", this::getEndpoint);
     }
 
     private void redirect(ServerRequest request,
@@ -103,50 +102,40 @@ public class WebClientService implements Service {
 
     public void testTracedGet(Context ctx) {
         final CompletionStage<JsonValue> nextTrace = zipkinService.next();
-        client.get()
-                .path("/wc/endpoint")
-                .context(ctx)
-                .request(Animal.class)
-                .thenAccept(animal -> assertTrue(animal, a -> "Frank".equals(a.getName())))
-                .await(15, TimeUnit.SECONDS);
+        Animal animal = client.get()
+                               .path("/wc/endpoint")
+                               //.context(ctx)
+                               .request(Animal.class);
+
+        assertTrue(animal, a -> "Frank".equals(a.getName()));
         //Wait for trace arrival to MockZipkin
-        Single.create(nextTrace).await(15, TimeUnit.SECONDS);
+        nextTrace.toCompletableFuture().join();
     }
 
     public void testFollowRedirect(Context ctx) {
-        client.get()
-                .path("/wc/redirect")
-                .followRedirects(true)
-                .context(ctx)
-                .request(Animal.class)
-                .thenAccept(animal -> assertTrue(animal, a -> "Frank".equals(a.getName())))
-                .await(15, TimeUnit.SECONDS);
-
-        WebClientResponse response = client.get()
-                .path("/wc/redirect")
-                .followRedirects(false)
-                .context(ctx)
-                .request()
-                .await(15, TimeUnit.SECONDS);
+        Animal animal = client.get()
+                               .path("/wc/redirect")
+                               //.followRedirects(true)
+                               //.context(ctx)
+                               .request(Animal.class);
+        assertTrue(animal, a -> "Frank".equals(a.getName()));
+        Http1ClientResponse response = client.get()
+                                             .path("/wc/redirect")
+                                             //.followRedirects(false)
+                                             //.context(ctx)
+                                             .request();
         assertEquals(response.status(), Http.Status.MOVED_PERMANENTLY_301);
     }
 
     public void testFollowRedirectInfinite(Context ctx) {
         try {
-            client.get()
-                    .path("/wc/redirect/infinite")
-                    .context(ctx)
-                    .request(Animal.class)
-                    .thenAccept(a -> fail("This should have failed!"))
-                    .await(15, TimeUnit.SECONDS);
+            Animal animal = client.get()
+                                   .path("/wc/redirect/infinite")
+                                   //.context(ctx)
+                                   .request(Animal.class);
             fail("This should have failed!");
         } catch (Exception e) {
-            if (e.getCause() instanceof WebClientException) {
-                WebClientException clientException = (WebClientException) e.getCause();
-                assertTrue(clientException.getMessage(), m -> m.startsWith("Max number of redirects extended! (5)"));
-            } else {
-                fail(e);
-            }
+            assertTrue(e.getMessage(), m -> m.startsWith("Max number of redirects extended! (5)"));
         }
     }
 

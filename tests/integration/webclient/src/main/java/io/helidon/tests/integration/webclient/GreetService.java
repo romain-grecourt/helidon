@@ -40,7 +40,7 @@ import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.security.SecurityContext;
 
-import io.helidon.security.integration.nima.ClientSecurity;
+import io.helidon.security.integration.nima.WebClientSecurity;
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonException;
@@ -111,7 +111,7 @@ public class GreetService implements HttpService {
     private void basicAuthOutbound(ServerRequest serverRequest, ServerResponse response) {
         Http1Client webClient = Http1Client.builder()
                                            .baseUri("http://localhost:" + Main.serverPort + "/greet/secure/basic")
-                                           .service(ClientSecurity.create())
+                                           .service(WebClientSecurity.create())
                                            .build();
 
         try (Http1ClientResponse clientResponse = webClient.get()

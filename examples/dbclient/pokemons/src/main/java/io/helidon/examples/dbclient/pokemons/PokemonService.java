@@ -29,6 +29,8 @@ import io.helidon.nima.webserver.http.ServerResponse;
 
 import jakarta.json.JsonObject;
 
+import java.util.stream.Stream;
+
 /**
  * Example service using a database.
  */
@@ -91,8 +93,10 @@ public class PokemonService implements HttpService {
      * @param response the server response
      */
     private void listTypes(ServerRequest request, ServerResponse response) {
-        response.send(dbClient.execute(exec -> exec.namedQuery("select-all-types"))
-                              .map(it -> it.as(JsonObject.class)), JsonObject.class);
+        try (DbExecute exec = dbClient.execute()) {
+            Stream<JsonObject> pokemons = exec.namedQuery("select-all-types").map(it -> it.as(JsonObject.class));
+            response.send(pokemons, JsonObject.class);
+        }
     }
 
     /**
@@ -118,11 +122,9 @@ public class PokemonService implements HttpService {
      */
     private void getPokemonById(ServerRequest request, ServerResponse response) {
         try (DbExecute exec = dbClient.execute()) {
-            int pokemonId = request.path()
-                                   .pathParameters()
-                                   .first("id")
-                                   .map(Integer::parseInt)
-                                   .orElseThrow(() -> new BadRequestException("No pokemon id"));
+            int pokemonId = Integer.parseInt(request.path()
+                                                    .pathParameters()
+                                                    .value("id"));
 
             response.send(exec.createNamedGet("select-pokemon-by-id")
                               .addParam("id", pokemonId)

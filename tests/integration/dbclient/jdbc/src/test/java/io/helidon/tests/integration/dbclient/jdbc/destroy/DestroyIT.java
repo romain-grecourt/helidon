@@ -15,18 +15,13 @@
  */
 package io.helidon.tests.integration.dbclient.jdbc.destroy;
 
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-
-import io.helidon.common.reactive.Multi;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.tests.integration.dbclient.common.AbstractIT.DB_CLIENT;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
@@ -38,15 +33,13 @@ public class DestroyIT {
      * Delete database content.
      *
      * @param dbClient Helidon database client
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
-    private static void dropSchema(DbClient dbClient) throws ExecutionException, InterruptedException {
-        dbClient.execute(exec -> exec
-                .namedDml("drop-poketypes")
-                .flatMapSingle(result -> exec.namedDml("drop-pokemons"))
-                .flatMapSingle(result -> exec.namedDml("drop-types"))
-        ).toCompletableFuture().get();
+    private static void dropSchema(DbClient dbClient) {
+        try (DbExecute exec = dbClient.execute()) {
+            exec.namedDml("drop-poketypes");
+            exec.namedDml("drop-pokemons");
+            exec.namedDml("drop-types");
+        }
     }
 
 
@@ -57,8 +50,8 @@ public class DestroyIT {
     public static void destroy() {
         try {
             dropSchema(DB_CLIENT);
-        } catch (ExecutionException | InterruptedException ex) {
-            fail("Database cleanup failed!", ex);
+        } catch (Throwable th) {
+            fail("Database cleanup failed!", th);
         }
     }
 
@@ -87,7 +80,8 @@ public class DestroyIT {
     }
 
     private void testTableNotExist(String statementName) {
-        Multi<DbRow> result = DB_CLIENT.execute(exec -> exec.namedQuery(statementName));
-        assertThrows(CompletionException.class, () -> result.collectList().await(), "Table should have been dropped");
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.namedQuery(statementName).forEach(p -> {});
+        }
     }
 }

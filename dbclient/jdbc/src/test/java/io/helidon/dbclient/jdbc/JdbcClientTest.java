@@ -20,6 +20,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -47,31 +49,14 @@ public class JdbcClientTest {
     }
 
     @Test
-    void txExceptionHandling() {
-        String message = "BOOM IN TX!!!";
-
-        JdbcDbClient dbClient = (JdbcDbClient) JdbcDbClientProviderBuilder.create()
-                .connectionPool(POOL)
-                .build();
-        try {
-            dbClient.transaction(tx -> {
-                throw new RuntimeException(message);
-            });
-        } catch (RuntimeException result) {
-            assertThat("Wrong exception propagated.", result.getMessage(), is(equalTo(message)));
-            return;
-        }
-        fail("Wrong (or no) exception propagated, expected RuntimeException!");
-    }
-
-    @Test
     void txResultHandling() {
         JdbcDbClient dbClient = (JdbcDbClient) JdbcDbClientProviderBuilder.create()
                 .connectionPool(POOL)
                 .build();
-        Object result = dbClient.transaction(tx -> tx.dml("SELECT NULL FROM DUAL"));
-
-        assertThat(result, is(equalTo(1L)));
+        try (DbTransaction tx = dbClient.transaction()) {
+            Object result = tx.dml("SELECT NULL FROM DUAL");
+            assertThat(result, is(equalTo(1L)));
+        }
     }
 
     @Test
@@ -101,11 +86,11 @@ public class JdbcClientTest {
         JdbcDbClient dbClient = (JdbcDbClient) JdbcDbClientProviderBuilder.create()
                 .connectionPool(POOL)
                 .build();
-        dbClient.execute(exec -> {
+        try (DbExecute exec = dbClient.execute()) {
             Connection connection = exec.unwrap(Connection.class);
             assertThat(connection, notNullValue());
-            return exec.dml("SELECT NULL FROM DUAL");
-        });
+            exec.dml("SELECT NULL FROM DUAL");
+        }
     }
 
     @Test
@@ -113,7 +98,7 @@ public class JdbcClientTest {
         JdbcDbClient dbClient = (JdbcDbClient) JdbcDbClientProviderBuilder.create()
                 .connectionPool(POOL)
                 .build();
-        dbClient.execute(exec -> {
+        try (DbExecute exec = dbClient.execute()) {
             try {
                 exec.unwrap(PreparedStatement.class);
                 fail("Unsupported unwrap call must throw UnsupportedOperationException");
@@ -121,8 +106,8 @@ public class JdbcClientTest {
                 LOGGER.log(Level.DEBUG, () -> String.format("Caught expected UnsupportedOperationException: %s",
                         ex.getMessage()));
             }
-            return exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
-        });
+            exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
+        }
     }
 
 }

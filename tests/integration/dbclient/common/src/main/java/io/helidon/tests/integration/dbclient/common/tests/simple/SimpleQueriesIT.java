@@ -15,8 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.common.tests.simple;
 
-import io.helidon.common.reactive.Multi;
-import io.helidon.reactive.dbclient.DbRow;
+import java.util.stream.Stream;
+
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;
@@ -30,92 +32,90 @@ public class SimpleQueriesIT extends AbstractIT {
 
     /**
      * Verify {@code createNamedQuery(String, String)} API method with ordered parameters.
-     *
      */
     @Test
     public void testCreateNamedQueryStrStrOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .createNamedQuery("select-pikachu", SELECT_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(1).getName())
-                .execute());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.createNamedQuery("select-pikachu", SELECT_POKEMON_ORDER_ARG)
+                                     .addParam(POKEMONS.get(1).getName())
+                                     .execute();
 
-        verifyPokemon(rows, POKEMONS.get(1));
+            verifyPokemon(rows, POKEMONS.get(1));
+        }
     }
 
     /**
      * Verify {@code createNamedQuery(String)} API method with named parameters.
-     *
      */
     @Test
     public void testCreateNamedQueryStrNamedArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .createNamedQuery("select-pokemon-named-arg")
-                .addParam("name", POKEMONS.get(2).getName()).execute()
-        );
-        verifyPokemon(rows, POKEMONS.get(2));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.createNamedQuery("select-pokemon-named-arg")
+                                     .addParam("name", POKEMONS.get(2).getName())
+                                     .execute();
+            verifyPokemon(rows, POKEMONS.get(2));
+        }
     }
 
     /**
      * Verify {@code createNamedQuery(String)} API method with ordered parameters.
-     *
      */
     @Test
     public void testCreateNamedQueryStrOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .createNamedQuery("select-pokemon-order-arg")
-                .addParam(POKEMONS.get(3).getName()).execute()
-        );
-        verifyPokemon(rows, POKEMONS.get(3));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.createNamedQuery("select-pokemon-order-arg")
+                                     .addParam(POKEMONS.get(3).getName())
+                                     .execute();
+            verifyPokemon(rows, POKEMONS.get(3));
+        }
     }
 
     /**
      * Verify {@code createQuery(String)} API method with named parameters.
-     *
      */
     @Test
     public void testCreateQueryNamedArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .createQuery(SELECT_POKEMON_NAMED_ARG)
-                .addParam("name", POKEMONS.get(4).getName()).execute()
-        );
-        verifyPokemon(rows, POKEMONS.get(4));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.createQuery(SELECT_POKEMON_NAMED_ARG)
+                                     .addParam("name", POKEMONS.get(4).getName())
+                                     .execute();
+            verifyPokemon(rows, POKEMONS.get(4));
+        }
     }
 
     /**
      * Verify {@code createQuery(String)} API method with ordered parameters.
-     *
      */
     @Test
     public void testCreateQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .createQuery(SELECT_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(5).getName()).execute()
-        );
-        verifyPokemon(rows, POKEMONS.get(5));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.createQuery(SELECT_POKEMON_ORDER_ARG)
+                                     .addParam(POKEMONS.get(5).getName())
+                                     .execute();
+            verifyPokemon(rows, POKEMONS.get(5));
+        }
     }
 
     /**
      * Verify {@code namedQuery(String)} API method with ordered parameters passed directly to the {@code namedQuery} method.
-     *
      */
     @Test
     public void testNamedQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .namedQuery("select-pokemon-order-arg", POKEMONS.get(6).getName())
-        );
-        verifyPokemon(rows, POKEMONS.get(6));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.namedQuery("select-pokemon-order-arg", POKEMONS.get(6).getName());
+            verifyPokemon(rows, POKEMONS.get(6));
+        }
     }
 
     /**
      * Verify {@code query(String)} API method with ordered parameters passed directly to the {@code query} method.
-     *
      */
     @Test
     public void testQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .query(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName())
-        );
-        verifyPokemon(rows, POKEMONS.get(7));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.query(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName());
+            verifyPokemon(rows, POKEMONS.get(7));
+        }
     }
 
 }

@@ -15,11 +15,13 @@
  */
 package io.helidon.tests.integration.dbclient.common.tests.transaction;
 
-import io.helidon.common.reactive.Multi;
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;
+
+import java.util.stream.Stream;
 
 import static io.helidon.tests.integration.dbclient.common.utils.Utils.verifyPokemon;
 
@@ -33,11 +35,12 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryStrStrOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .createNamedQuery("select-pikachu", SELECT_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(1).getName())
-                .execute());
-        verifyPokemon(rows, POKEMONS.get(1));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx.createNamedQuery("select-pikachu", SELECT_POKEMON_ORDER_ARG)
+                                   .addParam(POKEMONS.get(1).getName())
+                                   .execute();
+            verifyPokemon(rows, POKEMONS.get(1));
+        }
     }
 
     /**
@@ -45,12 +48,13 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryStrNamedArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .createNamedQuery("select-pokemon-named-arg")
-                .addParam("name", POKEMONS.get(2).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx.createNamedQuery("select-pokemon-named-arg")
+                                   .addParam("name", POKEMONS.get(2).getName())
+                                   .execute();
 
-        verifyPokemon(rows, POKEMONS.get(2));
+            verifyPokemon(rows, POKEMONS.get(2));
+        }
     }
 
     /**
@@ -58,12 +62,14 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryStrOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .createNamedQuery("select-pokemon-order-arg")
-                .addParam(POKEMONS.get(3).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx
+                    .createNamedQuery("select-pokemon-order-arg")
+                    .addParam(POKEMONS.get(3).getName())
+                    .execute();
 
-        verifyPokemon(rows, POKEMONS.get(3));
+            verifyPokemon(rows, POKEMONS.get(3));
+        }
     }
 
     /**
@@ -71,12 +77,14 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testCreateQueryNamedArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .createQuery(SELECT_POKEMON_NAMED_ARG)
-                .addParam("name", POKEMONS.get(4).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx
+                    .createQuery(SELECT_POKEMON_NAMED_ARG)
+                    .addParam("name", POKEMONS.get(4).getName())
+                    .execute();
 
-        verifyPokemon(rows, POKEMONS.get(4));
+            verifyPokemon(rows, POKEMONS.get(4));
+        }
     }
 
     /**
@@ -84,12 +92,13 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testCreateQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .createQuery(SELECT_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(5).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx.createQuery(SELECT_POKEMON_ORDER_ARG)
+                                   .addParam(POKEMONS.get(5).getName())
+                                   .execute();
 
-        verifyPokemon(rows, POKEMONS.get(5));
+            verifyPokemon(rows, POKEMONS.get(5));
+        }
     }
 
     /**
@@ -97,10 +106,11 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testNamedQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .namedQuery("select-pokemon-order-arg", POKEMONS.get(6).getName()));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx.namedQuery("select-pokemon-order-arg", POKEMONS.get(6).getName());
 
-        verifyPokemon(rows, POKEMONS.get(6));
+            verifyPokemon(rows, POKEMONS.get(6));
+        }
     }
 
     /**
@@ -108,10 +118,11 @@ public class TransactionQueriesIT extends AbstractIT {
      */
     @Test
     public void testQueryOrderArgs() {
-        Multi<DbRow> rows = DB_CLIENT.inTransaction(tx -> tx
-                .query(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName()));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Stream<DbRow> rows = tx.query(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName());
 
-        verifyPokemon(rows, POKEMONS.get(7));
+            verifyPokemon(rows, POKEMONS.get(7));
+        }
     }
 
 }

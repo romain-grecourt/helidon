@@ -19,8 +19,10 @@ package io.helidon.nima.http.media;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.stream.Stream;
 
 import io.helidon.common.GenericType;
+import io.helidon.common.config.Config;
 
 /**
  * Readable HTTP entity.
@@ -101,4 +103,7 @@ public interface ReadableEntity {
             throw new UncheckedIOException(e);
         }
     }
+
+    <T> Stream<T> asStream(Class<T> type);
+
 }

@@ -20,11 +20,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.tests.integration.dbclient.appl.AbstractService;
 import io.helidon.tests.integration.dbclient.appl.model.Pokemon;
 import io.helidon.tests.integration.dbclient.appl.model.Type;
@@ -32,22 +32,25 @@ import io.helidon.tests.integration.tools.service.AppResponse;
 import io.helidon.tests.integration.tools.service.RemoteTestException;
 
 import static io.helidon.tests.integration.dbclient.appl.model.Type.TYPES;
+import static io.helidon.tests.integration.tools.service.AppResponse.okStatus;
 
 /**
  * Web resource to test set of basic DbClient inserts.
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class SimpleInsertService extends AbstractService {
 
     private static final System.Logger LOGGER = System.getLogger(SimpleUpdateService.class.getName());
 
     // Internal functional interface used to implement testing code.
     // Method call: apply(srcPokemon, updatedPokemon)
-    private interface TestFunction extends Function<Pokemon, Single<Long>> {}
+    private interface TestFunction extends Function<Pokemon, Long> {
+    }
 
     /**
      * Creates an instance of web resource to test set of basic DbClient inserts.
      *
-     * @param dbClient DbClient instance
+     * @param dbClient   DbClient instance
      * @param statements statements from configuration file
      */
     public SimpleInsertService(DbClient dbClient, Map<String, String> statements) {
@@ -55,44 +58,36 @@ public class SimpleInsertService extends AbstractService {
     }
 
     @Override
-    public void update(Routing.Rules rules) {
-        rules
-                .get("/testCreateNamedInsertStrStrNamedArgs", this::testCreateNamedInsertStrStrNamedArgs)
-                .get("/testCreateNamedInsertStrNamedArgs", this::testCreateNamedInsertStrNamedArgs)
-                .get("/testCreateNamedInsertStrOrderArgs", this::testCreateNamedInsertStrOrderArgs)
-                .get("/testCreateInsertNamedArgs", this::testCreateInsertNamedArgs)
-                .get("/testCreateInsertOrderArgs", this::testCreateInsertOrderArgs)
-                .get("/testNamedInsertOrderArgs", this::testNamedInsertOrderArgs)
-                .get("/testInsertOrderArgs", this::testInsertOrderArgs)
-                .get("/testCreateNamedDmlWithInsertStrStrNamedArgs", this::testCreateNamedDmlWithInsertStrStrNamedArgs)
-                .get("/testCreateNamedDmlWithInsertStrNamedArgs", this::testCreateNamedDmlWithInsertStrNamedArgs)
-                .get("/testCreateNamedDmlWithInsertStrOrderArgs", this::testCreateNamedDmlWithInsertStrOrderArgs)
-                .get("/testCreateDmlWithInsertNamedArgs", this::testCreateDmlWithInsertNamedArgs)
-                .get("/testCreateDmlWithInsertOrderArgs", this::testCreateDmlWithInsertOrderArgs)
-                .get("/testNamedDmlWithInsertOrderArgs", this::testNamedDmlWithInsertOrderArgs)
-                .get("/testDmlWithInsertOrderArgs", this::testDmlWithInsertOrderArgs);
+    public void routing(HttpRules rules) {
+        rules.get("/testCreateNamedInsertStrStrNamedArgs", this::testCreateNamedInsertStrStrNamedArgs)
+             .get("/testCreateNamedInsertStrNamedArgs", this::testCreateNamedInsertStrNamedArgs)
+             .get("/testCreateNamedInsertStrOrderArgs", this::testCreateNamedInsertStrOrderArgs)
+             .get("/testCreateInsertNamedArgs", this::testCreateInsertNamedArgs)
+             .get("/testCreateInsertOrderArgs", this::testCreateInsertOrderArgs)
+             .get("/testNamedInsertOrderArgs", this::testNamedInsertOrderArgs)
+             .get("/testInsertOrderArgs", this::testInsertOrderArgs)
+             .get("/testCreateNamedDmlWithInsertStrStrNamedArgs", this::testCreateNamedDmlWithInsertStrStrNamedArgs)
+             .get("/testCreateNamedDmlWithInsertStrNamedArgs", this::testCreateNamedDmlWithInsertStrNamedArgs)
+             .get("/testCreateNamedDmlWithInsertStrOrderArgs", this::testCreateNamedDmlWithInsertStrOrderArgs)
+             .get("/testCreateDmlWithInsertNamedArgs", this::testCreateDmlWithInsertNamedArgs)
+             .get("/testCreateDmlWithInsertOrderArgs", this::testCreateDmlWithInsertOrderArgs)
+             .get("/testNamedDmlWithInsertOrderArgs", this::testNamedDmlWithInsertOrderArgs)
+             .get("/testDmlWithInsertOrderArgs", this::testDmlWithInsertOrderArgs);
     }
 
     // Common test execution code
-    private void executeTest(
-            ServerRequest request,
-            ServerResponse response,
-            String testName,
-            String pokemonName,
-            List<Type> pokemonTypes,
-            TestFunction test) {
+    private void executeTest(ServerRequest request,
+                             ServerResponse response,
+                             String testName,
+                             String pokemonName,
+                             List<Type> pokemonTypes,
+                             TestFunction test) {
         try {
             String idStr = param(request, QUERY_ID_PARAM);
             int id = Integer.parseInt(idStr);
             Pokemon pokemon = new Pokemon(id, pokemonName, pokemonTypes);
-            test.apply(pokemon)
-                    .thenAccept(
-                            result -> response.send(
-                                    AppResponse.okStatus(pokemon.toJsonObject())))
-                    .exceptionally(t -> {
-                        response.send(AppResponse.exceptionStatus(t));
-                        return null;
-                    });
+            test.apply(pokemon);
+            response.send(okStatus(pokemon.toJsonObject()));
         } catch (RemoteTestException | NumberFormatException ex) {
             LOGGER.log(Level.WARNING, String.format("Error in SimpleInsertService.%s on server", testName), ex);
             response.send(AppResponse.exceptionStatus(ex));
@@ -107,13 +102,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedInsertStrStrNamedArgs",
                 "Bulbasaur",
                 Pokemon.typesList(TYPES.get(4), TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedInsert("insert-bulbasaur", statement("insert-pokemon-named-arg"))
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedInsert("insert-bulbasaur", statement("insert-pokemon-named-arg"))
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedInsert(String)} API method with named parameters.
@@ -124,13 +120,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedInsertStrNamedArgs",
                 "Ivysaur",
                 Pokemon.typesList(TYPES.get(4), TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedInsert("insert-pokemon-named-arg")
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedInsert("insert-pokemon-named-arg")
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedInsert(String)} API method with ordered parameters.
@@ -141,13 +138,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedInsertStrOrderArgs",
                 "Venusaur",
                 Pokemon.typesList(TYPES.get(4), TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedInsert("insert-pokemon-order-arg")
-                                .addParam(pokemon.getId())
-                                .addParam(pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedInsert("insert-pokemon-order-arg")
+                                   .addParam(pokemon.getId())
+                                   .addParam(pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createInsert(String)} API method with named parameters.
@@ -158,13 +156,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateInsertNamedArgs",
                 "Magby",
                 Pokemon.typesList(TYPES.get(10)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createInsert(statement("insert-pokemon-named-arg"))
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createInsert(statement("insert-pokemon-named-arg"))
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createInsert(String)} API method with ordered parameters.
@@ -175,13 +174,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateInsertOrderArgs",
                 "Magmar",
                 Pokemon.typesList(TYPES.get(10)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createInsert(statement("insert-pokemon-order-arg"))
-                                .addParam(pokemon.getId())
-                                .addParam(pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createInsert(statement("insert-pokemon-order-arg"))
+                                   .addParam(pokemon.getId())
+                                   .addParam(pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code namedInsert(String)} API method with ordered parameters passed directly to the {@code insert} method.
@@ -192,13 +192,14 @@ public class SimpleInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Rattata",
                 Pokemon.typesList(TYPES.get(1)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .namedInsert(
-                                        "insert-pokemon-order-arg",
-                                        pokemon.getId(),
-                                        pokemon.getName())
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.namedInsert(
+                                "insert-pokemon-order-arg",
+                                pokemon.getId(),
+                                pokemon.getName());
+                    }
+                });
     }
 
     // Verify {@code insert(String)} API method with ordered parameters passed directly to the {@code insert} method.
@@ -209,12 +210,13 @@ public class SimpleInsertService extends AbstractService {
                 "testInsertOrderArgs",
                 "Raticate",
                 Pokemon.typesList(TYPES.get(1)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .insert(statement("insert-pokemon-order-arg"),
-                                        pokemon.getId(),
-                                        pokemon.getName())
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.insert(statement("insert-pokemon-order-arg"),
+                                pokemon.getId(),
+                                pokemon.getName());
+                    }
+                });
     }
 
     // DML insert
@@ -227,13 +229,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedDmlWithInsertStrStrNamedArgs",
                 "Torchic",
                 Pokemon.typesList(TYPES.get(10)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedDmlStatement("insert-torchic", statement("insert-pokemon-named-arg"))
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedDmlStatement("insert-torchic", statement("insert-pokemon-named-arg"))
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with insert with named parameters.
@@ -244,13 +247,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedDmlWithInsertStrNamedArgs",
                 "Combusken",
                 Pokemon.typesList(TYPES.get(2), TYPES.get(10)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedDmlStatement("insert-pokemon-named-arg")
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedDmlStatement("insert-pokemon-named-arg")
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with insert with ordered parameters.
@@ -261,13 +265,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateNamedDmlWithInsertStrOrderArgs",
                 "Treecko",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createNamedDmlStatement("insert-pokemon-order-arg")
-                                .addParam(pokemon.getId())
-                                .addParam(pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createNamedDmlStatement("insert-pokemon-order-arg")
+                                   .addParam(pokemon.getId())
+                                   .addParam(pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createDmlStatement(String)} API method with insert with named parameters.
@@ -278,13 +283,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateDmlWithInsertNamedArgs",
                 "Grovyle",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createDmlStatement(statement("insert-pokemon-named-arg"))
-                                .addParam("id", pokemon.getId())
-                                .addParam("name", pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createDmlStatement(statement("insert-pokemon-named-arg"))
+                                   .addParam("id", pokemon.getId())
+                                   .addParam("name", pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code createDmlStatement(String)} API method with insert with ordered parameters.
@@ -295,13 +301,14 @@ public class SimpleInsertService extends AbstractService {
                 "testCreateDmlWithInsertOrderArgs",
                 "Sceptile",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .createDmlStatement(statement("insert-pokemon-order-arg"))
-                                .addParam(pokemon.getId())
-                                .addParam(pokemon.getName())
-                                .execute()
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.createDmlStatement(statement("insert-pokemon-order-arg"))
+                                   .addParam(pokemon.getId())
+                                   .addParam(pokemon.getName())
+                                   .execute();
+                    }
+                });
     }
 
     // Verify {@code namedDml(String)} API method with insert with ordered parameters passed directly
@@ -312,12 +319,13 @@ public class SimpleInsertService extends AbstractService {
                 "testNamedDmlWithInsertOrderArgs",
                 "Snover",
                 Pokemon.typesList(TYPES.get(12), TYPES.get(15)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .namedDml("insert-pokemon-order-arg",
-                                        pokemon.getId(),
-                                        pokemon.getName())
-                ));
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.namedDml("insert-pokemon-order-arg",
+                                pokemon.getId(),
+                                pokemon.getName());
+                    }
+                });
     }
 
     // Verify {@code dml(String)} API method with insert with ordered parameters passed directly
@@ -328,12 +336,13 @@ public class SimpleInsertService extends AbstractService {
                 "testDmlWithInsertOrderArgs",
                 "Abomasnow",
                 Pokemon.typesList(TYPES.get(12), TYPES.get(15)),
-                (pokemon) -> dbClient().execute(
-                        exec -> exec
-                                .dml(statement("insert-pokemon-order-arg"),
+                (pokemon) -> {
+                    try (DbExecute exec = dbClient().execute()) {
+                        return exec.dml(statement("insert-pokemon-order-arg"),
                                         pokemon.getId(),
-                                        pokemon.getName())
-                ));
+                                        pokemon.getName());
+                    }
+                });
     }
 
 }

@@ -17,9 +17,9 @@
 package io.helidon.nima.webclient;
 
 import java.net.URI;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import io.helidon.common.Builder;
 import io.helidon.common.socket.SocketOptions;
 import io.helidon.config.Config;
 import io.helidon.nima.common.tls.Tls;
@@ -107,6 +107,12 @@ public interface WebClient {
             return (B) this;
         }
 
+        public B tls(Consumer<Tls.Builder> consumer) {
+            Tls.Builder tlsBuilder = Tls.builder();
+            consumer.accept(tlsBuilder);
+            return tls(tlsBuilder.build());
+        }
+
         /**
          * TLS configuration for any TLS request from this client.
          * TLS can also be configured per request.
@@ -161,7 +167,7 @@ public interface WebClient {
             throw new UnsupportedOperationException("Not implemented yet");
         }
 
-        public B service(ClientService server) {
+        public B service(WebClientService server) {
             throw new UnsupportedOperationException("Not implemented yet");
         }
 

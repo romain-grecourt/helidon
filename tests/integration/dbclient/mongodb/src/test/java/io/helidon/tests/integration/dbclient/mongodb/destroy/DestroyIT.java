@@ -15,13 +15,12 @@
  */
 package io.helidon.tests.integration.dbclient.mongodb.destroy;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.util.stream.Stream;
 
-import io.helidon.common.reactive.Multi;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -40,15 +39,13 @@ public class DestroyIT {
      * Delete database content.
      *
      * @param dbClient Helidon database client
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
-    private static void deleteSchema(DbClient dbClient) throws ExecutionException, InterruptedException {
-        dbClient.execute(exec -> exec
-                .namedDelete("delete-poketypes")
-                .flatMapSingle(result -> exec.namedDelete("delete-pokemons"))
-                .flatMapSingle(result -> exec.namedDelete("delete-types"))
-        ).await(Duration.ofSeconds(10));
+    private static void deleteSchema(DbClient dbClient) {
+        try (DbExecute exec = dbClient.execute()) {
+            exec.namedDelete("delete-poketypes");
+            exec.namedDelete("delete-pokemons");
+            exec.namedDelete("delete-types");
+        }
     }
 
     /**
@@ -58,7 +55,7 @@ public class DestroyIT {
     public static void destroy() {
         try {
             deleteSchema(DB_CLIENT);
-        } catch (ExecutionException | InterruptedException ex) {
+        } catch (Throwable ex) {
             fail("Database cleanup failed!", ex);
         }
     }
@@ -68,12 +65,12 @@ public class DestroyIT {
      */
     @Test
     public void testTypesDeleted() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .namedQuery("select-types"));
-
-        if (rows != null) {
-            List<DbRow> rowsList = rows.collectList().await();
-            assertThat(rowsList, empty());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.namedQuery("select-types");
+            if (rows != null) {
+                List<DbRow> rowsList = rows.toList();
+                assertThat(rowsList, empty());
+            }
         }
     }
 
@@ -82,12 +79,12 @@ public class DestroyIT {
      */
     @Test
     public void testPokemonsDeleted() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .namedQuery("select-pokemons"));
-
-        if (rows != null) {
-            List<DbRow> rowsList = rows.collectList().await();
-            assertThat(rowsList, empty());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.namedQuery("select-pokemons");
+            if (rows != null) {
+                List<DbRow> rowsList = rows.toList();
+                assertThat(rowsList, empty());
+            }
         }
     }
 
@@ -96,12 +93,12 @@ public class DestroyIT {
      */
     @Test
     public void testPokemonTypesDeleted() {
-        Multi<DbRow> rows = DB_CLIENT.execute(exec -> exec
-                .namedQuery("select-poketypes-all"));
-
-        if (rows != null) {
-            List<DbRow> rowsList = rows.collectList().await();
-            assertThat(rowsList, empty());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> rows = exec.namedQuery("select-poketypes-all");
+            if (rows != null) {
+                List<DbRow> rowsList = rows.toList();
+                assertThat(rowsList, empty());
+            }
         }
     }
 }

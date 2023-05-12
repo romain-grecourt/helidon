@@ -16,12 +16,11 @@
 
 package io.helidon.tests.integration.webserver.gh2631;
 
-import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
+import io.helidon.nima.webserver.staticcontent.StaticContentService;
 
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.staticcontent.StaticContentSupport;
+import java.nio.file.Paths;
 
 public class Gh2631 {
     public static void main(String[] args) {
@@ -30,31 +29,27 @@ public class Gh2631 {
 
     static WebServer startServer() {
         return WebServer.builder()
-                .routing(routing())
-                .build()
-                .start()
-                .await(10, TimeUnit.SECONDS);
+                        .routing(Gh2631::routing)
+                        .start();
     }
 
-    private static Routing routing() {
-        StaticContentSupport classpath = StaticContentSupport.builder("web")
-                .welcomeFileName("index.txt")
-                .build();
-        StaticContentSupport file = StaticContentSupport.builder(Paths.get("src/main/resources/web"))
-                .welcomeFileName("index.txt")
-                .build();
+    static void routing(HttpRouting.Builder routing) {
+        StaticContentService classpath = StaticContentService.builder("web")
+                                                             .welcomeFileName("index.txt")
+                                                             .build();
+        StaticContentService file = StaticContentService.builder(Paths.get("src/main/resources/web"))
+                                                        .welcomeFileName("index.txt")
+                                                        .build();
 
-        return Routing.builder()
-                .register("/simple", classpath)
-                .register("/fallback", classpath)
-                .register("/fallback", StaticContentSupport.builder("fallback")
-                        .pathMapper(path -> "index.txt")
-                        .build())
-                .register("/simpleFile", file)
-                .register("/fallbackFile", file)
-                .register("/fallbackFile", StaticContentSupport.builder(Paths.get("src/main/resources/fallback"))
-                        .pathMapper(path -> "index.txt")
-                        .build())
-                .build();
+        routing.register("/simple", classpath)
+               .register("/fallback", classpath)
+               .register("/fallback", StaticContentService.builder("fallback")
+                                                          .pathMapper(path -> "index.txt")
+                                                          .build())
+               .register("/simpleFile", file)
+               .register("/fallbackFile", file)
+               .register("/fallbackFile", StaticContentService.builder(Paths.get("src/main/resources/fallback"))
+                                                              .pathMapper(path -> "index.txt")
+                                                              .build());
     }
 }

@@ -18,6 +18,7 @@ package io.helidon.nima.webclient.http1;
 
 import java.util.Objects;
 
+import io.helidon.common.http.Http;
 import io.helidon.config.Config;
 import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
@@ -194,6 +195,10 @@ public interface Http1Client extends HttpClient<Http1ClientRequest, Http1ClientR
         }
 
         public Http1ClientBuilder config(Config config) {
+            throw new UnsupportedOperationException("Not implemented yet");
+        }
+
+        public Http1ClientBuilder header(Http.HeaderValue acceptJson) {
             throw new UnsupportedOperationException("Not implemented yet");
         }
     }

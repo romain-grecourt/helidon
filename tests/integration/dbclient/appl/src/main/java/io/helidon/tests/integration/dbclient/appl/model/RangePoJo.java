@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import io.helidon.reactive.dbclient.DbMapper;
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbMapper;
+import io.helidon.dbclient.DbRow;
 
 /**
  * PoJo used to define Pokemon IDs range in query statement tests.

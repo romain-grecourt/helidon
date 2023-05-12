@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.utils.RangePoJo;
 
 import org.junit.jupiter.api.Test;

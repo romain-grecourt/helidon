@@ -14,21 +14,23 @@
  * limitations under the License.
  */
 
-package io.helidon.integration.webserver.upgrade.test;import java.io.BufferedReader;
+package io.helidon.integration.webserver.upgrade.test;
+
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.lang.System.Logger.Level;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
-import io.helidon.reactive.webclient.WebClientResponse;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webclient.WebClient;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientRequest;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,48 +45,33 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 public class CompressionTest {
     private static final System.Logger LOGGER = System.getLogger(CompressionTest.class.getName());
-    private static final Duration TIMEOUT = Duration.ofSeconds(15);
 
     private static WebServer webServer;
 
-    private static WebClient webClient;
+    private static Http1Client webClient;
 
     @BeforeAll
     public static void startServer() {
-        startServer(0);
+        webServer = WebServer.builder()
+                             .host("localhost")
+                             .routing(r -> r.get("/compressed", (req, res) -> res.send("It works!")))
+                             //.enableCompression(true)        // compression
+                             .start();
+
+        webClient = WebClient.builder()
+                             .baseUri("http://localhost:" + webServer.port())
+                             .validateHeaders(false)
+                             //.keepAlive(true)
+                             .build();
+
+        LOGGER.log(Level.INFO, "Started server at: https://localhost:" + webServer.port());
     }
 
     @AfterAll
-    public static void close() throws Exception {
+    public static void close() {
         if (webServer != null) {
-            webServer.shutdown()
-                    .await(TIMEOUT);
+            webServer.stop();
         }
-    }
-
-    /**
-     * Start the Web Server
-     *
-     * @param port the port on which to start the server; if less than 1,
-     *             the port is dynamically selected
-     */
-    private static void startServer(int port) {
-        webServer = WebServer.builder()
-                .host("localhost")
-                .port(port)
-                .routing(r -> r.get("/compressed", (req, res) -> res.send("It works!")))
-                .enableCompression(true)        // compression
-                .build()
-                .start()
-                .await(TIMEOUT);
-
-        webClient = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port())
-                .validateHeaders(false)
-                .keepAlive(true)
-                .build();
-
-        LOGGER.log(Level.INFO, "Started server at: https://localhost:" + webServer.port());
     }
 
     /**
@@ -92,14 +79,13 @@ public class CompressionTest {
      * {@code SocketHttpClient} as other clients may remove this header after
      * processing.
      *
-     * @throws Exception if error occurs.
      */
     @Test
-    public void testGzipHeader() throws Exception {
+    public void testGzipHeader() {
         assertThat(httpGet("""
                 GET /compressed HTTP/1.1
                 Host: 127.0.0.1
-                Accept-Encoding: gzip       
+                Accept-Encoding: gzip
                 """), containsString("content-encoding: gzip"));
     }
 
@@ -108,45 +94,40 @@ public class CompressionTest {
      * {@code SocketHttpClient} as other clients may remove this header after
      * processing.
      *
-     * @throws Exception if error occurs.
      */
     @Test
-    public void testDeflateHeader() throws Exception {
+    public void testDeflateHeader() {
         assertThat(httpGet("""
                 GET /compressed HTTP/1.1
                 Host: 127.0.0.1
-                Accept-Encoding: deflate       
+                Accept-Encoding: deflate
                 """), containsString("content-encoding: deflate"));
     }
 
     /**
      * Test that the entity is decompressed using the correct algorithm.
      *
-     * @throws Exception if error occurs.
      */
     @Test
-    public void testGzipContent() throws Exception {
-        WebClientRequestBuilder builder = webClient.get();
-        builder.headers().add("Accept-Encoding", "gzip");
-        WebClientResponse response = builder.path("/compressed")
-                .request()
-                .await(TIMEOUT);
-        assertThat(response.content().as(String.class).get(), equalTo("It works!"));
+    public void testGzipContent() {
+        Http1ClientRequest request = webClient.get();
+        request.header("Accept-Encoding", "gzip");
+        Http1ClientResponse response = request.path("/compressed")
+                                            .request();
+        assertThat(response.entity().as(String.class), equalTo("It works!"));
     }
 
     /**
      * Test that the entity is decompressed using the correct algorithm.
      *
-     * @throws Exception if error occurs.
      */
     @Test
-    public void testDeflateContent() throws Exception {
-        WebClientRequestBuilder builder = webClient.get();
-        builder.headers().add("Accept-Encoding", "deflate");
-        WebClientResponse response = builder.path("/compressed")
-                .request()
-                .await(TIMEOUT);
-        assertThat(response.content().as(String.class).get(), equalTo("It works!"));
+    public void testDeflateContent() {
+        Http1ClientRequest builder = webClient.get();
+        builder.header("Accept-Encoding", "deflate");
+        Http1ClientResponse response = builder.path("/compressed")
+                                              .request();
+        assertThat(response.entity().as(String.class), equalTo("It works!"));
     }
 
     private String httpGet(String req) {

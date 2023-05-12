@@ -16,11 +16,11 @@
 
 package io.helidon.tests.integration.security.mapper;
 
+import io.helidon.microprofile.security.SecurityResponseMapper;
 import jakarta.ws.rs.core.Response;
 
 import io.helidon.common.context.Contexts;
 import io.helidon.security.SecurityResponse;
-import io.helidon.security.integration.jersey.SecurityResponseMapper;
 
 /**
  * Mapper that intercepts creation of {@link Response} when a security

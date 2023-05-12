@@ -58,7 +58,7 @@ abstract class WebSecurityTests {
                                     .build();
 
         securitySetup = WebClient.builder()
-                                 .service(ClientSecurity.create(security))
+                                 .service(WebClientSecurity.create(security))
                                  .build();
 
         webClient = WebClient.builder().build();

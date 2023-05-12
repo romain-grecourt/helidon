@@ -16,37 +16,28 @@
 
 package io.helidon.tests.integration.nativeimage.se1;
 
-import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.lang.System.Logger.Level;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 
-import io.helidon.common.GenericType;
-import io.helidon.common.http.DataChunk;
-import io.helidon.common.reactive.Multi;
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.media.common.MessageBodyReaderContext;
-import io.helidon.reactive.media.common.MessageBodyStreamReader;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
 
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import jakarta.json.Json;
 import jakarta.json.JsonPointer;
+import jakarta.json.JsonReader;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 
-public class MockZipkinService implements Service {
+public class MockZipkinService implements HttpService {
 
     private static final System.Logger LOGGER = System.getLogger(MockZipkinService.class.getName());
 
@@ -66,7 +57,7 @@ public class MockZipkinService implements Service {
     }
 
     @Override
-    public void update(final Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules.post("/api/v2/spans", this::mockZipkin);
     }
 
@@ -80,50 +71,25 @@ public class MockZipkinService implements Service {
     }
 
     private void mockZipkin(final ServerRequest request, final ServerResponse response) {
-        request.queryParams().all("serviceName", List::of).forEach(s -> System.out.println(">>>" + s));
-        request.content()
-                .registerReader(new MessageBodyStreamReader<JsonValue>() {
-                    @Override
-                    public PredicateResult accept(final GenericType<?> type, final MessageBodyReaderContext context) {
-                        return PredicateResult.COMPATIBLE;
-                    }
+        request.query()
+               .all("serviceName", List::of)
+               .forEach(s -> System.out.println(">>>" + s));
 
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public <U extends JsonValue> Flow.Publisher<U> read(final Flow.Publisher<DataChunk> publisher, final GenericType<U> type, final MessageBodyReaderContext context) {
-                        return (Flow.Publisher<U>) Multi.create(publisher)
-                                .map(d -> ByteBuffer.wrap(d.bytes()))
-                                .reduce((buf, buf2) ->
-                                        ByteBuffer.allocate(buf.capacity() + buf2.capacity())
-                                                .put(buf.array())
-                                                .put(buf2.array()))
-                                .flatMap(b -> {
-                                    try (ByteArrayInputStream bais = new ByteArrayInputStream(b.array());
-                                         GZIPInputStream gzipInputStream = new GZIPInputStream(bais)) {
-                                        return Single.just(Json.createReader(new StringReader(new String(gzipInputStream.readAllBytes())))
-                                                .readArray());
-                                    } catch (EOFException e) {
-                                        //ignore
-                                        return Multi.empty();
-                                    } catch (IOException e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                })
-                                .flatMap(a -> Multi.create(a.stream()));
-                    }
-                })
-                .asStream(JsonValue.class)
-                .map(JsonValue::asJsonObject)
-                .filter(json ->
-                        TAGS_POINTER.containsValue(json)
-                                && COMPONENT_POINTER.containsValue(json)
-                                && filteredComponents.stream()
-                                .anyMatch(s -> s.equals(((JsonString) COMPONENT_POINTER.getValue(json)).getString()))
-                )
-                .onError(Throwable::printStackTrace)
-                .onError(t -> response.status(500).send(t))
-                .onComplete(response::send)
-                .peek(json -> LOGGER.log(Level.INFO, json.toString()))
-                .forEach(e -> next.getAndSet(new CompletableFuture<>()).complete(e));
+        try (GZIPInputStream gzip = new GZIPInputStream(request.content().inputStream())) {
+            JsonReader reader = Json.createReader(gzip);
+            reader.readArray()
+                  .stream()
+                  .map(JsonValue::asJsonObject)
+                  .filter(json -> TAGS_POINTER.containsValue(json)
+                          && COMPONENT_POINTER.containsValue(json)
+                          && filteredComponents.stream().anyMatch(s ->
+                          s.equals(((JsonString) COMPONENT_POINTER.getValue(json)).getString())))
+                  .peek(json -> LOGGER.log(Level.INFO, json.toString()))
+                  .forEach(e -> next.getAndSet(new CompletableFuture<>()).complete(e));
+
+            response.send();
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
     }
 }

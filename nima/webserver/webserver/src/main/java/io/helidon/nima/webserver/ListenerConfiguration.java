@@ -348,6 +348,18 @@ public final class ListenerConfiguration {
         }
 
         /**
+         * Listener TLS configuration.
+         *
+         * @param consumer tls builder consumer
+         * @return updated builder
+         */
+        public Builder tls(Consumer<Tls.Builder> consumer) {
+            Tls.Builder builder = Tls.builder();
+            consumer.accept(builder);
+            return tls(builder.build());
+        }
+
+        /**
          * Configure connection options for connections accepted by this listener.
          *
          * @param builderConsumer consumer of socket options builder

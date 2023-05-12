@@ -25,6 +25,8 @@ import java.util.List;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbClientException;
 
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -84,33 +86,45 @@ public class JdbcClientMultipleDMLOperationTest {
                                                        .connectionPool(new MockConnectionPool())
                                                        .build();
         switch (dmlOperation) {
-            case insert:
+            case insert -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (tx) {
-                        dbClient.transaction(exec -> exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute());
+                        try (DbTransaction exec = dbClient.transaction()) {
+                            exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
+                        }
                     } else {
-                        dbClient.execute(exec -> exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute());
+                        try (DbExecute exec = dbClient.execute()) {
+                            exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
+                        }
                     }
                 }
-                break;
-            case update:
+            }
+            case update -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (tx) {
-                        dbClient.transaction(exec -> exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute());
+                        try (DbTransaction exec = dbClient.transaction()) {
+                            exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
+                        }
                     } else {
-                        dbClient.execute(exec -> exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute());
+                        try (DbExecute exec = dbClient.execute()) {
+                            exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
+                        }
                     }
                 }
-                break;
-            case delete:
+            }
+            case delete -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (tx) {
-                        dbClient.transaction(exec -> exec.createDelete("DELETE FROM pokemons WHERE name = name").execute());
+                        try (DbTransaction exec = dbClient.transaction()) {
+                            exec.createDelete("DELETE FROM pokemons WHERE name = name").execute();
+                        }
                     } else {
-                        dbClient.execute(exec -> exec.createDelete("DELETE FROM pokemons WHERE name = name").execute());
+                        try (DbExecute exec = dbClient.execute()) {
+                            exec.createDelete("DELETE FROM pokemons WHERE name = name").execute();
+                        }
                     }
                 }
-                break;
+            }
         }
     }
 

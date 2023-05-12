@@ -19,7 +19,6 @@ import java.lang.System.Logger.Level;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Function;
 
 import io.helidon.common.mapper.MapperManager;
 import io.helidon.dbclient.DbClient;
@@ -74,25 +73,6 @@ class JdbcDbClient implements DbClient {
     }
 
     @Override
-    public <T> T transaction(Function<DbTransaction, T> executor) {
-        JdbcTxExecute execute = transaction();
-        T result;
-        try {
-            result = executor.apply(execute);
-            execute.doCommit();
-            return result;
-        } catch (Throwable t1) {
-            LOGGER.log(Level.WARNING, () -> String.format("Transaction rollback: %s", t1.getMessage()), t1);
-            try {
-                execute.doRollback();
-            } catch (Throwable t2) {
-                LOGGER.log(Level.WARNING, () -> String.format("Transaction rollback failed: %s", t2.getMessage()), t2);
-            }
-            throw t1;
-        }
-    }
-
-    @Override
     public DbExecute execute() {
         return new JdbcExecute(statements,
                 JdbcExecute.createContext(statements,
@@ -118,8 +98,6 @@ class JdbcDbClient implements DbClient {
     }
 
     private static final class JdbcTxExecute extends JdbcExecute implements DbTransaction {
-
-        private volatile boolean setRollbackOnly = false;
 
         private JdbcTxExecute(DbStatements statements,
                               List<DbClientService> clientServices,
@@ -149,30 +127,10 @@ class JdbcDbClient implements DbClient {
 
         @Override
         public void rollback() {
-            setRollbackOnly = true;
-        }
-
-        private void doRollback() {
-            Connection conn = context().connection();
             try {
-                conn.rollback();
-                conn.close();
+                context().connection().rollback();
             } catch (SQLException e) {
-                throw new DbClientException("Failed to rollback a transaction, or close a connection", e);
-            }
-        }
-
-        private void doCommit() {
-            if (setRollbackOnly) {
-                doRollback();
-            } else {
-                Connection conn = context().connection();
-                try {
-                    conn.commit();
-                    conn.close();
-                } catch (SQLException e) {
-                    throw new DbClientException("Failed to commit a transaction, or close a connection", e);
-                }
+                throw new DbClientException("Failed to rollback a transaction", e);
             }
         }
     }

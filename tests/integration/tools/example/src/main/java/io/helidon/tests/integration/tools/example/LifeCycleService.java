@@ -18,22 +18,22 @@ package io.helidon.tests.integration.tools.example;
 import java.lang.System.Logger.Level;
 
 import io.helidon.common.media.type.MediaTypes;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
-import io.helidon.reactive.webserver.WebServer;
 
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import jakarta.json.Json;
 
-import static io.helidon.tests.integration.tools.service.AppResponse.exceptionStatus;
 import static io.helidon.tests.integration.tools.service.AppResponse.okStatus;
 
 /**
  * Web resource to handle web server life cycle.
  */
-public class LifeCycleService implements Service {
+public class LifeCycleService implements HttpService {
 
     private WebServer server;
 
@@ -49,10 +49,9 @@ public class LifeCycleService implements Service {
     }
 
     @Override
-    public void update(Routing.Rules rules) {
-        rules
-                .get("/init", this::init)
-                .get("/exit", this::exit);
+    public void routing(HttpRules rules) {
+        rules.get("/init", this::init)
+             .get("/exit", this::exit);
     }
 
     public void setServer(final WebServer server) {
@@ -62,32 +61,26 @@ public class LifeCycleService implements Service {
     /**
      * Initializes database schema and content.
      *
-     * @param request not used
+     * @param request  not used
      * @param response where to send server termination message.
-     * @return {@code null} value
      */
-    private void init(final ServerRequest request, final ServerResponse response) {
-        dbClient.execute(
-                exec -> exec
-                        .namedDml("create-table")
-                        .flatMapSingle(result -> exec.namedDml("insert-person", "Ash", "Ash Ketchum"))
-                        .flatMapSingle(result -> exec.namedDml("insert-person", "Brock", "Brock Harrison")))
-                .toCompletableFuture()
-                .thenAccept(result -> response.send(okStatus(Json.createValue(result))))
-                .exceptionally(t -> {
-                    response.send(exceptionStatus(t));
-                    return null;
-                });
+    private void init(ServerRequest request, ServerResponse response) {
+        try (DbExecute exec = dbClient.execute()) {
+            long count = 0;
+            count += exec.namedDml("create-table");
+            count += exec.namedDml("insert-person", "Ash", "Ash Ketchum");
+            count += exec.namedDml("insert-person", "Brock", "Brock Harrison");
+            response.send(okStatus(Json.createValue(count)));
+        }
     }
 
     /**
      * Terminates web server.
      *
-     * @param request not used
+     * @param request  not used
      * @param response where to send server termination message.
-     * @return {@code null} value
      */
-    private void exit(final ServerRequest request, final ServerResponse response) {
+    private void exit(ServerRequest request, ServerResponse response) {
         response.headers().contentType(MediaTypes.TEXT_PLAIN);
         response.send("Testing web server shutting down.");
         ExitThread.start(server);
@@ -96,7 +89,7 @@ public class LifeCycleService implements Service {
     /**
      * Shut down web server after short delay.
      */
-    private static final class ExitThread implements Runnable {
+    private record ExitThread(WebServer server) implements Runnable {
 
         private static final System.Logger LOGGER = System.getLogger(ExitThread.class.getName());
 
@@ -105,14 +98,8 @@ public class LifeCycleService implements Service {
          *
          * @param server web server instance to shut down
          */
-        public static final void start(final WebServer server) {
+        public static void start(final WebServer server) {
             new Thread(new ExitThread(server)).start();
-        }
-
-        private final WebServer server;
-
-        private ExitThread(final WebServer server) {
-            this.server = server;
         }
 
         /**
@@ -125,10 +112,9 @@ public class LifeCycleService implements Service {
             } catch (InterruptedException ie) {
                 LOGGER.log(Level.WARNING, () -> String.format("Thread was interrupted: %s", ie.getMessage()), ie);
             } finally {
-                server.shutdown();
+                server.stop();
             }
         }
 
     }
-
 }

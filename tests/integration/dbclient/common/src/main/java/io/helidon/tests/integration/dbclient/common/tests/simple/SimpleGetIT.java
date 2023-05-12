@@ -18,7 +18,7 @@ package io.helidon.tests.integration.dbclient.common.tests.simple;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;

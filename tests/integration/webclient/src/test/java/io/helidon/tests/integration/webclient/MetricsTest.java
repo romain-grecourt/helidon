@@ -17,7 +17,11 @@ package io.helidon.tests.integration.webclient;
 
 import io.helidon.common.http.Http;
 import io.helidon.metrics.api.RegistryFactory;
+import io.helidon.nima.webclient.WebClientService;
+import io.helidon.nima.webclient.WebClientServiceResponse;
 import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webclient.metrics.WebClientMetrics;
 import io.helidon.nima.webserver.WebServer;
 
 import org.eclipse.microprofile.metrics.ConcurrentGauge;
@@ -45,18 +49,18 @@ public class MetricsTest extends TestParent {
     public void testCounter() {
         WebClientService serviceCounterAll = WebClientMetrics.counter().nameFormat("counter.%1$s.%2$s").build();
         WebClientService serviceCounterGet = WebClientMetrics.counter()
-                .methods(Http.Method.GET)
-                .nameFormat("counter.get.%1$s.%2$s")
-                .build();
+                                                             .methods(Http.Method.GET)
+                                                             .nameFormat("counter.get.%1$s.%2$s")
+                                                             .build();
         WebClientService serviceCounterError = WebClientMetrics.counter()
-                .nameFormat("counter.error.%1$s.%2$s")
-                .success(false)
-                .build();
+                                                               .nameFormat("counter.error.%1$s.%2$s")
+                                                               .success(false)
+                                                               .build();
         WebClientService serviceCounterSuccess = WebClientMetrics.counter()
-                .nameFormat("counter.success.%1$s.%2$s")
-                .errors(false)
-                .build();
-        WebClient webClient = createNewClient(serviceCounterAll, serviceCounterGet, serviceCounterError, serviceCounterSuccess);
+                                                                 .nameFormat("counter.success.%1$s.%2$s")
+                                                                 .errors(false)
+                                                                 .build();
+        Http1Client webClient = createNewClient(serviceCounterAll, serviceCounterGet, serviceCounterError, serviceCounterSuccess);
         Counter counterAll = FACTORY.counter("counter.GET.localhost");
         Counter counterGet = FACTORY.counter("counter.get.GET.localhost");
         Counter counterError = FACTORY.counter("counter.error.GET.localhost");
@@ -66,27 +70,26 @@ public class MetricsTest extends TestParent {
         assertThat(counterGet.getCount(), is(0L));
         assertThat(counterError.getCount(), is(0L));
         assertThat(counterSuccess.getCount(), is(0L));
+
         try {
-            webClient.get()
-                    .request(String.class)
-                    .toCompletableFuture()
-                    .get();
+            webClient.get().request(String.class);
             assertThat(counterAll.getCount(), is(1L));
             assertThat(counterGet.getCount(), is(1L));
             assertThat(counterError.getCount(), is(0L));
             assertThat(counterSuccess.getCount(), is(1L));
-            webClient.get()
-                    .path("/error")
-                    .request()
-                    .thenCompose(WebClientResponse::close)
-                    .toCompletableFuture()
-                    .get();
+        } catch (Exception e) {
+            fail(e);
+        }
+
+        try (Http1ClientResponse ignored = webClient.get()
+                                                    .path("/error")
+                                                    .request()) {
             assertThat(counterAll.getCount(), is(2L));
             assertThat(counterGet.getCount(), is(2L));
             assertThat(counterError.getCount(), is(1L));
             assertThat(counterSuccess.getCount(), is(1L));
-        } catch (Exception e) {
-            fail(e);
+        } catch (Exception ex) {
+            fail(ex);
         }
     }
 
@@ -94,18 +97,18 @@ public class MetricsTest extends TestParent {
     public void testMeter() {
         WebClientService serviceMeterAll = WebClientMetrics.meter().nameFormat("meter.%1$s.%2$s").build();
         WebClientService serviceMeterGet = WebClientMetrics.meter()
-                .methods(Http.Method.GET)
-                .nameFormat("meter.get.%1$s.%2$s")
-                .build();
+                                                           .methods(Http.Method.GET)
+                                                           .nameFormat("meter.get.%1$s.%2$s")
+                                                           .build();
         WebClientService serviceMeterError = WebClientMetrics.meter()
-                .nameFormat("meter.error.%1$s.%2$s")
-                .success(false)
-                .build();
+                                                             .nameFormat("meter.error.%1$s.%2$s")
+                                                             .success(false)
+                                                             .build();
         WebClientService serviceMeterSuccess = WebClientMetrics.meter()
-                .nameFormat("meter.success.%1$s.%2$s")
-                .errors(false)
-                .build();
-        WebClient webClient = createNewClient(serviceMeterAll, serviceMeterGet, serviceMeterError, serviceMeterSuccess);
+                                                               .nameFormat("meter.success.%1$s.%2$s")
+                                                               .errors(false)
+                                                               .build();
+        Http1Client webClient = createNewClient(serviceMeterAll, serviceMeterGet, serviceMeterError, serviceMeterSuccess);
         Meter meterAll = FACTORY.meter("meter.GET.localhost");
         Meter meterGet = FACTORY.meter("meter.get.GET.localhost");
         Meter meterError = FACTORY.meter("meter.error.GET.localhost");
@@ -116,87 +119,81 @@ public class MetricsTest extends TestParent {
         assertThat(meterError.getCount(), is(0L));
         assertThat(meterSuccess.getCount(), is(0L));
         try {
-            webClient.get()
-                    .request(String.class)
-                    .toCompletableFuture()
-                    .get();
+            webClient.get().request(String.class);
             assertThat(meterAll.getCount(), is(1L));
             assertThat(meterGet.getCount(), is(1L));
             assertThat(meterError.getCount(), is(0L));
             assertThat(meterSuccess.getCount(), is(1L));
-            webClient.get()
-                    .path("/error")
-                    .request()
-                    .thenCompose(WebClientResponse::close)
-                    .toCompletableFuture()
-                    .get();
+        } catch (Exception e) {
+            fail(e);
+        }
+
+        try (Http1ClientResponse ignored = webClient.get().path("/error").request()) {
             assertThat(meterAll.getCount(), is(2L));
             assertThat(meterGet.getCount(), is(2L));
             assertThat(meterError.getCount(), is(1L));
             assertThat(meterSuccess.getCount(), is(1L));
-        } catch (Exception e) {
-            fail(e);
+        } catch (Exception ex) {
+            fail(ex);
         }
     }
 
     @Test
-    public void testGaugeInProgress() throws Exception {
+    public void testGaugeInProgress() {
         ConcurrentGauge progressAll = FACTORY.concurrentGauge("gauge.GET.localhost");
         ConcurrentGauge progressPut = FACTORY.concurrentGauge("gauge.put.PUT.localhost");
         ConcurrentGauge progressGet = FACTORY.concurrentGauge("gauge.get.GET.localhost");
         WebClientService inProgressAll = WebClientMetrics.gaugeInProgress().nameFormat("gauge.%1$s.%2$s").build();
         WebClientService inProgressPut = WebClientMetrics.gaugeInProgress()
-                .methods(Http.Method.PUT)
-                .nameFormat("gauge.put.%1$s.%2$s")
-                .build();
+                                                         .methods(Http.Method.PUT)
+                                                         .nameFormat("gauge.put.%1$s.%2$s")
+                                                         .build();
         WebClientService inProgressGet = WebClientMetrics.gaugeInProgress()
-                .methods(Http.Method.GET)
-                .nameFormat("gauge.get.%1$s.%2$s")
-                .build();
+                                                         .methods(Http.Method.GET)
+                                                         .nameFormat("gauge.get.%1$s.%2$s")
+                                                         .build();
 
-        WebClientService clientService = request -> {
-            request.whenSent()
-                    .thenAccept(clientServiceRequest -> {
-                        assertThat(progressAll.getCount(), is(1L));
-                        assertThat(progressGet.getCount(), is(1L));
-                        assertThat(progressPut.getCount(), is(0L));
-                    });
-            return Single.just(request);
+        WebClientService clientService = (chain, request) -> {
+            WebClientServiceResponse response = chain.proceed(request);
+            assertThat(progressAll.getCount(), is(1L));
+            assertThat(progressGet.getCount(), is(1L));
+            assertThat(progressPut.getCount(), is(0L));
+            return response;
         };
 
-        WebClient webClient = createNewClient(inProgressAll, inProgressPut, inProgressGet, clientService);
+        Http1Client webClient = createNewClient(inProgressAll, inProgressPut, inProgressGet, clientService);
 
         assertThat(progressAll.getCount(), is(0L));
         assertThat(progressGet.getCount(), is(0L));
         assertThat(progressPut.getCount(), is(0L));
-        webClient.get()
-                .request()
-                .thenCompose(WebClientResponse::close)
-                .toCompletableFuture()
-                .get();
-        assertThat(progressAll.getCount(), is(0L));
-        assertThat(progressGet.getCount(), is(0L));
-        assertThat(progressPut.getCount(), is(0L));
+
+        try (Http1ClientResponse ignored = webClient.get().request()) {
+            assertThat(progressAll.getCount(), is(0L));
+            assertThat(progressGet.getCount(), is(0L));
+            assertThat(progressPut.getCount(), is(0L));
+        } catch (Exception ex) {
+            fail(ex);
+        }
     }
 
     @Test
     public void testErrorHandling() {
         WebClientService errorAll = WebClientMetrics.counter()
-                .success(false)
-                .nameFormat("counter.all.errors.%2$s")
-                .build();
+                                                    .success(false)
+                                                    .nameFormat("counter.all.errors.%2$s")
+                                                    .build();
         WebClientService errorGet = WebClientMetrics.counter()
-                .methods(Http.Method.GET)
-                .success(false)
-                .nameFormat("counter.errors.%1$s.%2$s")
-                .build();
+                                                    .methods(Http.Method.GET)
+                                                    .success(false)
+                                                    .nameFormat("counter.errors.%1$s.%2$s")
+                                                    .build();
         WebClientService errorPut = WebClientMetrics.counter()
-                .methods(Http.Method.PUT)
-                .success(false)
-                .nameFormat("counter.errors.%1$s.%2$s")
-                .build();
+                                                    .methods(Http.Method.PUT)
+                                                    .success(false)
+                                                    .nameFormat("counter.errors.%1$s.%2$s")
+                                                    .build();
 
-        WebClient webClient = createNewClient(errorAll, errorGet, errorPut);
+        Http1Client webClient = createNewClient(errorAll, errorGet, errorPut);
         Counter counterAll = FACTORY.counter("counter.all.errors.localhost");
         Counter counterGet = FACTORY.counter("counter.errors.GET.localhost");
         Counter counterPut = FACTORY.counter("counter.errors.PUT.localhost");
@@ -204,22 +201,21 @@ public class MetricsTest extends TestParent {
         assertThat(counterAll.getCount(), is(0L));
         assertThat(counterGet.getCount(), is(0L));
         assertThat(counterPut.getCount(), is(0L));
-        try {
-            webClient.get()
-                    .path("/invalid")
-                    .request()
-                    .thenCompose(WebClientResponse::close)
-                    .toCompletableFuture()
-                    .get();
+
+        try (Http1ClientResponse ignored = webClient.get()
+                                                    .path("/invalid")
+                                                    .request()) {
+
             assertThat(counterAll.getCount(), is(1L));
             assertThat(counterGet.getCount(), is(1L));
             assertThat(counterPut.getCount(), is(0L));
-            webClient.put()
-                    .path("/invalid")
-                    .submit()
-                    .thenCompose(WebClientResponse::close)
-                    .toCompletableFuture()
-                    .get();
+        } catch (Exception e) {
+            fail(e);
+        }
+
+        try (Http1ClientResponse ignored = webClient.put()
+                                                    .path("/invalid")
+                                                    .request()) {
             assertThat(counterAll.getCount(), is(2L));
             assertThat(counterGet.getCount(), is(1L));
             assertThat(counterPut.getCount(), is(1L));

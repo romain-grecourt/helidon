@@ -314,6 +314,19 @@ public interface WebServer {
         }
 
         /**
+         * Configure routing for an additional socket.
+         *
+         * @param socketName    name of the socket, when {@link WebServer#DEFAULT_SOCKET_NAME} is used, the same
+         *                      builder as used by this instance is returned
+         * @param routerBuilder consumer of router builder
+         * @return updated builder
+         */
+        public Builder router(String socketName, Consumer<Router.Builder> routerBuilder) {
+            routerBuilder.accept(router(socketName));
+            return this;
+        }
+
+        /**
          * Router builder for a named socket.
          *
          * @param socketName name of the socket, when {@link WebServer#DEFAULT_SOCKET_NAME} is used, the same
@@ -414,6 +427,19 @@ public interface WebServer {
             this.socket(DEFAULT_SOCKET_NAME)
                     .tls(tls);
             return this;
+        }
+
+
+        /**
+         * Configure TLS for the default socket.
+         *
+         * @param consumer tls builder consumer
+         * @return updated builder
+         */
+        public Builder tls(Consumer<Tls.Builder> consumer) {
+            Tls.Builder builder = Tls.builder();
+            consumer.accept(builder);
+            return tls(builder.build());
         }
 
         /**

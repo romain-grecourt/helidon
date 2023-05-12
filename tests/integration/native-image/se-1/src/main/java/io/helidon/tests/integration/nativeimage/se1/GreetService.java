@@ -19,15 +19,14 @@ package io.helidon.tests.integration.nativeimage.se1;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.metrics.RegistryFactory;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.metrics.api.RegistryFactory;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.security.SecurityContext;
 
 import jakarta.json.Json;
@@ -38,20 +37,20 @@ import org.eclipse.microprofile.metrics.Timer;
 
 /**
  * A simple service to greet you. Examples:
- *
+ * <br/>
  * Get default greeting message:
  * curl -X GET http://localhost:8080/greet
- *
+ * <br/>
  * Get greeting message for Joe:
  * curl -X GET http://localhost:8080/greet/Joe
- *
+ * <br/>
  * Change greeting
  * curl -X PUT -H "Content-Type: application/json" -d '{"greeting" : "Howdy"}' http://localhost:8080/greet/greeting
- *
+ * <br/>
  * The message is returned as a JSON object
  */
 
-public class GreetService implements Service {
+public class GreetService implements HttpService {
 
     /**
      * The config value for the key {@code greeting}.
@@ -67,7 +66,7 @@ public class GreetService implements Service {
         // initial value
         greeting.set(greetingConfig.asString().orElse("Ciao"));
 
-        greetingConfig.onChange((Consumer<Config>) cfg -> greeting.set(cfg.asString().orElse("Ciao")));
+        greetingConfig.onChange(cfg -> greeting.set(cfg.asString().orElse("Ciao")));
 
         RegistryFactory metricsRegistry = RegistryFactory.getInstance();
         MetricRegistry appRegistry = metricsRegistry.getRegistry(MetricRegistry.Type.APPLICATION);
@@ -79,7 +78,7 @@ public class GreetService implements Service {
      * @param rules the routing rules.
      */
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules
                 .get("/", this::getDefaultMessageHandler)
                 //      Outbound is commented out, as we want native image to work
@@ -96,10 +95,9 @@ public class GreetService implements Service {
      */
     private void getDefaultMessageHandler(ServerRequest request,
                                           ServerResponse response) {
-        Timer.Context timerContext = defaultMessageTimer.time();
-        sendResponse(response, "World");
-        response.whenSent()
-                .thenAccept(res -> timerContext.stop());
+        try (Timer.Context ignored = defaultMessageTimer.time()) {
+            sendResponse(response, "World");
+        }
     }
 
     /**
@@ -109,7 +107,7 @@ public class GreetService implements Service {
      */
     private void getMessageHandler(ServerRequest request,
                                    ServerResponse response) {
-        String name = request.path().param("name");
+        String name = request.path().pathParameters().value("name");
 
         // if we run with security enabled, we want to return the user from security
         name = request.context()
@@ -152,7 +150,9 @@ public class GreetService implements Service {
      */
     private void updateGreetingHandler(ServerRequest request,
                                        ServerResponse response) {
-        request.content().as(JsonObject.class).thenAccept(jo -> updateGreetingFromJson(jo, response));
+
+        JsonObject jsonObject = request.content().as(JsonObject.class);
+        updateGreetingFromJson(jsonObject, response);
     }
 
 }

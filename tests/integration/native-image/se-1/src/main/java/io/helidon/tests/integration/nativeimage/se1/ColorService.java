@@ -16,15 +16,15 @@
 package io.helidon.tests.integration.nativeimage.se1;
 
 import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 /**
  * Test service to exercise config enum mapping.
  */
-public class ColorService implements Service {
+public class ColorService implements HttpService {
 
     /**
      * Enum used in config mapping.
@@ -44,7 +44,7 @@ public class ColorService implements Service {
     }
 
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules.get("/", this::reportColor);
     }
 

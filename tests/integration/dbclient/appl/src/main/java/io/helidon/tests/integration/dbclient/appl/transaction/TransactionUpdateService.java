@@ -15,61 +15,60 @@
  */
 package io.helidon.tests.integration.dbclient.appl.transaction;
 
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbTransaction;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
+import io.helidon.tests.integration.dbclient.appl.AbstractService;
+import io.helidon.tests.integration.dbclient.appl.model.Pokemon;
+import io.helidon.tests.integration.tools.service.RemoteTestException;
+import jakarta.json.Json;
+
 import java.lang.System.Logger.Level;
 import java.util.Map;
 import java.util.function.Function;
 
-import io.helidon.common.reactive.Single;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.tests.integration.dbclient.appl.AbstractService;
-import io.helidon.tests.integration.dbclient.appl.model.Pokemon;
-import io.helidon.tests.integration.tools.service.AppResponse;
-import io.helidon.tests.integration.tools.service.RemoteTestException;
-
-import jakarta.json.Json;
-import jakarta.json.JsonObject;
-
 import static io.helidon.tests.integration.tools.service.AppResponse.exceptionStatus;
+import static io.helidon.tests.integration.tools.service.AppResponse.okStatus;
 
 /**
  * Web resource to test set of basic DbCliebnt updates in transaction.
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class TransactionUpdateService extends AbstractService {
 
     private static final System.Logger LOGGER = System.getLogger(TransactionUpdateService.class.getName());
 
     // Internal functional interface used to implement testing code.
     // Method call: apply(srcPokemon, updatedPokemon)
-    private interface TestFunction extends Function<Pokemon, Single<Long>> {}
+    private interface TestFunction extends Function<Pokemon, Long> {
+    }
 
     public TransactionUpdateService(final DbClient dbClient, final Map<String, String> statements) {
         super(dbClient, statements);
     }
 
     @Override
-    public void update(Routing.Rules rules) {
-        rules
-                .get("/testCreateNamedUpdateStrStrNamedArgs", this::testCreateNamedUpdateStrStrNamedArgs)
-                .get("/testCreateNamedUpdateStrNamedArgs", this::testCreateNamedUpdateStrNamedArgs)
-                .get("/testCreateNamedUpdateStrOrderArgs", this::testCreateNamedUpdateStrOrderArgs)
-                .get("/testCreateUpdateNamedArgs", this::testCreateUpdateNamedArgs)
-                .get("/testCreateUpdateOrderArgs", this::testCreateUpdateOrderArgs)
-                .get("/testNamedUpdateNamedArgs", this::testNamedUpdateNamedArgs)
-                .get("/testUpdateOrderArgs", this::testUpdateOrderArgs)
-                .get("/testCreateNamedDmlWithUpdateStrStrNamedArgs", this::testCreateNamedDmlWithUpdateStrStrNamedArgs)
-                .get("/testCreateNamedDmlWithUpdateStrNamedArgs", this::testCreateNamedDmlWithUpdateStrNamedArgs)
-                .get("/testCreateNamedDmlWithUpdateStrOrderArgs", this::testCreateNamedDmlWithUpdateStrOrderArgs)
-                .get("/testCreateDmlWithUpdateNamedArgs", this::testCreateDmlWithUpdateNamedArgs)
-                .get("/testCreateDmlWithUpdateOrderArgs", this::testCreateDmlWithUpdateOrderArgs)
-                .get("/testNamedDmlWithUpdateOrderArgs", this::testNamedDmlWithUpdateOrderArgs)
-                .get("/testDmlWithUpdateOrderArgs", this::testDmlWithUpdateOrderArgs);
+    public void routing(HttpRules rules) {
+        rules.get("/testCreateNamedUpdateStrStrNamedArgs", this::testCreateNamedUpdateStrStrNamedArgs)
+             .get("/testCreateNamedUpdateStrNamedArgs", this::testCreateNamedUpdateStrNamedArgs)
+             .get("/testCreateNamedUpdateStrOrderArgs", this::testCreateNamedUpdateStrOrderArgs)
+             .get("/testCreateUpdateNamedArgs", this::testCreateUpdateNamedArgs)
+             .get("/testCreateUpdateOrderArgs", this::testCreateUpdateOrderArgs)
+             .get("/testNamedUpdateNamedArgs", this::testNamedUpdateNamedArgs)
+             .get("/testUpdateOrderArgs", this::testUpdateOrderArgs)
+             .get("/testCreateNamedDmlWithUpdateStrStrNamedArgs", this::testCreateNamedDmlWithUpdateStrStrNamedArgs)
+             .get("/testCreateNamedDmlWithUpdateStrNamedArgs", this::testCreateNamedDmlWithUpdateStrNamedArgs)
+             .get("/testCreateNamedDmlWithUpdateStrOrderArgs", this::testCreateNamedDmlWithUpdateStrOrderArgs)
+             .get("/testCreateDmlWithUpdateNamedArgs", this::testCreateDmlWithUpdateNamedArgs)
+             .get("/testCreateDmlWithUpdateOrderArgs", this::testCreateDmlWithUpdateOrderArgs)
+             .get("/testNamedDmlWithUpdateOrderArgs", this::testNamedDmlWithUpdateOrderArgs)
+             .get("/testDmlWithUpdateOrderArgs", this::testDmlWithUpdateOrderArgs);
     }
 
     // Common test execution code
-    private JsonObject executeTest(final ServerRequest request, final ServerResponse response, final String testName, final TestFunction test) {
+    private void executeTest(final ServerRequest request, final ServerResponse response, final String testName, final TestFunction test) {
         LOGGER.log(Level.DEBUG, () -> String.format("Running SimpleUpdateService.%s on server", testName));
         try {
             String name = param(request, QUERY_NAME_PARAM);
@@ -77,177 +76,192 @@ public class TransactionUpdateService extends AbstractService {
             int id = Integer.parseInt(idStr);
             Pokemon srcPokemon = Pokemon.POKEMONS.get(id);
             Pokemon updatedPokemon = new Pokemon(id, name, srcPokemon.getTypesArray());
-            test.apply(updatedPokemon)
-                    .thenAccept(
-                            result -> response.send(
-                                    AppResponse.okStatus(Json.createValue(result))))
-                    .exceptionally(t -> {
-                        response.send(exceptionStatus(t));
-                        return null;
-                    });
+            long count = test.apply(updatedPokemon);
+            response.send(okStatus(Json.createValue(count)));
         } catch (RemoteTestException | NumberFormatException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Error in SimpleUpdateService.%s on server", testName));
             response.send(exceptionStatus(ex));
         }
-        return null;
     }
 
     // Verify {@code createNamedUpdate(String, String)} API method with ordered parameters.
-    private JsonObject testCreateNamedUpdateStrStrNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedUpdate("update-spearow", statement("update-pokemon-named-arg"))
-                                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedUpdateStrStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedUpdate("update-spearow", statement("update-pokemon-named-arg"))
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedUpdate(String)} API method with named parameters.
-    private JsonObject testCreateNamedUpdateStrNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testCreateNamedUpdateStrNamedArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedUpdate("update-pokemon-named-arg")
-                                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedUpdateStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testCreateNamedUpdateStrNamedArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedUpdate("update-pokemon-named-arg")
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
 
     // Verify {@code createNamedUpdate(String)} API method with ordered parameters.
-    private JsonObject testCreateNamedUpdateStrOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testCreateNamedUpdateStrOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedUpdate("update-pokemon-order-arg")
-                                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedUpdateStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testCreateNamedUpdateStrOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedUpdate("update-pokemon-order-arg")
+                                 .addParam(pokemon.getName())
+                                 .addParam(pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createUpdate(String)} API method with named parameters.
-    private JsonObject testCreateUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testCreateUpdateNamedArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createUpdate(statement("update-pokemon-named-arg"))
-                                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testCreateUpdateNamedArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createUpdate(statement("update-pokemon-named-arg"))
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createUpdate(String)} API method with ordered parameters.
-    private JsonObject testCreateUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testCreateUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createUpdate(statement("update-pokemon-order-arg"))
-                                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testCreateUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createUpdate(statement("update-pokemon-order-arg"))
+                                 .addParam(pokemon.getName())
+                                 .addParam(pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code namedUpdate(String)} API method with ordered parameters passed directly to the {@code namedQuery} method.
-    private JsonObject testNamedUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testNamedUpdateNamedArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .namedUpdate("update-pokemon-order-arg", updatedPokemon.getName(), updatedPokemon.getId())
-                ));
+    private void testNamedUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testNamedUpdateNamedArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.namedUpdate("update-pokemon-order-arg",
+                                pokemon.getName(),
+                                pokemon.getId());
+                    }
+                });
     }
 
     // Verify {@code update(String)} API method with ordered parameters passed directly to the {@code query} method.
-    private JsonObject testUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .update(statement("update-pokemon-order-arg"), updatedPokemon.getName(), updatedPokemon.getId())
-                ));
+    private void testUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.update(statement("update-pokemon-order-arg"),
+                                pokemon.getName(),
+                                pokemon.getId());
+                    }
+                });
     }
 
     // DML update
 
     // Verify {@code createNamedDmlStatement(String, String)} API method with update with named parameters.
-    private JsonObject testCreateNamedDmlWithUpdateStrStrNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedDmlStatement("update-piplup", statement("update-pokemon-named-arg"))
-                                .addParam("name", updatedPokemon.getName())
-                                .addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedDmlWithUpdateStrStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedDmlStatement("update-piplup", statement("update-pokemon-named-arg"))
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with update with named parameters.
-    private JsonObject testCreateNamedDmlWithUpdateStrNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedDmlStatement("update-pokemon-named-arg")
-                                .addParam("name", updatedPokemon.getName())
-                                .addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedDmlWithUpdateStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedDmlStatement("update-pokemon-named-arg")
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with update with ordered parameters.
-    private JsonObject testCreateNamedDmlWithUpdateStrOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createNamedDmlStatement("update-pokemon-order-arg")
-                                .addParam(updatedPokemon.getName())
-                                .addParam(updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateNamedDmlWithUpdateStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createNamedDmlStatement("update-pokemon-order-arg")
+                                 .addParam(pokemon.getName())
+                                 .addParam(pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createDmlStatement(String)} API method with update with named parameters.
-    private JsonObject testCreateDmlWithUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createDmlStatement(statement("update-pokemon-named-arg"))
-                                .addParam("name", updatedPokemon.getName())
-                                .addParam("id", updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateDmlWithUpdateNamedArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createDmlStatement(statement("update-pokemon-named-arg"))
+                                 .addParam("name", pokemon.getName())
+                                 .addParam("id", pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code createDmlStatement(String)} API method with update with ordered parameters.
-    private JsonObject testCreateDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .createDmlStatement(statement("update-pokemon-order-arg"))
-                                .addParam(updatedPokemon.getName())
-                                .addParam(updatedPokemon.getId())
-                                .execute()
-                ));
+    private void testCreateDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.createDmlStatement(statement("update-pokemon-order-arg"))
+                                 .addParam(pokemon.getName())
+                                 .addParam(pokemon.getId())
+                                 .execute();
+                    }
+                });
     }
 
     // Verify {@code namedDml(String)} API method with update with ordered parameters passed directly
-    private JsonObject testNamedDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .namedDml("update-pokemon-order-arg",
-                                        updatedPokemon.getName(),
-                                        updatedPokemon.getId())
-                ));
+    private void testNamedDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.namedDml("update-pokemon-order-arg",
+                                pokemon.getName(),
+                                pokemon.getId());
+                    }
+                });
     }
 
     // Verify {@code dml(String)} API method with update with ordered parameters passed directly
-    private JsonObject testDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
-        return executeTest(request, response, "testUpdateOrderArgs",
-                (updatedPokemon) -> dbClient().inTransaction(
-                        exec -> exec
-                                .dml(statement("update-pokemon-order-arg"),
-                                        updatedPokemon.getName(),
-                                        updatedPokemon.getId())
-                ));
+    private void testDmlWithUpdateOrderArgs(final ServerRequest request, final ServerResponse response) {
+        executeTest(request, response, "testUpdateOrderArgs",
+                (pokemon) -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        return tx.dml(statement("update-pokemon-order-arg"),
+                                pokemon.getName(),
+                                pokemon.getId());
+                    }
+                });
     }
-
 }

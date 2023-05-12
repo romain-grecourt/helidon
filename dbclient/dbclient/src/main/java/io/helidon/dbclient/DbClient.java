@@ -18,7 +18,6 @@ package io.helidon.dbclient;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import io.helidon.common.HelidonServiceLoader;
@@ -46,32 +45,11 @@ public interface DbClient {
     DbTransaction transaction();
 
     /**
-     * Execute database statements in transaction.
-     *
-     * @param <T>      statement execution result type
-     * @param function function that executes the statements
-     * @return statement execution result
-     */
-    <T> T transaction(Function<DbTransaction, T> function);
-
-    /**
      * Get a database statement executor.
      *
      * @return statement executor
      */
     DbExecute execute();
-
-    /**
-     * Execute database statements.
-     *
-     * @param function function that executes the statements
-     * @return statement execution result
-     */
-    default <T> T execute(Function<DbExecute, T> function) {
-        try (DbExecute exec = execute()) {
-            return function.apply(exec);
-        }
-    }
 
     /**
      * Type of this database provider (such as jdbc:mysql, mongoDB etc.).
@@ -213,7 +191,7 @@ public interface DbClient {
 
         /**
          * Add an interceptor provider.
-         * The provider is only used when configuration is used ({@link #config(io.helidon.config.Config)}.
+         * The provider is only used when configuration is used ({@link #config(Config)}.
          *
          * @param provider provider to add to the list of loaded providers
          * @return updated builder instance
@@ -248,7 +226,7 @@ public interface DbClient {
         /**
          * Use database connection configuration from configuration file.
          *
-         * @param config {@link io.helidon.config.Config} instance with database connection attributes
+         * @param config {@link io.helidon.common.config.Config} instance with database connection attributes
          * @return database provider builder
          */
         public Builder config(Config config) {

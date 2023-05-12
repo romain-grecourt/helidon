@@ -64,7 +64,7 @@ class WebSecurityBuilderGateDefaultsTest {
                                           .build();
 
         securitySetup = WebClient.builder()
-                                 .service(ClientSecurity.create(clientSecurity))
+                                 .service(WebClientSecurity.create(clientSecurity))
                                  .build();
 
         webClient = WebClient.builder().build();

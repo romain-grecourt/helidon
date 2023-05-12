@@ -22,4 +22,7 @@ import io.helidon.nima.webclient.ClientResponse;
  * Client response for HTTP/1.1. client.
  */
 public interface Http1ClientResponse extends ClientResponse {
+    default String lastEndpointURI() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 }

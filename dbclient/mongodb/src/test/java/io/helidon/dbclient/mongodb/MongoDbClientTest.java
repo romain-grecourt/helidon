@@ -20,6 +20,7 @@ import java.lang.System.Logger.Level;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import io.helidon.dbclient.DbExecute;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -57,17 +58,17 @@ public class MongoDbClientTest {
     @Test
     void testUnwrapExecutorClass() {
         MongoDbClient dbClient = new MongoDbClient(new MongoDbClientProviderBuilder(), CLIENT, DB);
-        dbClient.execute(exec -> {
+        try (DbExecute exec = dbClient.execute()) {
             MongoDatabase connection = exec.unwrap(MongoDatabase.class);
             assertThat(connection, notNullValue());
-            return exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
-        });
+            exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
+        }
     }
 
     @Test
     void testUnsupportedUnwrapExecutorClass() {
         MongoDbClient dbClient = new MongoDbClient(new MongoDbClientProviderBuilder(), CLIENT, DB);
-        dbClient.execute(exec -> {
+        try (DbExecute exec = dbClient.execute()) {
             try {
                 exec.unwrap(MongoClient.class);
                 fail("Unsupported unwrap call must throw UnsupportedOperationException");
@@ -75,8 +76,8 @@ public class MongoDbClientTest {
                 LOGGER.log(Level.DEBUG, () -> String.format("Caught expected UnsupportedOperationException: %s"
                         , ex.getMessage()));
             }
-            return exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
-        });
+            exec.query("{\"operation\": \"command\", \"query\": { ping: 1 }}");
+        }
     }
 
 }

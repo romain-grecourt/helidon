@@ -54,6 +54,14 @@ public class Http1Route implements HttpRoute {
                               handler);
     }
 
+    public static Http1Route route(Predicate<Http.Method> methodPredicate, PathMatcher pathMatcher, Handler handler) {
+        return new Http1Route(methodPredicate, pathMatcher, handler);
+    }
+
+    public static Http1Route route(PathMatcher pathMatcher, Handler handler, Http.Method... methods) {
+        return new Http1Route(Http.Method.predicate(methods), pathMatcher, handler);
+    }
+
     @Override
     public PathMatchers.MatchResult accepts(HttpPrologue prologue) {
         if (!prologue.protocolVersion().equals("1.1")) {

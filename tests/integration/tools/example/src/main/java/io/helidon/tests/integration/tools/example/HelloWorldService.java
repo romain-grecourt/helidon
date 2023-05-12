@@ -17,14 +17,16 @@ package io.helidon.tests.integration.tools.example;
 
 import java.util.Optional;
 
-import io.helidon.reactive.dbclient.DbClient;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 import io.helidon.tests.integration.tools.service.RemoteTestException;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
 
 import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 
 import static io.helidon.tests.integration.tools.service.AppResponse.exceptionStatus;
@@ -34,7 +36,7 @@ import static io.helidon.tests.integration.tools.service.AppResponse.okStatus;
 /**
  * Sample web service.
  */
-public class HelloWorldService implements Service {
+public class HelloWorldService implements HttpService {
 
     private final DbClient dbClient;
 
@@ -48,7 +50,7 @@ public class HelloWorldService implements Service {
     }
 
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules
                 .get("/sendHelloWorld", this::sendHelloWorld)
                 .get("/verifyHello", this::verifyHello)
@@ -77,26 +79,20 @@ public class HelloWorldService implements Service {
     // Returns personalized "Hello" for known nicks or "Hello World!" otherwise.
     private void personalHelloWorld(final ServerRequest request, final ServerResponse response) {
         String nick = param(request, "nick");
-        dbClient.execute(
-                exec -> exec
-                    .createNamedGet("get-name")
-                .addParam("nick", nick)
-                .execute())
-                .thenAccept(maybeDbRow -> {
-                    maybeDbRow.ifPresentOrElse(
-                            dbRow -> response.send(
-                                    okStatus(
-                                            Json.createValue(
-                                                    String.format("Hello %s!", dbRow.column("name").as(String.class))))),
-                            () -> response.send(
-                                    okStatus(
-                                            Json.createValue(
-                                                    "Hello World!"))));
-                })
-                .exceptionally(t -> {
-                    response.send(exceptionStatus(t));
-                    return null;
-                });
+        try (DbExecute exec = dbClient.execute()) {
+            JsonObject jsonObject = exec.createNamedGet("get-name")
+                                        .addParam("nick", nick)
+                                        .execute()
+                                        .map(row -> okStatus(
+                                                Json.createValue(String.format(
+                                                        "Hello %s!",
+                                                        row.column("name").as(String.class)))))
+                                        .orElseGet(() -> okStatus(
+                                                Json.createValue(
+                                                        "Hello World!")));
+
+            response.send(jsonObject);
+        }
     }
 
     /*
@@ -107,13 +103,12 @@ public class HelloWorldService implements Service {
      * @return query parameter value
      * @throws RemoteTestException when no parameter with given name exists in request
      */
-    private static String param( final ServerRequest request, final String name) {
-        Optional<String> maybeParam = request.queryParams().first(name);
+    private static String param(final ServerRequest request, final String name) {
+        Optional<String> maybeParam = request.query().first(name);
         if (maybeParam.isPresent()) {
             return maybeParam.get();
-        } else {
-            throw new RemoteTestException(String.format("Query parameter %s is missing.", name));
         }
+        throw new RemoteTestException(String.format("Query parameter %s is missing.", name));
     }
 
 }

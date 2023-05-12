@@ -16,14 +16,13 @@
 package io.helidon.tests.integration.dbclient.mongodb.init;
 
 import java.lang.System.Logger.Level;
-import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
-import io.helidon.common.reactive.Multi;
 import io.helidon.config.Config;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbRow;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -39,13 +38,19 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class CheckIT extends AbstractIT {
 
-    /** Local logger instance. */
+    /**
+     * Local logger instance.
+     */
     private static final System.Logger LOGGER = System.getLogger(CheckIT.class.getName());
 
-    /** Timeout in seconds to wait for database to come up. */
+    /**
+     * Timeout in seconds to wait for database to come up.
+     */
     private static final int TIMEOUT = 60;
 
-    /** Helidon DB client with admin database access. */
+    /**
+     * Helidon DB client with admin database access.
+     */
     public static final DbClient DB_ADMIN = initDbAdmin();
 
     private static DbClient initDbAdmin() {
@@ -62,9 +67,8 @@ public class CheckIT extends AbstractIT {
         long endTm = 1000 * TIMEOUT + System.currentTimeMillis();
         boolean retry = true;
         while (retry) {
-            try {
-                dbClient.execute(exec -> exec.namedGet("ping"))
-                        .await(Duration.ofSeconds(1));
+            try (DbExecute exec = dbClient.execute()) {
+                exec.namedGet("ping");
                 retry = false;
             } catch (Exception ex) {
                 if (System.currentTimeMillis() > endTm) {
@@ -83,14 +87,12 @@ public class CheckIT extends AbstractIT {
      * @param dbClient Helidon database client
      */
     private static void initUser(DbClient dbClient) {
-        try {
-            dbClient.execute(exec -> exec
-                    .namedGet("use")
-                    .flatMapSingle(result -> exec.namedGet("create-user"))
-            ).await();
+        try (DbExecute exec = dbClient.execute()) {
+            exec.namedGet("use");
+            exec.namedGet("create-user");
         } catch (Exception ex) {
-                LOGGER.log(Level.WARNING, () -> String.format("Exception: %s", ex.getMessage()), ex);
-                fail("Database user setup failed!", ex);
+            LOGGER.log(Level.WARNING, () -> String.format("Exception: %s", ex.getMessage()), ex);
+            fail("Database user setup failed!", ex);
         }
     }
 
@@ -110,12 +112,14 @@ public class CheckIT extends AbstractIT {
      */
     @Test
     public void testDmlStatementExecution() {
-        Multi<DbRow> result = DB_CLIENT.execute(exec -> exec.namedQuery("ping-query"));
-        List<DbRow> rowsList = result.collectList().await(5, TimeUnit.SECONDS);
-        DbRow row = rowsList.get(0);
-        Double ok = row.column("ok").as(Double.class);
-        assertThat(ok, equalTo(1.0));
-        LOGGER.log(Level.DEBUG, () -> String.format("Command ping row: %s", row));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            Stream<DbRow> result = exec.namedQuery("ping-query");
+            List<DbRow> rowsList = result.toList();
+            DbRow row = rowsList.get(0);
+            Double ok = row.column("ok").as(Double.class);
+            assertThat(ok, equalTo(1.0));
+            LOGGER.log(Level.DEBUG, () -> String.format("Command ping row: %s", row));
+        }
     }
 
 }

@@ -16,15 +16,13 @@
 
 package io.helidon.tests.integration.webclient;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import io.helidon.common.context.Context;
 import io.helidon.config.Config;
 import io.helidon.nima.testing.junit5.webserver.ServerTest;
 import io.helidon.nima.testing.junit5.webserver.SetUpServer;
-import io.helidon.nima.webclient.ClientService;
+import io.helidon.nima.webclient.WebClientService;
 import io.helidon.nima.webclient.http1.Http1Client;
 import io.helidon.nima.webclient.http1.Http1Client.Http1ClientBuilder;
 import io.helidon.nima.webserver.WebServer;
@@ -37,7 +35,6 @@ import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
  */
 @ServerTest
 class TestParent {
-    private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
     protected static final Config CONFIG = Config.create();
 
@@ -56,7 +53,7 @@ class TestParent {
         builder.routing(routing -> Main.routing(routing, config, null));
     }
 
-    protected static Http1Client createNewClient(ClientService... clientServices) {
+    protected static Http1Client createNewClient(WebClientService... clientServices) {
         Security security = Security.builder()
                                     .addProvider(HttpBasicAuthProvider.builder().build())
                                     .build();
