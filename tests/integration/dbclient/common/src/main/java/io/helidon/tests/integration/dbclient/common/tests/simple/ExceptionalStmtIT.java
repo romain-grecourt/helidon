@@ -17,8 +17,11 @@ package io.helidon.tests.integration.dbclient.common.tests.simple;
 
 import java.lang.System.Logger.Level;
 import java.util.concurrent.CompletionException;
+import java.util.function.Consumer;
 
 import io.helidon.dbclient.DbClientException;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;
@@ -30,20 +33,19 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class ExceptionalStmtIT extends AbstractIT {
 
-    /** Local logger instance. */
     private static final System.Logger LOGGER = System.getLogger(ExceptionalStmtIT.class.getName());
+    private static final Consumer<DbRow> IGNORE = (e -> {
+    });
 
     /**
      * Verify that execution of query with non existing named statement throws an exception.
      */
     @Test
     public void testCreateNamedQueryNonExistentStmt() {
-        try {
-            DB_CLIENT.execute(exec -> exec
-                    .createNamedQuery("select-pokemons-not-exists")
-                    .execute())
-                    .collectList()
-                    .await();
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.createNamedQuery("select-pokemons-not-exists")
+                .execute()
+                .forEach(IGNORE);
             fail("Execution of non existing statement shall cause an exception to be thrown.");
         } catch (DbClientException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -55,12 +57,10 @@ public class ExceptionalStmtIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithoutArgs() {
-        try {
-            DB_CLIENT.execute(exec -> exec
-                    .createNamedQuery("select-pokemons-error-arg")
-                    .execute())
-                    .collectList()
-                    .await();
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.createNamedQuery("select-pokemons-error-arg")
+                .execute()
+                .forEach(IGNORE);
             fail("Execution of query with both named and ordered parameters without passing any shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -72,14 +72,12 @@ public class ExceptionalStmtIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithArgs() {
-        try {
-            DB_CLIENT.execute(exec -> exec
-                    .createNamedQuery("select-pokemons-error-arg")
-                    .addParam("id", POKEMONS.get(5).getId())
-                    .addParam(POKEMONS.get(5).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.createNamedQuery("select-pokemons-error-arg")
+                .addParam("id", POKEMONS.get(5).getId())
+                .addParam(POKEMONS.get(5).getName())
+                .execute()
+                .forEach(IGNORE);
             fail("Execution of query with both named and ordered parameters without passing them shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -91,13 +89,11 @@ public class ExceptionalStmtIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryNamedArgsSetOrderArg() {
-        try {
-            DB_CLIENT.execute(exec -> exec
-                    .createNamedQuery("select-pokemon-named-arg")
-                    .addParam(POKEMONS.get(5).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.createNamedQuery("select-pokemon-named-arg")
+                .addParam(POKEMONS.get(5).getName())
+                .execute()
+                .forEach(IGNORE);
             fail("Execution of query with named parameter with passing ordered parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -109,13 +105,11 @@ public class ExceptionalStmtIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedQueryOrderArgsSetNamedArg() {
-        try {
-            DB_CLIENT.execute(exec -> exec
-                    .createNamedQuery("select-pokemon-order-arg")
-                    .addParam("name", POKEMONS.get(6).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            exec.createNamedQuery("select-pokemon-order-arg")
+                .addParam("name", POKEMONS.get(6).getName())
+                .execute()
+                .forEach(IGNORE);
             fail("Execution of query with ordered parameter with passing named parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);

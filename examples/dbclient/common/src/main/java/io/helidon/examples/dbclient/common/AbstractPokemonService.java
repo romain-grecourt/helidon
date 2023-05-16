@@ -21,7 +21,6 @@ import io.helidon.common.http.NotFoundException;
 import io.helidon.common.parameters.Parameters;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.Handler;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.HttpService;
@@ -168,17 +167,17 @@ public abstract class AbstractPokemonService implements HttpService {
     }
 
     private void transactional(Pokemon pokemon, ServerResponse res) {
-        try (DbTransaction tx = dbClient.transaction()) {
-            long count = tx.createNamedGet("select-for-update")
-                           .namedParam(pokemon)
-                           .execute()
-                           .map(dbRow -> tx.createNamedUpdate("update")
-                                           .namedParam(pokemon)
-                                           .execute())
-                           .orElse(0L);
+        dbClient.transaction(exec -> {
+            long count = exec.createNamedGet("select-for-update")
+                             .namedParam(pokemon)
+                             .execute()
+                             .map(dbRow -> exec.createNamedUpdate("update")
+                                               .namedParam(pokemon)
+                                               .execute())
+                             .orElse(0L);
             res.send("Updated " + count + " records");
-        }
-
+            return null;
+        });
     }
 
     /**

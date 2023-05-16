@@ -94,7 +94,7 @@ public class MongoDbStatementQuery extends MongoDbStatement<DbStatementQuery, St
                 query.toString(),
                 (projection != null ? projection : "N/A")));
 
-        FindIterable<Document> finder = noTx() ? mc.find(query) : mc.find(txManager().tx(), query);
+        FindIterable<Document> finder = mc.find(query);
         if (projection != null) {
             finder = finder.projection(projection);
         }

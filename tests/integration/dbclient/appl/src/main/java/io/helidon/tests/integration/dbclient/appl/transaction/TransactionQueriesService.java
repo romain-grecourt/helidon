@@ -22,7 +22,6 @@ import java.util.stream.Stream;
 
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbRow;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
@@ -84,81 +83,60 @@ public class TransactionQueriesService extends AbstractService {
     // Verify {@code createNamedQuery(String, String)} API method with ordered
     private void testCreateNamedQueryStrStrOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedQueryStrStrOrderArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedQuery("select-pikachu", statement("select-pokemon-order-arg"))
-                                 .addParam(name)
-                                 .execute();
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .createNamedQuery("select-pikachu", statement("select-pokemon-order-arg"))
+                        .addParam(name)
+                        .execute()));
     }
 
     // Verify {@code createNamedQuery(String)} API method with named parameters.
     private void testCreateNamedQueryStrNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedQueryStrNamedArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedQuery("select-pokemon-named-arg")
-                                 .addParam("name", name)
-                                 .execute();
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .createNamedQuery("select-pokemon-named-arg")
+                        .addParam("name", name)
+                        .execute()));
     }
 
     // Verify {@code createNamedQuery(String)} API method with ordered
     private void testCreateNamedQueryStrOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedQueryStrOrderArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedQuery("select-pokemon-order-arg")
-                                 .addParam(name)
-                                 .execute();
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .createNamedQuery("select-pokemon-order-arg")
+                        .addParam(name)
+                        .execute()));
     }
 
     // Verify {@code createQuery(String)} API method with named parameters.
     private void testCreateQueryNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateQueryNamedArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createQuery(statement("select-pokemon-named-arg"))
-                                 .addParam("name", name)
-                                 .execute();
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .createQuery(statement("select-pokemon-named-arg"))
+                        .addParam("name", name)
+                        .execute()));
     }
 
     // Verify {@code createQuery(String)} API method with ordered parameters.
     private void testCreateQueryOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateQueryOrderArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createQuery(statement("select-pokemon-order-arg"))
-                                 .addParam(name)
-                                 .execute();
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .createQuery(statement("select-pokemon-order-arg"))
+                        .addParam(name)
+                        .execute()));
     }
 
     // Verify {@code namedQuery(String)} API method with ordered parameters
     private void testNamedQueryOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testNamedQueryOrderArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.namedQuery("select-pokemon-order-arg", name);
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .namedQuery("select-pokemon-order-arg", name)));
     }
 
     // Verify {@code query(String)} API method with ordered parameters passed
     private void testQueryOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testQueryOrderArgs",
-                name -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.query(statement("select-pokemon-order-arg"), name);
-                    }
-                });
+                name -> dbClient().transaction(exec -> exec
+                        .query(statement("select-pokemon-order-arg"), name)));
     }
 
 }

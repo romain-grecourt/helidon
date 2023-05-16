@@ -104,6 +104,8 @@ public interface ReadableEntity {
         }
     }
 
-    <T> Stream<T> asStream(Class<T> type);
+    default <T> Stream<T> asStream(Class<T> type) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 
 }

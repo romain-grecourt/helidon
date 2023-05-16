@@ -39,6 +39,10 @@ public interface Http1Client extends HttpClient<Http1ClientRequest, Http1ClientR
         return new Http1ClientBuilder();
     }
 
+    default Http1Client property(String httpAuthenticationUsername, String username) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
     /**
      * Builder for {@link io.helidon.nima.webclient.http1.Http1Client}.
      */

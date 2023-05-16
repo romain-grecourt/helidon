@@ -18,8 +18,8 @@ package io.helidon.tests.integration.dbclient.common.tests.simple;
 import java.lang.System.Logger.Level;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
+import io.helidon.dbclient.DbExecute;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -32,33 +32,37 @@ import static io.helidon.tests.integration.dbclient.common.utils.Utils.verifyUpd
 /**
  * Test set of basic JDBC DML statement calls.
  */
+@SuppressWarnings("SpellCheckingInspection")
 public class SimpleDmlIT extends AbstractIT {
-    
-    /** Local logger instance. */
+
+    /**
+     * Local logger instance.
+     */
     private static final System.Logger LOGGER = System.getLogger(SimpleDmlIT.class.getName());
 
-    /** Maximum Pokemon ID. */
+    /**
+     * Maximum Pokemon ID.
+     */
     private static final int BASE_ID = LAST_POKEMON_ID + 40;
 
-    /** Map of pokemons for update tests. */
+    /**
+     * Map of pokemons for update tests.
+     */
     private static final Map<Integer, Pokemon> POKEMONS = new HashMap<>();
 
-    private static void addPokemon(Pokemon pokemon) throws ExecutionException, InterruptedException {
+    private static void addPokemon(Pokemon pokemon) {
         POKEMONS.put(pokemon.getId(), pokemon);
-        Long result = DB_CLIENT.execute(exec -> exec
-                .namedInsert("insert-pokemon", pokemon.getId(), pokemon.getName())
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec.namedInsert("insert-pokemon", pokemon.getId(), pokemon.getName());
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Initialize tests of basic JDBC updates.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @BeforeAll
-    public static void setup() throws ExecutionException, InterruptedException {
+    public static void setup() {
         try {
             // BASE_ID + 1 .. BASE_ID + 9 is reserved for inserts
             // BASE_ID + 10 .. BASE_ID + 19 are pokemons for updates
@@ -85,336 +89,307 @@ public class SimpleDmlIT extends AbstractIT {
 
     /**
      * Verify {@code createNamedDmlStatement(String, String)} API method with insert with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithInsertStrStrNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+1, "Torchic", TYPES.get(10));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("insert-torchic", INSERT_POKEMON_NAMED_ARG)
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute()
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testCreateNamedDmlWithInsertStrStrNamedArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 1, "Torchic", TYPES.get(10));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("insert-torchic", INSERT_POKEMON_NAMED_ARG)
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName())
+                    .execute();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with insert with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithInsertStrNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+2, "Combusken", TYPES.get(2), TYPES.get(10));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("insert-pokemon-named-arg")
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute()
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testCreateNamedDmlWithInsertStrNamedArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 2, "Combusken", TYPES.get(2), TYPES.get(10));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("insert-pokemon-named-arg")
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName())
+                    .execute();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with insert with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithInsertStrOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+3, "Treecko", TYPES.get(12));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("insert-pokemon-order-arg")
-                .addParam(pokemon.getId()).addParam(pokemon.getName()).execute()
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testCreateNamedDmlWithInsertStrOrderArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 3, "Treecko", TYPES.get(12));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("insert-pokemon-order-arg")
+                    .addParam(pokemon.getId()).addParam(pokemon.getName())
+                    .execute();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with insert with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithInsertNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+4, "Grovyle", TYPES.get(12));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(INSERT_POKEMON_NAMED_ARG)
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute()
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testCreateDmlWithInsertNamedArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 4, "Grovyle", TYPES.get(12));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(INSERT_POKEMON_NAMED_ARG)
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName())
+                    .execute();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with insert with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithInsertOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+5, "Sceptile", TYPES.get(12));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(INSERT_POKEMON_ORDER_ARG)
-                .addParam(pokemon.getId()).addParam(pokemon.getName()).execute()
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testCreateDmlWithInsertOrderArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 5, "Sceptile", TYPES.get(12));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(INSERT_POKEMON_ORDER_ARG)
+                    .addParam(pokemon.getId()).addParam(pokemon.getName())
+                    .execute();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code namedDml(String)} API method with insert with ordered parameters passed directly
      * to the {@code insert} method.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testNamedDmlWithInsertOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+6, "Snover", TYPES.get(12), TYPES.get(15));
-        Long result = DB_CLIENT.execute(exec -> exec
-                .namedDml("insert-pokemon-order-arg", pokemon.getId(), pokemon.getName())
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testNamedDmlWithInsertOrderArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 6, "Snover", TYPES.get(12), TYPES.get(15));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .namedDml("insert-pokemon-order-arg", pokemon.getId(), pokemon.getName());
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code dml(String)} API method with insert with ordered parameters passed directly
      * to the {@code insert} method.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testDmlWithInsertOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon pokemon = new Pokemon(BASE_ID+7, "Abomasnow", TYPES.get(12), TYPES.get(15));
-       Long result = DB_CLIENT.execute(exec -> exec
-                .dml(INSERT_POKEMON_ORDER_ARG, pokemon.getId(), pokemon.getName())
-        ).toCompletableFuture().get();
-        verifyInsertPokemon(result, pokemon);
+    public void testDmlWithInsertOrderArgs() {
+        Pokemon pokemon = new Pokemon(BASE_ID + 7, "Abomasnow", TYPES.get(12), TYPES.get(15));
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .dml(INSERT_POKEMON_ORDER_ARG, pokemon.getId(), pokemon.getName());
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String, String)} API method with update with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithUpdateStrStrNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+10);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+10, "Prinplup", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("update-piplup", UPDATE_POKEMON_NAMED_ARG)
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId()).execute()
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testCreateNamedDmlWithUpdateStrStrNamedArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 10);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 10, "Prinplup", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("update-piplup", UPDATE_POKEMON_NAMED_ARG)
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with update with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithUpdateStrNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+11);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+11, "Empoleon", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("update-pokemon-named-arg")
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId()).execute()
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testCreateNamedDmlWithUpdateStrNamedArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 11);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 11, "Empoleon", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("update-pokemon-named-arg")
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with update with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithUpdateStrOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+12);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+12, "Piplup", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("update-pokemon-order-arg")
-                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId()).execute()
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testCreateNamedDmlWithUpdateStrOrderArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 12);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 12, "Piplup", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("update-pokemon-order-arg")
+                    .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
+                    .execute();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with update with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithUpdateNamedArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+13);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+13, "Starmie", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(UPDATE_POKEMON_NAMED_ARG)
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId()).execute()
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testCreateDmlWithUpdateNamedArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 13);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 13, "Starmie", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(UPDATE_POKEMON_NAMED_ARG)
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with update with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithUpdateOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+14);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+14, "Staryu", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(UPDATE_POKEMON_ORDER_ARG)
-                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId()).execute()
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testCreateDmlWithUpdateOrderArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 14);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 14, "Staryu", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(UPDATE_POKEMON_ORDER_ARG)
+                    .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
+                    .execute();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code namedDml(String)} API method with update with ordered parameters passed directly
      * to the {@code insert} method.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testNamedDmlWithUpdateOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+15);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+15, "Seadra", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .namedDml("update-pokemon-order-arg", updatedPokemon.getName(), updatedPokemon.getId())
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testNamedDmlWithUpdateOrderArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 15);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 15, "Seadra", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .namedDml("update-pokemon-order-arg", updatedPokemon.getName(), updatedPokemon.getId());
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code dml(String)} API method with update with ordered parameters passed directly
      * to the {@code insert} method.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testDmlWithUpdateOrderArgs() throws ExecutionException, InterruptedException {
-        Pokemon srcPokemon = POKEMONS.get(BASE_ID+16);
-        Pokemon updatedPokemon = new Pokemon(BASE_ID+16, "Horsea", srcPokemon.getTypesArray());
-        Long result = DB_CLIENT.execute(exec -> exec
-                .dml(UPDATE_POKEMON_ORDER_ARG, updatedPokemon.getName(), updatedPokemon.getId())
-        ).toCompletableFuture().get();
-        verifyUpdatePokemon(result, updatedPokemon);
+    public void testDmlWithUpdateOrderArgs() {
+        Pokemon srcPokemon = POKEMONS.get(BASE_ID + 16);
+        Pokemon updatedPokemon = new Pokemon(BASE_ID + 16, "Horsea", srcPokemon.getTypesArray());
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .dml(UPDATE_POKEMON_ORDER_ARG, updatedPokemon.getName(), updatedPokemon.getId());
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String, String)} API method with delete with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithDeleteStrStrOrderArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("delete-mudkip", DELETE_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(BASE_ID+20).getId()).execute()
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+20));
+    public void testCreateNamedDmlWithDeleteStrStrOrderArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("delete-mudkip", DELETE_POKEMON_ORDER_ARG)
+                    .addParam(POKEMONS.get(BASE_ID + 20).getId())
+                    .execute();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 20));
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with delete with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithDeleteStrNamedArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("delete-pokemon-named-arg")
-                .addParam("id", POKEMONS.get(BASE_ID+21).getId()).execute()
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+21));
+    public void testCreateNamedDmlWithDeleteStrNamedArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("delete-pokemon-named-arg")
+                    .addParam("id", POKEMONS.get(BASE_ID + 21).getId())
+                    .execute();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 21));
+        }
     }
 
     /**
      * Verify {@code createNamedDmlStatement(String)} API method with delete with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedDmlWithDeleteStrOrderArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createNamedDmlStatement("delete-pokemon-order-arg")
-                .addParam(POKEMONS.get(BASE_ID+22).getId()).execute()
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+22));
+    public void testCreateNamedDmlWithDeleteStrOrderArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createNamedDmlStatement("delete-pokemon-order-arg")
+                    .addParam(POKEMONS.get(BASE_ID + 22).getId())
+                    .execute();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 22));
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with delete with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithDeleteNamedArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(DELETE_POKEMON_NAMED_ARG)
-                .addParam("id", POKEMONS.get(BASE_ID+23).getId()).execute()
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+23));
+    public void testCreateDmlWithDeleteNamedArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(DELETE_POKEMON_NAMED_ARG)
+                    .addParam("id", POKEMONS.get(BASE_ID + 23).getId())
+                    .execute();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 23));
+        }
     }
 
     /**
      * Verify {@code createDmlStatement(String)} API method with delete with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateDmlWithDeleteOrderArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .createDmlStatement(DELETE_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(BASE_ID+24).getId()).execute()
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+24));
+    public void testCreateDmlWithDeleteOrderArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec
+                    .createDmlStatement(DELETE_POKEMON_ORDER_ARG)
+                    .addParam(POKEMONS.get(BASE_ID + 24).getId())
+                    .execute();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 24));
+        }
     }
 
     /**
      * Verify {@code namedDml(String)} API method with delete with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testNamedDmlWithDeleteOrderArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .namedDml("delete-pokemon-order-arg", POKEMONS.get(BASE_ID+25).getId())
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+25));
+    public void testNamedDmlWithDeleteOrderArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec.namedDml("delete-pokemon-order-arg", POKEMONS.get(BASE_ID + 25).getId());
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 25));
+        }
     }
 
     /**
      * Verify {@code dml(String)} API method with delete with ordered parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testDmlWithDeleteOrderArgs() throws ExecutionException, InterruptedException {
-        Long result = DB_CLIENT.execute(exec -> exec
-                .dml(DELETE_POKEMON_ORDER_ARG, POKEMONS.get(BASE_ID+26).getId())
-        ).toCompletableFuture().get();
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID+26));
+    public void testDmlWithDeleteOrderArgs() {
+        try (DbExecute exec = DB_CLIENT.execute()) {
+            long result = exec.dml(DELETE_POKEMON_ORDER_ARG, POKEMONS.get(BASE_ID + 26).getId());
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 26));
+        }
     }
 
 }

@@ -104,20 +104,30 @@ public class Utils {
     }
 
     /**
-     * Verify that {@code Multi<DbRow> rows} argument contains single record with provided pokemon.
+     * Verify that {@code List<DbRow> rows} argument contains single record with provided pokemon.
      *
-     * @param rows    database query result to verify
-     * @param pokemon pokemon to compare with
+     * @param rowsList database query result to verify
+     * @param pokemon  pokemon to compare with
      */
-    public static void verifyPokemon(Stream<DbRow> rows, AbstractIT.Pokemon pokemon) {
-        assertThat(rows, notNullValue());
-        List<DbRow> rowsList = rows.toList();
+    public static void verifyPokemon(List<DbRow> rowsList, AbstractIT.Pokemon pokemon) {
+        assertThat(rowsList, notNullValue());
         assertThat(rowsList, hasSize(1));
         DbRow row = rowsList.get(0);
         Integer id = row.column(1).as(Integer.class);
         String name = row.column(2).as(String.class);
         assertThat(id, equalTo(pokemon.getId()));
         assertThat(name, pokemon.getName().equals(name));
+    }
+
+    /**
+     * Verify that {@code Stream<DbRow> rows} argument contains single record with provided pokemon.
+     *
+     * @param rows    database query result to verify
+     * @param pokemon pokemon to compare with
+     */
+    public static void verifyPokemon(Stream<DbRow> rows, AbstractIT.Pokemon pokemon) {
+        assertThat(rows, notNullValue());
+        verifyPokemon(rows.toList(), pokemon);
     }
 
     /**
@@ -152,7 +162,7 @@ public class Utils {
      * @param result  DML statement result
      * @param pokemon pokemon to compare with
      */
-    public static void verifyInsertPokemon(Long result, AbstractIT.Pokemon pokemon) {
+    public static void verifyInsertPokemon(long result, AbstractIT.Pokemon pokemon) {
         assertThat(result, equalTo(1L));
         try (DbExecute exec = DB_CLIENT.execute()) {
             Optional<DbRow> maybeRow = exec.namedGet("select-pokemon-by-id", pokemon.getId());

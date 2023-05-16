@@ -24,7 +24,6 @@ import java.util.stream.Stream;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
 import io.helidon.dbclient.DbRow;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -62,43 +61,45 @@ public class InitIT extends AbstractIT {
      */
     private static void initData(DbClient dbClient) {
         // Init pokemon types
-        try (DbTransaction tx = dbClient.transaction()) {
+        dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Type> entry : TYPES.entrySet()) {
                 if (count < 0) {
-                    count = tx.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
+                    count = exec.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
                 } else {
-                    count += tx.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
+                    count += exec.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
                 }
             }
-        }
+            return null;
+        });
 
-        // Init pokemons
-        try (DbTransaction tx = dbClient.transaction()) {
+        dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Pokemon> entry : POKEMONS.entrySet()) {
                 if (count < 0) {
-                    count = tx.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
+                    count = exec.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
                 } else {
-                    count += tx.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
+                    count += exec.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
                 }
             }
-        }
+            return null;
+        });
 
         // Init pokemon to type relation
-        try (DbTransaction tx = dbClient.transaction()) {
+        dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Pokemon> entry : POKEMONS.entrySet()) {
                 Pokemon pokemon = entry.getValue();
                 for (Type type : pokemon.getTypes()) {
                     if (count < 0) {
-                        count = tx.namedDml("insert-poketype", pokemon.getId(), type.getId());
+                        count = exec.namedDml("insert-poketype", pokemon.getId(), type.getId());
                     } else {
-                        count += tx.namedDml("insert-poketype", pokemon.getId(), type.getId());
+                        count += exec.namedDml("insert-poketype", pokemon.getId(), type.getId());
                     }
                 }
             }
-        }
+            return null;
+        });
     }
 
     /**

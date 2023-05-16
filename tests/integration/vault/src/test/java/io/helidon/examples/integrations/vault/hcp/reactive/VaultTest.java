@@ -26,28 +26,29 @@ import java.util.Optional;
 
 import io.helidon.common.Base64Value;
 import io.helidon.common.http.Http;
+import io.helidon.common.socket.SocketOptions;
 import io.helidon.integrations.common.rest.ApiResponse;
 import io.helidon.integrations.vault.Secret;
 import io.helidon.integrations.vault.Vault;
-import io.helidon.integrations.vault.auths.approle.AppRoleAuthRx;
+import io.helidon.integrations.vault.auths.approle.AppRoleAuth;
 import io.helidon.integrations.vault.auths.approle.AppRoleVaultAuth;
 import io.helidon.integrations.vault.auths.approle.CreateAppRole;
 import io.helidon.integrations.vault.auths.approle.GenerateSecretId;
 import io.helidon.integrations.vault.secrets.cubbyhole.CreateCubbyhole;
-import io.helidon.integrations.vault.secrets.cubbyhole.CubbyholeSecretsRx;
+import io.helidon.integrations.vault.secrets.cubbyhole.CubbyholeSecrets;
 import io.helidon.integrations.vault.secrets.cubbyhole.DeleteCubbyhole;
 import io.helidon.integrations.vault.secrets.database.DbConfigure;
 import io.helidon.integrations.vault.secrets.database.DbCreateRole;
 import io.helidon.integrations.vault.secrets.database.DbCredentials;
-import io.helidon.integrations.vault.secrets.database.DbSecretsRx;
+import io.helidon.integrations.vault.secrets.database.DbSecrets;
 import io.helidon.integrations.vault.secrets.database.MySqlConfigureRequest;
 import io.helidon.integrations.vault.secrets.kv1.CreateKv1;
 import io.helidon.integrations.vault.secrets.kv1.DeleteKv1;
-import io.helidon.integrations.vault.secrets.kv1.Kv1SecretsRx;
+import io.helidon.integrations.vault.secrets.kv1.Kv1Secrets;
 import io.helidon.integrations.vault.secrets.kv2.CreateKv2;
 import io.helidon.integrations.vault.secrets.kv2.DeleteKv2;
 import io.helidon.integrations.vault.secrets.kv2.Kv2Secret;
-import io.helidon.integrations.vault.secrets.kv2.Kv2SecretsRx;
+import io.helidon.integrations.vault.secrets.kv2.Kv2Secrets;
 import io.helidon.integrations.vault.secrets.transit.CreateKey;
 import io.helidon.integrations.vault.secrets.transit.Decrypt;
 import io.helidon.integrations.vault.secrets.transit.DecryptBatch;
@@ -56,12 +57,12 @@ import io.helidon.integrations.vault.secrets.transit.Encrypt;
 import io.helidon.integrations.vault.secrets.transit.EncryptBatch;
 import io.helidon.integrations.vault.secrets.transit.Hmac;
 import io.helidon.integrations.vault.secrets.transit.Sign;
-import io.helidon.integrations.vault.secrets.transit.TransitSecretsRx;
+import io.helidon.integrations.vault.secrets.transit.TransitSecrets;
 import io.helidon.integrations.vault.secrets.transit.UpdateKeyConfig;
 import io.helidon.integrations.vault.secrets.transit.Verify;
 import io.helidon.integrations.vault.sys.DisableEngine;
 import io.helidon.integrations.vault.sys.EnableEngine;
-import io.helidon.integrations.vault.sys.SysRx;
+import io.helidon.integrations.vault.sys.Sys;
 import io.helidon.logging.common.LogConfig;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -99,7 +100,7 @@ class VaultTest {
 
     private static final Network NETWORK = Network.newNetwork();
     @Container
-    private static final MySQLContainer MY_SQL_CONTAINER = new MySQLContainer<>(MYSQL_IMAGE)
+    private static final MySQLContainer<?> MY_SQL_CONTAINER = new MySQLContainer<>(MYSQL_IMAGE)
             .withUsername("root")
             .withPassword("root")
             .withNetworkAliases("mysql")
@@ -107,7 +108,7 @@ class VaultTest {
             .withNetwork(NETWORK);
 
     @Container
-    private static final VaultContainer VAULT_CONTAINER = new VaultContainer<>(HCP_VAULT_IMAGE)
+    private static final VaultContainer<?> VAULT_CONTAINER = new VaultContainer<>(HCP_VAULT_IMAGE)
             .withVaultToken("myroot")
             .withNetwork(NETWORK)
             .dependsOn(MY_SQL_CONTAINER);
@@ -133,80 +134,78 @@ class VaultTest {
     @Order(2)
     void prepareVaultAndSecrets() {
         tokenVault = Vault.builder()
-                .address(vaultAddress)
-                .token("myroot")
-                .updateWebClient(it -> it.connectTimeout(TIMEOUT)
-                        .readTimeout(TIMEOUT))
-                .build();
+                          .address(vaultAddress)
+                          .token("myroot")
+                          .updateWebClient(it -> it.channelOptions(
+                                  SocketOptions.builder()
+                                               .connectTimeout(TIMEOUT)
+                                               .readTimeout(TIMEOUT)
+                                               .build()))
+                          .build();
     }
 
     @Test
     @Order(3)
     void testKv1() {
         // kv1 is not enabled by default
-        SysRx sys = tokenVault.sys(SysRx.API);
-        EnableEngine.Response enableResponse = sys.enableEngine(Kv1SecretsRx.ENGINE)
-                .await(TIMEOUT);
+        Sys sys = tokenVault.sys(Sys.API);
+        EnableEngine.Response enableResponse = sys.enableEngine(Kv1Secrets.ENGINE);
 
         assertThat("Enable kv1 engine, got response status: " + enableResponse.status(),
-                   enableResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                enableResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
-        Kv1SecretsRx secrets = tokenVault.secrets(Kv1SecretsRx.ENGINE);
+        Kv1Secrets secrets = tokenVault.secrets(Kv1Secrets.ENGINE);
         String secretPath = "first/secret";
 
         // create secret
-        CreateKv1.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue")).await(TIMEOUT);
+        CreateKv1.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue"));
         assertThat("Create secret, got response status: " + createResponse.status(),
-                   createResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                createResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
         // get secret
-        Optional<Secret> maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        Optional<Secret> maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalPresent());
         Secret secret = maybeSecret.get();
         assertThat(secret.path(), is(secretPath));
         assertThat(secret.values(), is(Map.of("key", "secretValue")));
 
-        DeleteKv1.Response deleteResponse = secrets.delete(secretPath).await(TIMEOUT);
+        DeleteKv1.Response deleteResponse = secrets.delete(secretPath);
         assertThat("Delete secret, got response status: " + deleteResponse.status(),
-                   deleteResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                deleteResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
-        List<String> secretList = secrets.list().await(TIMEOUT);
+        List<String> secretList = secrets.list();
         assertThat(secretList, is(List.of()));
 
-        maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalEmpty());
 
         // and disable engine
-        DisableEngine.Response disableResponse = sys.disableEngine(Kv1SecretsRx.ENGINE)
-                .await(TIMEOUT);
+        DisableEngine.Response disableResponse = sys.disableEngine(Kv1Secrets.ENGINE);
 
         assertThat("Disable kv1 engine, got response status: " + disableResponse.status(),
-                   disableResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                disableResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
     }
 
     @Test
     @Order(3)
     void testKv2() {
-        Kv2SecretsRx secrets = tokenVault.secrets(Kv2SecretsRx.ENGINE);
+        Kv2Secrets secrets = tokenVault.secrets(Kv2Secrets.ENGINE);
         String secretPath = "first/secret";
 
         // create secret
-        CreateKv2.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue")).await(TIMEOUT);
+        CreateKv2.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue"));
         assertThat("Create secret, got response status: " + createResponse.status(),
-                   createResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                createResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
         // get secret
-        Optional<Kv2Secret> maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        Optional<Kv2Secret> maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalPresent());
         Kv2Secret secret = maybeSecret.get();
@@ -214,19 +213,18 @@ class VaultTest {
         assertThat(secret.values(), is(Map.of("key", "secretValue")));
         assertThat(secret.metadata().version(), is(1));
 
-        List<String> secretList = secrets.list().await(TIMEOUT);
+        List<String> secretList = secrets.list();
         assertThat(secretList, hasItems("first/"));
 
-        secretList = secrets.list("first").await(TIMEOUT);
+        secretList = secrets.list("first");
         assertThat(secretList, hasItems("secret"));
 
-        DeleteKv2.Response deleteResponse = secrets.delete(secretPath, 1).await(TIMEOUT);
+        DeleteKv2.Response deleteResponse = secrets.delete(secretPath, 1);
         assertThat("Delete secret, got response status: " + deleteResponse.status(),
-                   deleteResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                deleteResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
-        maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalEmpty());
     }
@@ -234,34 +232,32 @@ class VaultTest {
     @Test
     @Order(3)
     void testCubbyhole() {
-        CubbyholeSecretsRx secrets = tokenVault.secrets(CubbyholeSecretsRx.ENGINE);
+        CubbyholeSecrets secrets = tokenVault.secrets(CubbyholeSecrets.ENGINE);
         String secretPath = "first/secret";
 
         // create secret
-        CreateCubbyhole.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue")).await(TIMEOUT);
+        CreateCubbyhole.Response createResponse = secrets.create(secretPath, Map.of("key", "secretValue"));
         assertThat("Create secret, got response status: " + createResponse.status(),
-                   createResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                createResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
         // get secret
-        Optional<Secret> maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        Optional<Secret> maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalPresent());
         Secret secret = maybeSecret.get();
         assertThat(secret.path(), is(secretPath));
         assertThat(secret.values(), is(Map.of("key", "secretValue")));
 
-        DeleteCubbyhole.Response deleteResponse = secrets.delete(secretPath).await(TIMEOUT);
+        DeleteCubbyhole.Response deleteResponse = secrets.delete(secretPath);
         assertThat("Delete secret, got response status: " + deleteResponse.status(),
-                   deleteResponse.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                deleteResponse.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
 
-        List<String> secretList = secrets.list().await(TIMEOUT);
+        List<String> secretList = secrets.list();
         assertThat(secretList, is(List.of()));
 
-        maybeSecret = secrets.get(secretPath)
-                .await(TIMEOUT);
+        maybeSecret = secrets.get(secretPath);
 
         assertThat(maybeSecret, optionalEmpty());
     }
@@ -275,40 +271,35 @@ class VaultTest {
             mysqlHost = mysqlHost.substring(1);
         }
         // database is not enabled by default
-        SysRx sys = tokenVault.sys(SysRx.API);
-        EnableEngine.Response enableResponse = sys.enableEngine(DbSecretsRx.ENGINE)
-                .await(TIMEOUT);
+        Sys sys = tokenVault.sys(Sys.API);
+        EnableEngine.Response enableResponse = sys.enableEngine(DbSecrets.ENGINE);
         assertSuccess("Enable database engine", enableResponse);
-        DbSecretsRx database = tokenVault.secrets(DbSecretsRx.ENGINE);
+        DbSecrets database = tokenVault.secrets(DbSecrets.ENGINE);
 
         // configure connection
         String connectionTemplate = "{{username}}:{{password}}@tcp"
                 + "(mysql:3306)/";
         DbConfigure.Response dbConfigResponse = database
                 .configure(MySqlConfigureRequest.builder(connectionTemplate)
-                                   .name("mysql")
-                                   .username("root")
-                                   .password("root")
-                                   .maxOpenConnections(5)
-                                   .maxConnectionLifetime(Duration.ofMinutes(1))
-                                   .addAllowedRole("readonly"))
-                .await(TIMEOUT);
+                                                .name("mysql")
+                                                .username("root")
+                                                .password("root")
+                                                .maxOpenConnections(5)
+                                                .maxConnectionLifetime(Duration.ofMinutes(1))
+                                                .addAllowedRole("readonly"));
         assertSuccess("Configure MySQL", dbConfigResponse);
 
         // add role
-        DbCreateRole.Response roleResponse = database.createRole(DbCreateRole.Request.builder()
-                                                                         .name("readonly")
-                                                                         .dbName("mysql")
-                                                                         .addCreationStatement(
-                                                                                 "CREATE USER '{{name}}'@'%' IDENTIFIED BY "
-                                                                                         + "'{{password}}'")
-                                                                         .addCreationStatement(
-                                                                                 "GRANT SELECT ON *.* TO '{{name}}'@'%'"))
-                .await(TIMEOUT);
+        DbCreateRole.Response roleResponse = database.createRole(
+                DbCreateRole.Request.builder()
+                                    .name("readonly")
+                                    .dbName("mysql")
+                                    .addCreationStatement("CREATE USER '{{name}}'@'%' IDENTIFIED BY '{{password}}'")
+                                    .addCreationStatement("GRANT SELECT ON *.* TO '{{name}}'@'%'"));
         assertSuccess("Create MySQL role", roleResponse);
 
         // verify we can get secrets to connect to the database
-        Optional<DbCredentials> maybeCreds = database.get("readonly").await(TIMEOUT);
+        Optional<DbCredentials> maybeCreds = database.get("readonly");
 
         assertThat(maybeCreds, optionalPresent());
 
@@ -324,38 +315,34 @@ class VaultTest {
         }
 
         // remove role
-        assertSuccess("Delete MySQL role", database.deleteRole("readonly").await(TIMEOUT));
+        assertSuccess("Delete MySQL role", database.deleteRole("readonly"));
         // remove db
-        assertSuccess("Delete database", database.delete("mysql").await(TIMEOUT));
+        assertSuccess("Delete database", database.delete("mysql"));
     }
 
     @Test
     @Order(3)
     void testTransit() {
         // kv1 is not enabled by default
-        SysRx sys = tokenVault.sys(SysRx.API);
-        EnableEngine.Response enableResponse = sys.enableEngine(TransitSecretsRx.ENGINE)
-                .await(TIMEOUT);
+        Sys sys = tokenVault.sys(Sys.API);
+        EnableEngine.Response enableResponse = sys.enableEngine(TransitSecrets.ENGINE);
         assertSuccess("Enable transit engine", enableResponse);
 
-        TransitSecretsRx secrets = tokenVault.secrets(TransitSecretsRx.ENGINE);
+        TransitSecrets secrets = tokenVault.secrets(TransitSecrets.ENGINE);
 
         /*
          Create keys
          */
         CreateKey.Response createResponse = secrets.createKey(CreateKey.Request.builder()
-                                                                      .name(TRANSIT_ENCRYPTION_KEY))
-                .await(TIMEOUT);
+                                                                               .name(TRANSIT_ENCRYPTION_KEY));
         assertSuccess("Create encryption key", createResponse);
 
         createResponse = secrets.createKey(CreateKey.Request.builder()
-                                                   .name(TRANSIT_SIGNATURE_KEY)
-                                                   .type("rsa-2048"))
-                .await(TIMEOUT);
+                                                            .name(TRANSIT_SIGNATURE_KEY)
+                                                            .type("rsa-2048"));
         assertSuccess("Create signature key", createResponse);
         createResponse = secrets.createKey(CreateKey.Request.builder()
-                                                   .name(TRANSIT_HMAC_KEY))
-                .await(TIMEOUT);
+                                                            .name(TRANSIT_HMAC_KEY));
         assertSuccess("Create hmac key", createResponse);
 
         /*
@@ -371,76 +358,70 @@ class VaultTest {
         Delete keys
          */
         assertSuccess("Update key config", secrets.updateKeyConfig(UpdateKeyConfig.Request.builder()
-                                                                           .name(TRANSIT_ENCRYPTION_KEY)
-                                                                           .allowDeletion(true))
-                .await(TIMEOUT));
+                                                                                          .name(TRANSIT_ENCRYPTION_KEY)
+                                                                                          .allowDeletion(true)));
 
-        assertSuccess("Delete encryption key", secrets.deleteKey(DeleteKey.Request.create(TRANSIT_ENCRYPTION_KEY))
-                .await(TIMEOUT));
+        assertSuccess("Delete encryption key", secrets.deleteKey(DeleteKey.Request.create(TRANSIT_ENCRYPTION_KEY)));
 
         // and disable engine
-        assertSuccess("Disable transit engine", sys.disableEngine(TransitSecretsRx.ENGINE)
-                .await(TIMEOUT));
+        assertSuccess("Disable transit engine", sys.disableEngine(TransitSecrets.ENGINE));
     }
 
     @Test
     @Order(4)
     void testAppRole() {
-        SysRx sys = tokenVault.sys(SysRx.API);
+        Sys sys = tokenVault.sys(Sys.API);
 
-        assertSuccess("Enable App Role auth", sys.enableAuth(AppRoleAuthRx.AUTH_METHOD).await(TIMEOUT));
-        assertSuccess("Create App Role policy", sys.createPolicy(APPROLE_POLICY_NAME, VaultPolicy.POLICY).await(TIMEOUT));
+        assertSuccess("Enable App Role auth", sys.enableAuth(AppRoleAuth.AUTH_METHOD));
+        assertSuccess("Create App Role policy", sys.createPolicy(APPROLE_POLICY_NAME, VaultPolicy.POLICY));
 
-        AppRoleAuthRx auth = tokenVault.auth(AppRoleAuthRx.AUTH_METHOD);
+        AppRoleAuth auth = tokenVault.auth(AppRoleAuth.AUTH_METHOD);
 
-        assertSuccess("Create App Role", auth.createAppRole(CreateAppRole.Request.builder()
-                                                                    .roleName(APPROLE_ROLE_NAME)
-                                                                    .addTokenPolicy(APPROLE_POLICY_NAME)
-                                                                    .tokenExplicitMaxTtl(Duration.ofMinutes(1)))
-                .await(TIMEOUT));
+        assertSuccess("Create App Role", auth.createAppRole(
+                CreateAppRole.Request.builder()
+                                     .roleName(APPROLE_ROLE_NAME)
+                                     .addTokenPolicy(APPROLE_POLICY_NAME)
+                                     .tokenExplicitMaxTtl(Duration.ofMinutes(1))));
 
-        Optional<String> roleIdResponse = auth.readRoleId(APPROLE_ROLE_NAME).await(TIMEOUT);
+        Optional<String> roleIdResponse = auth.readRoleId(APPROLE_ROLE_NAME);
         assertThat(roleIdResponse, optionalPresent());
         String roleId = roleIdResponse.get();
 
         GenerateSecretId.Response secretIdResponse = auth.generateSecretId(GenerateSecretId.Request.builder()
-                                                                                   .roleName(APPROLE_ROLE_NAME)
-                                                                                   .addMetadata("name", "helidon"))
-                .await(TIMEOUT);
+                                                                                                   .roleName(APPROLE_ROLE_NAME)
+                                                                                                   .addMetadata("name", "helidon"));
         assertSuccess("Generate secret id", secretIdResponse);
 
         String secretId = secretIdResponse.secretId();
         Vault appRoleVault = Vault.builder()
-                .address(vaultAddress)
-                .addVaultAuth(AppRoleVaultAuth.builder()
-                                      .appRoleId(roleId)
-                                      .secretId(secretId)
-                                      .build())
-                .build();
+                                  .address(vaultAddress)
+                                  .addVaultAuth(AppRoleVaultAuth.builder()
+                                                                .appRoleId(roleId)
+                                                                .secretId(secretId)
+                                                                .build())
+                                  .build();
 
-        Kv2SecretsRx secrets = appRoleVault.secrets(Kv2SecretsRx.ENGINE);
+        Kv2Secrets secrets = appRoleVault.secrets(Kv2Secrets.ENGINE);
         String secretPath = "myapprole/secret";
         assertSuccess("Create secrets", secrets.create(secretPath, Map.of("secret-key", "secretValue",
-                                                                          "secret-user", "username"))
-                .await(TIMEOUT));
+                                                       "secret-user", "username")));
 
-        Optional<Kv2Secret> secretResponse = secrets.get(secretPath).await(TIMEOUT);
+        Optional<Kv2Secret> secretResponse = secrets.get(secretPath);
         assertThat(secretResponse, optionalPresent());
         Kv2Secret secret = secretResponse.get();
         assertThat(secret.value("secret-key"), optionalValue(is("secretValue")));
         assertThat(secret.value("secret-user"), optionalValue(is("username")));
 
-        assertSuccess("Delete secrets", secrets.deleteAll(secretPath).await(TIMEOUT));
+        assertSuccess("Delete secrets", secrets.deleteAll(secretPath));
     }
 
-    private void transitHmac(TransitSecretsRx secrets) {
+    private void transitHmac(TransitSecrets secrets) {
         String secret = "Hello World";
         Base64Value data = Base64Value.create(secret);
 
         Hmac.Response signResponse = secrets.hmac(Hmac.Request.builder()
-                                                          .hmacKeyName(TRANSIT_HMAC_KEY)
-                                                          .data(data))
-                .await(TIMEOUT);
+                                                              .hmacKeyName(TRANSIT_HMAC_KEY)
+                                                              .data(data));
         assertSuccess("HMAC", signResponse);
 
         String hmac = signResponse.hmac();
@@ -448,22 +429,20 @@ class VaultTest {
         assertThat(hmac, not(secret));
 
         Verify.Response verifyResponse = secrets.verify(Verify.Request.builder()
-                                                                .digestKeyName(TRANSIT_HMAC_KEY)
-                                                                .hmac(hmac)
-                                                                .data(data))
-                .await(TIMEOUT);
+                                                                      .digestKeyName(TRANSIT_HMAC_KEY)
+                                                                      .hmac(hmac)
+                                                                      .data(data));
         assertSuccess("Verify HMAC", verifyResponse);
         assertThat("HMAC should be valid", verifyResponse.isValid(), is(true));
     }
 
-    private void transitSignature(TransitSecretsRx secrets) {
+    private void transitSignature(TransitSecrets secrets) {
         String secret = "Hello World";
         Base64Value data = Base64Value.create(secret);
 
         Sign.Response signResponse = secrets.sign(Sign.Request.builder()
-                                                          .signatureKeyName(TRANSIT_SIGNATURE_KEY)
-                                                          .data(data))
-                .await(TIMEOUT);
+                                                              .signatureKeyName(TRANSIT_SIGNATURE_KEY)
+                                                              .data(data));
         assertSuccess("Sign", signResponse);
 
         String signature = signResponse.signature();
@@ -471,20 +450,18 @@ class VaultTest {
         assertThat(signature, not(secret));
 
         Verify.Response verifyResponse = secrets.verify(Verify.Request.builder()
-                                                                .digestKeyName(TRANSIT_SIGNATURE_KEY)
-                                                                .signature(signature)
-                                                                .data(data))
-                .await(TIMEOUT);
+                                                                      .digestKeyName(TRANSIT_SIGNATURE_KEY)
+                                                                      .signature(signature)
+                                                                      .data(data));
         assertSuccess("Verify", verifyResponse);
         assertThat("Signature should be valid", verifyResponse.isValid(), is(true));
     }
 
-    private void transitEncryption(TransitSecretsRx secrets) {
+    private void transitEncryption(TransitSecrets secrets) {
         String secret = "text";
         Encrypt.Response encryptResponse = secrets.encrypt(Encrypt.Request.builder()
-                                                                   .encryptionKeyName(TRANSIT_ENCRYPTION_KEY)
-                                                                   .data(Base64Value.create(secret)))
-                .await(TIMEOUT);
+                                                                          .encryptionKeyName(TRANSIT_ENCRYPTION_KEY)
+                                                                          .data(Base64Value.create(secret)));
         assertSuccess("Encrypt", encryptResponse);
 
         String cipherText = encryptResponse.encrypted().cipherText();
@@ -492,28 +469,26 @@ class VaultTest {
         assertThat(cipherText, not(secret));
 
         Decrypt.Response decryptResponse = secrets.decrypt(Decrypt.Request.builder()
-                                                                   .cipherText(cipherText)
-                                                                   .encryptionKeyName(TRANSIT_ENCRYPTION_KEY))
-                .await(TIMEOUT);
+                                                                          .cipherText(cipherText)
+                                                                          .encryptionKeyName(TRANSIT_ENCRYPTION_KEY));
         assertSuccess("Decrypt", decryptResponse);
         String decrypted = decryptResponse.decrypted().toDecodedString();
         assertThat(decrypted, is(secret));
     }
 
-    private void transitBatch(TransitSecretsRx secrets) {
+    private void transitBatch(TransitSecrets secrets) {
         // batch
         String[] data = {"one", "two", "three", "four"};
         EncryptBatch.Request encryptBatch = EncryptBatch.Request.builder()
-                .encryptionKeyName(TRANSIT_ENCRYPTION_KEY);
+                                                                .encryptionKeyName(TRANSIT_ENCRYPTION_KEY);
         DecryptBatch.Request decryptBatch = DecryptBatch.Request.builder()
-                .encryptionKeyName(TRANSIT_ENCRYPTION_KEY);
+                                                                .encryptionKeyName(TRANSIT_ENCRYPTION_KEY);
 
         for (String datum : data) {
             encryptBatch.addEntry(EncryptBatch.BatchEntry.create(Base64Value.create(datum)));
         }
 
-        EncryptBatch.Response response = secrets.encrypt(encryptBatch)
-                .await(TIMEOUT);
+        EncryptBatch.Response response = secrets.encrypt(encryptBatch);
         assertSuccess("Encrypt batch", response);
 
         List<Encrypt.Encrypted> encrypted = response.batchResult();
@@ -525,19 +500,19 @@ class VaultTest {
         for (Encrypt.Encrypted encryptedValue : encrypted) {
             decryptBatch.addEntry(DecryptBatch.BatchEntry.create(encryptedValue.cipherText()));
         }
-        DecryptBatch.Response decryptResponse = secrets.decrypt(decryptBatch).await(TIMEOUT);
+        DecryptBatch.Response decryptResponse = secrets.decrypt(decryptBatch);
         assertSuccess("Decrypt batch", decryptResponse);
 
         String[] decrypted = decryptResponse.batchResult()
-                .stream()
-                .map(Base64Value::toDecodedString)
-                .toArray(String[]::new);
+                                            .stream()
+                                            .map(Base64Value::toDecodedString)
+                                            .toArray(String[]::new);
         assertThat(decrypted, is(data));
     }
 
     private void assertSuccess(String action, ApiResponse response) {
         assertThat(action + ", got response status: " + response.status(),
-                   response.status().family(),
-                   is(Http.Status.Family.SUCCESSFUL));
+                response.status().family(),
+                is(Http.Status.Family.SUCCESSFUL));
     }
 }

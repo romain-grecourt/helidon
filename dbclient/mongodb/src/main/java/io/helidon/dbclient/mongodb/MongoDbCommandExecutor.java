@@ -60,7 +60,7 @@ final class MongoDbCommandExecutor {
         DbMapperManager dbMapperManager = clientContext.dbMapperManager();
         MapperManager mapperManager = clientContext.mapperManager();
 
-        Document doc = dbStmt.noTx() ? db.runCommand(command) : db.runCommand(dbStmt.txManager().tx(), command);
+        Document doc = db.runCommand(command);
         return Stream.of(MongoDbRow.create(doc, dbMapperManager, mapperManager));
     }
 }

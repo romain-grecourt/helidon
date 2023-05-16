@@ -16,7 +16,6 @@
 package io.helidon.tests.integration.dbclient.common.tests.transaction;
 
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import io.helidon.dbclient.DbRow;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
@@ -32,101 +31,86 @@ public class TransactionGetIT extends AbstractIT {
 
     /**
      * Verify {@code createNamedGet(String, String)} API method with named parameters.
-     *
-     * @throws ExecutionException when database query failed
-     * @throws InterruptedException if the current thread was interrupted
      */
     @Test
-    public void testCreateNamedGetStrStrNamedArgs() throws ExecutionException, InterruptedException {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
+    public void testCreateNamedGetStrStrNamedArgs() {
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
                 .createNamedGet("select-pikachu", SELECT_POKEMON_NAMED_ARG)
-                .addParam("name", POKEMONS.get(1).getName()).execute()
-        ).toCompletableFuture().get();
+                .addParam("name", POKEMONS.get(1).getName())
+                .execute());
         verifyPokemon(maybeRow, POKEMONS.get(1));
     }
 
     /**
      * Verify {@code createNamedGet(String)} API method with named parameters.
-     *
      */
     @Test
     public void testCreateNamedGetStrNamedArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
                 .createNamedGet("select-pokemon-named-arg")
                 .addParam("name", POKEMONS.get(2).getName())
-                .execute())
-                .await();
+                .execute());
 
         verifyPokemon(maybeRow, POKEMONS.get(2));
     }
 
     /**
      * Verify {@code createNamedGet(String)} API method with ordered parameters.
-     *
      */
     @Test
     public void testCreateNamedGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
                 .createNamedGet("select-pokemon-order-arg")
                 .addParam(POKEMONS.get(3).getName())
-                .execute())
-                .await();
+                .execute());
 
         verifyPokemon(maybeRow, POKEMONS.get(3));
     }
 
     /**
      * Verify {@code createGet(String)} API method with named parameters.
-     *
      */
     @Test
     public void testCreateGetNamedArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
                 .createGet(SELECT_POKEMON_NAMED_ARG)
                 .addParam("name", POKEMONS.get(4).getName())
-                .execute())
-                .await();
+                .execute());
 
         verifyPokemon(maybeRow, POKEMONS.get(4));
     }
 
     /**
      * Verify {@code createGet(String)} API method with ordered parameters.
-     *
      */
     @Test
     public void testCreateGetOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
                 .createGet(SELECT_POKEMON_ORDER_ARG)
                 .addParam(POKEMONS.get(5).getName())
-                .execute())
-                .await();
+                .execute());
 
         verifyPokemon(maybeRow, POKEMONS.get(5));
     }
 
     /**
      * Verify {@code namedGet(String)} API method with ordered parameters passed directly to the {@code query} method.
-     *
      */
     @Test
     public void testNamedGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
-                .namedGet("select-pokemon-order-arg", POKEMONS.get(6).getName()))
-                .await();
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
+                .namedGet("select-pokemon-order-arg", POKEMONS.get(6).getName()));
 
         verifyPokemon(maybeRow, POKEMONS.get(6));
     }
 
     /**
      * Verify {@code get(String)} API method with ordered parameters passed directly to the {@code query} method.
-     *
      */
     @Test
     public void testGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.inTransaction(tx -> tx
-                .get(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName()))
-                .await();
+        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
+                .get(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName()));
 
         verifyPokemon(maybeRow, POKEMONS.get(7));
     }

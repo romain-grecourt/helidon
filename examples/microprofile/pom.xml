@@ -37,6 +37,7 @@
         <module>hello-world-explicit</module>
         <module>static-content</module>
         <module>security</module>
+        <module>jersey-security</module>
         <module>idcs</module>
         <module>multipart</module>
         <module>oidc</module>

@@ -17,21 +17,21 @@
 package io.helidon.examples.openapi;
 
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 
-import io.helidon.common.media.type.MediaTypes;
+import io.helidon.common.http.HttpMediaType;
+import io.helidon.config.Config;
 import io.helidon.examples.openapi.internal.SimpleAPIModelReader;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webclient.http1.Http1ClientResponse;
+import io.helidon.nima.webserver.WebServer;
 
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPointer;
 import jakarta.json.JsonString;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -40,79 +40,68 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 @Disabled("3.0.0-JAKARTA") // OpenAPI: org.yaml.snakeyaml.constructor.ConstructorException:
 // Cannot create property=paths for JavaBean=io.smallrye.openapi.api.models.OpenAPIImpl@5dcd8c7a
+@ServerTest
 public class MainTest {
 
-    private static WebServer webServer;
-    private static WebClient webClient;
+    private final Http1Client client;
 
     private static final JsonBuilderFactory JSON_BF = Json.createBuilderFactory(Collections.emptyMap());
     private static final JsonObject TEST_JSON_OBJECT;
 
     static {
         TEST_JSON_OBJECT = JSON_BF.createObjectBuilder()
-                .add("greeting", "Hola")
-                .build();
+                                  .add("greeting", "Hola")
+                                  .build();
     }
 
-    @BeforeAll
-    public static void startTheServer() {
-        webServer = Main.startServer().await();
-
-        webClient = WebClient.builder()
-                .baseUri("http://localhost:" + webServer.port())
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+    MainTest(Http1Client client) {
+        this.client = client;
     }
 
-    @AfterAll
-    public static void stopServer() {
-        if (webServer != null) {
-            webServer.shutdown()
-                    .await(10, TimeUnit.SECONDS);
-        }
+    @SetUpServer
+    public static void setup(WebServer.Builder builder) {
+        builder.routing(routing -> Main.routing(routing, Config.create()));
     }
 
     @Test
     public void testHelloWorld() {
-        webClient.get()
-                .path("/greet")
-                .request(JsonObject.class)
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("greeting"), is("Hello World!")))
-                .await();
+        assertThat(client.get()
+                         .path("/greet")
+                         .request(JsonObject.class)
+                         .getString("greeting"), is("Hello World!"));
 
-        webClient.get()
-                .path("/greet/Joe")
-                .request(JsonObject.class)
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("greeting"), is("Hello Joe!")))
-                .await();
+        assertThat(client.get()
+                         .path("/greet/Joe")
+                         .request(JsonObject.class)
+                         .getString("greeting"), is("Hello World!"));
 
-        webClient.put()
-                .path("/greet/greeting")
-                .submit(TEST_JSON_OBJECT)
-                .thenAccept(response -> assertThat(response.status().code(), is(204)))
-                .thenCompose(nothing -> webClient.get()
-                        .path("/greet/Joe")
-                        .request(JsonObject.class))
-                .thenAccept(jsonObject -> assertThat(jsonObject.getString("greeting"), is("Hola Joe!")))
-                .await();
+        try (Http1ClientResponse response = client.put()
+                                                  .path("/greet/greeting")
+                                                  .submit(TEST_JSON_OBJECT)) {
 
-        webClient.get()
-                .path("/health")
-                .request()
-                .thenAccept(response -> {
-                    assertThat(response.status().code(), is(200));
-                    response.close();
-                })
-                .await();
+            assertThat(response.status().code(), is(204));
 
-        webClient.get()
-                .path("/metrics")
-                .request()
-                .thenAccept(response -> {
-                    assertThat(response.status().code(), is(200));
-                    response.close();
-                })
-                .await();
+        }
+
+        assertThat(client.get()
+                         .path("/greet/Joe")
+                         .request(JsonObject.class)
+                         .getString("greeting"), is("Hola Joe!"));
+
+        try (Http1ClientResponse response = client.get()
+                                                  .path("/observe/health")
+                                                  .request()) {
+
+            assertThat(response.status().code(), is(200));
+        }
+
+
+        try (Http1ClientResponse response = client.get()
+                                                  .path("/metrics")
+                                                  .request()) {
+
+            assertThat(response.status().code(), is(200));
+        }
     }
 
     @Test
@@ -121,11 +110,10 @@ public class MainTest {
          * If you change the OpenAPI endpoint path in application.yaml, then
          * change the following path also.
          */
-        JsonObject jsonObject = webClient.get()
-                .accept(MediaTypes.APPLICATION_JSON)
-                .path("/openapi")
-                .request(JsonObject.class)
-                .await();
+        JsonObject jsonObject = client.get()
+                                      .accept(HttpMediaType.APPLICATION_JSON)
+                                      .path("/openapi")
+                                      .request(JsonObject.class);
         JsonObject paths = jsonObject.getJsonObject("paths");
 
         JsonPointer jp = Json.createPointer("/" + escape("/greet/greeting") + "/put/summary");
@@ -133,7 +121,7 @@ public class MainTest {
         assertThat("/greet/greeting.put.summary not as expected", js.getString(), is("Set the greeting prefix"));
 
         jp = Json.createPointer("/" + escape(SimpleAPIModelReader.MODEL_READER_PATH)
-                                        + "/get/summary");
+                + "/get/summary");
         js = (JsonString) jp.getValue(paths);
         assertThat("summary added by model reader does not match", js.getString(),
                 is(SimpleAPIModelReader.SUMMARY));

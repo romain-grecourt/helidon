@@ -24,7 +24,6 @@ import io.helidon.dbclient.DbStatementType;
 import io.helidon.dbclient.AbstractStatement;
 import io.helidon.dbclient.DbStatementContext;
 
-import io.helidon.dbclient.mongodb.MongoDbTransaction.TransactionManager;
 import jakarta.json.Json;
 import org.bson.Document;
 
@@ -65,9 +64,6 @@ abstract class MongoDbStatement<S extends DbStatement<S, R>, R> extends Abstract
     /** MongoDB database. */
     private final MongoDatabase db;
 
-    /** MongoDB transaction manager. Set to {@code null} when not running in transaction. */
-    private TransactionManager txManager;
-
     /**
      * Creates an instance of MongoDB statement builder.
      *
@@ -77,11 +73,6 @@ abstract class MongoDbStatement<S extends DbStatement<S, R>, R> extends Abstract
     MongoDbStatement(MongoDatabase db, DbStatementContext statementContext) {
         super(statementContext);
         this.db = db;
-        this.txManager = null;
-    }
-
-    void txManager(TransactionManager txManager) {
-        this.txManager = txManager;
     }
 
     String build() {
@@ -106,14 +97,6 @@ abstract class MongoDbStatement<S extends DbStatement<S, R>, R> extends Abstract
 
     MongoDatabase db() {
         return db;
-    }
-
-    boolean noTx() {
-        return txManager == null;
-    }
-
-    TransactionManager txManager() {
-        return txManager;
     }
 
     @Override

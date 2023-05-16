@@ -145,17 +145,6 @@ db:
 The Helidon DB Client API contains many methods to run various statements with parameters and to retrieve statement execution
 results. The following sections describe the options you can use to build and execute your statements.
 
-=== Executor Selection
-
-`DBClient` class has two methods to select whether statements will be executed in transaction or not:
-
-* `execute(Function<DbExecute, T> executor)`
-
-* `inTransaction(Function<DbTransaction, T> executor)`
-
-Both methods provide an executor (either `DbExecute` or `DbTransaction`) and expect either `Single` or a `Multi` result,
-usually returned by one of their methods.
-
 === Statement Building and Execution
 DbExecute class offers many methods for various statements builders:
 

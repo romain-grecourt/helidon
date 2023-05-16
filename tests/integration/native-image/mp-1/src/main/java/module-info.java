@@ -38,8 +38,8 @@ module helidon.tests.nimage.mp {
     // this is required, as otherwise the beans from this module
     // never reach health check CDI extension
     requires io.helidon.health.checks;
-    requires io.opentracing.api;
-    requires io.opentracing.util;
+//    requires io.opentracing.api;
+//    requires io.opentracing.util;
 
     // needed to compile pico generated classes
     requires static io.helidon.pico.runtime;

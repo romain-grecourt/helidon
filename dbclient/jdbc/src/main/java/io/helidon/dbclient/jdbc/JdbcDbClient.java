@@ -19,6 +19,7 @@ import java.lang.System.Logger.Level;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Function;
 
 import io.helidon.common.mapper.MapperManager;
 import io.helidon.dbclient.DbClient;
@@ -30,7 +31,6 @@ import io.helidon.dbclient.DbStatementDml;
 import io.helidon.dbclient.DbStatementGet;
 import io.helidon.dbclient.DbStatementQuery;
 import io.helidon.dbclient.DbStatements;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.dbclient.AbstractDbExecute;
 import io.helidon.dbclient.DbStatementContext;
 
@@ -63,13 +63,11 @@ class JdbcDbClient implements DbClient {
     }
 
     @Override
-    public JdbcTxExecute transaction() {
-        return new JdbcTxExecute(
-                statements,
-                clientServices,
-                connectionPool,
-                dbMapperManager,
-                mapperManager);
+    public <T> T transaction(Function<DbExecute, T> function) {
+        try (JdbcTxExecute tx = new JdbcTxExecute(
+                statements, clientServices, connectionPool, dbMapperManager, mapperManager)) {
+            return tx.execute(function);
+        }
     }
 
     @Override
@@ -97,7 +95,7 @@ class JdbcDbClient implements DbClient {
                 cls.getName()));
     }
 
-    private static final class JdbcTxExecute extends JdbcExecute implements DbTransaction {
+    private static final class JdbcTxExecute extends JdbcExecute {
 
         private JdbcTxExecute(DbStatements statements,
                               List<DbClientService> clientServices,
@@ -125,12 +123,22 @@ class JdbcDbClient implements DbClient {
             return conn;
         }
 
-        @Override
-        public void rollback() {
+        @SuppressWarnings("resource")
+        <T> T execute(Function<DbExecute, T> function) {
+            Connection conn = context().connection();
             try {
-                context().connection().rollback();
-            } catch (SQLException e) {
-                throw new DbClientException("Failed to rollback a transaction", e);
+                T result = function.apply(this);
+                conn.commit();
+                return result;
+            } catch (RuntimeException ex) {
+                try {
+                    conn.rollback();
+                } catch (SQLException e) {
+                    throw new DbClientException("Failed to rollback transaction", ex);
+                }
+                throw ex;
+            } catch (SQLException ex) {
+                throw new DbClientException("Failed to commit transaction", ex);
             }
         }
     }

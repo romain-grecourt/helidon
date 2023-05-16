@@ -90,10 +90,6 @@
             <artifactId>helidon-nima-observe-metrics</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.nima.observe</groupId>
-            <artifactId>helidon-nima-observe-metrics</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.helidon.nima.webserver</groupId>
             <artifactId>helidon-nima-webserver-tracing</artifactId>
         </dependency>

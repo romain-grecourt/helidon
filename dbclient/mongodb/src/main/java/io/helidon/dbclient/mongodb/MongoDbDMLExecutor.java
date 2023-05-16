@@ -47,9 +47,6 @@ final class MongoDbDMLExecutor {
                         "Statement operation not yet supported: %s",
                         type.name()));
             };
-            if (dbStmt.txManager() != null) {
-                dbStmt.txManager().stmtFinished(dbStmt);
-            }
             LOGGER.log(Level.DEBUG, () -> String.format(
                     "%s DML %s execution succeeded",
                     type.name(),
@@ -58,9 +55,6 @@ final class MongoDbDMLExecutor {
         } catch (UnsupportedOperationException ex) {
             throw ex;
         } catch (Throwable throwable) {
-            if (dbStmt.txManager() != null) {
-                dbStmt.txManager().stmtFailed(dbStmt);
-            }
             LOGGER.log(Level.DEBUG, () -> String.format(
                     "%s DML %s execution failed", type.name(), dbStmt.statementName()));
             throw throwable;
@@ -69,11 +63,7 @@ final class MongoDbDMLExecutor {
 
     private static Long executeInsert(MongoDbStatement<?, ?> dbStmt, MongoStatement stmt) {
         MongoCollection<Document> mc = dbStmt.db().getCollection(stmt.getCollection());
-        if (dbStmt.noTx()) {
-            mc.insertOne(stmt.getValue());
-        } else {
-            mc.insertOne(dbStmt.txManager().tx(), stmt.getValue());
-        }
+        mc.insertOne(stmt.getValue());
         return 1L;
     }
 
@@ -81,9 +71,7 @@ final class MongoDbDMLExecutor {
         MongoCollection<Document> mc = dbStmt.db().getCollection(stmt.getCollection());
         Document query = stmt.getQuery();
 
-        UpdateResult updateResult = dbStmt.noTx()
-                ? mc.updateMany(query, stmt.getValue())
-                : mc.updateMany(dbStmt.txManager().tx(), query, stmt.getValue());
+        UpdateResult updateResult = mc.updateMany(query, stmt.getValue());
         return updateResult.getModifiedCount();
 
     }
@@ -91,9 +79,7 @@ final class MongoDbDMLExecutor {
     private static Long executeDelete(MongoDbStatement<?, ?> dbStmt, MongoStatement stmt) {
         MongoCollection<Document> mc = dbStmt.db().getCollection(stmt.getCollection());
         Document query = stmt.getQuery();
-        DeleteResult deleteResult = dbStmt.noTx()
-                ? mc.deleteMany(query)
-                : mc.deleteMany(dbStmt.txManager().tx(), query);
+        DeleteResult deleteResult = mc.deleteMany(query);
         return deleteResult.getDeletedCount();
     }
 }

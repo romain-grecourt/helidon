@@ -19,61 +19,63 @@ package io.helidon.examples.integrations.vault.hcp.reactive;
 final class VaultPolicy {
     private VaultPolicy() {
     }
-    static final String POLICY = "# Enable and manage authentication methods\n"
-            + "path \"auth/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"update\", \"delete\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "# Create, update, and delete auth methods\n"
-            + "path \"sys/auth/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"update\", \"delete\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "# List auth methods\n"
-            + "path \"sys/auth\"\n"
-            + "{\n"
-            + "  capabilities = [\"read\"]\n"
-            + "}\n"
-            + "\n"
-            + "# Enable and manage the key/value secrets engine at `secret/` path\n"
-            + "\n"
-            + "# List, create, update, and delete key/value secrets\n"
-            + "path \"secret/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "path \"kv1/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "path \"cubbyhole/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "path \"database/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "path \"kv/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "# Manage secrets engines\n"
-            + "path \"sys/mounts/*\"\n"
-            + "{\n"
-            + "  capabilities = [\"create\", \"read\", \"update\", \"delete\", \"list\", \"sudo\"]\n"
-            + "}\n"
-            + "\n"
-            + "# List existing secrets engines.\n"
-            + "path \"sys/mounts\"\n"
-            + "{\n"
-            + "  capabilities = [\"read\"]\n"
-            + "}\n";
+    static final String POLICY = """
+            # Enable and manage authentication methods
+            path "auth/*"
+            {
+              capabilities = ["create", "update", "delete", "sudo"]
+            }
+
+            # Create, update, and delete auth methods
+            path "sys/auth/*"
+            {
+              capabilities = ["create", "update", "delete", "sudo"]
+            }
+
+            # List auth methods
+            path "sys/auth"
+            {
+              capabilities = ["read"]
+            }
+
+            # Enable and manage the key/value secrets engine at `secret/` path
+
+            # List, create, update, and delete key/value secrets
+            path "secret/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            path "kv1/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            path "cubbyhole/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            path "database/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            path "kv/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            # Manage secrets engines
+            path "sys/mounts/*"
+            {
+              capabilities = ["create", "read", "update", "delete", "list", "sudo"]
+            }
+
+            # List existing secrets engines.
+            path "sys/mounts"
+            {
+              capabilities = ["read"]
+            }
+            """;
 }

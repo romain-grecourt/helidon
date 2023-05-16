@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import io.helidon.dbclient.DbClient;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
@@ -98,14 +97,11 @@ public class TransactionInsertService extends AbstractService {
                 "testCreateNamedInsertStrStrNamedArgs",
                 "Bounsweet",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedInsert("insert-bulbasaur", statement("insert-pokemon-named-arg"))
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedInsert("insert-bulbasaur", statement("insert-pokemon-named-arg"))
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createNamedInsert(String)} API method with named parameters.
@@ -116,14 +112,11 @@ public class TransactionInsertService extends AbstractService {
                 "testCreateNamedInsertStrNamedArgs",
                 "Steenee",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedInsert("insert-pokemon-named-arg")
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedInsert("insert-pokemon-named-arg")
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createNamedInsert(String)} API method with ordered parameters.
@@ -134,14 +127,11 @@ public class TransactionInsertService extends AbstractService {
                 "testCreateNamedInsertStrOrderArgs",
                 "Tsareena",
                 Pokemon.typesList(TYPES.get(12)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedInsert("insert-pokemon-order-arg")
-                                 .addParam(pokemon.getId())
-                                 .addParam(pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedInsert("insert-pokemon-order-arg")
+                        .addParam(pokemon.getId())
+                        .addParam(pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createInsert(String)} API method with named parameters.
@@ -152,14 +142,11 @@ public class TransactionInsertService extends AbstractService {
                 "testCreateInsertNamedArgs",
                 "Fennekin",
                 Pokemon.typesList(TYPES.get(10)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createInsert(statement("insert-pokemon-named-arg"))
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createInsert(statement("insert-pokemon-named-arg"))
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createInsert(String)} API method with ordered parameters.
@@ -170,14 +157,11 @@ public class TransactionInsertService extends AbstractService {
                 "testCreateInsertOrderArgs",
                 "Braixen",
                 Pokemon.typesList(TYPES.get(10)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createInsert(statement("insert-pokemon-order-arg"))
-                                 .addParam(pokemon.getId())
-                                 .addParam(pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createInsert(statement("insert-pokemon-order-arg"))
+                        .addParam(pokemon.getId())
+                        .addParam(pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code namedInsert(String)} API method with ordered parameters passed directly to the {@code insert} method.
@@ -188,13 +172,10 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Delphox",
                 Pokemon.typesList(TYPES.get(10), TYPES.get(14)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.namedInsert("insert-pokemon-order-arg",
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .namedInsert("insert-pokemon-order-arg",
                                 pokemon.getId(),
-                                pokemon.getName());
-                    }
-                });
+                                pokemon.getName())));
     }
 
     // Verify {@code insert(String)} API method with ordered parameters passed directly to the {@code insert} method.
@@ -205,13 +186,10 @@ public class TransactionInsertService extends AbstractService {
                 "testInsertOrderArgs",
                 "Bouffalant",
                 Pokemon.typesList(TYPES.get(1)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.insert(statement("insert-pokemon-order-arg"),
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .insert(statement("insert-pokemon-order-arg"),
                                 pokemon.getId(),
-                                pokemon.getName());
-                    }
-                });
+                                pokemon.getName())));
     }
 
     // DML insert
@@ -224,14 +202,11 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Roggenrola",
                 Pokemon.typesList(TYPES.get(6)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("insert-torchic", statement("insert-pokemon-named-arg"))
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("insert-torchic", statement("insert-pokemon-named-arg"))
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with insert with named parameters.
@@ -242,14 +217,11 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Boldore",
                 Pokemon.typesList(TYPES.get(6)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("insert-pokemon-named-arg")
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("insert-pokemon-named-arg")
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with insert with ordered parameters.
@@ -260,14 +232,11 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Gigalith",
                 Pokemon.typesList(TYPES.get(6)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("insert-pokemon-order-arg")
-                                 .addParam(pokemon.getId())
-                                 .addParam(pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("insert-pokemon-order-arg")
+                        .addParam(pokemon.getId())
+                        .addParam(pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createDmlStatement(String)} API method with insert with named parameters.
@@ -278,14 +247,11 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Wurmple",
                 Pokemon.typesList(TYPES.get(7)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDmlStatement(statement("insert-pokemon-named-arg"))
-                                 .addParam("id", pokemon.getId())
-                                 .addParam("name", pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createDmlStatement(statement("insert-pokemon-named-arg"))
+                        .addParam("id", pokemon.getId())
+                        .addParam("name", pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code createDmlStatement(String)} API method with insert with ordered parameters.
@@ -296,14 +262,11 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Silcoon",
                 Pokemon.typesList(TYPES.get(7)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDmlStatement(statement("insert-pokemon-order-arg"))
-                                 .addParam(pokemon.getId())
-                                 .addParam(pokemon.getName())
-                                 .execute();
-                    }
-                });
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .createDmlStatement(statement("insert-pokemon-order-arg"))
+                        .addParam(pokemon.getId())
+                        .addParam(pokemon.getName())
+                        .execute()));
     }
 
     // Verify {@code namedDml(String)} API method with insert with ordered parameters passed directly
@@ -314,13 +277,10 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Cascoon",
                 Pokemon.typesList(TYPES.get(7)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.namedDml("insert-pokemon-order-arg",
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .namedDml("insert-pokemon-order-arg",
                                 pokemon.getId(),
-                                pokemon.getName());
-                    }
-                });
+                                pokemon.getName())));
     }
 
     // Verify {@code dml(String)} API method with insert with ordered parameters passed directly
@@ -331,13 +291,10 @@ public class TransactionInsertService extends AbstractService {
                 "testNamedInsertOrderArgs",
                 "Beautifly",
                 Pokemon.typesList(TYPES.get(3), TYPES.get(7)),
-                (pokemon) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.dml(statement("insert-pokemon-order-arg"),
+                (pokemon) -> dbClient().transaction(exec -> exec
+                        .dml(statement("insert-pokemon-order-arg"),
                                 pokemon.getId(),
-                                pokemon.getName());
-                    }
-                });
+                                pokemon.getName())));
     }
 
 }

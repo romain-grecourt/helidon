@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import io.helidon.dbclient.DbClient;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
@@ -88,81 +87,60 @@ public class TransactionDeleteService extends AbstractService {
     // Verify {@code createNamedDelete(String, String)} API method with ordered parameters.
     private void testCreateNamedDeleteStrStrOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedDeleteStrStrOrderArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDelete("delete-rayquaza", statement("delete-pokemon-order-arg"))
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDelete("delete-rayquaza", statement("delete-pokemon-order-arg"))
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code createNamedDelete(String)} API method with named parameters.
     private void testCreateNamedDeleteStrNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedDeleteStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDelete("delete-pokemon-named-arg")
-                                 .addParam("id", id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDelete("delete-pokemon-named-arg")
+                        .addParam("id", id)
+                        .execute()));
     }
 
     // Verify {@code createNamedDelete(String)} API method with ordered parameters.
     private void testCreateNamedDeleteStrOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedDeleteStrOrderArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDelete("delete-pokemon-order-arg")
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDelete("delete-pokemon-order-arg")
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code createDelete(String)} API method with named parameters.
     private void testCreateDeleteNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDelete(statement("delete-pokemon-named-arg"))
-                                 .addParam("id", id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createDelete(statement("delete-pokemon-named-arg"))
+                        .addParam("id", id)
+                        .execute()));
     }
 
     // Verify {@code createDelete(String)} API method with ordered parameters.
     private void testCreateDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateDeleteOrderArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDelete(statement("delete-pokemon-order-arg"))
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createDelete(statement("delete-pokemon-order-arg"))
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code namedDelete(String)} API method with ordered parameters.
     private void testNamedDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.namedDelete("delete-pokemon-order-arg", id);
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .namedDelete("delete-pokemon-order-arg", id)));
     }
 
     // Verify {@code delete(String)} API method with ordered parameters.
     private void testDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.delete(statement("delete-pokemon-order-arg"), id);
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .delete(statement("delete-pokemon-order-arg"), id)));
     }
 
     // DML delete
@@ -170,81 +148,61 @@ public class TransactionDeleteService extends AbstractService {
     // Verify {@code createNamedDmlStatement(String, String)} API method with delete with ordered parameters.
     private void testCreateNamedDmlWithDeleteStrStrOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("delete-mudkip", statement("delete-pokemon-order-arg"))
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("delete-mudkip", statement("delete-pokemon-order-arg"))
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with delete with named parameters.
     private void testCreateNamedDmlWithDeleteStrNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("delete-pokemon-named-arg")
-                                 .addParam("id", id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("delete-pokemon-named-arg")
+                        .addParam("id", id)
+                        .execute()));
     }
 
     // Verify {@code createNamedDmlStatement(String)} API method with delete with ordered parameters.
-    private void testCreateNamedDmlWithDeleteStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateNamedDmlWithDeleteStrOrderArgs(final ServerRequest request,
+                                                          final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createNamedDmlStatement("delete-pokemon-order-arg")
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createNamedDmlStatement("delete-pokemon-order-arg")
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code createDmlStatement(String)} API method with delete with named parameters.
     private void testCreateDmlWithDeleteNamedArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDmlStatement(statement("delete-pokemon-named-arg"))
-                                 .addParam("id", id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createDmlStatement(statement("delete-pokemon-named-arg"))
+                        .addParam("id", id)
+                        .execute()));
     }
 
     // Verify {@code createDmlStatement(String)} API method with delete with ordered parameters.
     private void testCreateDmlWithDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.createDmlStatement(statement("delete-pokemon-order-arg"))
-                                 .addParam(id)
-                                 .execute();
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .createDmlStatement(statement("delete-pokemon-order-arg"))
+                        .addParam(id)
+                        .execute()));
     }
 
     // Verify {@code namedDml(String)} API method with delete with ordered parameters.
     private void testNamedDmlWithDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.namedDml("delete-pokemon-order-arg", id);
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .namedDml("delete-pokemon-order-arg", id)));
     }
 
     // Verify {@code dml(String)} API method with delete with ordered parameters.
     private void testDmlWithDeleteOrderArgs(final ServerRequest request, final ServerResponse response) {
         executeTest(request, response, "testCreateNamedUpdateStrStrNamedArgs",
-                (id) -> {
-                    try (DbTransaction tx = dbClient().transaction()) {
-                        return tx.dml(statement("delete-pokemon-order-arg"), id);
-                    }
-                });
+                (id) -> dbClient().transaction(exec -> exec
+                        .dml(statement("delete-pokemon-order-arg"), id)));
     }
 
 }

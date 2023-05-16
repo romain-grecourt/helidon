@@ -31,21 +31,21 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class TransactionExceptionalStmtIT {
 
-    /** Local logger instance. */
+    /**
+     * Local logger instance.
+     */
     private static final System.Logger LOGGER = System.getLogger(TransactionExceptionalStmtIT.class.getName());
 
     /**
      * Verify that execution of query with non existing named statement throws an exception.
-     *
      */
     @Test
     public void testCreateNamedQueryNonExistentStmt() {
         try {
-            DB_CLIENT.inTransaction(tx -> tx
+            DB_CLIENT.transaction(tx -> tx
                     .createNamedQuery("select-pokemons-not-exists")
-                    .execute())
-                    .collectList()
-                    .await();
+                    .execute()
+                    .count());
             fail("Execution of non existing statement shall cause an exception to be thrown.");
         } catch (DbClientException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -54,16 +54,14 @@ public class TransactionExceptionalStmtIT {
 
     /**
      * Verify that execution of query with both named and ordered arguments throws an exception.
-     *
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithoutArgs() {
         try {
-            DB_CLIENT.inTransaction(tx -> tx
+            DB_CLIENT.transaction(tx -> tx
                     .createNamedQuery("select-pokemons-error-arg")
-                    .execute())
-                    .collectList()
-                    .await();
+                    .execute()
+                    .count());
             fail("Execution of query with both named and ordered parameters without passing any shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -72,18 +70,16 @@ public class TransactionExceptionalStmtIT {
 
     /**
      * Verify that execution of query with both named and ordered arguments throws an exception.
-     *
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithArgs() {
         try {
-            DB_CLIENT.inTransaction(tx -> tx
+            DB_CLIENT.transaction(tx -> tx
                     .createNamedQuery("select-pokemons-error-arg")
                     .addParam("id", POKEMONS.get(5).getId())
                     .addParam(POKEMONS.get(5).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+                    .execute()
+                    .count());
             fail("Execution of query with both named and ordered parameters without passing them shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -92,17 +88,15 @@ public class TransactionExceptionalStmtIT {
 
     /**
      * Verify that execution of query with named arguments throws an exception while trying to set ordered argument.
-     *
      */
     @Test
     public void testCreateNamedQueryNamedArgsSetOrderArg() {
         try {
-            DB_CLIENT.inTransaction(tx -> tx
+            DB_CLIENT.transaction(tx -> tx
                     .createNamedQuery("select-pokemon-named-arg")
                     .addParam(POKEMONS.get(5).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+                    .execute()
+                    .count());
             fail("Execution of query with named parameter with passing ordered parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -111,17 +105,15 @@ public class TransactionExceptionalStmtIT {
 
     /**
      * Verify that execution of query with ordered arguments throws an exception while trying to set named argument.
-     *
      */
     @Test
     public void testCreateNamedQueryOrderArgsSetNamedArg() {
         try {
-            DB_CLIENT.inTransaction(tx -> tx
+            DB_CLIENT.transaction(tx -> tx
                     .createNamedQuery("select-pokemon-order-arg")
                     .addParam("name", POKEMONS.get(6).getName())
-                    .execute())
-                    .collectList()
-                    .await();
+                    .execute()
+                    .count());
             fail("Execution of query with ordered parameter with passing named parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);

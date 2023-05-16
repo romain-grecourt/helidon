@@ -17,7 +17,6 @@ package io.helidon.dbclient.mongodb;
 
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.dbclient.DbClientContext;
 
 import com.mongodb.client.MongoClients;
@@ -26,6 +25,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
+
+import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
 
@@ -82,7 +83,7 @@ public class MongoDbClient implements DbClient {
     }
 
     @Override
-    public DbTransaction transaction() {
+    public <T> T transaction(Function<DbExecute, T> function) {
         throw new UnsupportedOperationException("Transactions are not yet supported in MongoDB");
     }
 

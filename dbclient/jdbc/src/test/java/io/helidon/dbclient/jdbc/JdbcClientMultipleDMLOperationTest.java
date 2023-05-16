@@ -26,7 +26,6 @@ import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbClientException;
 
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +37,7 @@ import static org.mockito.Mockito.when;
 public class JdbcClientMultipleDMLOperationTest {
 
     private static final PreparedStatement PREP_STATEMENT = mock(PreparedStatement.class);
+
     private enum DmlOperation {insert, update, delete}
 
     @BeforeAll
@@ -79,7 +79,7 @@ public class JdbcClientMultipleDMLOperationTest {
         multipleDMLOperationExecution(true, DmlOperation.delete);
     }
 
-    void multipleDMLOperationExecution(boolean tx, DmlOperation dmlOperation) {
+    void multipleDMLOperationExecution(boolean useTx, DmlOperation dmlOperation) {
         int maxIteration = 100;
 
         DbClient dbClient = JdbcDbClientProviderBuilder.create()
@@ -88,10 +88,10 @@ public class JdbcClientMultipleDMLOperationTest {
         switch (dmlOperation) {
             case insert -> {
                 for (int i = 0; i < maxIteration; i++) {
-                    if (tx) {
-                        try (DbTransaction exec = dbClient.transaction()) {
-                            exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
-                        }
+                    if (useTx) {
+                        dbClient.transaction(exec -> exec
+                                .createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')")
+                                .execute());
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
@@ -101,10 +101,10 @@ public class JdbcClientMultipleDMLOperationTest {
             }
             case update -> {
                 for (int i = 0; i < maxIteration; i++) {
-                    if (tx) {
-                        try (DbTransaction exec = dbClient.transaction()) {
-                            exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
-                        }
+                    if (useTx) {
+                        dbClient.transaction(exec -> exec
+                                .createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'")
+                                .execute());
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
@@ -114,10 +114,10 @@ public class JdbcClientMultipleDMLOperationTest {
             }
             case delete -> {
                 for (int i = 0; i < maxIteration; i++) {
-                    if (tx) {
-                        try (DbTransaction exec = dbClient.transaction()) {
-                            exec.createDelete("DELETE FROM pokemons WHERE name = name").execute();
-                        }
+                    if (useTx) {
+                        dbClient.transaction(exec -> exec
+                                .createDelete("DELETE FROM pokemons WHERE name = name")
+                                .execute());
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createDelete("DELETE FROM pokemons WHERE name = name").execute();

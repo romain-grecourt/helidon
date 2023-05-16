@@ -19,17 +19,13 @@ package io.helidon.examples.cors;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.cors.CrossOriginConfig;
-import io.helidon.health.checks.HealthChecks;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.cors.CorsSupport;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.cors.CorsSupport;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * Simple Hello World rest application.
@@ -44,20 +40,10 @@ public final class Main {
 
     /**
      * Application main entry point.
+     *
      * @param args command line arguments.
-     * @throws IOException if there are problems reading logging properties
      */
-    public static void main(final String[] args) throws IOException {
-        startServer();
-    }
-
-    /**
-     * Start the server.
-     * @return the created {@link WebServer} instance
-     * @throws IOException if there are problems reading logging properties
-     */
-    static Single<WebServer> startServer() throws IOException {
-
+    public static void main(final String[] args) {
         // load logging configuration
         LogConfig.configureRuntime();
 
@@ -65,47 +51,28 @@ public final class Main {
         Config config = Config.create();
 
         // Get webserver config from the "server" section of application.yaml
-        Single<WebServer> server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build()
-                .start();
+        WebServer server = WebServer.builder()
+                                    .config(config.get("server"))
+                                    .routing(routing -> routing(routing, config))
+                                    .start();
 
-        server.thenAccept(ws -> {
-                System.out.println(
-                        "WEB server is up! http://localhost:" + ws.port() + "/greet");
-                ws.whenShutdown().thenRun(()
-                    -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-            .exceptionally(t -> {
-                System.err.println("Startup failed: " + t.getMessage());
-                t.printStackTrace(System.err);
-                return null;
-            });
-
-        return server;
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Creates new {@link Routing}.
+     * Setup routing.
      *
-     * @return routing configured with JSON support, a health check, and a service
-     * @param config configuration of this server
+     * @param routing routing builder
+     * @param config  configuration of this server
      */
-    private static Routing createRouting(Config config) {
+    static void routing(HttpRouting.Builder routing, Config config) {
 
-        MetricsSupport metrics = MetricsSupport.create();
         GreetService greetService = new GreetService(config);
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())   // Adds a convenient set of checks
-                .build();
+
 
         // Note: Add the CORS routing *before* registering the GreetService routing.
-        return Routing.builder()
-                .register(health)                   // Health at "/health"
-                .register(metrics)                 // Metrics at "/metrics"
-                .register("/greet", corsSupportForGreeting(config), greetService)
-                .build();
+        routing.register("/greet", corsSupportForGreeting(config), greetService)
+               .addFeature(ObserveFeature.create(config));
     }
 
     private static CorsSupport corsSupportForGreeting(Config config) {
@@ -117,17 +84,17 @@ public final class Main {
         Config restrictiveConfig = config.get("restrictive-cors");
         if (!restrictiveConfig.exists()) {
             Logger.getLogger(Main.class.getName())
-                    .warning("Missing restrictive config; continuing with default CORS support");
+                  .warning("Missing restrictive config; continuing with default CORS support");
         }
 
         CorsSupport.Builder corsBuilder = CorsSupport.builder();
 
         // Use possible overrides first.
         config.get("cors")
-                .ifExists(c -> {
-                    Logger.getLogger(Main.class.getName()).info("Using the override configuration");
-                    corsBuilder.mappedConfig(c);
-                });
+              .ifExists(c -> {
+                  Logger.getLogger(Main.class.getName()).info("Using the override configuration");
+                  corsBuilder.mappedConfig(c);
+              });
         corsBuilder
                 .config(restrictiveConfig) // restricted sharing for PUT, DELETE
                 .addCrossOrigin(CrossOriginConfig.create()) // open sharing for other methods

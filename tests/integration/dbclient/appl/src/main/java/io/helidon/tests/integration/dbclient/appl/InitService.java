@@ -20,7 +20,6 @@ import java.util.Map;
 import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 import io.helidon.dbclient.health.DbClientHealthCheck;
 import io.helidon.health.HealthCheck;
 import io.helidon.health.HealthCheckResponse;
@@ -113,50 +112,53 @@ public class InitService implements HttpService {
 
     // Initialize pokemon types list
     private void testInitTypes(final ServerRequest request, final ServerResponse response) {
-        try (DbTransaction tx = dbClient.transaction()) {
+        long result = dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Type> entry : Type.TYPES.entrySet()) {
                 if (count < 0) {
-                    count = tx.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
+                    count = exec.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
                 } else {
-                    count += tx.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
+                    count += exec.namedDml("insert-type", entry.getKey(), entry.getValue().getName());
                 }
             }
-            response.send(okStatus(Json.createValue(count)));
-        }
+            return count;
+        });
+        response.send(okStatus(Json.createValue(result)));
     }
 
     // Initialize pokemons
     private void testInitPokemons(final ServerRequest request, final ServerResponse response) {
-        try (DbTransaction tx = dbClient.transaction()) {
+        long result = dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Type> entry : Type.TYPES.entrySet()) {
                 if (count < 0) {
-                    count = tx.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
+                    count = exec.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
                 } else {
-                    count += tx.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
+                    count += exec.namedDml("insert-pokemon", entry.getKey(), entry.getValue().getName());
                 }
             }
-            response.send(okStatus(Json.createValue(count)));
-        }
+            return count;
+        });
+        response.send(okStatus(Json.createValue(result)));
     }
 
     // Initialize pokemon types relation
     private void testInitPokemonTypes(final ServerRequest request, final ServerResponse response) {
-        try (DbTransaction tx = dbClient.transaction()) {
+        long result = dbClient.transaction(exec -> {
             long count = -1;
             for (Map.Entry<Integer, Pokemon> entry : Pokemon.POKEMONS.entrySet()) {
                 Pokemon pokemon = entry.getValue();
                 for (Type type : pokemon.getTypes()) {
                     if (count < 0) {
-                        count = tx.namedDml("insert-poketype", pokemon.getId(), type.getId());
+                        count = exec.namedDml("insert-poketype", pokemon.getId(), type.getId());
                     } else {
-                        count += tx.namedDml("insert-poketype", pokemon.getId(), type.getId());
+                        count += exec.namedDml("insert-poketype", pokemon.getId(), type.getId());
                     }
                 }
             }
-            response.send(okStatus(Json.createValue(count)));
-        }
+            return count;
+        });
+        response.send(okStatus(Json.createValue(result)));
     }
 
 }

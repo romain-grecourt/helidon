@@ -18,6 +18,8 @@ package io.helidon.dbclient;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import io.helidon.common.HelidonServiceLoader;
@@ -38,11 +40,15 @@ public interface DbClient {
     String MAPPING_QUALIFIER = "dbclient";
 
     /**
-     * Get a database transaction executor.
+     * Execute the given {@link Function} as a transaction.
+     * When the function returns a result, the changes made with the underlying database connection are committed.
+     * If an error occurred, the changes are rolled back and an exception is thrown.
      *
-     * @return statement executor
+     * @param function code that uses a {@link DbExecute} instance to produce a result
+     * @param <T>      return value type
+     * @return transaction result
      */
-    DbTransaction transaction();
+    <T> T transaction(Function<DbExecute, T> function);
 
     /**
      * Get a database statement executor.

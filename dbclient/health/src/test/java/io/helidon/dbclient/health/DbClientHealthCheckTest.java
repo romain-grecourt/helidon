@@ -17,12 +17,12 @@ package io.helidon.dbclient.health;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +40,7 @@ public class DbClientHealthCheckTest {
     private static final class DbClientMock implements DbClient {
 
         @Override
-        public DbTransaction transaction() {
+        public <T> T transaction(Function<DbExecute, T> function) {
             throw new UnsupportedOperationException("Not supported in tests.");
         }
 

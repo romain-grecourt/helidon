@@ -114,6 +114,14 @@
             <artifactId>helidon-metrics</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.observe</groupId>
+            <artifactId>helidon-nima-observe</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.nima.webserver</groupId>
+            <artifactId>helidon-nima-webserver-tracing</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

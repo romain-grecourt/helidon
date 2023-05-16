@@ -17,12 +17,13 @@ package io.helidon.examples.health.basics;
 
 import java.time.Duration;
 
-import io.helidon.health.checks.HealthChecks;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-
-import org.eclipse.microprofile.health.HealthCheckResponse;
+import io.helidon.health.HealthCheck;
+import io.helidon.health.HealthCheckResponse;
+import io.helidon.health.HealthCheckType;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.observe.health.HealthFeature;
+import io.helidon.nima.observe.health.HealthObserveProvider;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * Main class of health check integration example.
@@ -41,33 +42,62 @@ public final class Main {
      */
     public static void main(String[] args) {
         serverStartTime = System.currentTimeMillis();
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())
-                .addReadiness(() -> HealthCheckResponse.named("exampleHealthCheck")
-                        .up()
-                        .withData("time", System.currentTimeMillis())
-                        .build())
-                .addStartup(() -> HealthCheckResponse.named("exampleStartCheck")
-                        .status(isStarted())
-                        .withData("time", System.currentTimeMillis())
-                        .build())
-                .build();
+        HealthCheck exampleHealthCheck = new HealthCheck() {
+            @Override
+            public String name() {
+                return "exampleHealthCheck";
+            }
 
-        Routing routing = Routing.builder()
-                .register(health)
-                .get("/hello", (req, res) -> res.send("Hello World!"))
-                .build();
+            @Override
+            public HealthCheckType type() {
+                return HealthCheckType.READINESS;
+            }
 
-        WebServer ws = WebServer.create(routing);
+            @Override
+            public HealthCheckResponse call() {
+                return HealthCheckResponse.builder()
+                                          .status(HealthCheckResponse.Status.UP)
+                                          .detail("time", System.currentTimeMillis())
+                                          .build();
+            }
+        };
+        HealthCheck exampleStartCheck = new HealthCheck() {
+            @Override
+            public String name() {
+                return "exampleStartCheck";
+            }
 
-        ws.start()
-                .thenApply(webServer -> {
-                    String endpoint = "http://localhost:" + webServer.port();
-                    System.out.println("Hello World started on " + endpoint + "/hello");
-                    System.out.println("Health checks available on " + endpoint + "/health");
-                    return null;
-                });
+            @Override
+            public HealthCheckType type() {
+                return HealthCheckType.STARTUP;
+            }
 
+            @Override
+            public HealthCheckResponse call() {
+                return HealthCheckResponse.builder()
+                                          .status(isStarted())
+                                          .detail("time", System.currentTimeMillis())
+                                          .build();
+            }
+        };
+
+        HealthFeature health = HealthFeature.builder()
+                                            .addCheck(exampleHealthCheck)
+                                            .addCheck(exampleStartCheck)
+                                            .build();
+
+        ObserveFeature observe = ObserveFeature.builder()
+                                               .addProvider(HealthObserveProvider.create(health))
+                                               .build();
+
+        WebServer server = WebServer.builder()
+                                    .routing(routing -> routing.addFeature(observe)
+                                                               .get("/hello", (req, res) -> res.send("Hello World!")))
+                                    .start();
+
+        String endpoint = "http://localhost:" + server.port();
+        System.out.println("Hello World started on " + endpoint + "/hello");
+        System.out.println("Health checks available on " + endpoint + "/health");
     }
 
     private static boolean isStarted() {

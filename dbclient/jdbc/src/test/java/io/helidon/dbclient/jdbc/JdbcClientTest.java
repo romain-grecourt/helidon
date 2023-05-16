@@ -21,7 +21,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import io.helidon.dbclient.DbExecute;
-import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -53,10 +52,8 @@ public class JdbcClientTest {
         JdbcDbClient dbClient = (JdbcDbClient) JdbcDbClientProviderBuilder.create()
                 .connectionPool(POOL)
                 .build();
-        try (DbTransaction tx = dbClient.transaction()) {
-            Object result = tx.dml("SELECT NULL FROM DUAL");
-            assertThat(result, is(equalTo(1L)));
-        }
+        long result = dbClient.transaction(exec -> exec.dml("SELECT NULL FROM DUAL"));
+        assertThat(result, is(equalTo(1L)));
     }
 
     @Test
