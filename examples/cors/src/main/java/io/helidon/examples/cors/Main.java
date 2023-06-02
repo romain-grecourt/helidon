@@ -52,6 +52,9 @@ public final class Main {
 
         // Get webserver config from the "server" section of application.yaml
         WebServer server = WebServer.builder()
+                                    .defaultSocket(socket -> {
+                                        socket.port(8080);
+                                    })
                                     .config(config.get("server"))
                                     .routing(routing -> routing(routing, config))
                                     .start();

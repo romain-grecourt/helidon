@@ -1299,6 +1299,11 @@
                 <version>${helidon.version}</version>
             </dependency>
             <dependency>
+                <groupId>io.helidon.nima.webclient</groupId>
+                <artifactId>helidon-nima-webclient-metrics</artifactId>
+                <version>${helidon.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.helidon.nima.http2</groupId>
                 <artifactId>helidon-nima-http2-webserver</artifactId>
                 <version>${helidon.version}</version>

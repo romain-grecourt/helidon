@@ -27,15 +27,13 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <packaging>pom</packaging>
-
     <artifactId>helidon-examples-metrics-project</artifactId>
     <name>Helidon Metrics Examples</name>
-    <modules>
 
+    <modules>
         <module>exemplar</module>
         <module>kpi</module>
         <module>filtering</module>
         <module>http-status-count-se</module>
     </modules>
-
 </project>

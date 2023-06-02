@@ -77,9 +77,8 @@
             <artifactId>helidon-security-abac-role</artifactId>
         </dependency>
         <dependency>
-            <!-- Security integration with web server -->
             <groupId>io.helidon.security.integration</groupId>
-            <artifactId>helidon-security-integration-webserver</artifactId>
+            <artifactId>helidon-security-integration-nima</artifactId>
         </dependency>
         <dependency>
             <!-- Encryption of secrets -->
@@ -105,10 +104,6 @@
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-core</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.security.integration</groupId>
-            <artifactId>helidon-security-integration-nima</artifactId>
         </dependency>
     </dependencies>
 

@@ -18,6 +18,7 @@ package io.helidon.security.examples.idcs;
 
 import java.net.URI;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.http.HttpMediaType;
 import io.helidon.config.Config;
@@ -38,15 +39,13 @@ import static io.helidon.config.ConfigSources.file;
 /**
  * IDCS Login example main class using configuration .
  */
-@SuppressWarnings("HttpUrlsUsage")
 public final class IdcsBuilderMain {
-    private static volatile WebServer theServer;
+
+    // do not change this constant, unless you modify configuration
+    // of IDCS application redirect URI
+    static final int PORT = 7987;
 
     private IdcsBuilderMain() {
-    }
-
-    public static WebServer getTheServer() {
-        return theServer;
     }
 
     /**
@@ -55,31 +54,50 @@ public final class IdcsBuilderMain {
      * @param args ignored
      */
     public static void main(String[] args) {
-        // load logging configuration
+        //noinspection DuplicatedCode
         LogConfig.configureRuntime();
 
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder);
+        WebServer server = builder.build();
+
+        long t = System.nanoTime();
+        server.start();
+        long time = System.nanoTime() - t;
+
+        System.out.printf("""
+                Server started in %2$d ms
+                                
+                Started server on localhost:%1$d
+                You can access this example at http://localhost:%1$d/rest/profile
+                                
+                Check application.yaml in case you are behind a proxy to configure it
+                """, server.port(), TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS));
+    }
+
+    static void setup(WebServer.Builder builder) {
         Config config = buildConfig();
 
         OidcConfig oidcConfig = OidcConfig.builder()
-                .clientId("clientId.of.your.application")
-                .clientSecret("clientSecret.of.your.application")
-                .identityUri(URI.create(
-                        "https://idcs-tenant-id.identity.oracle.com"))
-                //.proxyHost("proxy.proxy.com")
-                .frontendUri("http://your.host:your.port")
-                // tell us it is IDCS, so we can modify the behavior
-                .serverType("idcs")
-                .build();
+                                          .clientId("clientId.of.your.application")
+                                          .clientSecret("clientSecret.of.your.application")
+                                          .identityUri(URI.create(
+                                                  "https://idcs-tenant-id.identity.oracle.com"))
+                                          //.proxyHost("proxy.proxy.com")
+                                          .frontendUri("http://your.host:your.port")
+                                          // tell us it is IDCS, so we can modify the behavior
+                                          .serverType("idcs")
+                                          .build();
 
         Security security = Security.builder()
-                .addProvider(OidcProvider.create(oidcConfig))
-                .addProvider(IdcsRoleMapperProvider.builder()
-                                     .config(config)
-                                     .oidcConfig(oidcConfig))
-                .build();
-
-        theServer = IdcsUtil.startIt(routing ->
-                routing.addFeature(SecurityFeature.create(security, config.get("security")))
+                                    .addProvider(OidcProvider.create(oidcConfig))
+                                    .addProvider(IdcsRoleMapperProvider.builder()
+                                                                       .config(config)
+                                                                       .oidcConfig(oidcConfig))
+                                    .build();
+        builder.port(PORT)
+               .routing(routing -> routing
+                       .addFeature(SecurityFeature.create(security, config.get("security")))
                        // IDCS requires a web resource for redirects
                        .addFeature(OidcFeature.create(config))
                        // web server does not (yet) have possibility to configure routes in config files, so explicit...
@@ -95,11 +113,11 @@ public final class IdcsBuilderMain {
 
     private static Config buildConfig() {
         return Config.builder()
-                .sources(
-                        // you can use this file to override the defaults built-in
-                        file(System.getProperty("user.home") + "/helidon/conf/examples.yaml").optional(),
-                        // in jar file (see src/main/resources/application.yaml)
-                        classpath("application.yaml"))
-                .build();
+                     .sources(
+                             // you can use this file to override the defaults built-in
+                             file(System.getProperty("user.home") + "/helidon/conf/examples.yaml").optional(),
+                             // in jar file (see src/main/resources/application.yaml)
+                             classpath("application.yaml"))
+                     .build();
     }
 }

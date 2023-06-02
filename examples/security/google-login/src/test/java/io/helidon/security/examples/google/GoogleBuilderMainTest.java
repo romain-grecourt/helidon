@@ -16,27 +16,23 @@
 
 package io.helidon.security.examples.google;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * Unit test for {@link GoogleBuilderMain}.
  */
+@ServerTest
 public class GoogleBuilderMainTest extends GoogleMainTest {
-    static int port;
 
-    @BeforeAll
-    public static void initClass() throws InterruptedException {
-        port = GoogleBuilderMain.start(0);
+    GoogleBuilderMainTest(Http1Client client) {
+        super(client);
     }
 
-    @AfterAll
-    public static void destroyClass() throws InterruptedException {
-        stopServer(GoogleBuilderMain.getTheServer());
-    }
-
-    @Override
-    int port() {
-        return port;
+    @SetUpServer
+    public static void setup(WebServer.Builder builder) {
+        GoogleBuilderMain.setup(builder);
     }
 }

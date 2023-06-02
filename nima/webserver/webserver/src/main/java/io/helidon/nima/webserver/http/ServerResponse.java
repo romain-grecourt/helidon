@@ -107,6 +107,24 @@ public interface ServerResponse {
     void send(Object entity);
 
     /**
+     * Send an entity, a {@link io.helidon.nima.http.media.MediaContext} will be used to serialize the entity.
+     *
+     * @param entity entity object
+     */
+    default <T> void send(T entity, Class<T> type) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Send an entity, a {@link io.helidon.nima.http.media.MediaContext} will be used to serialize the entity.
+     *
+     * @param entity entity object
+     */
+    default <T> void send(T entity, GenericType<T> type) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Send an entity if present, throw {@link io.helidon.common.http.NotFoundException} if empty.
      *
      * @param entity entity as an optional
@@ -211,7 +229,11 @@ public interface ServerResponse {
         throw new UnsupportedOperationException("No sink available for type " + sinkType);
     }
 
-    default <T> void send(Stream<T> rStream, Class<T> cls) {
+    default <T> void send(Stream<T> rStream, Class<T> type) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    default <T> void send(Stream<T> rStream, GenericType<T> type) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 

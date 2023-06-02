@@ -21,21 +21,19 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import io.helidon.common.http.Http;
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.metrics.api.RegistryFactory;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.WebClientRequestBuilder;
-import io.helidon.reactive.webclient.WebClientServiceRequest;
-import io.helidon.reactive.webclient.WebClientServiceResponse;
-import io.helidon.reactive.webclient.spi.WebClientService;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.WebClientService;
+import io.helidon.nima.webclient.WebClientServiceRequest;
+import io.helidon.nima.webclient.WebClientServiceResponse;
+import io.helidon.nima.webclient.http1.Http1Client;
 
+import io.helidon.nima.webserver.WebServer;
 import org.eclipse.microprofile.metrics.Counter;
 import org.eclipse.microprofile.metrics.MetricRegistry;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -45,19 +43,24 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Test for verification of WebClient example.
  */
+@ServerTest
 public class ClientMainTest {
 
     private static final MetricRegistry METRIC_REGISTRY = RegistryFactory.getInstance()
-            .getRegistry(MetricRegistry.Type.APPLICATION);
+                                                                         .getRegistry(MetricRegistry.Type.APPLICATION);
 
-    private WebClient webClient;
-    private Path testFile;
+    private final WebServer server;
+    private final Path testFile;
 
-    @BeforeEach
-    public void beforeEach() {
-        testFile = Paths.get("test.txt");
-        WebServer server = ServerMain.startServer().await();
-        createWebClient(server.port());
+    public ClientMainTest(WebServer server) {
+        this.server = server;
+        this.testFile = Paths.get("test.txt");
+    }
+
+
+    @SetUpServer
+    public static void setup(WebServer.Builder server) {
+        ServerMain.setup(server, Config.empty());
     }
 
     @AfterEach
@@ -65,48 +68,41 @@ public class ClientMainTest {
         Files.deleteIfExists(testFile);
     }
 
-    private void createWebClient(int port, WebClientService... services) {
+    private Http1Client client(WebClientService... services) {
         Config config = Config.create();
-        WebClient.Builder builder = WebClient.builder()
-                .baseUri("http://localhost:" + port + "/greet")
-                .config(config.get("client"))
-                .addMediaSupport(JsonpSupport.create());
+        Http1Client.Http1ClientBuilder builder = Http1Client.builder()
+                                                            .baseUri("http://localhost:" + server.port() + "/greet")
+                                                            .config(config.get("client"));
+
         for (WebClientService service : services) {
-            builder.addService(service);
+            builder.service(service);
         }
-        webClient = builder.build();
+        return builder.build();
     }
 
     @Test
     public void testPerformPutAndGetMethod() {
-        ClientMain.performGetMethod(webClient)
-                .thenAccept(it -> assertThat(it, is("{\"message\":\"Hello World!\"}")))
-                .thenCompose(it -> ClientMain.performPutMethod(webClient))
-                .thenCompose(it -> ClientMain.performGetMethod(webClient))
-                .thenAccept(it -> assertThat(it, is("{\"message\":\"Hola World!\"}")))
-                .await();
+        Http1Client client = client();
+        String greeting = ClientMain.performGetMethod(client);
+        assertThat(greeting, is("{\"message\":\"Hello World!\"}"));
+        ClientMain.performPutMethod(client);
+        greeting = ClientMain.performGetMethod(client);
+        assertThat(greeting, is("{\"message\":\"Hola World!\"}"));
     }
 
     @Test
     public void testPerformRedirect() {
-        createWebClient(ServerMain.getServerPort(), new RedirectClientServiceTest());
-        ClientMain.followRedirects(webClient)
-                .thenAccept(it -> assertThat(it, is("{\"message\":\"Hello World!\"}")))
-                .await();
+        Http1Client client = client(new RedirectClientServiceTest());
+        String greeting = ClientMain.followRedirects(client);
+        assertThat(greeting, is("{\"message\":\"Hello World!\"}"));
     }
 
     @Test
-    public void testFileDownload() {
-        ClientMain.saveResponseToFile(webClient)
-                .thenAccept(it -> assertThat(Files.exists(testFile), is(true)))
-                .thenAccept(it -> {
-                    try {
-                        assertThat(Files.readString(testFile), is("{\"message\":\"Hello World!\"}"));
-                    } catch (IOException e) {
-                        fail(e);
-                    }
-                })
-                .await();
+    public void testFileDownload() throws IOException {
+        Http1Client client = client();
+        ClientMain.saveResponseToFile(client);
+        assertThat(Files.exists(testFile), is(true));
+        assertThat(Files.readString(testFile), is("{\"message\":\"Hello World!\"}"));
     }
 
     @Test
@@ -114,10 +110,8 @@ public class ClientMainTest {
         String counterName = "example.metric.GET.localhost";
         Counter counter = METRIC_REGISTRY.counter(counterName);
         assertThat("Counter " + counterName + " has not been 0", counter.getCount(), is(0L));
-        ClientMain.clientMetricsExample("http://localhost:" + ServerMain.getServerPort() + "/greet", Config.create())
-                .thenAccept(it -> assertThat("Counter " + counterName + " "
-                                                     + "has not been 1", counter.getCount(), is(1L)))
-                .await();
+        ClientMain.clientMetricsExample("http://localhost:" + server.port() + "/greet", Config.create());
+        assertThat("Counter " + counterName + " "  + "has not been 1", counter.getCount(), is(1L));
     }
 
     private static final class RedirectClientServiceTest implements WebClientService {
@@ -125,22 +119,14 @@ public class ClientMainTest {
         private volatile boolean redirect = true;
 
         @Override
-        public Single<WebClientServiceResponse> response(WebClientRequestBuilder.ClientRequest request,
-                                                         WebClientServiceResponse response) {
-
+        public WebClientServiceResponse handle(Chain chain, WebClientServiceRequest clientRequest) {
+            WebClientServiceResponse response = chain.proceed(clientRequest);
             if (response.status() == Http.Status.MOVED_PERMANENTLY_301 && redirect) {
                 fail("Received second redirect! Only one redirect expected here.");
             } else if (response.status() == Http.Status.OK_200 && !redirect) {
                 fail("There was status 200 without status 301 before it.");
             }
-            // not used for now, this test must be refactored
-            //redirect = !redirect;
-            return Single.just(response);
-        }
-
-        @Override
-        public Single<WebClientServiceRequest> request(WebClientServiceRequest request) {
-            return Single.just(request);
+            return response;
         }
     }
 

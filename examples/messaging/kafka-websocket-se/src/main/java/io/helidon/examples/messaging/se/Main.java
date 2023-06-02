@@ -18,11 +18,9 @@ package io.helidon.examples.messaging.se;
 
 import io.helidon.config.Config;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.staticcontent.StaticContentSupport;
-import io.helidon.reactive.webserver.websocket.WebSocketRouting;
-
-import jakarta.websocket.server.ServerEndpointConfig;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.staticcontent.StaticContentService;
+import io.helidon.nima.websocket.webserver.WsRouting;
 
 /**
  * The application main class.
@@ -58,40 +56,25 @@ public final class Main {
 
         SendingService sendingService = new SendingService(config);
 
-        WebServer server = WebServer.builder()
-                .routing(r -> r
-                        // register static content support (on "/")
-                        .register(StaticContentSupport.builder("/WEB")
-                                .welcomeFileName("index.html")
-                                .build())
-                        // register rest endpoint for sending to Kafka
-                        .register("/rest/messages", sendingService)
-                )
-                // register WebSocket endpoint to push messages coming from Kafka to client
-                .addRouting(WebSocketRouting.builder()
-                        .endpoint("/ws", ServerEndpointConfig.Builder.create(
-                                        WebSocketEndpoint.class, "/messages")
-                                .build())
-                        .build())
-                .config(config.get("server"))
-                .build();
+        WebServer server =
+                WebServer.builder()
+                         .routing(r -> r
+                                 // register static content support (on "/")
+                                 .register(StaticContentService.builder("/WEB")
+                                                               .welcomeFileName("index.html")
+                                                               .build())
+                                 // register rest endpoint for sending to Kafka
+                                 .register("/rest/messages", sendingService))
+                         // register WebSocket endpoint to push messages coming from Kafka to client
+                         .addRouting(WsRouting.builder()
+                                              .endpoint("/ws/messages", new WebSocketEndpoint())
+                                              .build())
+                         .config(config.get("server"))
+                         .build()
+                         .start();
 
-        server.start()
-                .thenAccept(ws -> {
-                    System.out.println(
-                            "WEB server is up! http://localhost:" + ws.port());
-                    ws.whenShutdown().thenRun(()
-                            -> {
-                        // Stop messaging properly
-                        sendingService.shutdown();
-                        System.out.println("WEB server is DOWN. Good bye!");
-                    });
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                });
+        System.out.println("WEB server is up! http://localhost:" + server.port());
+        Runtime.getRuntime().addShutdownHook(new Thread(sendingService::shutdown));
 
         // Server threads are not daemon. No need to block. Just react.
         return server;

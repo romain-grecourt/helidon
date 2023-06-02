@@ -47,10 +47,6 @@
             <groupId>io.helidon.config</groupId>
             <artifactId>helidon-config-yaml</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common-reactive</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

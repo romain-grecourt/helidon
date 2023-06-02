@@ -17,40 +17,37 @@ package io.helidon.examples.webclient.standalone;
 
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 import jakarta.json.Json;
 import jakarta.json.JsonBuilderFactory;
-import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 
 /**
  * A simple service to greet you. Examples:
- *
+ * <p>
  * Get default greeting message:
  * curl -X GET http://localhost:8080/greet
- *
+ * <p>
  * Get greeting message for Joe:
  * curl -X GET http://localhost:8080/greet/Joe
- *
+ * <p>
  * Change greeting
  * curl -X PUT -H "Content-Type: application/json" -d '{"greeting" : "Howdy"}' http://localhost:8080/greet/greeting
- *
+ * <p>
  * The message is returned as a JSON object
  */
 
-public class GreetService implements Service {
+public class GreetService implements HttpService {
 
     private static final JsonBuilderFactory JSON = Json.createBuilderFactory(Collections.emptyMap());
-    private static final Logger LOGGER = Logger.getLogger(GreetService.class.getName());
 
     /**
      * The config value for the key {@code greeting}.
@@ -67,12 +64,11 @@ public class GreetService implements Service {
      * @param rules the routing rules.
      */
     @Override
-    public void update(Routing.Rules rules) {
-        rules
-                .get("/", this::getDefaultMessageHandler)
-                .get("/redirect", this::redirect)
-                .get("/{name}", this::getMessageHandler)
-                .put("/greeting", this::updateGreetingHandler);
+    public void routing(HttpRules rules) {
+        rules.get("/", this::getDefaultMessageHandler)
+             .get("/redirect", this::redirect)
+             .get("/{name}", this::getMessageHandler)
+             .put("/greeting", this::updateGreetingHandler);
     }
 
     /**
@@ -93,20 +89,20 @@ public class GreetService implements Service {
      * @param request  the server request
      * @param response the server response
      */
-    private void redirect(ServerRequest request,
-                          ServerResponse response) {
-        response.headers().add(Http.Header.LOCATION, "http://localhost:" + ServerMain.getServerPort() + "/greet/");
+    private void redirect(ServerRequest request, ServerResponse response) {
+        int port = request.context().get(WebServer.class).orElseThrow().port();
+        response.headers().add(Http.Header.LOCATION, "http://localhost:" + port + "/greet/");
         response.status(Http.Status.MOVED_PERMANENTLY_301).send();
     }
 
     /**
      * Return a greeting message using the name that was provided.
-     * @param request the server request
+     *
+     * @param request  the server request
      * @param response the server response
      */
-    private void getMessageHandler(ServerRequest request,
-                                   ServerResponse response) {
-        String name = request.path().param("name");
+    private void getMessageHandler(ServerRequest request, ServerResponse response) {
+        String name = request.path().pathParameters().value("name");
         sendResponse(response, name);
     }
 
@@ -116,49 +112,26 @@ public class GreetService implements Service {
      * @param request  the server request
      * @param response the server response
      */
-    private void updateGreetingHandler(ServerRequest request,
-                                       ServerResponse response) {
-        request.content().as(JsonObject.class)
-                .thenAccept(jo -> updateGreetingFromJson(jo, response))
-                .exceptionally(ex -> processErrors(ex, request, response));
+    private void updateGreetingHandler(ServerRequest request, ServerResponse response) {
+        JsonObject jsonObject = request.content().as(JsonObject.class);
+        updateGreetingFromJson(jsonObject, response);
     }
 
     private void sendResponse(ServerResponse response, String name) {
         String msg = String.format("%s %s!", greeting.get(), name);
 
         JsonObject returnObject = JSON.createObjectBuilder()
-                .add("message", msg)
-                .build();
+                                      .add("message", msg)
+                                      .build();
         response.send(returnObject);
-    }
-
-    private static <T> T processErrors(Throwable ex, ServerRequest request, ServerResponse response) {
-
-        if (ex.getCause() instanceof JsonException) {
-
-            LOGGER.log(Level.FINE, "Invalid JSON", ex);
-            JsonObject jsonErrorObject = JSON.createObjectBuilder()
-                    .add("error", "Invalid JSON")
-                    .build();
-            response.status(Http.Status.BAD_REQUEST_400).send(jsonErrorObject);
-        } else {
-
-            LOGGER.log(Level.FINE, "Internal error", ex);
-            JsonObject jsonErrorObject = JSON.createObjectBuilder()
-                    .add("error", "Internal error")
-                    .build();
-            response.status(Http.Status.INTERNAL_SERVER_ERROR_500).send(jsonErrorObject);
-        }
-
-        return null;
     }
 
     private void updateGreetingFromJson(JsonObject jo, ServerResponse response) {
 
         if (!jo.containsKey("greeting")) {
             JsonObject jsonErrorObject = JSON.createObjectBuilder()
-                    .add("error", "No greeting provided")
-                    .build();
+                                             .add("error", "No greeting provided")
+                                             .build();
             response.status(Http.Status.BAD_REQUEST_400)
                     .send(jsonErrorObject);
             return;

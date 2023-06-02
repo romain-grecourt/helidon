@@ -26,7 +26,7 @@ import io.helidon.security.SecurityContext;
 import io.helidon.security.integration.nima.SecurityFeature;
 
 /**
- * Example of HTTP digest authentication with RX Web Server fully configured in config file.
+ * Example of HTTP digest authentication with Web Server fully configured in config file.
  */
 public final class DigestExampleConfigMain {
     private DigestExampleConfigMain() {

@@ -16,14 +16,11 @@
 
 package io.helidon.examples.micrometer.se;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.integrations.micrometer.MicrometerSupport;
+import io.helidon.integrations.micrometer.MicrometerFeature;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 
@@ -43,67 +40,49 @@ public final class Main {
 
     /**
      * Application main entry point.
+     *
      * @param args command line arguments.
      */
     public static void main(final String[] args) {
-        startServer();
-    }
-
-    /**
-     * Start the server.
-     * @return the created {@link WebServer} instance
-     */
-    static Single<WebServer> startServer() {
-
         // load logging configuration
         LogConfig.configureRuntime();
 
         // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
 
-        // Get webserver config from the "server" section of application.yaml
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .port(-1)
-                .addMediaSupport(JsonpSupport.create())
-                .build();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        // Server threads are not daemon. No need to block. Just react.
-        return server.start()
-            .peek(ws -> {
-                System.out.println(
-                        "WEB server is up! http://localhost:" + ws.port() + "/greet");
-                ws.whenShutdown().thenRun(()
-                    -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-            .onError(t -> {
-                System.err.println("Startup failed: " + t.getMessage());
-                t.printStackTrace(System.err);
-            });
+        WebServer.Builder builder = WebServer.builder()
+                                             .config(config.get("server"));
+        setup(builder, config);
+        WebServer server = builder.start();
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Creates new {@link Routing}.
-     *
-     * @return routing configured with JSON support, Micrometer metrics, and the greeting service
-     * @param config configuration of this server
+     * Setup the server.
+     * @param server server builder
+     * @param config config
      */
-    private static Routing createRouting(Config config) {
+    static void setup(WebServer.Builder server, Config config) {
 
-        MicrometerSupport micrometerSupport = MicrometerSupport.create();
-        Counter personalizedGetCounter = micrometerSupport.registry()
-                .counter(PERSONALIZED_GETS_COUNTER_NAME);
+        // Get webserver config from the "server" section of application.yaml
+        server.routing(r -> routing(r, config));
+    }
+
+    /**
+     * Setup routing.
+     */
+    private static void routing(HttpRouting.Builder routing, Config config) {
+
+        MicrometerFeature micrometer = MicrometerFeature.create();
+        Counter personalizedGetCounter = micrometer.registry()
+                                                   .counter(PERSONALIZED_GETS_COUNTER_NAME);
         Timer getTimer = Timer.builder(ALL_GETS_TIMER_NAME)
-                .publishPercentileHistogram()
-                .register(micrometerSupport.registry());
+                              .publishPercentileHistogram()
+                              .register(micrometer.registry());
 
         GreetService greetService = new GreetService(config, getTimer, personalizedGetCounter);
 
-        return Routing.builder()
-                .register(micrometerSupport)                 // Micrometer support at "/micrometer"
-                .register("/greet", greetService)
-                .build();
+        routing.addFeature(micrometer)                 // Micrometer support at "/micrometer"
+               .register("/greet", greetService);
     }
 }

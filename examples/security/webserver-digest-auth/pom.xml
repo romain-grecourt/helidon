@@ -32,7 +32,7 @@
     <name>Helidon Security Examples Digest Authentication</name>
 
     <description>
-        This example demonstrates Integration of RX Web Server based application with Security component and Digest
+        This example demonstrates Integration of Web Server based application with Security component and Digest
         authentication (from HttpAuthProvider).
     </description>
 

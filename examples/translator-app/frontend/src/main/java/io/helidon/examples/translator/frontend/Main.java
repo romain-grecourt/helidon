@@ -16,12 +16,12 @@
 
 package io.helidon.examples.translator.frontend;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.tracing.TracingFeature;
+import io.helidon.tracing.Tracer;
 import io.helidon.tracing.TracerBuilder;
 
 /**
@@ -32,40 +32,19 @@ public class Main {
     private Main() {
     }
 
-    /**
-     * Start the server.
-     * @return the created {@link WebServer} instance
-     */
-    public static Single<WebServer> startFrontendServer() {
-        // configure logging in order to not have the standard JVM defaults
-        LogConfig.configureRuntime();
-
+    static void setup(WebServer.Builder builder) {
         Config config = Config.builder()
-                .sources(ConfigSources.environmentVariables())
-                .build();
+                              .sources(ConfigSources.environmentVariables())
+                              .build();
 
-        WebServer webServer = WebServer.builder(
-                Routing.builder()
-                        .register(new TranslatorFrontendService(
-                                config.get("backend.host").asString().orElse("localhost"),
-                                9080)))
-                .port(8080)
-                .tracer(TracerBuilder.create(config.get("tracing"))
-                                .serviceName("helidon-reactive-webserver-translator-frontend")
-                                .registerGlobal(false)
-                                .build())
-                .build();
-
-        return webServer.start()
-                .peek(ws -> {
-                    System.out.println(
-                            "WEB server is up! http://localhost:" + ws.port());
-                    ws.whenShutdown().thenRun(()
-                                                      -> System.out.println("WEB server is DOWN. Good bye!"));
-                }).onError(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
+        Tracer tracer = TracerBuilder.create(config.get("tracing"))
+                                     .serviceName("helidon-webserver-translator-frontend")
+                                     .registerGlobal(false)
+                                     .build();
+        String backendHost = config.get("backend.host").asString().orElse("localhost");
+        builder.routing(routing -> routing
+                .addFeature(TracingFeature.create(tracer))
+                .register(new TranslatorFrontendService(backendHost, 9080)));
     }
 
     /**
@@ -74,6 +53,13 @@ public class Main {
      * @param args command-line args, currently ignored.
      */
     public static void main(String[] args) {
-        startFrontendServer();
+        // configure logging in order to not have the standard JVM defaults
+        LogConfig.configureRuntime();
+
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder);
+        WebServer server = builder.start();
+
+        System.out.println("WEB server is up! http://localhost:" + server.port());
     }
 }

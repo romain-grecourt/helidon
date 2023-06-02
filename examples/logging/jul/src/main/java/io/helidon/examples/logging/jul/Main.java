@@ -19,15 +19,13 @@ package io.helidon.examples.logging.jul;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import io.helidon.common.context.Context;
 import io.helidon.common.context.Contexts;
 import io.helidon.logging.common.HelidonMdc;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * Main class of the example, runnable from command line.
@@ -52,17 +50,14 @@ public final class Main {
         Contexts.runInContext(Context.create(), Main::logging);
 
         WebServer.builder()
-                .routing(Routing.builder()
-                                 .get("/", (req, res) -> {
-                                     HelidonMdc.set("name", String.valueOf(req.requestId()));
-                                     LOGGER.info("Running in webserver, id:");
-                                     res.send("Hello");
-                                 })
-                                 .build())
-                .port(8080)
-                .build()
-                .start()
-                .await(10, TimeUnit.SECONDS);
+                 .routing(routing -> routing
+                         .get("/", (req, res) -> {
+                             HelidonMdc.set("name", String.valueOf(req.id()));
+                             LOGGER.info("Running in webserver, id:");
+                             res.send("Hello");
+                         }))
+                 .port(8080)
+                 .start();
     }
 
     private static void logging() {
@@ -74,9 +69,7 @@ public final class Main {
         // wrap executor so it supports Helidon context, this is done for all built-in executors in Helidon
         ExecutorService es = Contexts.wrap(Executors.newSingleThreadExecutor());
 
-        Future<?> submit = es.submit(() -> {
-            LOGGER.info("Running on another thread");
-        });
+        Future<?> submit = es.submit(() -> LOGGER.info("Running on another thread"));
         try {
             submit.get();
         } catch (Exception e) {

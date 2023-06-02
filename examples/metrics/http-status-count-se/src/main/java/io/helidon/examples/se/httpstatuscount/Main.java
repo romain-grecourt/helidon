@@ -15,15 +15,11 @@
  */
 package io.helidon.examples.se.httpstatuscount;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.health.checks.HealthChecks;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * The application main class.
@@ -38,71 +34,45 @@ public final class Main {
 
     /**
      * Application main entry point.
+     *
      * @param args command line arguments.
      */
     public static void main(final String[] args) {
-        startServer();
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder);
+        WebServer server = builder.start();
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Start the server.
-     * @return the created {@link WebServer} instance
+     * Setup the server.
+     *
+     * @param server server builder
      */
-    static Single<WebServer> startServer() {
-        return startServer(createRouting(Config.create()));
-    }
-
-    static Single<WebServer> startServer(Routing.Builder routingBuilder) {
-
+    static void setup(WebServer.Builder server) {
         // load logging configuration
         LogConfig.configureRuntime();
 
         // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
 
-        WebServer server = WebServer.builder(routingBuilder)
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
+        server.routing(r -> routing(r, config))
+              .config(config.get("server"));
 
-        Single<WebServer> webserver = server.start();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        webserver.thenAccept(ws -> {
-            System.out.println("WEB server is up! http://localhost:" + ws.port() + "/greet");
-            ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-        })
-        .exceptionallyAccept(t -> {
-            System.err.println("Startup failed: " + t.getMessage());
-            t.printStackTrace(System.err);
-        });
-
-        return webserver;
     }
 
     /**
-     * Creates new {@link Routing}.
+     * Setup routing.
      *
-     * @return routing configured with JSON support, a health check, and a service
-     * @param config configuration of this server
+     * @param routing routing builder
+     * @param config  configuration of this server
      */
-    static Routing.Builder createRouting(Config config) {
+    static void routing(HttpRouting.Builder routing, Config config) {
         SimpleGreetService simpleGreetService = new SimpleGreetService(config);
         GreetService greetService = new GreetService(config);
-
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks()) // Adds a convenient set of checks
-                .build();
-
-        Routing.Builder builder = Routing.builder()
-                .register(MetricsSupport.create()) // Metrics at "/metrics"
-                .register(health) // Health at "/health"
-                .register(HttpStatusMetricService.create()) // no endpoint, just metrics updates
-                .register("/simple-greet", simpleGreetService)
-                .register("/greet", greetService);
-
-
-        return builder;
+        routing.addFeature(ObserveFeature.create())
+                                         .register(HttpStatusMetricService.create()) // no endpoint, just metrics updates
+                                         .register("/simple-greet", simpleGreetService)
+                                         .register("/greet", greetService);
     }
 }

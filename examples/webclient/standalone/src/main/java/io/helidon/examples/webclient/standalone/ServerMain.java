@@ -15,19 +15,15 @@
  */
 package io.helidon.examples.webclient.standalone;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * The application main class.
  */
 public final class ServerMain {
-
-    private static int serverPort = -1;
 
     /**
      * Cannot be instantiated.
@@ -41,58 +37,34 @@ public final class ServerMain {
      * @param args starting arguments
      */
     public static void main(String[] args) {
-        startServer();
-    }
-
-    /**
-     * Returns current port of the running server.
-     *
-     * @return server port
-     */
-    public static int getServerPort() {
-        return serverPort;
-    }
-
-    /**
-     * Start the server.
-     *
-     * @return the created {@link WebServer} instance
-     */
-    static Single<WebServer> startServer() {
         // By default this will pick up application.yaml from the classpath
         Config config = Config.create();
 
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        // Server threads are not daemon. No need to block. Just react.
-        return server.start()
-                .peek(ws -> {
-                    serverPort = ws.port();
-                    System.out.println("WEB server is up! http://localhost:" + ws.port() + "/greet");
-                    ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-                }).onError(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder, config);
+        WebServer server = builder.start();
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Creates new {@link Routing}.
+     * Setup the server.
      *
-     * @param config configuration of this server
-     * @return routing configured with JSON support, a health check, and a service
+     * @param server server builder
+     * @param config config
      */
-    private static Routing createRouting(Config config) {
-        MetricsSupport metrics = MetricsSupport.create();
-        GreetService greetService = new GreetService(config);
-        return Routing.builder()
-                .register(metrics)
-                .register("/greet", greetService)
-                .build();
+    static void setup(WebServer.Builder server, Config config) {
+        server.config(config.get("server"))
+              .routing(r -> routing(r, config));
+    }
+
+    /**
+     * Setup routing.
+     *
+     * @param routing routing builder
+     * @param config  configuration of this server
+     */
+    private static void routing(HttpRouting.Builder routing, Config config) {
+        routing.addFeature(ObserveFeature.create())
+               .register("/greet", new GreetService(config));
     }
 }

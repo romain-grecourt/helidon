@@ -22,12 +22,12 @@ import io.helidon.messaging.Emitter;
 import io.helidon.messaging.Messaging;
 import io.helidon.messaging.connectors.jms.JmsConnector;
 import io.helidon.messaging.connectors.jms.Type;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.Service;
 
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
 import org.apache.activemq.jndi.ActiveMQInitialContextFactory;
 
-class SendingService implements Service {
+class SendingService implements HttpService {
 
     private final Emitter<String> emitter;
     private final Messaging messaging;
@@ -40,13 +40,13 @@ class SendingService implements Service {
         // Prepare channel for connecting processor -> jms connector with specific subscriber configuration,
         // channel -> connector mapping is automatic when using JmsConnector.configBuilder()
         Channel<String> toJms = Channel.<String>builder()
-                .subscriberConfig(JmsConnector.configBuilder()
-                        .jndiInitialFactory(ActiveMQInitialContextFactory.class.getName())
-                        .jndiProviderUrl(url)
-                        .type(Type.QUEUE)
-                        .destination(destination)
-                        .build()
-                ).build();
+                                       .subscriberConfig(JmsConnector.configBuilder()
+                                                                     .jndiInitialFactory(ActiveMQInitialContextFactory.class.getName())
+                                                                     .jndiProviderUrl(url)
+                                                                     .type(Type.QUEUE)
+                                                                     .destination(destination)
+                                                                     .build())
+                                       .build();
 
         // Prepare channel for connecting emitter -> processor
         Channel<String> toProcessor = Channel.create();
@@ -57,16 +57,14 @@ class SendingService implements Service {
         // Prepare emitter for manual publishing to channel
         emitter = Emitter.create(toProcessor);
 
+        // Transforming to upper-case before sending to jms
         messaging = Messaging.builder()
-                .emitter(emitter)
-                // Processor connect two channels together
-                .processor(toProcessor, toJms, payload -> {
-                    // Transforming to upper-case before sending to jms
-                    return payload.toUpperCase();
-                })
-                .connector(jmsConnector)
-                .build()
-                .start();
+                             .emitter(emitter)
+                             // Processor connect two channels together
+                             .processor(toProcessor, toJms, String::toUpperCase)
+                             .connector(jmsConnector)
+                             .build()
+                             .start();
     }
 
     /**
@@ -75,11 +73,11 @@ class SendingService implements Service {
      * @param rules the routing rules.
      */
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         // Listen for GET /example/send/{msg}
         // to send it thru messaging to Jms
         rules.get("/send/{msg}", (req, res) -> {
-            String msg = req.path().param("msg");
+            String msg = req.path().pathParameters().value("msg");
             System.out.println("Emitting: " + msg);
             emitter.send(msg);
             res.send();

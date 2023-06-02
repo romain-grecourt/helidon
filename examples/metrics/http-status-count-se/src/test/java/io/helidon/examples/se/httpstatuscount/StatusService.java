@@ -16,24 +16,24 @@
 package io.helidon.examples.se.httpstatuscount;
 
 import io.helidon.common.http.Http;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 /**
  * Test-only service that allows the client to specify what HTTP status the service should return in its response.
  * This allows the client to know which status family counter should be updated.
  */
-public class StatusService implements Service {
+public class StatusService implements HttpService {
 
     @Override
-    public void update(Routing.Rules rules) {
+    public void routing(HttpRules rules) {
         rules.get("/{status}", this::respondWithRequestedStatus);
     }
 
     private void respondWithRequestedStatus(ServerRequest request, ServerResponse response) {
-        String statusText = request.path().param("status");
+        String statusText = request.path().pathParameters().value("status");
         int status;
         String msg;
         try {
@@ -43,7 +43,6 @@ public class StatusService implements Service {
             status = Http.Status.INTERNAL_SERVER_ERROR_500.code();
             msg = "Unsuccessful conversion";
         }
-        response.status(status)
-                        .send(msg);
+        response.status(status).send(msg);
     }
 }

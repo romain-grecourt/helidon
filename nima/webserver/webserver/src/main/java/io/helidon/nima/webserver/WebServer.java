@@ -25,6 +25,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import io.helidon.common.HelidonServiceLoader;
 import io.helidon.common.context.Context;
@@ -146,7 +147,7 @@ public interface WebServer {
      * Reload TLS keystore and truststore configuration for the named socket.
      *
      * @param socketName socket name to reload TLS configuration on
-     * @param tls new TLS configuration
+     * @param tls        new TLS configuration
      */
     void reloadTls(String socketName, Tls tls);
 
@@ -195,8 +196,8 @@ public interface WebServer {
                 // In case somebody spins a huge number up, the counter will cycle to negative numbers once
                 // Integer.MAX_VALUE is reached.
                 context = Context.builder()
-                        .id("web-" + WEBSERVER_COUNTER.getAndIncrement())
-                        .build();
+                                 .id("web-" + WEBSERVER_COUNTER.getAndIncrement())
+                                 .build();
             }
             if (mediaContext == null) {
                 if (mediaContextBuilder == null) {
@@ -237,42 +238,42 @@ public interface WebServer {
 
             // now let's configure the sockets
             config.get("sockets")
-                    .asNodeList()
-                    .orElseGet(List::of)
-                    .forEach(listenerConfig -> {
-                        String socketName = listenerConfig.get("name").asString()
-                                .orElseThrow(() -> new IllegalStateException("Socket name is a required key"));
-                        ListenerConfiguration.Builder listener = socket(socketName);
+                  .asNodeList()
+                  .orElseGet(List::of)
+                  .forEach(listenerConfig -> {
+                      String socketName = listenerConfig.get("name").asString()
+                                                        .orElseThrow(() -> new IllegalStateException("Socket name is a required key"));
+                      ListenerConfiguration.Builder listener = socket(socketName);
 
-                        // listener specific options
-                        listenerConfig.get("host").asString().ifPresent(listener::host);
-                        listenerConfig.get("port").asInt().ifPresent(listener::port);
-                        listenerConfig.get("backlog").asInt().ifPresent(listener::backlog);
-                        listenerConfig.get("receive-buffer-size").asInt().ifPresent(listener::receiveBufferSize);
-                        listenerConfig.get("write-queue-length").asInt().ifPresent(listener::writeQueueLength);
-                        listenerConfig.get("write-buffer-size").asInt().ifPresent(listener::writeBufferSize);
+                      // listener specific options
+                      listenerConfig.get("host").asString().ifPresent(listener::host);
+                      listenerConfig.get("port").asInt().ifPresent(listener::port);
+                      listenerConfig.get("backlog").asInt().ifPresent(listener::backlog);
+                      listenerConfig.get("receive-buffer-size").asInt().ifPresent(listener::receiveBufferSize);
+                      listenerConfig.get("write-queue-length").asInt().ifPresent(listener::writeQueueLength);
+                      listenerConfig.get("write-buffer-size").asInt().ifPresent(listener::writeBufferSize);
 
-                        listenerConfig.get("tls").as(Tls::create).ifPresent(listener::tls);
+                      listenerConfig.get("tls").as(Tls::create).ifPresent(listener::tls);
 
-                        // connection specific options
-                        listener.connectionOptions(socketOptionsBuilder -> {
-                            Config connConfig = listenerConfig.get("connection-options");
-                            connConfig.get("read-timeout-seconds").asInt().ifPresent(it -> socketOptionsBuilder.readTimeout(
-                                    Duration.ofSeconds(it)));
-                            connConfig.get("connect-timeout-seconds").asInt().ifPresent(it -> socketOptionsBuilder.connectTimeout(
-                                    Duration.ofSeconds(it)));
-                            connConfig.get("send-buffer-size").asInt().ifPresent(socketOptionsBuilder::socketSendBufferSize);
-                            connConfig.get("receive-buffer-size").asInt()
+                      // connection specific options
+                      listener.connectionOptions(socketOptionsBuilder -> {
+                          Config connConfig = listenerConfig.get("connection-options");
+                          connConfig.get("read-timeout-seconds").asInt().ifPresent(it -> socketOptionsBuilder.readTimeout(
+                                  Duration.ofSeconds(it)));
+                          connConfig.get("connect-timeout-seconds").asInt().ifPresent(it -> socketOptionsBuilder.connectTimeout(
+                                  Duration.ofSeconds(it)));
+                          connConfig.get("send-buffer-size").asInt().ifPresent(socketOptionsBuilder::socketSendBufferSize);
+                          connConfig.get("receive-buffer-size").asInt()
                                     .ifPresent(socketOptionsBuilder::socketReceiveBufferSize);
-                            connConfig.get("keep-alive").asBoolean().ifPresent(socketOptionsBuilder::socketKeepAlive);
-                            connConfig.get("reuse-address").asBoolean().ifPresent(socketOptionsBuilder::socketReuseAddress);
-                            connConfig.get("tcp-no-delay").asBoolean().ifPresent(socketOptionsBuilder::tcpNoDelay);
-                        });
-                    });
+                          connConfig.get("keep-alive").asBoolean().ifPresent(socketOptionsBuilder::socketKeepAlive);
+                          connConfig.get("reuse-address").asBoolean().ifPresent(socketOptionsBuilder::socketReuseAddress);
+                          connConfig.get("tcp-no-delay").asBoolean().ifPresent(socketOptionsBuilder::tcpNoDelay);
+                      });
+                  });
             // Configure content encoding
             config.get("content-encoding")
-                    .as(ContentEncodingContext::create)
-                    .ifPresent(this::contentEncodingContext);
+                  .as(ContentEncodingContext::create)
+                  .ifPresent(this::contentEncodingContext);
             // Configure media support
             Config mediaSupportConfig = config.get("media-support");
             if (mediaSupportConfig.exists()) {
@@ -425,10 +426,19 @@ public interface WebServer {
          */
         public Builder tls(Tls tls) {
             this.socket(DEFAULT_SOCKET_NAME)
-                    .tls(tls);
+                .tls(tls);
             return this;
         }
 
+        /**
+         * Configure TLS for the default socket.
+         *
+         * @param supplier tls supplier
+         * @return updated builder
+         */
+        public Builder tls(Supplier<Tls> supplier) {
+            return tls(supplier.get());
+        }
 
         /**
          * Configure TLS for the default socket.
@@ -477,7 +487,7 @@ public interface WebServer {
             Objects.requireNonNull(mediaSupport);
             if (mediaContextBuilder == null) {
                 mediaContextBuilder = MediaContext.builder()
-                        .discoverServices(false);
+                                                  .discoverServices(false);
             }
 
             mediaContextBuilder.addMediaSupport(mediaSupport);
@@ -502,6 +512,22 @@ public interface WebServer {
         }
 
         /**
+         * Configure the {@link MediaContext}.
+         * This method discards previously registered {@link io.helidon.nima.http.media.MediaContext}
+         * and all previously registered {@link io.helidon.nima.http.media.MediaSupport}.
+         * If an explicit media support is configured using {@link #addMediaSupport(io.helidon.nima.http.media.MediaSupport)},
+         * this context will be used as a fallback for a new one created from configured values.
+         *
+         * @param supplier media context supplier
+         * @return updated instance of the builder
+         * @see #addMediaSupport(io.helidon.nima.http.media.MediaSupport)
+         */
+        public Builder mediaContext(Supplier<MediaContext> supplier) {
+            Objects.requireNonNull(supplier);
+            return mediaContext(supplier.get());
+        }
+
+        /**
          * Configure the default {@link ContentEncodingContext}.
          * This method discards all previously registered ContentEncodingContext.
          *
@@ -512,6 +538,18 @@ public interface WebServer {
             Objects.requireNonNull(contentEncodingContext);
             this.contentEncodingContext = contentEncodingContext;
             return this;
+        }
+
+        /**
+         * Configure the default {@link ContentEncodingContext}.
+         * This method discards all previously registered ContentEncodingContext.
+         *
+         * @param supplier content encoding context supplier
+         * @return updated instance of the builder
+         */
+        public Builder contentEncodingContext(Supplier<ContentEncodingContext> supplier) {
+            Objects.requireNonNull(supplier);
+            return contentEncodingContext(supplier.get());
         }
 
         /**
@@ -591,8 +629,8 @@ public interface WebServer {
             List<ServerConnectionProvider> providers = connectionProviders.build().asList();
             // Send configuration nodes to providers
             return providers.stream()
-                    .map(it -> it.create(providersConfig::get))
-                    .toList();
+                            .map(it -> it.create(providersConfig::get))
+                            .toList();
         }
 
         ListenerConfiguration.Builder socket(String socketName) {

@@ -19,13 +19,11 @@ package io.helidon.examples.logging.logback.aot;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.context.Context;
 import io.helidon.common.context.Contexts;
 import io.helidon.logging.common.HelidonMdc;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.webserver.WebServer;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
@@ -61,19 +59,16 @@ public final class Main {
         Contexts.runInContext(Context.create(), Main::logging);
 
         WebServer.builder()
-                .routing(Routing.builder()
+                 .routing(routing -> routing
                                  .get("/", (req, res) -> {
-                                     HelidonMdc.set("name", String.valueOf(req.requestId()));
+                                     HelidonMdc.set("name", String.valueOf(req.id()));
                                      LOGGER.debug("Debug message to show runtime reloading works");
                                      LOGGER.info("Running in webserver, id:");
-                                     res.send("Hello")
-                                             .forSingle(ignored -> LOGGER.debug("Response sent"));
-                                 })
-                                 .build())
-                .port(8080)
-                .build()
-                .start()
-                .await(10, TimeUnit.SECONDS);
+                                     res.send("Hello");
+                                     LOGGER.debug("Response sent");
+                                 }))
+                 .port(8080)
+                 .start();
     }
 
     private static void setupLogging() {

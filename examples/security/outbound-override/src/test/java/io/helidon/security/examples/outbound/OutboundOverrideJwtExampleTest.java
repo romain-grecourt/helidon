@@ -15,69 +15,61 @@
  */
 package io.helidon.security.examples.outbound;
 
-import java.util.concurrent.CompletionStage;
-
-import io.helidon.reactive.webclient.WebClient;
-import io.helidon.reactive.webclient.security.WebClientSecurity;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webclient.http1.Http1Client;
+import io.helidon.nima.webserver.WebServer;
 import io.helidon.security.Security;
+import io.helidon.security.integration.nima.WebClientSecurity;
 import io.helidon.security.providers.httpauth.HttpBasicAuthProvider;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static io.helidon.security.examples.outbound.OutboundOverrideJwtExample.clientPort;
-import static io.helidon.security.examples.outbound.OutboundOverrideJwtExample.startClientService;
-import static io.helidon.security.examples.outbound.OutboundOverrideJwtExample.startServingService;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 /**
  * Test of security override example.
  */
+@ServerTest
 public class OutboundOverrideJwtExampleTest {
 
-    private static WebClient webClient;
+    private final Http1Client client;
 
-    @BeforeAll
-    public static void setup() {
-        CompletionStage<Void> first = startClientService(-1);
-        CompletionStage<Void> second = startServingService(-1);
+    OutboundOverrideJwtExampleTest(Http1Client client) {
+        this.client = client;
+    }
 
-        first.toCompletableFuture().join();
-        second.toCompletableFuture().join();
+    @SetUpServer
+    public static void setup(WebServer.Builder builder, Http1Client.Http1ClientBuilder clientBuilder) {
+        OutboundOverrideJwtExample.setup(builder);
 
         Security security = Security.builder()
-                .addProvider(HttpBasicAuthProvider.builder().build())
-                .build();
+                                    .addProvider(HttpBasicAuthProvider.builder().build())
+                                    .build();
 
-        webClient = WebClient.builder()
-                .baseUri("http://localhost:" + clientPort())
-                .addService(WebClientSecurity.create(security))
-                .build();
+        clientBuilder.service(WebClientSecurity.create(security));
     }
 
     @Test
     public void testOverrideExample() {
-        String value = webClient.get()
-                .path("/override")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
-                .request(String.class)
-                .await();
+        String value = client.get()
+                             .path("/override")
+                             .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
+                             .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
+                             .request(String.class);
 
         assertThat(value, is("You are: jack, backend service returned: jill"));
     }
 
     @Test
     public void testPropagateExample() {
-        String value = webClient.get()
-                .path("/propagate")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
-                .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
-                .request(String.class)
-                .await();
+        String value = client.get()
+                             .path("/propagate")
+                             .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_USER, "jack")
+                             .property(HttpBasicAuthProvider.EP_PROPERTY_OUTBOUND_PASSWORD, "password")
+                             .request(String.class);
 
         assertThat(value, is("You are: jack, backend service returned: jack"));
     }
-
 }

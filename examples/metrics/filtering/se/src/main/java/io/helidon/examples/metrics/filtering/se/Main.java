@@ -16,18 +16,16 @@
 
 package io.helidon.examples.metrics.filtering.se;
 
-import io.helidon.common.reactive.Single;
 import io.helidon.config.Config;
 import io.helidon.logging.common.LogConfig;
 import io.helidon.metrics.api.MetricsSettings;
 import io.helidon.metrics.api.RegistryFactory;
 import io.helidon.metrics.api.RegistryFilterSettings;
 import io.helidon.metrics.api.RegistrySettings;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
 
+import io.helidon.nima.observe.metrics.MetricsFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 import org.eclipse.microprofile.metrics.MetricRegistry;
 
 /**
@@ -43,17 +41,22 @@ public final class Main {
 
     /**
      * Application main entry point.
+     *
      * @param args command line arguments.
      */
     public static void main(final String[] args) {
-        startServer();
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder);
+        WebServer server = builder.start();
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
     /**
-     * Start the server.
-     * @return the created {@link io.helidon.reactive.webserver.WebServer} instance
+     * Setup the server.
+     *
+     * @param server server builder
      */
-    static Single<WebServer> startServer() {
+    static void setup(WebServer.Builder server) {
 
         // load logging configuration
         LogConfig.configureRuntime();
@@ -62,55 +65,38 @@ public final class Main {
         Config config = Config.create();
 
         // Ignore the "gets" timer.
-        RegistryFilterSettings.Builder registryFilterSettingsBuilder = RegistryFilterSettings.builder()
-                .exclude(GreetService.TIMER_FOR_GETS);
+        RegistryFilterSettings.Builder registryFilterSettingsBuilder =
+                RegistryFilterSettings.builder()
+                                      .exclude(GreetService.TIMER_FOR_GETS);
 
-        RegistrySettings.Builder registrySettingsBuilder = RegistrySettings.builder()
-                .filterSettings(registryFilterSettingsBuilder);
+        RegistrySettings.Builder registrySettingsBuilder =
+                RegistrySettings.builder()
+                                .filterSettings(registryFilterSettingsBuilder);
 
-        MetricsSettings.Builder metricsSettingsBuilder = MetricsSettings.builder()
-                .registrySettings(MetricRegistry.Type.APPLICATION, registrySettingsBuilder.build());
+        MetricsSettings.Builder metricsSettingsBuilder =
+                MetricsSettings.builder()
+                               .registrySettings(MetricRegistry.Type.APPLICATION, registrySettingsBuilder.build());
 
-        WebServer server = WebServer.builder()
-                .routing(createRouting(config, metricsSettingsBuilder))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
-
-        Single<WebServer> webserver = server.start();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        webserver.thenAccept(ws -> {
-            System.out.println("WEB server is up! http://localhost:" + ws.port() + "/greet");
-            ws.whenShutdown().thenRun(() -> System.out.println("WEB server is DOWN. Good bye!"));
-        })
-                .exceptionallyAccept(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                });
-
-        return webserver;
+        server.config(config.get("server"))
+              .routing(r -> routing(r, config, metricsSettingsBuilder));
     }
 
     /**
-     * Creates new {@link io.helidon.reactive.webserver.Routing}.
+     * Setup routing.
      *
-     * @return routing configured with JSON support, a health check, and a service
-     * @param config configuration of this server
+     * @param routing routing builder
+     * @param config  configuration of this server
      */
-    private static Routing createRouting(Config config, MetricsSettings.Builder metricsSettingsBuilder) {
-        MetricsSupport metricsSupport = MetricsSupport.builder()
-                .metricsSettings(metricsSettingsBuilder)
-                .build();
+    static void routing(HttpRouting.Builder routing, Config config, MetricsSettings.Builder metricsSettingsBuilder) {
+        MetricsFeature metrics = MetricsFeature.builder()
+                                               .metricsSettings(metricsSettingsBuilder)
+                                               .build();
         MetricRegistry appRegistry = RegistryFactory.getInstance(metricsSettingsBuilder.build())
-                .getRegistry(MetricRegistry.Type.APPLICATION);
+                                                    .getRegistry(MetricRegistry.Type.APPLICATION);
 
-        GreetService greetService = new GreetService(config, appRegistry);
+        GreetService greetService = new GreetService(config);
 
-        return Routing.builder()
-                .register(metricsSupport)           // Metrics at "/metrics"
-                .register("/greet", greetService)
-                .build();
+        routing.addFeature(metrics)
+               .register("/greet", greetService);
     }
 }

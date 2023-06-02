@@ -17,15 +17,15 @@
 package io.helidon.security.examples.google;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import io.helidon.common.http.HttpMediaType;
 import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
-import io.helidon.reactive.webserver.staticcontent.StaticContentSupport;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.staticcontent.StaticContentService;
 import io.helidon.security.SecurityContext;
 import io.helidon.security.Subject;
-import io.helidon.security.integration.webserver.WebSecurity;
+import io.helidon.security.integration.nima.SecurityFeature;
 
 import static io.helidon.config.ConfigSources.classpath;
 import static io.helidon.config.ConfigSources.file;
@@ -33,14 +33,10 @@ import static io.helidon.config.ConfigSources.file;
 /**
  * Google login button example main class using configuration.
  */
+@SuppressWarnings("DuplicatedCode")
 public final class GoogleConfigMain {
-    private static volatile WebServer theServer;
 
     private GoogleConfigMain() {
-    }
-
-    public static WebServer getTheServer() {
-        return theServer;
     }
 
     /**
@@ -49,26 +45,38 @@ public final class GoogleConfigMain {
      * @param args ignored
      */
     public static void main(String[] args) {
-        start(GoogleUtil.PORT);
+        WebServer server = setup(WebServer.builder()).build();
+
+        long t = System.nanoTime();
+        server.start();
+        long time = System.nanoTime() - t;
+
+        System.out.printf("""
+                        Server started in %d ms
+                        Started server on localhost: %d
+                        You can access this example at http://localhost:%d/index.html
+                                            
+                        Check application.yaml in case you are behind a proxy to configure it
+                        """,
+                TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS),
+                server.port(),
+                server.port());
     }
 
     private static Config buildConfig() {
         return Config.builder()
-                .sources(
-                        // you can use this file to override the defaults built-in
-                        file(System.getProperty("user.home") + "/helidon/conf/examples.yaml").optional(),
-                        // in jar file (see src/main/resources/application.yaml)
-                        classpath("application.yaml"))
-                .build();
+                     .sources(
+                             // you can use this file to override the defaults built-in
+                             file(System.getProperty("user.home") + "/helidon/conf/examples.yaml").optional(),
+                             // in jar file (see src/main/resources/application.yaml)
+                             classpath("application.yaml"))
+                     .build();
     }
 
-    static int start(int port) {
+    static WebServer.Builder setup(WebServer.Builder builder) {
         Config config = buildConfig();
-
-        Routing.Builder routing = Routing.builder()
-                // helper method to load both security and web server security from configuration
-                .register(WebSecurity.create(config.get("security")))
-                // web server does not (yet) have possibility to configure routes in config files, so explicit...
+        return builder.routing(routing -> routing
+                .addFeature(SecurityFeature.create(config.get("security")))
                 .get("/rest/profile", (req, res) -> {
                     Optional<SecurityContext> securityContext = req.context().get(SecurityContext.class);
                     res.headers().contentType(HttpMediaType.PLAINTEXT_UTF_8);
@@ -77,10 +85,6 @@ public final class GoogleConfigMain {
                             .map(Subject::toString)
                             .orElse("Security context is null"));
                 })
-                .register(StaticContentSupport.create("/WEB"));
-
-        theServer = GoogleUtil.startIt(port, routing);
-
-        return theServer.port();
+                .register(StaticContentService.create("/WEB")));
     }
 }

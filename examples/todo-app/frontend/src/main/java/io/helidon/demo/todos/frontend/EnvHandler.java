@@ -17,13 +17,13 @@
 package io.helidon.demo.todos.frontend;
 
 import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
 
 /**
  * Handles response to current environment name.
  */
-public final class EnvHandler implements Service {
+public final class EnvHandler implements HttpService {
 
     /**
      * The environment name.
@@ -32,19 +32,17 @@ public final class EnvHandler implements Service {
 
     /**
      * Create a new {@code EnvHandler} instance.
+     *
      * @param config the configuration root
      */
     public EnvHandler(final Config config) {
         Config envConfig = config.get("env");
         this.env = envConfig.asString().orElse("unknown");
-
-        envConfig.onChange(config1 -> {
-            EnvHandler.this.env = config1.asString().orElse("unknown");
-        });
+        envConfig.onChange(config1 -> EnvHandler.this.env = config1.asString().orElse("unknown"));
     }
 
     @Override
-    public void update(final Routing.Rules rules) {
+    public void routing(final HttpRules rules) {
         rules.get((req, res) -> res.send(env));
     }
 }

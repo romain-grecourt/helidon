@@ -16,31 +16,20 @@
 
 package io.helidon.security.examples.webserver.basic;
 
-import io.helidon.reactive.webserver.WebServer;
-
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webserver.WebServer;
 
 /**
- * Unit test for {@link io.helidon.security.examples.webserver.basic.BasicExampleConfigMain}.
+ * Unit test for {@link BasicExampleConfigMain}.
  */
 public class BasicExampleConfigTest extends BasicExampleTest {
 
-    private static WebServer server;
-
-    @BeforeAll
-    public static void startServer() {
-        // start the test
-        server = BasicExampleConfigMain.startServer();
+    public BasicExampleConfigTest() {
+        super();
     }
 
-    @AfterAll
-    public static void stopServer() {
-        stopServer(server);
-    }
-
-    @Override
-    String getServerBase() {
-        return "http://localhost:" + server.port();
+    @SetUpServer
+    public static void setup(WebServer.Builder builder) {
+        BasicExampleConfigMain.setup(builder);
     }
 }

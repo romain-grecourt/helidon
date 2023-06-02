@@ -17,18 +17,17 @@ package io.helidon.service.employee;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletionStage;
+import java.util.stream.Stream;
 
-import io.helidon.common.reactive.Multi;
 import io.helidon.config.Config;
-import io.helidon.reactive.dbclient.DbClient;
-import io.helidon.reactive.dbclient.DbRow;
-import io.helidon.reactive.dbclient.jdbc.JdbcDbClientProviderBuilder;
+import io.helidon.dbclient.DbClient;
+import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.jdbc.JdbcDbClientProviderBuilder;
 
 /**
  * Implementation of the {@link EmployeeRepository}. This implementation uses an
  * Oracle database to persist the Employee objects.
- *
  */
 final class EmployeeRepositoryImplDB implements EmployeeRepository {
 
@@ -37,6 +36,7 @@ final class EmployeeRepositoryImplDB implements EmployeeRepository {
     /**
      * Creates the database connection using the parameters specified in the
      * <code>application.yaml</code> file located in the <code>resources</code> directory.
+     *
      * @param config Represents the application configuration.
      */
     EmployeeRepositoryImplDB(Config config) {
@@ -49,54 +49,62 @@ final class EmployeeRepositoryImplDB implements EmployeeRepository {
 
         try {
             Class.forName(driver);
-        } catch (Exception sqle) {
-            sqle.printStackTrace();
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
 
         // now we create the reactive DB Client - explicitly use JDBC, so we can
         // configure JDBC specific configuration
         dbClient = JdbcDbClientProviderBuilder.create()
-                .url(url + dbHostURL)
-                .username(dbUserName)
-                .password(dbUserPassword)
-                .build();
+                                              .url(url + dbHostURL)
+                                              .username(dbUserName)
+                                              .password(dbUserPassword)
+                                              .build();
     }
 
     @Override
-    public CompletionStage<List<Employee>> getAll() {
+    public List<Employee> getAll() {
         String queryStr = "SELECT * FROM EMPLOYEE";
-
-        return toEmployeeList(dbClient.execute(exec -> exec.query(queryStr)));
+        try (DbExecute exec = dbClient.execute()) {
+            return toEmployeeList(exec.query(queryStr));
+        }
     }
 
     @Override
-    public CompletionStage<List<Employee>> getByLastName(String name) {
+    public List<Employee> getByLastName(String name) {
         String queryStr = "SELECT * FROM EMPLOYEE WHERE LASTNAME LIKE ?";
 
-        return toEmployeeList(dbClient.execute(exec -> exec.query(queryStr, name)));
+        try (DbExecute exec = dbClient.execute()) {
+            return toEmployeeList(exec.query(queryStr, name));
+        }
     }
 
     @Override
-    public CompletionStage<List<Employee>> getByTitle(String title) {
+    public List<Employee> getByTitle(String title) {
         String queryStr = "SELECT * FROM EMPLOYEE WHERE TITLE LIKE ?";
 
-        return toEmployeeList(dbClient.execute(exec -> exec.query(queryStr, title)));
+        try (DbExecute exec = dbClient.execute()) {
+            return toEmployeeList(exec.query(queryStr, title));
+        }
     }
 
     @Override
-    public CompletionStage<List<Employee>> getByDepartment(String department) {
+    public List<Employee> getByDepartment(String department) {
         String queryStr = "SELECT * FROM EMPLOYEE WHERE DEPARTMENT LIKE ?";
 
-        return toEmployeeList(dbClient.execute(exec -> exec.query(queryStr, department)));
+        try (DbExecute exec = dbClient.execute()) {
+            return toEmployeeList(exec.query(queryStr, department));
+        }
     }
 
     @Override
-    public CompletionStage<Employee> save(Employee employee) {
+    public Employee save(Employee employee) {
         String insertTableSQL = "INSERT INTO EMPLOYEE "
                 + "(ID, FIRSTNAME, LASTNAME, EMAIL, PHONE, BIRTHDATE, TITLE, DEPARTMENT) "
                 + "VALUES(EMPLOYEE_SEQ.NEXTVAL,?,?,?,?,?,?,?)";
 
-        return dbClient.execute(exec -> exec.createInsert(insertTableSQL)
+        try (DbExecute exec = dbClient.execute()) {
+            exec.createInsert(insertTableSQL)
                 .addParam(employee.getFirstName())
                 .addParam(employee.getLastName())
                 .addParam(employee.getEmail())
@@ -104,46 +112,51 @@ final class EmployeeRepositoryImplDB implements EmployeeRepository {
                 .addParam(employee.getBirthDate())
                 .addParam(employee.getTitle())
                 .addParam(employee.getDepartment())
-                .execute())
-                // let's always return the employee once the insert finishes
-                .thenApply(count -> employee);
+                .execute();
+            return employee;
+        }
     }
 
     @Override
-    public CompletionStage<Long> deleteById(String id) {
+    public long deleteById(String id) {
         String deleteRowSQL = "DELETE FROM EMPLOYEE WHERE ID=?";
 
-        return dbClient.execute(exec -> exec.delete(deleteRowSQL, id));
+        try (DbExecute exec = dbClient.execute()) {
+            return exec.delete(deleteRowSQL, id);
+        }
     }
 
     @Override
-    public CompletionStage<Optional<Employee>> getById(String id) {
+    public Optional<Employee> getById(String id) {
         String queryStr = "SELECT * FROM EMPLOYEE WHERE ID =?";
 
-        return dbClient.execute(exec -> exec.get(queryStr, id))
-                .map(optionalRow -> optionalRow.map(dbRow -> dbRow.as(Employee.class)));
+        try (DbExecute exec = dbClient.execute()) {
+            return exec.get(queryStr, id)
+                       .map(dbRow -> dbRow.as(Employee.class));
+        }
     }
 
     @Override
-    public CompletionStage<Long> update(Employee updatedEmployee, String id) {
+    public long update(Employee updatedEmployee, String id) {
         String updateTableSQL = "UPDATE EMPLOYEE SET FIRSTNAME=?, LASTNAME=?, EMAIL=?, PHONE=?, BIRTHDATE=?, TITLE=?, "
                 + "DEPARTMENT=?  WHERE ID=?";
 
-        return dbClient.execute(exec -> exec.createUpdate(updateTableSQL)
-                .addParam(updatedEmployee.getFirstName())
-                .addParam(updatedEmployee.getLastName())
-                .addParam(updatedEmployee.getEmail())
-                .addParam(updatedEmployee.getPhone())
-                .addParam(updatedEmployee.getBirthDate())
-                .addParam(updatedEmployee.getTitle())
-                .addParam(updatedEmployee.getDepartment())
-                .addParam(Integer.parseInt(id))
-                .execute());
+        try (DbExecute exec = dbClient.execute()) {
+            return exec.createUpdate(updateTableSQL)
+                       .addParam(updatedEmployee.getFirstName())
+                       .addParam(updatedEmployee.getLastName())
+                       .addParam(updatedEmployee.getEmail())
+                       .addParam(updatedEmployee.getPhone())
+                       .addParam(updatedEmployee.getBirthDate())
+                       .addParam(updatedEmployee.getTitle())
+                       .addParam(updatedEmployee.getDepartment())
+                       .addParam(Integer.parseInt(id))
+                       .execute();
+        }
     }
 
-    private static CompletionStage<List<Employee>> toEmployeeList(Multi<DbRow> resultSet) {
-        return resultSet.map(EmployeeDbMapper::read)
-                .collectList();
+    private static List<Employee> toEmployeeList(Stream<DbRow> resultSet) {
+        return resultSet.map(EmployeeDbMapper::read).toList();
     }
 
     private static final class EmployeeDbMapper {

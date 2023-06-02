@@ -20,10 +20,10 @@ import java.util.Collections;
 
 import io.helidon.common.http.Http;
 import io.helidon.config.Config;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.ServerRequest;
-import io.helidon.reactive.webserver.ServerResponse;
-import io.helidon.reactive.webserver.Service;
+import io.helidon.nima.webserver.http.HttpRules;
+import io.helidon.nima.webserver.http.HttpService;
+import io.helidon.nima.webserver.http.ServerRequest;
+import io.helidon.nima.webserver.http.ServerResponse;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -51,17 +51,14 @@ import jakarta.json.JsonObject;
  * </p>
  */
 
-public class GreetService implements Service {
+public class GreetService implements HttpService {
 
-    /**
-     * The config value for the key {@code greeting}.
-     */
-    private String greeting;
+
+    private static final JsonBuilderFactory JSON_BF = Json.createBuilderFactory(Collections.emptyMap());
 
     private final Timer getTimer;
     private final Counter personalizedGetCounter;
-
-    private static final JsonBuilderFactory JSON_BF = Json.createBuilderFactory(Collections.emptyMap());
+    private String greeting;
 
     GreetService(Config config, Timer getTimer, Counter personalizedGetCounter) {
         this.greeting = config.get("app.greeting").asString().orElse("Ciao");
@@ -69,42 +66,38 @@ public class GreetService implements Service {
         this.personalizedGetCounter = personalizedGetCounter;
     }
 
-    /**
-     * A service registers itself by updating the routine rules.
-     * @param rules the routing rules.
-     */
     @Override
-    public void update(Routing.Rules rules) {
-        rules
-            .get((req, resp) -> getTimer.record((Runnable) req::next)) // Update the timer with every GET.
-            .get("/", this::getDefaultMessageHandler)
-            .get("/{name}",
-                    (req, resp) -> {
-                            personalizedGetCounter.increment();
-                            req.next();
-                        }, // Count personalized GETs...
-                    this::getMessageHandler) // ...and process them.
-            .put("/greeting", this::updateGreetingHandler);
+    public void routing(HttpRules rules) {
+        rules.get((req, res) -> getTimer.record((Runnable) res::next)) // Update the timer with every GET.
+             .get("/", this::getDefaultMessageHandler)
+             .get("/{name}",
+                     (req, res) -> {
+                         personalizedGetCounter.increment();
+                         res.next();
+                     }, // Count personalized GETs...
+                     this::getMessageHandler) // ...and process them.
+             .put("/greeting", this::updateGreetingHandler);
     }
 
     /**
      * Return a worldly greeting message.
-     * @param request the server request
+     *
+     * @param request  the server request
      * @param response the server response
      */
-    private void getDefaultMessageHandler(ServerRequest request,
-                                   ServerResponse response) {
+    private void getDefaultMessageHandler(ServerRequest request, ServerResponse response) {
         sendResponse(response, "World");
     }
 
     /**
      * Return a greeting message using the name that was provided.
-     * @param request the server request
+     *
+     * @param request  the server request
      * @param response the server response
      */
     private void getMessageHandler(ServerRequest request,
-                            ServerResponse response) {
-        String name = request.path().param("name");
+                                   ServerResponse response) {
+        String name = request.path().pathParameters().value("name");
         sendResponse(response, name);
     }
 
@@ -117,8 +110,8 @@ public class GreetService implements Service {
 
         if (!jo.containsKey(GreetingMessage.JSON_LABEL)) {
             JsonObject jsonErrorObject = JSON_BF.createObjectBuilder()
-                    .add("error", "No greeting provided")
-                    .build();
+                                                .add("error", "No greeting provided")
+                                                .build();
             response.status(Http.Status.BAD_REQUEST_400)
                     .send(jsonErrorObject);
             return;
@@ -130,11 +123,13 @@ public class GreetService implements Service {
 
     /**
      * Set the greeting to use in future messages.
-     * @param request the server request
+     *
+     * @param request  the server request
      * @param response the server response
      */
-    private void updateGreetingHandler(ServerRequest request,
-                                       ServerResponse response) {
-        request.content().as(JsonObject.class).thenAccept(jo -> updateGreetingFromJson(jo, response));
+    private void updateGreetingHandler(ServerRequest request, ServerResponse response) {
+
+        JsonObject jsonObject = request.content().as(JsonObject.class);
+        updateGreetingFromJson(jsonObject, response);
     }
 }

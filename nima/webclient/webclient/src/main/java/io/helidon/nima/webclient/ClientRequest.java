@@ -211,7 +211,7 @@ public interface ClientRequest<B extends ClientRequest<B, R>, R extends ClientRe
      */
     B connection(ClientConnection connection);
 
-    default B property(String prop, String value) {
+    default B property(String prop, Object value) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 

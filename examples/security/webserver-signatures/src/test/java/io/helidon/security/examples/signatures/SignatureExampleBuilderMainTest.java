@@ -16,36 +16,22 @@
 
 package io.helidon.security.examples.signatures;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import io.helidon.nima.testing.junit5.webserver.ServerTest;
+import io.helidon.nima.testing.junit5.webserver.SetUpServer;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * Unit test for {@link SignatureExampleBuilderMain}.
  */
+@ServerTest
 public class SignatureExampleBuilderMainTest extends SignatureExampleTest {
-    private static int svc1Port;
-    private static int svc2Port;
 
-    @BeforeAll
-    public static void initClass() {
-        SignatureExampleBuilderMain.main(null);
-        svc1Port = SignatureExampleBuilderMain.getService1Server().port();
-        svc2Port = SignatureExampleBuilderMain.getService2Server().port();
+    protected SignatureExampleBuilderMainTest(WebServer server) {
+        super(server);
     }
 
-    @AfterAll
-    public static void destroyClass() throws InterruptedException {
-        stopServer(SignatureExampleBuilderMain.getService2Server());
-        stopServer(SignatureExampleBuilderMain.getService1Server());
-    }
-
-    @Override
-    int getService1Port() {
-        return svc1Port;
-    }
-
-    @Override
-    int getService2Port() {
-        return svc2Port;
+    @SetUpServer
+    public static void setup(WebServer.Builder builder) {
+        SignatureExampleBuilderMain.setup(builder);
     }
 }

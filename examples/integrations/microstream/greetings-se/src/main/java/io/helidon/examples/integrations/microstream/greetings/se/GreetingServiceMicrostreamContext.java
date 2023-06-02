@@ -19,20 +19,16 @@ package io.helidon.examples.integrations.microstream.greetings.se;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
-import io.helidon.common.reactive.Single;
 
 import one.microstream.storage.embedded.types.EmbeddedStorageManager;
 
 /**
- * This class extends the MicrostreamSingleThreadedExecutionContext and provides
- * data access methods using the MicrostreamSingleThreadedExecutionContext.
+ * This class extends {@link MicrostreamExecutionContext} and provides data access methods.
  */
-public class GreetingServiceMicrostreamContext extends MicrostreamSingleThreadedExecutionContext {
+public class GreetingServiceMicrostreamContext extends MicrostreamExecutionContext {
 
     /**
-     * Create a new GreetingServiceMicrostreamContext.
+     * Create a new instance.
      *
      * @param storageManager the EmbeddedStorageManager used.
      */
@@ -43,32 +39,22 @@ public class GreetingServiceMicrostreamContext extends MicrostreamSingleThreaded
     /**
      * Add and store a new log entry.
      *
-     * @param name paramter for log text.
-     * @return Void
+     * @param name parameter for log text.
      */
-    public CompletableFuture<Void> addLogEntry(String name) {
-        return execute(() -> {
-            @SuppressWarnings("unchecked")
-            List<LogEntry> logs = (List<LogEntry>) storageManager().root();
-            logs.add(new LogEntry(name, LocalDateTime.now()));
-            storageManager().store(logs);
-            return null;
-        });
+    public void addLogEntry(String name) {
+        List<LogEntry> logs = (List<LogEntry>) storageManager().root();
+        logs.add(new LogEntry(name, LocalDateTime.now()));
+        storageManager().store(logs);
     }
 
     /**
      * initialize the storage root with a new, empty List.
-     *
-     * @return Void
      */
-    public CompletableFuture<Void> initRootElement() {
-        return execute(() -> {
-            if (storageManager().root() == null) {
-                storageManager().setRoot(new ArrayList<LogEntry>());
-                storageManager().storeRoot();
-            }
-            return null;
-        });
+    public void initRootElement() {
+        if (storageManager().root() == null) {
+            storageManager().setRoot(new ArrayList<LogEntry>());
+            storageManager().storeRoot();
+        }
     }
 
     /**
@@ -76,12 +62,8 @@ public class GreetingServiceMicrostreamContext extends MicrostreamSingleThreaded
      *
      * @return all LogEntries.
      */
-    public Single<List<LogEntry>> getLogs() {
-        @SuppressWarnings("unchecked")
-        CompletableFuture<List<LogEntry>> completableFuture = CompletableFuture.supplyAsync(() -> {
-            return (List<LogEntry>) storageManager().root();
-        }, executor());
-        return (Single<List<LogEntry>>) Single.create(completableFuture);
+    public List<LogEntry> getLogs() {
+        return (List<LogEntry>) storageManager().root();
     }
 
 }

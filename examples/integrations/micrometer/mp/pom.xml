@@ -26,15 +26,14 @@
         <relativePath>../../../../applications/mp/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
+    <groupId>io.helidon.examples.integrations.micrometer</groupId>
+    <artifactId>helidon-examples-integrations-micrometer-mp</artifactId>
 
     <name>Helidon MP Examples Micrometer</name>
 
     <description>
         Basic illustration of Micrometer integration in Helidon MP
     </description>
-
-    <groupId>io.helidon.examples.integrations.micrometer</groupId>
-    <artifactId>helidon-examples-integrations-micrometer-mp</artifactId>
 
     <dependencies>
         <dependency>
@@ -50,8 +49,8 @@
             <artifactId>microprofile-openapi-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.reactive.media</groupId>
-            <artifactId>helidon-reactive-media-jsonp</artifactId>
+            <groupId>io.helidon.nima.http.media</groupId>
+            <artifactId>helidon-nima-http-media-jsonp</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -66,11 +65,6 @@
         <dependency>
             <groupId>io.helidon.microprofile.tests</groupId>
             <artifactId>helidon-microprofile-tests-junit5</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.reactive.webclient</groupId>
-            <artifactId>helidon-reactive-webclient</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

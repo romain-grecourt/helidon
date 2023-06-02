@@ -20,13 +20,10 @@ import java.util.concurrent.TimeUnit;
 
 import io.helidon.config.ClasspathConfigSource;
 import io.helidon.config.Config;
-import io.helidon.health.checks.HealthChecks;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.reactive.health.HealthSupport;
-import io.helidon.reactive.media.jsonp.JsonpSupport;
-import io.helidon.reactive.metrics.MetricsSupport;
-import io.helidon.reactive.webserver.Routing;
-import io.helidon.reactive.webserver.WebServer;
+import io.helidon.nima.observe.ObserveFeature;
+import io.helidon.nima.webserver.WebServer;
+import io.helidon.nima.webserver.http.HttpRouting;
 
 /**
  * Microstream demo with a simple rest application.
@@ -45,61 +42,32 @@ public class Main {
      * @param args command line arguments.
      */
     public static void main(String[] args) {
-        startServer();
+        WebServer.Builder builder = WebServer.builder();
+        setup(builder);
+        WebServer server = builder.start();
+        System.out.println("WEB server is up! http://localhost:" + server.port() + "/greet");
     }
 
-    static WebServer startServer() {
-
+    static void setup(WebServer.Builder server) {
         LogConfig.configureRuntime();
         Config config = Config.builder()
-                .addSource(ClasspathConfigSource.create("/application.yaml"))
-                .build();
+                              .addSource(ClasspathConfigSource.create("/application.yaml"))
+                              .build();
 
         // Build server with JSONP support
-        WebServer server = WebServer.builder(createRouting(config))
-                .config(config.get("server"))
-                .addMediaSupport(JsonpSupport.create())
-                .build();
-
-        // Try to start the server. If successful, print some info and arrange to
-        // print a message at shutdown. If unsuccessful, print the exception.
-        server.start()
-                .thenAccept(ws -> {
-                    System.out.println(
-                            "WEB server is up! http://localhost:" + ws.port() + "/greet");
-                    ws.whenShutdown().thenRun(()
-                                                      -> System.out.println("WEB server is DOWN. Good bye!"));
-                })
-                .exceptionally(t -> {
-                    System.err.println("Startup failed: " + t.getMessage());
-                    t.printStackTrace(System.err);
-                    return null;
-                })
-                .await(10, TimeUnit.SECONDS);
-
-        // Server threads are not daemon. No need to block. Just react.
-        return server;
+        server.config(config.get("server"))
+              .routing(r -> routing(r, config));
     }
 
     /**
-     * Creates new {@link Routing}.
+     * Setup routing.
      *
-     * @return routing configured with JSON support, a health check, and a service
-     * @param config configuration of this server
+     * @param routing routing builder
+     * @param config  configuration of this server
      */
-    private static Routing createRouting(Config config) {
-
-        MetricsSupport metrics = MetricsSupport.create();
-        HealthSupport health = HealthSupport.builder()
-                .add(HealthChecks.healthChecks())   // Adds a convenient set of checks
-                .build();
-
+    static void routing(HttpRouting.Builder routing, Config config) {
         GreetingService greetService = new GreetingService(config);
-
-        return Routing.builder()
-                .register(health)                   // Health at "/health"
-                .register(metrics)                  // Metrics at "/metrics"
-                .register("/greet", greetService)
-                .build();
+        routing.addFeature(ObserveFeature.create())
+               .register("/greet", greetService);
     }
 }

@@ -20,6 +20,7 @@ import io.helidon.common.context.Context;
 import io.helidon.common.http.RoutedPath;
 import io.helidon.nima.http.media.ReadableEntity;
 import io.helidon.nima.webserver.ListenerContext;
+import io.helidon.nima.webserver.WebServer;
 
 /**
  * HTTP server request.
@@ -91,4 +92,8 @@ public interface ServerRequest extends HttpRequest {
      * @see io.helidon.nima.webserver.http.HttpRouting.Builder#security(HttpSecurity)
      */
     HttpSecurity security();
+
+    default WebServer server() {
+        throw new UnsupportedOperationException();
+    }
 }
