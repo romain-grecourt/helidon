@@ -19,5 +19,12 @@ package io.helidon.dbclient;
  * DML Database statement.
  * A DML statement modifies records in the database and returns the number of modified records.
  */
-public interface DbStatementDml extends DbStatement<DbStatementDml, Long> {
+public interface DbStatementDml extends DbStatement<DbStatementDml> {
+
+    /**
+     * Execute this statement using the parameters configured with {@code params} and {@code addParams} methods.
+     *
+     * @return The result of this statement, never blocking.
+     */
+    long execute();
 }

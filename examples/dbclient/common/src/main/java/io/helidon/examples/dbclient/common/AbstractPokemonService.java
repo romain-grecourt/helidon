@@ -15,12 +15,17 @@
  */
 package io.helidon.examples.dbclient.common;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import io.helidon.common.http.NotFoundException;
 import io.helidon.common.parameters.Parameters;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.Handler;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.HttpService;
@@ -61,7 +66,7 @@ public abstract class AbstractPokemonService implements HttpService {
                 // delete one
                 .delete("/{name}", this::deletePokemon)
                 // example of transactional API (local transaction only!)
-                .put("/transactional", Handler.create(Pokemon.class, this::transactional))
+                .put("/transactional", this::transactional)
                 // update one (TODO this is intentionally wrong - should use JSON request, just to make it simple we use path)
                 .put("/{name}/type/{type}", this::updatePokemonType);
     }
@@ -166,18 +171,19 @@ public abstract class AbstractPokemonService implements HttpService {
         }
     }
 
-    private void transactional(Pokemon pokemon, ServerResponse res) {
-        dbClient.transaction(exec -> {
-            long count = exec.createNamedGet("select-for-update")
-                             .namedParam(pokemon)
-                             .execute()
-                             .map(dbRow -> exec.createNamedUpdate("update")
-                                               .namedParam(pokemon)
-                                               .execute())
-                             .orElse(0L);
+    private void transactional(ServerRequest req, ServerResponse res) {
+        Pokemon pokemon = req.content().as(Pokemon.class);
+        try (DbTransaction tx = dbClient.transaction()) {
+            long count = tx.createNamedGet("select-for-update")
+                           .namedParam(pokemon)
+                           .execute()
+                           .map(dbRow -> tx.createNamedUpdate("update")
+                                           .namedParam(pokemon)
+                                           .execute())
+                           .orElse(0L);
+            tx.commit();
             res.send("Updated " + count + " records");
-            return null;
-        });
+        }
     }
 
     /**

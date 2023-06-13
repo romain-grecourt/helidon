@@ -43,11 +43,11 @@ public abstract class DbClientServiceBase implements DbClientService {
     }
 
     @Override
-    public final DbClientServiceContext statement(DbClientServiceContext context) {
+    public Object handle(Chain chain, DbClientServiceContext context) {
         if (predicate.test(context)) {
-            return apply(context);
+            return chain.proceed(apply(context));
         }
-        return context;
+        return chain.proceed(context);
     }
 
     /**
@@ -56,7 +56,7 @@ public abstract class DbClientServiceBase implements DbClientService {
      *
      * @param context db client invocation context
      * @return new context (or the same one if not modified)
-     * @see #statement(DbClientServiceContext)
+     * @see DbClientService#handle(Chain, DbClientServiceContext)
      */
     protected abstract DbClientServiceContext apply(DbClientServiceContext context);
 

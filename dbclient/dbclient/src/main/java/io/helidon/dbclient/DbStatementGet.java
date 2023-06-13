@@ -20,6 +20,11 @@ import java.util.Optional;
 /**
  * Database statement that queries the database and returns an optional row.
  */
-public interface DbStatementGet extends DbStatement<DbStatementGet, Optional<DbRow>> {
-
+public interface DbStatementGet extends DbStatement<DbStatementGet> {
+    /**
+     * Execute this statement using the parameters configured with {@code params} and {@code addParams} methods.
+     *
+     * @return The result of this statement, never blocking.
+     */
+    Optional<DbRow> execute();
 }

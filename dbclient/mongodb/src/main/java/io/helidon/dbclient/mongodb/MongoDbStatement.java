@@ -33,7 +33,7 @@ import org.bson.Document;
  * @param <S> MongoDB statement type
  * @param <R> Statement execution result type
  */
-abstract class MongoDbStatement<S extends DbStatement<S, R>, R> extends AbstractStatement<S, R> {
+abstract class MongoDbStatement<S extends DbStatement<S>, R> extends AbstractStatement<S, R> {
 
     /**
      * Empty JSON object.

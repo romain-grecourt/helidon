@@ -32,11 +32,8 @@ class JdbcStatementGet implements DbStatementGet {
 
     private final JdbcStatementQuery query;
 
-    JdbcStatementGet(JdbcExecuteContext executeContext,
-                     DbStatementContext statementContext) {
-
-        this.query = new JdbcStatementQuery(executeContext,
-                                            statementContext);
+    JdbcStatementGet(JdbcExecuteContext executeContext, DbStatementContext statementContext) {
+        this.query = new JdbcStatementQuery(executeContext, statementContext);
     }
 
     @Override

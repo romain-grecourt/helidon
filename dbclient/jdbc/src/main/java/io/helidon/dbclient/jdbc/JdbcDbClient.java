@@ -15,11 +15,9 @@
  */
 package io.helidon.dbclient.jdbc;
 
-import java.lang.System.Logger.Level;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Function;
 
 import io.helidon.common.mapper.MapperManager;
 import io.helidon.dbclient.DbClient;
@@ -33,6 +31,7 @@ import io.helidon.dbclient.DbStatementQuery;
 import io.helidon.dbclient.DbStatements;
 import io.helidon.dbclient.AbstractDbExecute;
 import io.helidon.dbclient.DbStatementContext;
+import io.helidon.dbclient.DbTransaction;
 
 import static io.helidon.dbclient.DbStatementType.DELETE;
 import static io.helidon.dbclient.DbStatementType.DML;
@@ -45,8 +44,6 @@ import static io.helidon.dbclient.DbStatementType.UPDATE;
  * Helidon DB implementation for JDBC drivers.
  */
 class JdbcDbClient implements DbClient {
-
-    private static final System.Logger LOGGER = System.getLogger(DbClient.class.getName());
 
     private final ConnectionPool connectionPool;
     private final DbStatements statements;
@@ -63,21 +60,21 @@ class JdbcDbClient implements DbClient {
     }
 
     @Override
-    public <T> T transaction(Function<DbExecute, T> function) {
-        try (JdbcTxExecute tx = new JdbcTxExecute(
-                statements, clientServices, connectionPool, dbMapperManager, mapperManager)) {
-            return tx.execute(function);
-        }
+    public DbTransaction transaction() {
+        return new JdbcTransaction(statements,
+                clientServices,
+                connectionPool,
+                dbMapperManager,
+                mapperManager);
     }
 
     @Override
     public DbExecute execute() {
         return new JdbcExecute(statements,
-                JdbcExecute.createContext(statements,
-                        clientServices,
-                        connectionPool,
-                        dbMapperManager,
-                        mapperManager));
+                clientServices,
+                connectionPool,
+                dbMapperManager,
+                mapperManager);
     }
 
     @Override
@@ -95,22 +92,18 @@ class JdbcDbClient implements DbClient {
                 cls.getName()));
     }
 
-    private static final class JdbcTxExecute extends JdbcExecute {
+    private static final class JdbcTransaction extends JdbcExecute implements DbTransaction {
 
-        private JdbcTxExecute(DbStatements statements,
-                              List<DbClientService> clientServices,
-                              ConnectionPool connectionPool,
-                              DbMapperManager dbMapperManager,
-                              MapperManager mapperManager) {
+        private boolean commit;
+        private boolean rollback;
 
-            super(statements, JdbcExecuteContext.jdbcBuilder()
-                                                .statements(statements)
-                                                .clientServices(clientServices)
-                                                .dbType(connectionPool.dbType())
-                                                .connection(createConnection(connectionPool))
-                                                .dbMapperManager(dbMapperManager)
-                                                .mapperManager(mapperManager)
-                                                .build());
+        private JdbcTransaction(DbStatements statements,
+                                List<DbClientService> clientServices,
+                                ConnectionPool connectionPool,
+                                DbMapperManager dbMapperManager,
+                                MapperManager mapperManager) {
+            super(statements, clientServices, createConnection(connectionPool), connectionPool.dbType(),
+                    dbMapperManager, mapperManager);
         }
 
         private static Connection createConnection(ConnectionPool connectionPool) {
@@ -123,22 +116,49 @@ class JdbcDbClient implements DbClient {
             return conn;
         }
 
+        @Override
         @SuppressWarnings("resource")
-        <T> T execute(Function<DbExecute, T> function) {
+        public void commit() {
             Connection conn = context().connection();
             try {
-                T result = function.apply(this);
                 conn.commit();
-                return result;
-            } catch (RuntimeException ex) {
+                commit = true;
+            } catch (SQLException ex) {
+                DbClientException dce = new DbClientException("Failed to commit transaction", ex);
                 try {
-                    conn.rollback();
-                } catch (SQLException e) {
-                    throw new DbClientException("Failed to rollback transaction", ex);
+                    rollback();
+                } catch (Throwable throwable) {
+                    dce.addSuppressed(throwable);
                 }
-                throw ex;
+                throw dce;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("resource")
+        public void rollback() {
+            Connection conn = context().connection();
+            try {
+                conn.rollback();
+                rollback = true;
             } catch (SQLException ex) {
                 throw new DbClientException("Failed to commit transaction", ex);
+            }
+        }
+
+        @Override
+        public void close() {
+            DbClientException dce = null;
+            if (!commit && !rollback) {
+                try {
+                    rollback();
+                } catch (DbClientException ex) {
+                    dce = ex;
+                }
+            }
+            super.close();
+            if (dce != null) {
+                throw dce;
             }
         }
     }
@@ -147,31 +167,41 @@ class JdbcDbClient implements DbClient {
 
         private final JdbcExecuteContext context;
 
-        private JdbcExecute(DbStatements statements, JdbcExecuteContext context) {
-            super(statements);
-            this.context = context;
+        private JdbcExecute(DbStatements statements,
+                            List<DbClientService> clientServices,
+                            ConnectionPool connectionPool,
+                            DbMapperManager dbMapperManager,
+                            MapperManager mapperManager) {
+            this(statements, clientServices, createConnection(connectionPool), connectionPool.dbType(),
+                    dbMapperManager, mapperManager);
         }
 
-        private static JdbcExecuteContext createContext(DbStatements statements,
-                                                        List<DbClientService> clientServices,
-                                                        ConnectionPool connectionPool,
-                                                        DbMapperManager dbMapperManager,
-                                                        MapperManager mapperManager) {
+        private JdbcExecute(DbStatements statements,
+                            List<DbClientService> clientServices,
+                            Connection connection,
+                            String dbType,
+                            DbMapperManager dbMapperManager,
+                            MapperManager mapperManager) {
 
+            super(statements);
+            this.context = JdbcExecuteContext.jdbcBuilder()
+                                             .statements(statements)
+                                             .connection(connection)
+                                             .clientServices(clientServices)
+                                             .dbMapperManager(dbMapperManager)
+                                             .mapperManager(mapperManager)
+                                             .dbType(dbType)
+                                             .build();
+        }
+
+        private static Connection createConnection(ConnectionPool connectionPool) {
             Connection conn = connectionPool.connection();
             try {
                 conn.setAutoCommit(true);
+                return conn;
             } catch (SQLException e) {
                 throw new DbClientException("Failed to set autocommit to true", e);
             }
-            return JdbcExecuteContext.jdbcBuilder()
-                                     .statements(statements)
-                                     .connection(conn)
-                                     .clientServices(clientServices)
-                                     .dbMapperManager(dbMapperManager)
-                                     .mapperManager(mapperManager)
-                                     .dbType(connectionPool.dbType())
-                                     .build();
         }
 
         @Override
@@ -211,11 +241,7 @@ class JdbcDbClient implements DbClient {
 
         @Override
         public void close() {
-            try {
-                context.connection().close();
-            } catch (SQLException e) {
-                LOGGER.log(Level.WARNING, String.format("Could not close connection: %s", e.getMessage()), e);
-            }
+            context.close();
         }
 
         @Override

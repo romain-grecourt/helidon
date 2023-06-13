@@ -17,6 +17,7 @@
 package io.helidon.nima.webclient;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 

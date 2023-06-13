@@ -70,6 +70,11 @@ public class MongoDbStatementQuery extends MongoDbStatement<DbStatementQuery, St
         return callStatement(usedStatement);
     }
 
+    @Override
+    public Stream<DbRow> execute() {
+        return super.execute0();
+    }
+
     private MongoStatement queryOrCommand(String statement) {
         try {
             return new MongoStatement(DbStatementType.QUERY, statement);

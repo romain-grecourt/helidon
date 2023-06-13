@@ -175,7 +175,7 @@ public final class ListenerConfiguration {
     }
 
     /**
-     * Requuested URI discovery context.
+     * Requested URI discovery context.
      *
      * @return discovery context
      */

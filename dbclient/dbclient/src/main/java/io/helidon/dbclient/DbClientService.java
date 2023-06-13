@@ -25,13 +25,25 @@ package io.helidon.dbclient;
  */
 @FunctionalInterface
 public interface DbClientService {
+
     /**
-     * Statement execution to be intercepted.
-     * This method is called before the statement execution starts.
-     * If there is no need to modify the context and you do not block,
+     * Invoke a service, call {@link Chain#proceed(DbClientServiceContext)} to call the next service in the chain.
      *
-     * @param context Context to access data needed to process an interceptor
-     * @return new context (or the same one if not modified)
+     * @param chain   to invoke next service, or the db action if this is the last service
+     * @param context interceptor context
      */
-    DbClientServiceContext statement(DbClientServiceContext context);
+    Object handle(Chain chain, DbClientServiceContext context);
+
+    /**
+     * Chain of services.
+     */
+    interface Chain {
+        /**
+         * Proceed with invocation of the next service.
+         * This method is always fully blocking.
+         *
+         * @param context interceptor context
+         */
+        Object proceed(DbClientServiceContext context);
+    }
 }

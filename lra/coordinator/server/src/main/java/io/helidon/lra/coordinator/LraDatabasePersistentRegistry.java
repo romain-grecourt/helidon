@@ -30,6 +30,7 @@ import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
 
+import io.helidon.dbclient.DbTransaction;
 import org.eclipse.microprofile.lra.annotation.LRAStatus;
 
 class LraDatabasePersistentRegistry implements LraPersistentRegistry {
@@ -45,11 +46,11 @@ class LraDatabasePersistentRegistry implements LraPersistentRegistry {
                            .config(config.get("db"))
                            .build();
 
-        dbClient.transaction(exec -> {
-            exec.namedDml("create-lra-table");
-            exec.namedDml("create-participant-table");
-            return null;
-        });
+        try (DbTransaction tx = dbClient.transaction()) {
+            tx.namedDml("create-lra-table");
+            tx.namedDml("create-participant-table");
+            tx.commit();
+        }
     }
 
     @Override
@@ -74,64 +75,64 @@ class LraDatabasePersistentRegistry implements LraPersistentRegistry {
 
     @Override
     public void load(CoordinatorService coordinatorService) {
-        dbClient.transaction(exec -> {
-            exec.namedQuery("load")
-                .forEach(row -> {
+        try (DbTransaction tx = dbClient.transaction()) {
+            tx.namedQuery("load")
+              .forEach(row -> {
 
-                    String lraId = row.column("ID").as(String.class);
-                    String parentId = row.column("PARENT_ID").as(String.class);
-                    Long timeout = row.column("TIMEOUT").as(Long.class);
-                    String lraStatus = row.column("STATUS").as(String.class);
-                    Boolean isChild = row.column("IS_CHILD").as(Boolean.class);
-                    Long whenReadyToDelete = row.column("WHEN_READY_TO_DELETE").as(Long.class);
+                  String lraId = row.column("ID").as(String.class);
+                  String parentId = row.column("PARENT_ID").as(String.class);
+                  Long timeout = row.column("TIMEOUT").as(Long.class);
+                  String lraStatus = row.column("STATUS").as(String.class);
+                  Boolean isChild = row.column("IS_CHILD").as(Boolean.class);
+                  Long whenReadyToDelete = row.column("WHEN_READY_TO_DELETE").as(Long.class);
 
-                    String completeLink = row.column("COMPLETE_LINK").as(String.class);
-                    String compensateLink = row.column("COMPENSATE_LINK").as(String.class);
-                    String afterLink = row.column("AFTER_LINK").as(String.class);
-                    String forgetLink = row.column("FORGET_LINK").as(String.class);
-                    String statusLink = row.column("STATUS_LINK").as(String.class);
-                    String participantStatus = row.column("PARTICIPANT_STATUS").as(String.class);
-                    String compensateStatus = row.column("COMPENSATE_STATUS").as(String.class);
-                    String forgetStatus = row.column("FORGET_STATUS").as(String.class);
-                    String afterStatus = row.column("AFTER_LRA_STATUS").as(String.class);
-                    String sendingStatus = row.column("SENDING_STATUS").as(String.class);
+                  String completeLink = row.column("COMPLETE_LINK").as(String.class);
+                  String compensateLink = row.column("COMPENSATE_LINK").as(String.class);
+                  String afterLink = row.column("AFTER_LINK").as(String.class);
+                  String forgetLink = row.column("FORGET_LINK").as(String.class);
+                  String statusLink = row.column("STATUS_LINK").as(String.class);
+                  String participantStatus = row.column("PARTICIPANT_STATUS").as(String.class);
+                  String compensateStatus = row.column("COMPENSATE_STATUS").as(String.class);
+                  String forgetStatus = row.column("FORGET_STATUS").as(String.class);
+                  String afterStatus = row.column("AFTER_LRA_STATUS").as(String.class);
+                  String sendingStatus = row.column("SENDING_STATUS").as(String.class);
 
-                    Integer remainingCloseAttempts = row.column("REMAINING_CLOSE_ATTEMPTS").as(Integer.class);
-                    Integer remainingAfterAttempts = row.column("REMAINING_AFTER_ATTEMPTS").as(Integer.class);
+                  Integer remainingCloseAttempts = row.column("REMAINING_CLOSE_ATTEMPTS").as(Integer.class);
+                  Integer remainingAfterAttempts = row.column("REMAINING_AFTER_ATTEMPTS").as(Integer.class);
 
-                    Lra lra = lraMap.get(lraId);
-                    if (lra == null) {
-                        lra = new Lra(coordinatorService, lraId,
-                                Optional.ofNullable(parentId).map(URI::create).orElse(null),
-                                config);
-                        lra.setTimeout(timeout);
-                        lra.setStatus(LRAStatus.valueOf(lraStatus));
-                        lra.setChild(isChild);
-                        lra.setWhenReadyToDelete(whenReadyToDelete);
-                    }
+                  Lra lra = lraMap.get(lraId);
+                  if (lra == null) {
+                      lra = new Lra(coordinatorService, lraId,
+                              Optional.ofNullable(parentId).map(URI::create).orElse(null),
+                              config);
+                      lra.setTimeout(timeout);
+                      lra.setStatus(LRAStatus.valueOf(lraStatus));
+                      lra.setChild(isChild);
+                      lra.setWhenReadyToDelete(whenReadyToDelete);
+                  }
 
-                    if (participantStatus != null) {
-                        Participant participant = new Participant(config);
-                        participant.setCompleteURI(Optional.ofNullable(completeLink).map(URI::create).orElse(null));
-                        participant.setCompensateURI(Optional.ofNullable(compensateLink).map(URI::create).orElse(null));
-                        participant.setAfterURI(Optional.ofNullable(afterLink).map(URI::create).orElse(null));
-                        participant.setForgetURI(Optional.ofNullable(forgetLink).map(URI::create).orElse(null));
-                        participant.setStatusURI(Optional.ofNullable(statusLink).map(URI::create).orElse(null));
-                        participant.setStatus(Participant.Status.valueOf(participantStatus));
-                        participant.setCompensateStatus(Participant.CompensateStatus.valueOf(compensateStatus));
-                        participant.setForgetStatus(Participant.ForgetStatus.valueOf(forgetStatus));
-                        participant.setAfterLraStatus(Participant.AfterLraStatus.valueOf(afterStatus));
-                        participant.setSendingStatus(Participant.SendingStatus.valueOf(sendingStatus));
-                        participant.setRemainingCloseAttempts(remainingCloseAttempts);
-                        participant.setRemainingAfterAttempts(remainingAfterAttempts);
+                  if (participantStatus != null) {
+                      Participant participant = new Participant(config);
+                      participant.setCompleteURI(Optional.ofNullable(completeLink).map(URI::create).orElse(null));
+                      participant.setCompensateURI(Optional.ofNullable(compensateLink).map(URI::create).orElse(null));
+                      participant.setAfterURI(Optional.ofNullable(afterLink).map(URI::create).orElse(null));
+                      participant.setForgetURI(Optional.ofNullable(forgetLink).map(URI::create).orElse(null));
+                      participant.setStatusURI(Optional.ofNullable(statusLink).map(URI::create).orElse(null));
+                      participant.setStatus(Participant.Status.valueOf(participantStatus));
+                      participant.setCompensateStatus(Participant.CompensateStatus.valueOf(compensateStatus));
+                      participant.setForgetStatus(Participant.ForgetStatus.valueOf(forgetStatus));
+                      participant.setAfterLraStatus(Participant.AfterLraStatus.valueOf(afterStatus));
+                      participant.setSendingStatus(Participant.SendingStatus.valueOf(sendingStatus));
+                      participant.setRemainingCloseAttempts(remainingCloseAttempts);
+                      participant.setRemainingAfterAttempts(remainingAfterAttempts);
 
-                        List<Participant> participants = lra.getParticipants();
-                        participants.add(participant);
-                    }
-                    lraMap.put(lraId, lra);
-                });
-            return null;
-        });
+                      List<Participant> participants = lra.getParticipants();
+                      participants.add(participant);
+                  }
+                  lraMap.put(lraId, lra);
+              });
+            tx.commit();
+        }
 
         lraMap.values()
               .forEach(lra -> Optional.ofNullable(lra.parentId())
@@ -145,11 +146,11 @@ class LraDatabasePersistentRegistry implements LraPersistentRegistry {
 
     @Override
     public void save() {
-        dbClient.transaction(exec -> {
-            cleanUp(exec);
-            saveAll(exec);
-            return null;
-        });
+        try (DbTransaction tx = dbClient.transaction()) {
+            cleanUp(tx);
+            saveAll(tx);
+            tx.commit();
+        }
     }
 
     private void saveAll(DbExecute exec) {

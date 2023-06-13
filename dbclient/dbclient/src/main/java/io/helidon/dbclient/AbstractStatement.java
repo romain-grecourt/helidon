@@ -16,6 +16,7 @@
 package io.helidon.dbclient;
 
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 
@@ -27,9 +28,9 @@ import io.helidon.common.mapper.MapperManager;
  * Common statement methods and fields.
  *
  * @param <S> type of a subclass
- * @param <R> the result type of the statement as returned by {@link #execute()}
+ * @param <R> the result type of the statement
  */
-public abstract class AbstractStatement<S extends DbStatement<S, R>, R> implements DbStatement<S, R> {
+public abstract class AbstractStatement<S extends DbStatement<S>, R> implements DbStatement<S> {
 
     private final DbClientContext clientContext;
     private final DbStatementContext statementContext;
@@ -46,26 +47,35 @@ public abstract class AbstractStatement<S extends DbStatement<S, R>, R> implemen
         this.clientContext = statementContext.clientContext();
     }
 
-    @Override
-    public R execute() {
+    /**
+     * Execute.
+     *
+     * @return R
+     */
+    protected R execute0() {
         initParameters(ParamType.INDEXED);
-        DbClientServiceContext.Builder builder = DbClientServiceContext.builder()
+        DbClientServiceContext.Builder contextBuilder = DbClientServiceContext.builder()
                                                                        .dbType(dbType())
                                                                        .statement(statementContext.statementName());
         if (paramType == ParamType.NAMED) {
-            builder.statement(statementContext.statement(), parameters.namedParams());
+            contextBuilder.statement(statementContext.statement(), parameters.namedParams());
         } else {
-            builder.statement(statementContext.statement(), parameters.indexedParams());
+            contextBuilder.statement(statementContext.statement(), parameters.indexedParams());
         }
-        builder.statementType(statementType());
-        builder.context(Contexts.context().orElseGet(Context::create));
+        contextBuilder.statementType(statementType());
+        contextBuilder.context(Contexts.context().orElseGet(Context::create));
+        return invokeServices(context -> doExecute(context), contextBuilder.build());
+    }
 
-        // TODO chain instead (See https://github.com/helidon-io/helidon/pull/6752/files#diff-9b9ca8317ee483071eea6b057b8452dd091e0cf5bb6d978ba0081c3f6f66097a)
-        DbClientServiceContext dbContext = builder.build();
-        for (DbClientService service : clientContext.clientServices()) {
-            dbContext = service.statement(dbContext);
+    @SuppressWarnings("unchecked")
+    private R invokeServices(DbClientService.Chain callChain, DbClientServiceContext context) {
+        List<DbClientService> services = clientContext.clientServices();
+        ListIterator<DbClientService> it = services.listIterator(services.size());
+        DbClientService.Chain last = callChain;
+        while (it.hasPrevious()) {
+            last = new DbClientServiceChainImpl(last, it.previous());
         }
-        return doExecute(dbContext);
+        return (R) last.proceed(context);
     }
 
     /**

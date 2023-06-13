@@ -64,7 +64,7 @@ import io.helidon.config.metadata.ConfiguredOption;
  * cert-chain = "alias1"
  * # path to PEM file with a private key. May be encrypted, though only with PCKS#8. To get the correct format (e.g. from
  * # openssl generated encrypted private key), use the following command:
- * # openssl pkcs8 -topk8 -in ./id_rsa -out ./id_rsa.p8
+ * # openssl pkcs8 -topk8 -in ./id_rsa -out ./id_rsa.p8
  * key-path = "path/to/private/key"
  * # path to PEM file with certificate chain (may contain more than one certificate)
  * cert-chain-path = "path/to/cert/chain/path"

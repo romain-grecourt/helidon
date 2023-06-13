@@ -26,6 +26,7 @@ import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbClientException;
 
 import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -89,9 +90,10 @@ public class JdbcClientMultipleDMLOperationTest {
             case insert -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (useTx) {
-                        dbClient.transaction(exec -> exec
-                                .createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')")
-                                .execute());
+                        try (DbTransaction tx = dbClient.transaction()) {
+                            tx.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
+                            tx.commit();
+                        }
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createInsert("INSERT INTO pokemons (name, type) VALUES ('name', 'type')").execute();
@@ -102,9 +104,10 @@ public class JdbcClientMultipleDMLOperationTest {
             case update -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (useTx) {
-                        dbClient.transaction(exec -> exec
-                                .createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'")
-                                .execute());
+                        try (DbTransaction tx = dbClient.transaction()) {
+                            tx.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
+                            tx.commit();
+                        }
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createUpdate("UPDATE pokemons SET type = 'type' WHERE name = 'name'").execute();
@@ -115,9 +118,10 @@ public class JdbcClientMultipleDMLOperationTest {
             case delete -> {
                 for (int i = 0; i < maxIteration; i++) {
                     if (useTx) {
-                        dbClient.transaction(exec -> exec
-                                .createDelete("DELETE FROM pokemons WHERE name = name")
-                                .execute());
+                        try (DbTransaction tx = dbClient.transaction()) {
+                            tx.createDelete("DELETE FROM pokemons WHERE name = name").execute();
+                            tx.commit();
+                        }
                     } else {
                         try (DbExecute exec = dbClient.execute()) {
                             exec.createDelete("DELETE FROM pokemons WHERE name = name").execute();

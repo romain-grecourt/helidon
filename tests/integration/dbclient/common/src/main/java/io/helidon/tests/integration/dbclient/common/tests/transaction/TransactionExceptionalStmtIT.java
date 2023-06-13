@@ -20,6 +20,7 @@ import java.util.concurrent.CompletionException;
 
 import io.helidon.dbclient.DbClientException;
 
+import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.tests.integration.dbclient.common.AbstractIT.DB_CLIENT;
@@ -41,11 +42,11 @@ public class TransactionExceptionalStmtIT {
      */
     @Test
     public void testCreateNamedQueryNonExistentStmt() {
-        try {
-            DB_CLIENT.transaction(tx -> tx
-                    .createNamedQuery("select-pokemons-not-exists")
-                    .execute()
-                    .count());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            tx.createNamedQuery("select-pokemons-not-exists")
+              .execute()
+              .count();
+            tx.commit();
             fail("Execution of non existing statement shall cause an exception to be thrown.");
         } catch (DbClientException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -57,11 +58,11 @@ public class TransactionExceptionalStmtIT {
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithoutArgs() {
-        try {
-            DB_CLIENT.transaction(tx -> tx
-                    .createNamedQuery("select-pokemons-error-arg")
-                    .execute()
-                    .count());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            tx.createNamedQuery("select-pokemons-error-arg")
+              .execute()
+              .count();
+            tx.commit();
             fail("Execution of query with both named and ordered parameters without passing any shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -73,13 +74,13 @@ public class TransactionExceptionalStmtIT {
      */
     @Test
     public void testCreateNamedQueryNamedAndOrderArgsWithArgs() {
-        try {
-            DB_CLIENT.transaction(tx -> tx
-                    .createNamedQuery("select-pokemons-error-arg")
-                    .addParam("id", POKEMONS.get(5).getId())
-                    .addParam(POKEMONS.get(5).getName())
-                    .execute()
-                    .count());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            tx.createNamedQuery("select-pokemons-error-arg")
+              .addParam("id", POKEMONS.get(5).getId())
+              .addParam(POKEMONS.get(5).getName())
+              .execute()
+              .count();
+            tx.commit();
             fail("Execution of query with both named and ordered parameters without passing them shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -91,12 +92,12 @@ public class TransactionExceptionalStmtIT {
      */
     @Test
     public void testCreateNamedQueryNamedArgsSetOrderArg() {
-        try {
-            DB_CLIENT.transaction(tx -> tx
-                    .createNamedQuery("select-pokemon-named-arg")
-                    .addParam(POKEMONS.get(5).getName())
-                    .execute()
-                    .count());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            tx.createNamedQuery("select-pokemon-named-arg")
+              .addParam(POKEMONS.get(5).getName())
+              .execute()
+              .count();
+            tx.commit();
             fail("Execution of query with named parameter with passing ordered parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);
@@ -108,12 +109,12 @@ public class TransactionExceptionalStmtIT {
      */
     @Test
     public void testCreateNamedQueryOrderArgsSetNamedArg() {
-        try {
-            DB_CLIENT.transaction(tx -> tx
-                    .createNamedQuery("select-pokemon-order-arg")
-                    .addParam("name", POKEMONS.get(6).getName())
-                    .execute()
-                    .count());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            tx.createNamedQuery("select-pokemon-order-arg")
+              .addParam("name", POKEMONS.get(6).getName())
+              .execute()
+              .count();
+            tx.commit();
             fail("Execution of query with ordered parameter with passing named parameter value shall fail.");
         } catch (DbClientException | CompletionException ex) {
             LOGGER.log(Level.DEBUG, () -> String.format("Expected exception: %s", ex.getMessage()), ex);

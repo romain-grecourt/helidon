@@ -36,7 +36,7 @@ public class MongoDbStatementDml extends MongoDbStatement<DbStatementDml, Long> 
     }
 
     @Override
-    public Long execute() {
+    public long execute() {
         stmt = new MongoStatement(type, build());
         switch (stmt.getOperation()) {
             case INSERT -> type = DbStatementType.INSERT;
@@ -46,7 +46,7 @@ public class MongoDbStatementDml extends MongoDbStatement<DbStatementDml, Long> 
                     "Unexpected value for DML statement: %s",
                     stmt.getOperation()));
         }
-        return super.execute();
+        return super.execute0();
     }
 
     @Override

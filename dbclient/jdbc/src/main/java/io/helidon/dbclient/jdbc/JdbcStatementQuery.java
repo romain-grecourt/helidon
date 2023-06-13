@@ -60,7 +60,6 @@ class JdbcStatementQuery extends JdbcStatement<DbStatementQuery, Stream<DbRow>> 
 
     @Override
     protected Stream<DbRow> doExecute(DbClientServiceContext dbContext) {
-
         Connection conn = connection();
         PreparedStatement statement;
         try {
@@ -79,7 +78,7 @@ class JdbcStatementQuery extends JdbcStatement<DbStatementQuery, Stream<DbRow>> 
             DbMapperManager dbMapperManager = dbMapperManager();
             MapperManager mapperManager = mapperManager();
 
-            return StreamSupport.stream(new AbstractSpliterator<DbRow>(Long.MAX_VALUE, Spliterator.ORDERED) {
+            Stream<DbRow> stream = StreamSupport.stream(new AbstractSpliterator<DbRow>(Long.MAX_VALUE, Spliterator.ORDERED) {
                 @Override
                 public boolean tryAdvance(Consumer<? super DbRow> action) {
                     try {
@@ -96,11 +95,12 @@ class JdbcStatementQuery extends JdbcStatement<DbStatementQuery, Stream<DbRow>> 
             }, false).onClose(() -> {
                 try {
                     rs.close();
-                    conn.close();
                 } catch (SQLException e) {
                     throw new DbClientException("Failed to close result-set or connection", e);
                 }
             });
+            executeContext().onClose(stream::close);
+            return stream;
         } catch (SQLException e) {
             LOGGER.log(Level.TRACE,
                     String.format("Failed to execute query %s: %s", statement, e.getMessage()),
@@ -114,6 +114,11 @@ class JdbcStatementQuery extends JdbcStatement<DbStatementQuery, Stream<DbRow>> 
             }
             throw new DbClientException(e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Stream<DbRow> execute() {
+        return super.execute0();
     }
 
     static Map<Long, DbColumn> createMetadata(ResultSet rs) throws SQLException {

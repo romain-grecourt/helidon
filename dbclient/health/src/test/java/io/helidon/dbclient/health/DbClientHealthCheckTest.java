@@ -24,6 +24,7 @@ import io.helidon.config.ConfigSources;
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbExecute;
 
+import io.helidon.dbclient.DbTransaction;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -40,7 +41,7 @@ public class DbClientHealthCheckTest {
     private static final class DbClientMock implements DbClient {
 
         @Override
-        public <T> T transaction(Function<DbExecute, T> function) {
+        public DbTransaction transaction() {
             throw new UnsupportedOperationException("Not supported in tests.");
         }
 

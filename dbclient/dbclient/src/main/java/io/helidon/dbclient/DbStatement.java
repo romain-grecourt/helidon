@@ -21,23 +21,16 @@ import java.util.Map;
 
 /**
  * Database statement that can process parameters.
- * Method {@link #execute()} processes the statement and returns appropriate response.
- * <p>
- * All methods are non-blocking. The {@link #execute()} method returns either a {@link java.util.concurrent.CompletionStage}
- * or another object that provides similar API for eventual processing of the response.
  * <p>
  * Once parameters are set using one of the {@code params} methods, all other methods throw an
  * {@link IllegalStateException}.
  * <p>
  * Once a parameter is added using {@link #addParam(Object)} or {@link #addParam(String, Object)}, all other
  * {@code params} methods throw an {@link IllegalStateException}.
- * <p>
- * Once {@link #execute()} is called, all methods would throw an {@link IllegalStateException}.
  *
- * @param <R> Type of the result of this statement (e.g. a {@link java.util.concurrent.CompletionStage})
  * @param <D> Type of the descendant of this class
  */
-public interface DbStatement<D extends DbStatement<D, R>, R> {
+public interface DbStatement<D extends DbStatement<D>> {
     /**
      * Configure parameters from a {@link java.util.List} by order.
      * The statement must use indexed parameters and configure them by order in the provided array.
@@ -102,11 +95,4 @@ public interface DbStatement<D extends DbStatement<D, R>, R> {
      * @return updated db statement
      */
     D addParam(String name, Object parameter);
-
-    /**
-     * Execute this statement using the parameters configured with {@code params} and {@code addParams} methods.
-     *
-     * @return The result of this statement, never blocking.
-     */
-    R execute();
 }

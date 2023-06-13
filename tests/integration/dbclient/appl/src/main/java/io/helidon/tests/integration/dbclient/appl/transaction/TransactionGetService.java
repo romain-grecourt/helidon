@@ -22,6 +22,7 @@ import java.util.function.Function;
 
 import io.helidon.dbclient.DbClient;
 import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.nima.webserver.http.HttpRules;
 import io.helidon.nima.webserver.http.ServerRequest;
 import io.helidon.nima.webserver.http.ServerResponse;
@@ -78,62 +79,103 @@ public class TransactionGetService extends AbstractService {
     }
 
     // Verify {@code createNamedGet(String, String)} API method with named
-    private void testCreateNamedGetStrStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateNamedGetStrStrNamedArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testCreateNamedGetStrStrNamedArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .createNamedGet("select-pikachu", statement("select-pokemon-named-arg"))
-                        .addParam("name", name)
-                        .execute()));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .createNamedGet("select-pikachu", statement("select-pokemon-named-arg"))
+                                .addParam("name", name)
+                                .execute();
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code createNamedGet(String)} API method with named parameters.
-    private void testCreateNamedGetStrNamedArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateNamedGetStrNamedArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testCreateNamedGetStrNamedArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .createNamedGet("select-pokemon-named-arg")
-                        .addParam("name", name)
-                        .execute()));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .createNamedGet("select-pokemon-named-arg")
+                                .addParam("name", name)
+                                .execute();
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code createNamedGet(String)} API method with ordered parameters.
-    private void testCreateNamedGetStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateNamedGetStrOrderArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testCreateNamedGetStrOrderArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .createNamedGet("select-pokemon-order-arg")
-                        .addParam(name)
-                        .execute()));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .createNamedGet("select-pokemon-order-arg")
+                                .addParam(name)
+                                .execute();
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code createGet(String)} API method with named parameters.
-    private void testCreateGetNamedArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateGetNamedArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testCreateGetNamedArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .createGet(statement("select-pokemon-named-arg"))
-                        .addParam("name", name)
-                        .execute()));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .createGet(statement("select-pokemon-named-arg"))
+                                .addParam("name", name)
+                                .execute();
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code createGet(String)} API method with ordered parameters.
-    private void testCreateGetOrderArgs(final ServerRequest request, final ServerResponse response) {
+    private void testCreateGetOrderArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testCreateGetOrderArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .createGet(statement("select-pokemon-order-arg"))
-                        .addParam(name)
-                        .execute()));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .createGet(statement("select-pokemon-order-arg"))
+                                .addParam(name)
+                                .execute();
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code namedGet(String)} API method with ordered parameters passed
-    private void testNamedGetStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+    private void testNamedGetStrOrderArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testNamedGetStrOrderArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .namedGet("select-pokemon-order-arg", name)));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .namedGet("select-pokemon-order-arg", name);
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
 
     // Verify {@code get(String)} API method with ordered parameters passed
-    private void testGetStrOrderArgs(final ServerRequest request, final ServerResponse response) {
+    private void testGetStrOrderArgs(ServerRequest request, ServerResponse response) {
         executeTest(request, response, "testGetStrOrderArgs",
-                name -> dbClient().transaction(exec -> exec
-                        .get(statement("select-pokemon-order-arg"), name)));
+                name -> {
+                    try (DbTransaction tx = dbClient().transaction()) {
+                        Optional<DbRow> result = tx
+                                .get(statement("select-pokemon-order-arg"), name);
+                        tx.commit();
+                        return result;
+                    }
+                });
     }
-
 }

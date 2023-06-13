@@ -179,7 +179,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters    query parameters to set
      * @return number of rows inserted into the database
      */
-    default Long namedInsert(String statementName, Object... parameters) {
+    default long namedInsert(String statementName, Object... parameters) {
         return createNamedInsert(statementName).params(parameters).execute();
     }
 
@@ -190,7 +190,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters query parameters to set
      * @return number of rows inserted into the database
      */
-    default Long insert(String statement, Object... parameters) {
+    default long insert(String statement, Object... parameters) {
         return createInsert(statement).params(parameters).execute();
     }
 
@@ -232,7 +232,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters    query parameters to set
      * @return number of rows updated into the database
      */
-    default Long namedUpdate(String statementName, Object... parameters) {
+    default long namedUpdate(String statementName, Object... parameters) {
         return createNamedUpdate(statementName).params(parameters).execute();
     }
 
@@ -243,7 +243,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters query parameters to set
      * @return number of rows updated into the database
      */
-    default Long update(String statement, Object... parameters) {
+    default long update(String statement, Object... parameters) {
         return createUpdate(statement).params(parameters).execute();
     }
 
@@ -285,7 +285,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters    query parameters to set
      * @return number of rows deleted from the database
      */
-    default Long namedDelete(String statementName, Object... parameters) {
+    default long namedDelete(String statementName, Object... parameters) {
         return createNamedDelete(statementName).params(parameters).execute();
     }
 
@@ -296,7 +296,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters query parameters to set
      * @return number of rows deleted from the database
      */
-    default Long delete(String statement, Object... parameters) {
+    default long delete(String statement, Object... parameters) {
         return createDelete(statement).params(parameters).execute();
     }
 
@@ -336,7 +336,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters    query parameters to set
      * @return number of rows modified
      */
-    default Long namedDml(String statementName, Object... parameters) {
+    default long namedDml(String statementName, Object... parameters) {
         return createNamedDmlStatement(statementName).params(parameters).execute();
     }
 
@@ -347,7 +347,7 @@ public interface DbExecute extends AutoCloseable {
      * @param parameters query parameters to set
      * @return number of rows modified
      */
-    default Long dml(String statement, Object... parameters) {
+    default long dml(String statement, Object... parameters) {
         return createDmlStatement(statement).params(parameters).execute();
     }
 

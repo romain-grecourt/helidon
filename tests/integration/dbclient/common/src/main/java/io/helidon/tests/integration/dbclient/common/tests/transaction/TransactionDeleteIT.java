@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -86,11 +87,14 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedDeleteStrStrOrderArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedDelete("delete-rayquaza", DELETE_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(BASE_ID + 1).getId())
-                .execute());
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 1));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedDelete("delete-rayquaza", DELETE_POKEMON_ORDER_ARG)
+                    .addParam(POKEMONS.get(BASE_ID + 1).getId())
+                    .execute();
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 1));
+        }
     }
 
     /**
@@ -98,11 +102,14 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedDeleteStrNamedArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedDelete("delete-pokemon-named-arg")
-                .addParam("id", POKEMONS.get(BASE_ID + 2).getId())
-                .execute());
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 2));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedDelete("delete-pokemon-named-arg")
+                    .addParam("id", POKEMONS.get(BASE_ID + 2).getId())
+                    .execute();
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 2));
+        }
     }
 
     /**
@@ -110,11 +117,14 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedDeleteStrOrderArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedDelete("delete-pokemon-order-arg")
-                .addParam(POKEMONS.get(BASE_ID + 3).getId())
-                .execute());
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 3));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedDelete("delete-pokemon-order-arg")
+                    .addParam(POKEMONS.get(BASE_ID + 3).getId())
+                    .execute();
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 3));
+        }
     }
 
     /**
@@ -122,11 +132,14 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testCreateDeleteNamedArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createDelete(DELETE_POKEMON_NAMED_ARG)
-                .addParam("id", POKEMONS.get(BASE_ID + 4).getId())
-                .execute());
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 4));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createDelete(DELETE_POKEMON_NAMED_ARG)
+                    .addParam("id", POKEMONS.get(BASE_ID + 4).getId())
+                    .execute();
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 4));
+        }
     }
 
     /**
@@ -134,11 +147,14 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testCreateDeleteOrderArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createDelete(DELETE_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(BASE_ID + 5).getId())
-                .execute());
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 5));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createDelete(DELETE_POKEMON_ORDER_ARG)
+                    .addParam(POKEMONS.get(BASE_ID + 5).getId())
+                    .execute();
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 5));
+        }
     }
 
     /**
@@ -146,9 +162,12 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testNamedDeleteOrderArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .namedDelete("delete-pokemon-order-arg", POKEMONS.get(BASE_ID + 6).getId()));
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 6));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .namedDelete("delete-pokemon-order-arg", POKEMONS.get(BASE_ID + 6).getId());
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 6));
+        }
     }
 
     /**
@@ -156,8 +175,11 @@ public class TransactionDeleteIT extends AbstractIT {
      */
     @Test
     public void testDeleteOrderArgs() {
-        long result = DB_CLIENT.transaction(exec -> exec
-                .delete(DELETE_POKEMON_ORDER_ARG, POKEMONS.get(BASE_ID + 7).getId()));
-        verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 7));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .delete(DELETE_POKEMON_ORDER_ARG, POKEMONS.get(BASE_ID + 7).getId());
+            tx.commit();
+            verifyDeletePokemon(result, POKEMONS.get(BASE_ID + 7));
+        }
     }
 }

@@ -38,15 +38,17 @@ import io.helidon.dbclient.DbStatementContext;
  * @param <S> subclass of this class
  * @param <R> Statement execution result type
  */
-abstract class JdbcStatement<S extends DbStatement<S, R>, R> extends AbstractStatement<S, R> {
+abstract class JdbcStatement<S extends DbStatement<S>, R> extends AbstractStatement<S, R> {
 
     private static final System.Logger LOGGER = System.getLogger(JdbcStatement.class.getName());
 
     private final String dbType;
     private final Connection connection;
+    private final JdbcExecuteContext executeContext;
 
     JdbcStatement(JdbcExecuteContext executeContext, DbStatementContext statementContext) {
         super(statementContext);
+        this.executeContext = executeContext;
         this.dbType = executeContext.dbType();
         this.connection = executeContext.connection();
     }
@@ -72,6 +74,10 @@ abstract class JdbcStatement<S extends DbStatement<S, R>, R> extends AbstractSta
     @Override
     protected String dbType() {
         return dbType;
+    }
+
+    JdbcExecuteContext executeContext() {
+        return executeContext;
     }
 
     Connection connection() {

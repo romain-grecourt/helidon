@@ -16,6 +16,9 @@
 package io.helidon.dbclient.jdbc;
 
 import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import io.helidon.dbclient.DbClientContext;
 
@@ -24,8 +27,10 @@ import io.helidon.dbclient.DbClientContext;
  */
 final class JdbcExecuteContext extends DbClientContext {
 
+    private static final System.Logger LOGGER = System.getLogger(JdbcExecuteContext.class.getName());
     private final String dbType;
     private final Connection connection;
+    private final List<Runnable> closeHandlers = new ArrayList<>();
 
     private JdbcExecuteContext(Builder builder) {
         super(builder);
@@ -35,6 +40,7 @@ final class JdbcExecuteContext extends DbClientContext {
 
     /**
      * Builder to create new instances.
+     *
      * @return a new builder instance
      */
     static Builder jdbcBuilder() {
@@ -47,6 +53,21 @@ final class JdbcExecuteContext extends DbClientContext {
 
     Connection connection() {
         return connection;
+    }
+
+    void close() {
+        try {
+            closeHandlers.forEach(Runnable::run);
+            connection.close();
+        } catch (SQLException ex) {
+            LOGGER.log(System.Logger.Level.WARNING,
+                    String.format("Could not close execute context: %s", ex.getMessage()),
+                    ex);
+        }
+    }
+
+    void onClose(Runnable closeHandler) {
+        closeHandlers.add(closeHandler);
     }
 
     static class Builder extends BuilderBase<Builder> implements io.helidon.common.Builder<Builder, JdbcExecuteContext> {

@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import io.helidon.dbclient.DbExecute;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -84,11 +85,14 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testCreateNamedUpdateStrStrNamedArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 1);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 1, "Ursaring", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedUpdate("update-spearow", UPDATE_POKEMON_NAMED_ARG)
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                .execute());
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedUpdate("update-spearow", UPDATE_POKEMON_NAMED_ARG)
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -98,11 +102,14 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testCreateNamedUpdateStrNamedArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 2);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 2, "Teddiursa", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedUpdate("update-pokemon-named-arg")
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                .execute());
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedUpdate("update-pokemon-named-arg")
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -112,11 +119,14 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testCreateNamedUpdateStrOrderArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 3);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 3, "Magcargo", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedUpdate("update-pokemon-order-arg")
-                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
-                .execute());
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedUpdate("update-pokemon-order-arg")
+                    .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
+                    .execute();
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -126,11 +136,14 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testCreateUpdateNamedArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 4);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 4, "Slugma", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createUpdate(UPDATE_POKEMON_NAMED_ARG)
-                .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
-                .execute());
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createUpdate(UPDATE_POKEMON_NAMED_ARG)
+                    .addParam("name", updatedPokemon.getName()).addParam("id", updatedPokemon.getId())
+                    .execute();
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -140,11 +153,14 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testCreateUpdateOrderArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 5);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 5, "Lombre", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createUpdate(UPDATE_POKEMON_ORDER_ARG)
-                .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
-                .execute());
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createUpdate(UPDATE_POKEMON_ORDER_ARG)
+                    .addParam(updatedPokemon.getName()).addParam(updatedPokemon.getId())
+                    .execute();
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -154,9 +170,12 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testNamedUpdateNamedArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 6);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 6, "Ludicolo", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .namedUpdate("update-pokemon-order-arg", updatedPokemon.getName(), updatedPokemon.getId()));
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .namedUpdate("update-pokemon-order-arg", updatedPokemon.getName(), updatedPokemon.getId());
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
     /**
@@ -166,9 +185,12 @@ public class TransactionUpdateIT extends AbstractIT {
     public void testUpdateOrderArgs() {
         Pokemon srcPokemon = POKEMONS.get(BASE_ID + 7);
         Pokemon updatedPokemon = new Pokemon(BASE_ID + 7, "Lotad", srcPokemon.getTypesArray());
-        long result = DB_CLIENT.transaction(exec -> exec
-                .update(UPDATE_POKEMON_ORDER_ARG, updatedPokemon.getName(), updatedPokemon.getId()));
-        verifyUpdatePokemon(result, updatedPokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .update(UPDATE_POKEMON_ORDER_ARG, updatedPokemon.getName(), updatedPokemon.getId());
+            tx.commit();
+            verifyUpdatePokemon(result, updatedPokemon);
+        }
     }
 
 }

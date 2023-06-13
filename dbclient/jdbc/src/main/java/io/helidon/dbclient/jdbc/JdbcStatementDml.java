@@ -46,4 +46,9 @@ class JdbcStatementDml extends JdbcStatement<DbStatementDml, Long> implements Db
             return count;
         }
     }
+
+    @Override
+    public long execute() {
+        return super.execute0();
+    }
 }

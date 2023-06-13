@@ -44,22 +44,21 @@ public class PokemonService implements HttpService {
 
     @Override
     public void routing(HttpRules rules) {
-        rules
-                .get("/", this::index)
-                // List all types
-                .get("/type", this::listTypes)
-                // List all pokemons
-                .get("/pokemon", this::listPokemons)
-                // Get pokemon by name
-                .get("/pokemon/name/{name}", this::getPokemonByName)
-                // Get pokemon by ID
-                .get("/pokemon/{id}", this::getPokemonById)
-                // Create new pokemon
-                .post("/pokemon", Handler.create(Pokemon.class, this::insertPokemon))
-                // Update name of existing pokemon
-                .put("/pokemon", Handler.create(Pokemon.class, this::updatePokemon))
-                // Delete pokemon by ID including type relation
-                .delete("/pokemon/{id}", this::deletePokemonById);
+        rules.get("/", this::index)
+             // List all types
+             .get("/type", this::listTypes)
+             // List all pokemons
+             .get("/pokemon", this::listPokemons)
+             // Get pokemon by name
+             .get("/pokemon/name/{name}", this::getPokemonByName)
+             // Get pokemon by ID
+             .get("/pokemon/{id}", this::getPokemonById)
+             // Create new pokemon
+             .post("/pokemon", Handler.create(Pokemon.class, this::insertPokemon))
+             // Update name of existing pokemon
+             .put("/pokemon", Handler.create(Pokemon.class, this::updatePokemon))
+             // Delete pokemon by ID including type relation
+             .delete("/pokemon/{id}", this::deletePokemonById);
     }
 
     /**
@@ -94,7 +93,8 @@ public class PokemonService implements HttpService {
      */
     private void listTypes(ServerRequest request, ServerResponse response) {
         try (DbExecute exec = dbClient.execute()) {
-            Stream<JsonObject> pokemons = exec.namedQuery("select-all-types").map(it -> it.as(JsonObject.class));
+            Stream<JsonObject> pokemons = exec.namedQuery("select-all-types")
+                                              .map(row -> row.as(JsonObject.class));
             response.send(pokemons, JsonObject.class);
         }
     }
@@ -109,8 +109,9 @@ public class PokemonService implements HttpService {
      */
     private void listPokemons(ServerRequest request, ServerResponse response) {
         try (DbExecute exec = dbClient.execute()) {
-            response.send(exec.namedQuery("select-all-pokemons")
-                              .map(row -> row.as(JsonObject.class)), JsonObject.class);
+            Stream<JsonObject> pokemons = exec.namedQuery("select-all-pokemons")
+                                              .map(row -> row.as(JsonObject.class));
+            response.send(pokemons, JsonObject.class);
         }
     }
 

@@ -15,6 +15,7 @@
  */
 package io.helidon.tests.integration.dbclient.common.tests.transaction;
 
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;
@@ -38,10 +39,13 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testCreateNamedInsertStrStrNamedArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 1, "Sentret", TYPES.get(1));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedInsert("insert-bulbasaur", INSERT_POKEMON_NAMED_ARG)
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute());
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedInsert("insert-bulbasaur", INSERT_POKEMON_NAMED_ARG)
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute();
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -50,10 +54,13 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testCreateNamedInsertStrNamedArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 2, "Furret", TYPES.get(1));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedInsert("insert-pokemon-named-arg")
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute());
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedInsert("insert-pokemon-named-arg")
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute();
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -62,10 +69,13 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testCreateNamedInsertStrOrderArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 3, "Chinchou", TYPES.get(11), TYPES.get(13));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createNamedInsert("insert-pokemon-order-arg")
-                .addParam(pokemon.getId()).addParam(pokemon.getName()).execute());
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createNamedInsert("insert-pokemon-order-arg")
+                    .addParam(pokemon.getId()).addParam(pokemon.getName()).execute();
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -74,10 +84,13 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testCreateInsertNamedArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 4, "Lanturn", TYPES.get(11), TYPES.get(13));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createInsert(INSERT_POKEMON_NAMED_ARG)
-                .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute());
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createInsert(INSERT_POKEMON_NAMED_ARG)
+                    .addParam("id", pokemon.getId()).addParam("name", pokemon.getName()).execute();
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -86,10 +99,13 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testCreateInsertOrderArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 5, "Swinub", TYPES.get(5), TYPES.get(15));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .createInsert(INSERT_POKEMON_ORDER_ARG)
-                .addParam(pokemon.getId()).addParam(pokemon.getName()).execute());
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .createInsert(INSERT_POKEMON_ORDER_ARG)
+                    .addParam(pokemon.getId()).addParam(pokemon.getName()).execute();
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -98,9 +114,12 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testNamedInsertOrderArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 6, "Piloswine", TYPES.get(5), TYPES.get(15));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .namedInsert("insert-pokemon-order-arg", pokemon.getId(), pokemon.getName()));
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .namedInsert("insert-pokemon-order-arg", pokemon.getId(), pokemon.getName());
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
     /**
@@ -109,9 +128,12 @@ public class TransactionInsertIT extends AbstractIT {
     @Test
     public void testInsertOrderArgs() {
         Pokemon pokemon = new Pokemon(BASE_ID + 7, "Mamoswine", TYPES.get(5), TYPES.get(15));
-        long result = DB_CLIENT.transaction(exec -> exec
-                .insert(INSERT_POKEMON_ORDER_ARG, pokemon.getId(), pokemon.getName()));
-        verifyInsertPokemon(result, pokemon);
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            long result = tx
+                    .insert(INSERT_POKEMON_ORDER_ARG, pokemon.getId(), pokemon.getName());
+            tx.commit();
+            verifyInsertPokemon(result, pokemon);
+        }
     }
 
 }

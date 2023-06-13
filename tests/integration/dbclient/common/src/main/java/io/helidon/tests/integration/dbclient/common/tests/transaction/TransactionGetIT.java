@@ -18,6 +18,7 @@ package io.helidon.tests.integration.dbclient.common.tests.transaction;
 import java.util.Optional;
 
 import io.helidon.dbclient.DbRow;
+import io.helidon.dbclient.DbTransaction;
 import io.helidon.tests.integration.dbclient.common.AbstractIT;
 
 import org.junit.jupiter.api.Test;
@@ -34,11 +35,14 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedGetStrStrNamedArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .createNamedGet("select-pikachu", SELECT_POKEMON_NAMED_ARG)
-                .addParam("name", POKEMONS.get(1).getName())
-                .execute());
-        verifyPokemon(maybeRow, POKEMONS.get(1));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .createNamedGet("select-pikachu", SELECT_POKEMON_NAMED_ARG)
+                    .addParam("name", POKEMONS.get(1).getName())
+                    .execute();
+            tx.commit();
+            verifyPokemon(maybeRow, POKEMONS.get(1));
+        }
     }
 
     /**
@@ -46,12 +50,15 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedGetStrNamedArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .createNamedGet("select-pokemon-named-arg")
-                .addParam("name", POKEMONS.get(2).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .createNamedGet("select-pokemon-named-arg")
+                    .addParam("name", POKEMONS.get(2).getName())
+                    .execute();
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(2));
+            verifyPokemon(maybeRow, POKEMONS.get(2));
+        }
     }
 
     /**
@@ -59,12 +66,15 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testCreateNamedGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .createNamedGet("select-pokemon-order-arg")
-                .addParam(POKEMONS.get(3).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .createNamedGet("select-pokemon-order-arg")
+                    .addParam(POKEMONS.get(3).getName())
+                    .execute();
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(3));
+            verifyPokemon(maybeRow, POKEMONS.get(3));
+        }
     }
 
     /**
@@ -72,12 +82,15 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testCreateGetNamedArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .createGet(SELECT_POKEMON_NAMED_ARG)
-                .addParam("name", POKEMONS.get(4).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .createGet(SELECT_POKEMON_NAMED_ARG)
+                    .addParam("name", POKEMONS.get(4).getName())
+                    .execute();
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(4));
+            verifyPokemon(maybeRow, POKEMONS.get(4));
+        }
     }
 
     /**
@@ -85,12 +98,15 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testCreateGetOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .createGet(SELECT_POKEMON_ORDER_ARG)
-                .addParam(POKEMONS.get(5).getName())
-                .execute());
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .createGet(SELECT_POKEMON_ORDER_ARG)
+                    .addParam(POKEMONS.get(5).getName())
+                    .execute();
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(5));
+            verifyPokemon(maybeRow, POKEMONS.get(5));
+        }
     }
 
     /**
@@ -98,10 +114,13 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testNamedGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .namedGet("select-pokemon-order-arg", POKEMONS.get(6).getName()));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .namedGet("select-pokemon-order-arg", POKEMONS.get(6).getName());
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(6));
+            verifyPokemon(maybeRow, POKEMONS.get(6));
+        }
     }
 
     /**
@@ -109,10 +128,13 @@ public class TransactionGetIT extends AbstractIT {
      */
     @Test
     public void testGetStrOrderArgs() {
-        Optional<DbRow> maybeRow = DB_CLIENT.transaction(tx -> tx
-                .get(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName()));
+        try (DbTransaction tx = DB_CLIENT.transaction()) {
+            Optional<DbRow> maybeRow = tx
+                    .get(SELECT_POKEMON_ORDER_ARG, POKEMONS.get(7).getName());
+            tx.commit();
 
-        verifyPokemon(maybeRow, POKEMONS.get(7));
+            verifyPokemon(maybeRow, POKEMONS.get(7));
+        }
     }
 
 }
