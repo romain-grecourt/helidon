@@ -72,8 +72,7 @@ public final class Main {
      */
     static void routing(HttpRouting.Builder routing, Config config) {
         routing.addFeature(ObserveFeature.create())
-                .addFeature(OpenApiFeature.builder()
-                        .config(config.get(OpenApiFeature.Builder.CONFIG_KEY)))
+                .addFeature(OpenApiFeature.create(config.get("openapi")))
                 .register("/greet", new GreetService(config));
     }
 

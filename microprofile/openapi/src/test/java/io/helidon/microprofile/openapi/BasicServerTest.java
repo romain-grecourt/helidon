@@ -17,6 +17,7 @@ package io.helidon.microprofile.openapi;
 
 import java.util.Map;
 
+import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.microprofile.tests.junit5.AddBean;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
@@ -48,8 +49,8 @@ public class BasicServerTest {
 
     private static Map<String, Object> retrieveYaml(WebTarget webTarget) {
         try (Response response = webTarget
-                .path(OpenApiFeature.DEFAULT_CONTEXT)
-                .request(OpenApiFeature.DEFAULT_RESPONSE_MEDIA_TYPE.text())
+                .path("/openapi")
+                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text())
                 .get()) {
             assertThat("Fetch of OpenAPI document from server status", response.getStatus(),
                     is(equalTo(Http.Status.OK_200.code())));

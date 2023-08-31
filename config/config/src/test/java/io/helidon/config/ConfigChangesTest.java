@@ -59,6 +59,7 @@ public class ConfigChangesTest {
 
         // key does not exist
         assertThat(config.get("key1").exists(), is(false));
+        config.get("foo").asString().supplier();
 
         // register subscriber
         ConfigChangeListener listener = new ConfigChangeListener();
@@ -108,7 +109,7 @@ public class ConfigChangesTest {
         config.get("key-1-1.key-2-1").onChange(listener::onChange);
 
         // change config source
-        TimeUnit.MILLISECONDS.sleep(TEST_DELAY_MS); // Make sure timestamp changes.        
+        TimeUnit.MILLISECONDS.sleep(TEST_DELAY_MS); // Make sure timestamp changes.
         configSource.changeLoadedObjectNode(
                 ObjectNode.builder()
                         .addObject("key-1-1", ObjectNode.builder()

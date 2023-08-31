@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import io.helidon.common.LazyValue;
 import io.helidon.microprofile.server.JaxRsApplication;
 import io.helidon.microprofile.server.JaxRsCdiExtension;
+import io.helidon.openapi.OpenApiMediaType;
 import io.helidon.openapi.OpenApiFeature;
 
 import io.smallrye.openapi.api.OpenApiConfig;
@@ -104,8 +105,7 @@ public class MpOpenApiFeature extends OpenApiFeature {
     }
 
     @Override
-    protected String openApiContent(OpenAPIMediaType openApiMediaType) {
-
+    protected String doFormatContent(OpenApiMediaType openApiMediaType) {
         return openApiContent(openApiMediaType, model());
     }
 
@@ -139,7 +139,7 @@ public class MpOpenApiFeature extends OpenApiFeature {
     }
 
 
-    private String openApiContent(OpenAPIMediaType openAPIMediaType, OpenAPI model) {
+    private String openApiContent(OpenApiMediaType openAPIMediaType, OpenAPI model) {
         StringWriter sw = new StringWriter();
         Serializer.serialize(PARSER_HELPER.get().types(), implsToTypes, model, openAPIMediaType, sw);
         return sw.toString();
@@ -186,8 +186,8 @@ public class MpOpenApiFeature extends OpenApiFeature {
     }
 
 
-    private static Format toFormat(OpenAPIMediaType openAPIMediaType) {
-        return openAPIMediaType.equals(OpenAPIMediaType.YAML)
+    private static Format toFormat(OpenApiMediaType openAPIMediaType) {
+        return openAPIMediaType.equals(OpenApiMediaType.YAML)
                 ? Format.YAML
                 : Format.JSON;
     }
@@ -214,7 +214,7 @@ public class MpOpenApiFeature extends OpenApiFeature {
 
                 LOGGER.log(System.Logger.Level.DEBUG, String.format("Intermediate model from filtered index view %s:%n%s",
                                                                     filteredIndexView.getKnownClasses(),
-                                                                    openApiContent(OpenAPIMediaType.YAML, modelForApp)));
+                                                                    openApiContent(OpenApiMediaType.YAML, modelForApp)));
             }
             aggregateModelRef.set(
                     MergeUtil.merge(aggregateModelRef.get(), modelForApp)

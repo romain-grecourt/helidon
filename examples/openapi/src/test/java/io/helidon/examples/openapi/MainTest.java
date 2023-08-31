@@ -88,7 +88,6 @@ public class MainTest {
     }
 
     @Test
-    @Disabled("https://github.com/helidon-io/helidon/issues/5411")
     public void testOpenAPI() {
         /*
          * If you change the OpenAPI endpoint path in application.yaml, then

@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import io.helidon.openapi.OpenApiUiNoOpFactory;
-
 /**
  * Helidon common OpenAPI behavior.
  */
@@ -26,15 +24,12 @@ module io.helidon.openapi {
     requires io.helidon.common.config;
     requires io.helidon.common.media.type;
     requires io.helidon.servicecommon;
-
-
-    requires jakarta.json;
-
     requires static io.helidon.config.metadata;
+
+    requires org.yaml.snakeyaml;
+    requires io.helidon.inject.api;
 
     exports io.helidon.openapi;
 
-    uses io.helidon.openapi.OpenApiUiFactory;
-
-    provides io.helidon.openapi.OpenApiUiFactory with OpenApiUiNoOpFactory;
+    uses io.helidon.openapi.spi.OpenApiUiProvider;
 }

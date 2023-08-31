@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import io.helidon.openapi.OpenApiFeature;
+import io.helidon.openapi.OpenApiMediaType;
 
 import io.smallrye.openapi.api.models.OpenAPIImpl;
 import org.eclipse.microprofile.openapi.models.Extensible;
@@ -83,9 +83,9 @@ public class Serializer {
     public static void serialize(Map<Class<?>, ExpandedTypeDescription> types,
                                  Map<Class<?>, ExpandedTypeDescription> implsToTypes,
                                  OpenAPI openAPI,
-                                 OpenApiFeature.OpenAPIMediaType openAPIMediaType,
+                                 OpenApiMediaType openAPIMediaType,
                                  Writer writer) {
-        if (openAPIMediaType.equals(OpenApiFeature.OpenAPIMediaType.JSON)) {
+        if (openAPIMediaType.equals(OpenApiMediaType.JSON)) {
             serialize(types, implsToTypes, openAPI, writer, JSON_DUMPER_OPTIONS, DumperOptions.ScalarStyle.DOUBLE_QUOTED);
         } else {
             serialize(types, implsToTypes, openAPI, writer, YAML_DUMPER_OPTIONS, DumperOptions.ScalarStyle.PLAIN);
@@ -170,15 +170,12 @@ public class Serializer {
                 return null;
             }
 
-            Property p = property;
             Object v = adjustPropertyValue(propertyValue);
-            if (propertyValue instanceof Enum) {
-                Enum e = (Enum) propertyValue;
+            if (propertyValue instanceof Enum<?> e) {
                 v = e.toString();
             }
-            NodeTuple result = okToProcess(javaBean, property)
-                    ? doRepresentJavaBeanProperty(javaBean, p, v, customTag) : null;
-            return result;
+            return okToProcess(javaBean, property)
+                    ? doRepresentJavaBeanProperty(javaBean, property, v, customTag) : null;
         }
 
         private NodeTuple doRepresentJavaBeanProperty(Object javaBean, Property property, Object propertyValue, Tag customTag) {
@@ -205,17 +202,17 @@ public class Serializer {
         private Object adjustPropertyValue(Object propertyValue) {
             /* Some MP OpenAPI TCK tests expect an integer-style format, even for BigDecimal types, if the
              * value is an integer. Because the formatting is done in SnakeYAML code based on the type of the value,
-             * we need to replace a, for example BigDecimal that happen to be an integer value, with an Integer.
+             * we need to replace a for example BigDecimal that happen to be an integer value, with an Integer.
              * See https://github.com/eclipse/microprofile-open-api/issues/412
              */
-            if (Number.class.isInstance(propertyValue) && !Boolean.getBoolean("io.helidon.openapi.skipTCKWorkaround")) {
-                Number n = (Number) propertyValue;
+            if (propertyValue instanceof Number n && !Boolean.getBoolean("io.helidon.openapi.skipTCKWorkaround")) {
                 float diff = n.floatValue() - n.intValue();
                 if (diff == 0) {
-                    propertyValue = Integer.valueOf(n.intValue());
+                    propertyValue = n.intValue();
                 } else if (Math.abs(diff) < 0.1) {
-                    LOGGER.log(Level.WARNING,
-                            String.format("Integer approximation of %f did not match but the difference was only %e", n, diff));
+                    LOGGER.log(Level.WARNING, String.format(
+                            "Integer approximation of %f did not match but the difference was only %e",
+                            n.floatValue(), diff));
                 }
             }
             return propertyValue;
@@ -224,14 +221,14 @@ public class Serializer {
         @Override
         protected MappingNode representJavaBean(Set<Property> properties, Object javaBean) {
             /*
-             * First, let SnakeYAML prepare the node normally. If the JavaBean is Extensible and has extension properties, the
-             * will contain a subnode called "extensions" which itself has one or more subnodes, one for each extension
+             * First, let SnakeYAML prepare the node normally. If the JavaBean is Extensible and has extension properties, it
+             * will contain a sub-node called "extensions" which itself has one or more sub-nodes, one for each extension
              * property assigned.
              */
             MappingNode result = super.representJavaBean(properties, javaBean);
 
             /*
-             * Now promote the individual subnodes for each extension property (if any) up one level so that they are peers of the
+             * Now promote the individual sub-nodes for each extension property (if any) up one level so that they are peers of the
              * other properties. Also remove the "extensions" node.
              */
             processExtensions(result, javaBean);
@@ -305,9 +302,7 @@ public class Serializer {
              * them - then we can just add additional lines like the "reject |= ..." one, testing for the new case, without
              * having to change any other lines in the method.
              */
-            boolean reject = false;
-            reject |= Parameter.class.isAssignableFrom(javaBean.getClass()) && property.getName().equals("hidden");
-            return !reject;
+            return !Parameter.class.isAssignableFrom(javaBean.getClass()) && property.getName().equals("hidden");
         }
     }
 
