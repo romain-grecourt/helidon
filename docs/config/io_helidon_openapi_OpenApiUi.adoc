@@ -17,9 +17,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 ifndef::rootdir[:rootdir: {docdir}/..]
-:description: Configuration of io.helidon.openapi.OpenApiUi
-:keywords: helidon, config, io.helidon.openapi.OpenApiUi
-:basic-table-intro: The table below lists the configuration keys that configure io.helidon.openapi.OpenApiUi
+:description: Configuration of io.helidon.openapi.ui.OpenApiUi
+:keywords: helidon, config, io.helidon.openapi.ui.OpenApiUi
+:basic-table-intro: The table below lists the configuration keys that configure io.helidon.openapi.ui.OpenApiUi
 include::{rootdir}/includes/attributes.adoc[]
 
 = OpenApiUi (openapi) Configuration
@@ -27,7 +27,7 @@ include::{rootdir}/includes/attributes.adoc[]
 // tag::config[]
 
 
-Type: link:{javadoc-base-url}/io.helidon.openapi/io/helidon/openapi/OpenApiUi.html[io.helidon.openapi.OpenApiUi]
+Type: link:{javadoc-base-url}/io.helidon.openapi/io/helidon/openapi/OpenApiUi.html[io.helidon.openapi.ui.OpenApiUi]
 
 
 [source,text]

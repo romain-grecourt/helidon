@@ -15,10 +15,8 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Function;
 
 import io.helidon.config.Config;
 import io.helidon.microprofile.servicecommon.HelidonRestCdiExtension;
@@ -30,7 +28,6 @@ import jakarta.enterprise.context.Initialized;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.spi.ProcessAnnotatedType;
 import jakarta.enterprise.inject.spi.ProcessManagedBean;
-import org.eclipse.microprofile.config.ConfigProvider;
 
 import static jakarta.interceptor.Interceptor.Priority.PLATFORM_AFTER;
 
@@ -39,42 +36,20 @@ import static jakarta.interceptor.Interceptor.Priority.PLATFORM_AFTER;
  * SmallRye OpenAPI) from CDI if no {@code META-INF/jandex.idx} file exists on
  * the class path.
  */
-public class OpenApiCdiExtension extends HelidonRestCdiExtension<MpOpenApiFeature> {
+public class OpenApiCdiExtension extends HelidonRestCdiExtension<OpenApiFeature> {
 
     private static final System.Logger LOGGER = System.getLogger(OpenApiCdiExtension.class.getName());
-
-    /**
-     * Normal location of Jandex index files.
-     */
-    static final String INDEX_PATH = "META-INF/jandex.idx";
-
-
-    private static Function<Config, MpOpenApiFeature> featureFactory(String... indexPaths) {
-        return (Config helidonConfig) -> {
-
-            org.eclipse.microprofile.config.Config mpConfig = ConfigProvider.getConfig();
-
-            MPOpenAPIBuilder builder = MpOpenApiFeature.builder()
-                    .config(helidonConfig)
-                    .indexPaths(indexPaths)
-                    .config(mpConfig);
-            return builder.build();
-        };
-    }
 
     private final Set<Class<?>> annotatedTypes = new HashSet<>();
 
     /**
-     * Creates a new instance of the index builder.
-     *
-     * @throws java.io.IOException in case of error checking for the Jandex index files
+     * Creates a new instance.
      */
-    public OpenApiCdiExtension() throws IOException {
-        this(INDEX_PATH);
-    }
-
-    OpenApiCdiExtension(String... indexPaths) throws IOException {
-        super(LOGGER, featureFactory(indexPaths), OpenApiFeature.Builder.CONFIG_KEY);
+    public OpenApiCdiExtension() {
+        super(LOGGER, (Config config) -> OpenApiFeature.builder()
+                .config(config)
+                .manager(new MpOpenApiManager(MpOpenApiManagerConfig.create(config)))
+                .build(), "openapi");
     }
 
     @Override
@@ -82,18 +57,21 @@ public class OpenApiCdiExtension extends HelidonRestCdiExtension<MpOpenApiFeatur
         // SmallRye handles annotation processing. We have this method because the abstract superclass requires it.
     }
 
-
     // Must run after the server has created the Application instances.
     void buildModel(@Observes @Priority(PLATFORM_AFTER + 100 + 10) @Initialized(ApplicationScoped.class) Object event) {
-        serviceSupport().prepareModel();
+        serviceSupport().initialize();
     }
 
     // For testing
-     MpOpenApiFeature feature() {
+    OpenApiFeature feature() {
         return serviceSupport();
     }
 
-
+    /**
+     * Get the annotated types.
+     *
+     * @return annotated types
+     */
     Set<Class<?>> annotatedTypes() {
         return annotatedTypes;
     }
@@ -101,12 +79,10 @@ public class OpenApiCdiExtension extends HelidonRestCdiExtension<MpOpenApiFeatur
     /**
      * Records each type that is annotated.
      *
-     * @param <X> annotated type
+     * @param <X>   annotated type
      * @param event {@code ProcessAnnotatedType} event
      */
     private <X> void processAnnotatedType(@Observes ProcessAnnotatedType<X> event) {
-        Class<?> c = event.getAnnotatedType()
-                .getJavaClass();
-        annotatedTypes.add(c);
+        annotatedTypes.add(event.getAnnotatedType().getJavaClass());
     }
 }

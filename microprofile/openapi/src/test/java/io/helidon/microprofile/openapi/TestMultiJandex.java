@@ -15,40 +15,46 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.io.IOException;
+import java.util.List;
 
 import io.helidon.microprofile.openapi.other.TestApp2;
 
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
-import org.jboss.jandex.IndexView;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-@Disabled
-public class TestMultiJandex {
+class TestMultiJandex {
 
     @Test
-    public void testMultipleIndexFiles() throws IOException {
+    public void testMultipleIndexFiles() {
 
-        /*
-         * The pom builds two differently-named test Jandex files, as an approximation
-         * to handling multiple same-named index files in the class path.
-         */
-        OpenApiCdiExtension ext = new OpenApiCdiExtension("META-INF/jandex.idx", "META-INF/other.idx");
-        IndexView indexView = ext.feature().indexView();
+        // The pom builds two differently-named test Jandex files, as an approximation
+        // to handling multiple same-named index files in the class path.
 
+        MpOpenApiManager openApiManager = new MpOpenApiManager(
+                MpOpenApiManagerConfig.builder()
+                        .indexPaths(List.of("META-INF/jandex.idx", "META-INF/other.idx"))
+                        .build());
+        List<ClassInfo> filteredIndexViews = openApiManager.filteredIndexViews().stream()
+                .flatMap(view -> view.getKnownClasses().stream())
+                .toList();
 
         DotName testAppName = DotName.createSimple(TestApp.class.getName());
         DotName testApp2Name = DotName.createSimple(TestApp2.class.getName());
 
-        ClassInfo testAppInfo = indexView.getClassByName(testAppName);
+        ClassInfo testAppInfo = filteredIndexViews.stream()
+                .filter(classInfo -> classInfo.name().equals(testAppName))
+                .findFirst()
+                .orElse(null);
         assertThat("Expected index entry for TestApp not found", testAppInfo, notNullValue());
 
-        ClassInfo testApp2Info = indexView.getClassByName(testApp2Name);
+        ClassInfo testApp2Info = filteredIndexViews.stream()
+                .filter(classInfo -> classInfo.name().equals(testApp2Name))
+                .findFirst()
+                .orElse(null);
         assertThat("Expected index entry for TestApp2 not found", testApp2Info, notNullValue());
     }
 }

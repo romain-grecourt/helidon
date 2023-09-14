@@ -21,11 +21,11 @@ import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.microprofile.tests.junit5.AddBean;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
-import io.helidon.openapi.OpenApiFeature;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -40,35 +40,10 @@ import static org.hamcrest.Matchers.is;
 @HelidonTest
 @AddBean(TestApp.class)
 @AddBean(TestApp3.class)
-public class BasicServerTest {
-
-    private static Map<String, Object> yaml;
+class BasicServerTest {
 
     @Inject
-    WebTarget webTarget;
-
-    private static Map<String, Object> retrieveYaml(WebTarget webTarget) {
-        try (Response response = webTarget
-                .path("/openapi")
-                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text())
-                .get()) {
-            assertThat("Fetch of OpenAPI document from server status", response.getStatus(),
-                    is(equalTo(Http.Status.OK_200.code())));
-            String yamlText = response.readEntity(String.class);
-            return new Yaml().load(yamlText);
-        }
-    }
-
-    private static Map<String, Object> yaml(WebTarget webTarget) {
-        if (yaml == null) {
-            yaml = retrieveYaml(webTarget);
-        }
-        return yaml;
-    }
-
-    private Map<String, Object> yaml() {
-        return yaml(webTarget);
-    }
+    private WebTarget webTarget;
 
     public BasicServerTest() {
     }
@@ -76,11 +51,9 @@ public class BasicServerTest {
     /**
      * Make sure that the annotations in the test app were found and properly
      * incorporated into the OpenAPI document.
-     *
-     * @throws Exception in case of errors reading the HTTP response
      */
     @Test
-    public void simpleTest() throws Exception {
+    public void simpleTest() {
         checkPathValue("paths./testapp/go.get.summary", TestApp.GO_SUMMARY);
     }
 
@@ -90,7 +63,18 @@ public class BasicServerTest {
     }
 
     private void checkPathValue(String pathExpression, String expected) {
-        String result = TestUtil.fromYaml(yaml(), pathExpression, String.class);
+        Map<String, Object> document = fetchDocument();
+        String result = TestUtil.fromYaml(document, pathExpression, String.class);
         assertThat(pathExpression, result, is(equalTo(expected)));
+    }
+
+    private Map<String, Object> fetchDocument() {
+        try (Response response = webTarget.path("/alt-openapi")
+                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text()).get()) {
+
+            assertThat(response.getStatus(), CoreMatchers.is(Http.Status.OK_200.code()));
+            String yamlText = response.readEntity(String.class);
+            return new Yaml().load(yamlText);
+        }
     }
 }

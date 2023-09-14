@@ -15,55 +15,55 @@
  */
 package io.helidon.microprofile.openapi;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.net.HttpURLConnection;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
-import io.helidon.http.HttpMediaType;
 import io.helidon.common.media.type.MediaTypes;
-import io.helidon.config.ClasspathConfigSource;
-import io.helidon.config.Config;
+import io.helidon.http.Http;
 import io.helidon.microprofile.server.Server;
+import io.helidon.microprofile.tests.junit5.Configuration;
+import io.helidon.microprofile.tests.junit5.HelidonTest;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
+import org.yaml.snakeyaml.Yaml;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 
+@HelidonTest
+@Configuration(configSources = "serverConfig.yaml")
 class TestServerWithConfig {
 
-    private static final String ALTERNATE_OPENAPI_PATH = "/otheropenapi";
-
-    private static Server server;
-
-    private static HttpURLConnection cnx;
-
-    private static Map<String, Object> yaml;
+    @Inject
+    private WebTarget webTarget;
 
     public TestServerWithConfig() {
     }
 
-    @BeforeAll
-    public static void startServer() throws Exception {
-        Config helidonConfig = Config.builder().addSource(ClasspathConfigSource.create("/serverConfig.yml")).build();
-        server = TestUtil.startServer(helidonConfig, TestApp.class);
-        cnx = TestUtil.getURLConnection(
-                server.port(),
-                "GET",
-                ALTERNATE_OPENAPI_PATH,
-                HttpMediaType.create(MediaTypes.APPLICATION_OPENAPI_YAML));
-        yaml = TestUtil.yamlFromResponse(cnx);
-    }
-
-    @AfterAll
-    public static void stopServer() {
-        TestUtil.cleanup(server, cnx);
-    }
-
     @Test
-    public void testAlternatePath() throws Exception {
-        String goSummary = TestUtil.fromYaml(yaml, "paths./testapp/go.get.summary", String.class);
+    public void testAlternatePath() {
+        Map<String, Object> document = fetchDocument();
+        String goSummary = TestUtil.fromYaml(document, "paths./testapp/go.get.summary", String.class);
         assertThat(goSummary, is(TestApp.GO_SUMMARY));
+    }
+
+    private Map<String, Object> fetchDocument() {
+        try (Response response = webTarget.path("/alt-openapi")
+                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text()).get()) {
+
+            assertThat(response.getStatus(), is(Http.Status.OK_200.code()));
+            String yamlText = response.readEntity(String.class);
+            return new Yaml().load(yamlText);
+        }
     }
 }
