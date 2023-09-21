@@ -37,6 +37,7 @@ import io.helidon.common.processor.classmodel.Method;
 import io.helidon.common.processor.classmodel.TypeArgument;
 import io.helidon.common.types.AccessModifier;
 import io.helidon.common.types.TypeName;
+import io.helidon.common.types.TypeNames;
 
 import static io.helidon.builder.processor.Types.CHAR_ARRAY_TYPE;
 import static io.helidon.builder.processor.Types.CONFIG_TYPE;
@@ -432,7 +433,20 @@ final class GenerateAbstractBuilder {
                         .defaultValue(TYPE_TOKEN + Set.class.getName() + TYPE_TOKEN + ".of(" + allowedValues + ")")
                 );
             }
-            if (!isBuilder || !child.typeHandler().actualType().equals(CONFIG_TYPE)) {
+            TypeHandler typeHandler = child.typeHandler();
+            if (!isBuilder || !typeHandler.actualType().equals(CONFIG_TYPE)) {
+                TypeName declaredType = typeHandler.declaredType();
+                if (child.configuredOption().hasDefault()
+                        && (LIST.equals(declaredType) || SET.equals(declaredType))) {
+
+                    // create a constant for the default collection value
+                    classBuilder.addField(builder -> builder
+                            .type(declaredType)
+                            .isFinal(true)
+                            .isStatic(true)
+                            .name(child.name().toUpperCase(Locale.ROOT) + "_DEFAULT")
+                            .defaultValue(child.configuredOption().defaultValue()));
+                }
                 classBuilder.addField(child.fieldDeclaration(isBuilder));
             }
             if (isBuilder && child.configuredOption().provider()) {

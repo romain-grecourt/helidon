@@ -204,15 +204,20 @@ class TypeHandler {
     }
 
     String generateFromConfig(FactoryMethods factoryMethods) {
+        return generateFromConfig(factoryMethods, ".map(%s::%s)", ".as(%s.class)");
+    }
+
+    String generateFromConfig(FactoryMethods factoryMethods, String mapFormat, String asFormat) {
         if (actualType().fqName().equals("char[]")) {
             return ".asString().as(String::toCharArray)";
         }
 
         TypeName boxed = actualType().boxed();
         return factoryMethods.createFromConfig()
-                .map(it -> ".map(" + it.typeWithFactoryMethod().genericTypeName().fqName() + "::" + it.createMethodName() + ")")
-                .orElseGet(() -> ".as(" + boxed.fqName() + ".class)");
-
+                .map(it -> String.format(mapFormat,
+                                         it.typeWithFactoryMethod().genericTypeName().fqName(),
+                                         it.createMethodName()))
+                .orElseGet(() -> String.format(asFormat, boxed.fqName()));
     }
 
     void generateFromConfig(Method.Builder method, FactoryMethods factoryMethods) {

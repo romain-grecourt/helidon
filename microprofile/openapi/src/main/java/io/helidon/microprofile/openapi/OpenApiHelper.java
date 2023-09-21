@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 
 import io.helidon.common.LazyValue;
+import io.helidon.common.config.Config;
+import io.helidon.common.config.GlobalConfig;
 
 import org.eclipse.microprofile.openapi.models.Extensible;
 import org.eclipse.microprofile.openapi.models.Operation;
@@ -29,6 +31,7 @@ import org.eclipse.microprofile.openapi.models.Reference;
 import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
 import org.yaml.snakeyaml.TypeDescription;
+import org.yaml.snakeyaml.introspector.Property;
 
 /**
  * Wraps generated parser and uses {@link ExpandedTypeDescription} as its type.
@@ -48,7 +51,8 @@ final class OpenApiHelper {
     private final SnakeYAMLParserHelper<ExpandedTypeDescription> generatedHelper;
 
     private OpenApiHelper() {
-        boolean warningsEnabled = Boolean.getBoolean("openapi.parsing.warnings.enabled");
+        Config config = GlobalConfig.config();
+        boolean warningsEnabled = config.get("openapi.parsing.warnings.enabled").asBoolean().orElse(false);
         if (SNAKE_YAML_INTROSPECTOR_LOGGER.isLoggable(java.util.logging.Level.WARNING) && !warningsEnabled) {
             SNAKE_YAML_INTROSPECTOR_LOGGER.setLevel(java.util.logging.Level.SEVERE);
         }
@@ -94,8 +98,9 @@ final class OpenApiHelper {
             if (Extensible.class.isAssignableFrom(td.getType())) {
                 td.addExtensions();
             }
-            if (td.hasDefaultProperty()) {
-                td.substituteProperty("default", Object.class, "getDefaultValue", "setDefaultValue");
+            Property defaultProperty = td.defaultProperty();
+            if (defaultProperty != null) {
+                td.substituteProperty("default", defaultProperty.getType(), "getDefaultValue", "setDefaultValue");
                 td.addExcludes("defaultValue");
             }
             if (isRef(td)) {

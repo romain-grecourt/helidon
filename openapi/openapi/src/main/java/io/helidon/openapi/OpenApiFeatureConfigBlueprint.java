@@ -54,8 +54,8 @@ interface OpenApiFeatureConfigBlueprint extends Prototype.Factory<OpenApiFeature
      *
      * @return location of the static OpenAPI document file
      */
-    @ConfiguredOption(value = "META-INF/openapi.*")
-    String staticFile();
+    @ConfiguredOption
+    Optional<String> staticFile();
 
     /**
      * CORS config.
@@ -63,7 +63,7 @@ interface OpenApiFeatureConfigBlueprint extends Prototype.Factory<OpenApiFeature
      * @return CORS config
      */
     @ConfiguredOption
-    CrossOriginConfig cors();
+    Optional<CrossOriginConfig> cors();
 
     /**
      * OpenAPI services.

@@ -15,20 +15,12 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
-import java.net.HttpURLConnection;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Optional;
 
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
-import io.helidon.microprofile.server.Server;
-import io.helidon.microprofile.tests.junit5.Configuration;
+import io.helidon.microprofile.tests.junit5.AddBean;
+import io.helidon.microprofile.tests.junit5.AddConfig;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
 
 import jakarta.inject.Inject;
@@ -37,30 +29,28 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 @HelidonTest
-@Configuration(configSources = "serverConfig.yaml")
-class TestServerWithConfig {
+@AddConfig(key = "openapi.web-context", value = "/alt-openapi")
+@AddBean(TestApp.class)
+class ServerConfigTest {
+
+    private static final String APPLICATION_OPENAPI_YAML = MediaTypes.APPLICATION_OPENAPI_YAML.text();
 
     @Inject
     private WebTarget webTarget;
 
-    public TestServerWithConfig() {
-    }
-
     @Test
     public void testAlternatePath() {
-        Map<String, Object> document = fetchDocument();
-        String goSummary = TestUtil.fromYaml(document, "paths./testapp/go.get.summary", String.class);
-        assertThat(goSummary, is(TestApp.GO_SUMMARY));
+        Map<String, Object> document = document();
+        String summary = YamlQuery.get(document, "paths./testapp/go.get.summary", String.class);
+        assertThat(summary, is(TestApp.GO_SUMMARY));
     }
 
-    private Map<String, Object> fetchDocument() {
-        try (Response response = webTarget.path("/alt-openapi")
-                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text()).get()) {
-
+    private Map<String, Object> document() {
+        try (Response response = webTarget.path("/alt-openapi").request(APPLICATION_OPENAPI_YAML).get()) {
             assertThat(response.getStatus(), is(Http.Status.OK_200.code()));
             String yamlText = response.readEntity(String.class);
             return new Yaml().load(yamlText);

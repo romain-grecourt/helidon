@@ -639,7 +639,7 @@ public final class ConfigMappers {
                                          .map(node -> new AbstractMap.SimpleEntry<>(Config.Key.unescapeName(node.key().toString()), node.asString().get()))
                                          .collect(Collectors.toSet()));
         }
-    }
+    }¡
 
     /**
      * Transform all leaf nodes (values) into Properties instance.

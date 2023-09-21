@@ -28,6 +28,7 @@ import jakarta.enterprise.context.Initialized;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.spi.ProcessAnnotatedType;
 import jakarta.enterprise.inject.spi.ProcessManagedBean;
+import org.eclipse.microprofile.config.ConfigProvider;
 
 import static jakarta.interceptor.Interceptor.Priority.PLATFORM_AFTER;
 
@@ -46,10 +47,7 @@ public class OpenApiCdiExtension extends HelidonRestCdiExtension<OpenApiFeature>
      * Creates a new instance.
      */
     public OpenApiCdiExtension() {
-        super(LOGGER, (Config config) -> OpenApiFeature.builder()
-                .config(config)
-                .manager(new MpOpenApiManager(MpOpenApiManagerConfig.create(config)))
-                .build(), "openapi");
+        super(LOGGER, OpenApiCdiExtension::createFeature, "openapi");
     }
 
     @Override
@@ -84,5 +82,12 @@ public class OpenApiCdiExtension extends HelidonRestCdiExtension<OpenApiFeature>
      */
     private <X> void processAnnotatedType(@Observes ProcessAnnotatedType<X> event) {
         annotatedTypes.add(event.getAnnotatedType().getJavaClass());
+    }
+
+    private static OpenApiFeature createFeature(Config config) {
+        return OpenApiFeature.builder()
+                .config(config)
+                .manager(new MpOpenApiManager(ConfigProvider.getConfig()))
+                .build();
     }
 }

@@ -16,6 +16,7 @@
 
 package io.helidon.builder.processor;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -55,8 +56,9 @@ abstract class TypeHandlerCollection extends TypeHandler.OneTypeHandler {
     @Override
     Field.Builder fieldDeclaration(PrototypeProperty.ConfiguredOption configured, boolean isBuilder, boolean alwaysFinal) {
         Field.Builder builder = super.fieldDeclaration(configured, isBuilder, true);
-        if (isBuilder && !configured.hasDefault()) {
-            builder.defaultValue("new " + TYPE_TOKEN + collectionImplType.fqName() + TYPE_TOKEN + "<>()");
+        if (isBuilder) {
+            String defaultValueRef = configured.hasDefault() ? name().toUpperCase(Locale.ROOT) + "_DEFAULT" : "";
+            builder.defaultValue("new " + TYPE_TOKEN + collectionImplType.fqName() + TYPE_TOKEN + "<>(" + defaultValueRef + ")");
         }
         return builder;
     }
@@ -99,6 +101,11 @@ abstract class TypeHandlerCollection extends TypeHandler.OneTypeHandler {
                                    + "." + collector + ")"
                                    + ".ifPresent(this::" + setterName() + ");");
         }
+    }
+
+    @Override
+    String generateFromConfig(FactoryMethods factoryMethods) {
+        return generateFromConfig(factoryMethods, ".mapList(%s::%s)", ".asList(%s.class)");
     }
 
     @Override

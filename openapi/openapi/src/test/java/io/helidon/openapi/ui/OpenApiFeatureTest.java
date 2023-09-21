@@ -48,6 +48,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * Tests {@link io.helidon.openapi.OpenApiFeature}.
  */
 @ServerTest
+@SuppressWarnings("HttpUrlsUsage")
 class OpenApiFeatureTest {
 
     private final WebClient client;

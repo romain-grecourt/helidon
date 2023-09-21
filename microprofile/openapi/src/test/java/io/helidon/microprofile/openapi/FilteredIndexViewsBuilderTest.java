@@ -16,9 +16,12 @@
 package io.helidon.microprofile.openapi;
 
 import java.util.List;
+import java.util.Set;
 
 import io.helidon.microprofile.openapi.other.TestApp2;
+import io.helidon.microprofile.server.JaxRsApplication;
 
+import io.smallrye.openapi.runtime.scanner.FilteredIndexView;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.junit.jupiter.api.Test;
@@ -26,19 +29,30 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class TestMultiJandex {
+/**
+ * Tests {@link FilteredIndexViewsBuilder}.
+ */
+class FilteredIndexViewsBuilderTest {
 
     @Test
-    public void testMultipleIndexFiles() {
+    void testMultipleIndexFiles() {
 
         // The pom builds two differently-named test Jandex files, as an approximation
         // to handling multiple same-named index files in the class path.
 
-        MpOpenApiManager openApiManager = new MpOpenApiManager(
-                MpOpenApiManagerConfig.builder()
-                        .indexPaths(List.of("META-INF/jandex.idx", "META-INF/other.idx"))
-                        .build());
-        List<ClassInfo> filteredIndexViews = openApiManager.filteredIndexViews().stream()
+        MpOpenApiManagerConfig managerConfig = MpOpenApiManagerConfig.builder()
+                .indexPaths(List.of("META-INF/jandex.idx", "META-INF/other.idx"))
+                .build();
+
+        OpenApiConfigAdapter openApiConfig = new OpenApiConfigAdapter(managerConfig);
+
+        List<JaxRsApplication> apps = List.of(
+                JaxRsApplication.create(new TestApp()),
+                JaxRsApplication.create(new TestApp2()));
+
+        List<FilteredIndexView> indexViews = new FilteredIndexViewsBuilder(openApiConfig, apps, Set.of()).buildViews();
+
+        List<ClassInfo> filteredIndexViews = indexViews.stream()
                 .flatMap(view -> view.getKnownClasses().stream())
                 .toList();
 
@@ -49,12 +63,12 @@ class TestMultiJandex {
                 .filter(classInfo -> classInfo.name().equals(testAppName))
                 .findFirst()
                 .orElse(null);
-        assertThat("Expected index entry for TestApp not found", testAppInfo, notNullValue());
+        assertThat(testAppInfo, notNullValue());
 
         ClassInfo testApp2Info = filteredIndexViews.stream()
                 .filter(classInfo -> classInfo.name().equals(testApp2Name))
                 .findFirst()
                 .orElse(null);
-        assertThat("Expected index entry for TestApp2 not found", testApp2Info, notNullValue());
+        assertThat(testApp2Info, notNullValue());
     }
 }

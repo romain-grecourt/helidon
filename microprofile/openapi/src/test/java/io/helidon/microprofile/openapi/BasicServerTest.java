@@ -34,44 +34,34 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 
 /**
- * Test that MP OpenAPI support works when retrieving the OpenAPI document
- * from the server's /openapi endpoint.
+ * Test model from annotations.
  */
 @HelidonTest
 @AddBean(TestApp.class)
 @AddBean(TestApp3.class)
 class BasicServerTest {
 
+    private static final String APPLICATION_OPENAPI_YAML = MediaTypes.APPLICATION_OPENAPI_YAML.text();
+
     @Inject
     private WebTarget webTarget;
 
-    public BasicServerTest() {
-    }
-
-    /**
-     * Make sure that the annotations in the test app were found and properly
-     * incorporated into the OpenAPI document.
-     */
     @Test
     public void simpleTest() {
-        checkPathValue("paths./testapp/go.get.summary", TestApp.GO_SUMMARY);
+        Map<String, Object> document = document();
+        String summary = YamlQuery.get(document, "paths./testapp/go.get.summary", String.class);
+        assertThat(summary, is(equalTo(TestApp.GO_SUMMARY)));
     }
 
     @Test
     public void testMultipleApps() {
-        checkPathValue("paths./testapp3/go3.get.summary", TestApp3.GO_SUMMARY);
+        Map<String, Object> document = document();
+        String summary = YamlQuery.get(document, "paths./testapp3/go3.get.summary", String.class);
+        assertThat(summary, is(equalTo(TestApp3.GO_SUMMARY)));
     }
 
-    private void checkPathValue(String pathExpression, String expected) {
-        Map<String, Object> document = fetchDocument();
-        String result = TestUtil.fromYaml(document, pathExpression, String.class);
-        assertThat(pathExpression, result, is(equalTo(expected)));
-    }
-
-    private Map<String, Object> fetchDocument() {
-        try (Response response = webTarget.path("/alt-openapi")
-                .request(MediaTypes.APPLICATION_OPENAPI_YAML.text()).get()) {
-
+    private Map<String, Object> document() {
+        try (Response response = webTarget.path("/openapi").request(APPLICATION_OPENAPI_YAML).get()) {
             assertThat(response.getStatus(), CoreMatchers.is(Http.Status.OK_200.code()));
             String yamlText = response.readEntity(String.class);
             return new Yaml().load(yamlText);

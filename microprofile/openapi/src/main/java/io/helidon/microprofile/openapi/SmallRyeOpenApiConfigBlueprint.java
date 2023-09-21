@@ -24,6 +24,7 @@ import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
 
 import io.smallrye.openapi.api.OpenApiConfig;
+import io.smallrye.openapi.api.OpenApiConfig.OperationIdStrategy;
 
 /**
  * Configuration prototype that mirrors {@link io.smallrye.openapi.api.OpenApiConfig}.
@@ -42,7 +43,7 @@ interface SmallRyeOpenApiConfigBlueprint {
     boolean arrayReferencesEnable();
 
     @ConfiguredOption
-    String customSchemaRegistryClass();
+    Optional<String> customSchemaRegistryClass();
 
     @ConfiguredOption
     boolean applicationPathDisable();
@@ -51,48 +52,49 @@ interface SmallRyeOpenApiConfigBlueprint {
     boolean privatePropertiesEnable();
 
     @ConfiguredOption
-    String propertyNamingStrategy();
+    Optional<String> propertyNamingStrategy();
 
     @ConfiguredOption
     boolean sortedPropertiesEnable();
 
-    @ConfiguredOption
+    @ConfiguredOption(key = "schema")
+    @Prototype.Singular
     Map<String, String> schemas();
 
     @ConfiguredOption
-    String openApiVersion();
+    Optional<String> openApiVersion();
 
     @ConfiguredOption
-    String infoTitle();
+    Optional<String> infoTitle();
 
     @ConfiguredOption
-    String infoVersion();
+    Optional<String> infoVersion();
 
     @ConfiguredOption
-    String infoDescription();
+    Optional<String> infoDescription();
 
     @ConfiguredOption
-    String infoTermsOfService();
+    Optional<String> infoTermsOfService();
 
     @ConfiguredOption
-    String infoContactEmail();
+    Optional<String> infoContactEmail();
 
     @ConfiguredOption
-    String infoContactName();
+    Optional<String> infoContactName();
 
     @ConfiguredOption
-    String infoContactUrl();
+    Optional<String> infoContactUrl();
 
     @ConfiguredOption
-    String infoLicenseName();
+    Optional<String> infoLicenseName();
 
     @ConfiguredOption
-    String infoLicenseUrl();
+    Optional<String> infoLicenseUrl();
 
     @ConfiguredOption
-    OpenApiConfig.OperationIdStrategy operationIdStrategy();
+    Optional<OperationIdStrategy> operationIdStrategy();
 
-    @ConfiguredOption
+    @ConfiguredOption(value = "WARN")
     OpenApiConfig.DuplicateOperationIdBehavior duplicateOperationIdBehavior();
 
     @ConfiguredOption
@@ -114,5 +116,5 @@ interface SmallRyeOpenApiConfigBlueprint {
     boolean removeUnusedSchemas();
 
     @ConfiguredOption
-    Integer maximumStaticFileSize();
+    Optional<Integer> maximumStaticFileSize();
 }

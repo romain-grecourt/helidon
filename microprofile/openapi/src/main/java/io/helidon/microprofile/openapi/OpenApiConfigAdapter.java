@@ -35,33 +35,34 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
         this.config = config;
     }
 
-    boolean useJaxRsSemantics() {
-        return config.useJaxRsSemantics();
+    MpOpenApiManagerConfig unwrap() {
+        return config;
     }
 
     @Override
     public <R, T> T getConfigValue(String propertyName, Class<R> type, Function<R, T> converter, Supplier<T> defaultValue) {
-        throw new UnsupportedOperationException();
+        return defaultValue.get();
     }
 
     @Override
     public <R, T> Map<String, T> getConfigValueMap(String propertyNamePrefix, Class<R> type, Function<R, T> converter) {
-        throw new UnsupportedOperationException();
+        return Map.of();
     }
 
     @Override
     public void setAllowNakedPathParameter(Boolean allowNakedPathParameter) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
     public String modelReader() {
-        return config.modelReader();
+        return config.modelReader()
+                .orElseGet(OpenApiConfig.super::modelReader);
     }
 
     @Override
     public String filter() {
-        return config.filter();
+        return config.filter()
+                .orElseGet(OpenApiConfig.super::filter);
     }
 
     @Override
@@ -96,23 +97,30 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
 
     @Override
     public List<String> servers() {
-        return config.servers();
+        return List.of();
+//        return config.servers().stream()
+//                .flatMap(server -> server.value().stream())
+//                .toList();
     }
 
     @Override
     public List<String> pathServers(String path) {
-        return config.pathServers().stream()
-                .filter(server -> path.equals(server.path()))
-                .flatMap(server -> server.servers().stream())
-                .toList();
+        return List.of();
+//        return config.servers().stream()
+//                .flatMap(server -> server.path().stream())
+//                .filter(servers -> path.equals(servers.path()))
+//                .flatMap(entry -> entry.servers().stream())
+//                .toList();
     }
 
     @Override
     public List<String> operationServers(String operationId) {
-        return config.operationServers().stream()
-                .filter(server -> operationId.equals(server.operation()))
-                .flatMap(server -> server.servers().stream())
-                .toList();
+        return List.of();
+//        return config.servers().stream()
+//                .flatMap(server -> server.operation().stream())
+//                .filter(servers -> operationId.equals(servers.operation()))
+//                .flatMap(entry -> entry.servers().stream())
+//                .toList();
     }
 
     @Override
@@ -132,7 +140,8 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
 
     @Override
     public String customSchemaRegistryClass() {
-        return config.customSchemaRegistryClass();
+        return config.customSchemaRegistryClass()
+                .orElseGet(OpenApiConfig.super::customSchemaRegistryClass);
     }
 
     @Override
@@ -147,7 +156,8 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
 
     @Override
     public String propertyNamingStrategy() {
-        return config.propertyNamingStrategy();
+        return config.propertyNamingStrategy()
+                .orElseGet(OpenApiConfig.super::propertyNamingStrategy);
     }
 
     @Override
@@ -162,57 +172,68 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
 
     @Override
     public String getOpenApiVersion() {
-        return config.openApiVersion();
+        return config.openApiVersion()
+                .orElseGet(OpenApiConfig.super::getOpenApiVersion);
     }
 
     @Override
     public String getInfoTitle() {
-        return config.infoTitle();
+        return config.infoTitle()
+                .orElseGet(OpenApiConfig.super::getInfoTitle);
     }
 
     @Override
     public String getInfoVersion() {
-        return config.infoVersion();
+        return config.infoVersion()
+                .orElseGet(OpenApiConfig.super::getInfoVersion);
     }
 
     @Override
     public String getInfoDescription() {
-        return config.infoDescription();
+        return config.infoDescription()
+                .orElseGet(OpenApiConfig.super::getInfoDescription);
     }
 
     @Override
     public String getInfoTermsOfService() {
-        return config.infoTermsOfService();
+        return config.infoTermsOfService()
+                .orElseGet(OpenApiConfig.super::getInfoTermsOfService);
     }
 
     @Override
     public String getInfoContactEmail() {
-        return config.infoContactEmail();
+        return config.infoContactEmail()
+                .orElseGet(OpenApiConfig.super::getInfoContactEmail);
     }
 
     @Override
     public String getInfoContactName() {
-        return config.infoContactName();
+        return config.infoContactName()
+                .orElseGet(OpenApiConfig.super::getInfoContactName);
     }
 
     @Override
     public String getInfoContactUrl() {
-        return config.infoContactUrl();
+        return config.infoContactName()
+                .orElseGet(OpenApiConfig.super::getInfoContactUrl);
     }
 
     @Override
     public String getInfoLicenseName() {
-        return config.infoLicenseName();
+        return config.infoContactName()
+                .orElseGet(OpenApiConfig.super::getInfoLicenseName);
     }
 
     @Override
     public String getInfoLicenseUrl() {
-        return config.infoLicenseUrl();
+        return config.infoContactName()
+                .orElseGet(OpenApiConfig.super::getInfoLicenseUrl);
     }
 
     @Override
     public OperationIdStrategy getOperationIdStrategy() {
-        return config.operationIdStrategy();
+        return config.operationIdStrategy()
+                .orElseGet(OpenApiConfig.super::getOperationIdStrategy);
     }
 
     @Override
@@ -252,6 +273,7 @@ final class OpenApiConfigAdapter implements OpenApiConfig {
 
     @Override
     public Integer getMaximumStaticFileSize() {
-        return config.maximumStaticFileSize();
+        return config.maximumStaticFileSize()
+                .orElseGet(OpenApiConfig.super::getMaximumStaticFileSize);
     }
 }

@@ -65,12 +65,13 @@ class FilteredIndexViewsBuilder {
     private final Set<String> requiredClasses;
     private final boolean jaxRsSemantics;
 
-    FilteredIndexViewsBuilder(OpenApiConfigAdapter config, List<String> paths, List<JaxRsApplication> apps, Set<Class<?>> types) {
+    FilteredIndexViewsBuilder(OpenApiConfigAdapter config, List<JaxRsApplication> apps, Set<Class<?>> types) {
         this.config = config;
-        this.view = new FilteredIndexView(indexView(paths, apps, types), config);
+        MpOpenApiManagerConfig managerConfig = config.unwrap();
+        this.view = new FilteredIndexView(indexView(managerConfig.indexPaths(), apps, types), config);
         this.apps = apps;
         this.requiredClasses = requiredClassNames(view);
-        this.jaxRsSemantics = config.useJaxRsSemantics();
+        this.jaxRsSemantics = managerConfig.useJaxRsSemantics();
     }
 
     /**
@@ -134,7 +135,6 @@ class FilteredIndexViewsBuilder {
         }
 
         Set<String> excludedClasses = excludedClasses(app, explicitClassNames);
-
         FilteringOpenApiConfigImpl filteringOpenApiConfig = new FilteringOpenApiConfigImpl(config, excludedClasses);
 
         // Create a new filtered index view for this application which excludes the irrelevant classes we just identified.

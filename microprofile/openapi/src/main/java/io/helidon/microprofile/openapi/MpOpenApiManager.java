@@ -19,7 +19,10 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.System.Logger.Level;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import io.helidon.common.LazyValue;
 import io.helidon.microprofile.server.JaxRsApplication;
@@ -36,6 +39,7 @@ import io.smallrye.openapi.runtime.scanner.FilteredIndexView;
 import io.smallrye.openapi.runtime.scanner.OpenApiAnnotationScanner;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.CDI;
+import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
 import org.jboss.jandex.IndexView;
 
@@ -50,6 +54,10 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
     private final MpOpenApiManagerConfig config;
     private final OpenApiConfigAdapter openApiConfig;
     private final LazyValue<List<FilteredIndexView>> filteredIndexViews = LazyValue.create(this::buildFilteredIndexViews);
+
+    MpOpenApiManager(Config config) {
+        this(createManagerConfig(config));
+    }
 
     MpOpenApiManager(MpOpenApiManagerConfig config) {
         this.config = config;
@@ -76,7 +84,7 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
             OpenAPI document = OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, new StringReader(content));
             OpenApiDocument.INSTANCE.modelFromStaticFile(document);
         }
-        if (!config.scanDisable()) {
+        if (!openApiConfig.scanDisable()) {
             processAnnotations();
         } else {
             LOGGER.log(Level.TRACE, "OpenAPI Annotation processing is disabled");
@@ -107,7 +115,7 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
 
     private void processAnnotations() {
         List<FilteredIndexView> indexViews = filteredIndexViews();
-        if (config.scanDisable() || indexViews.isEmpty()) {
+        if (openApiConfig.scanDisable() || indexViews.isEmpty()) {
             return;
         }
 
@@ -132,6 +140,21 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
         BeanManager beanManager = CDI.current().getBeanManager();
         List<JaxRsApplication> jaxRsApps = beanManager.getExtension(JaxRsCdiExtension.class).applicationsToRun();
         Set<Class<?>> annotatedTypes = beanManager.getExtension(OpenApiCdiExtension.class).annotatedTypes();
-        return new FilteredIndexViewsBuilder(openApiConfig, config.indexPaths(), jaxRsApps, annotatedTypes).buildViews();
+        return new FilteredIndexViewsBuilder(openApiConfig, jaxRsApps, annotatedTypes).buildViews();
+    }
+
+    private static MpOpenApiManagerConfig createManagerConfig(Config config) {
+        MpOpenApiManagerConfig.Builder builder = MpOpenApiManagerConfig.builder().config(config);
+        config.get("servers").asList(String.class).ifPresent(builder::servers);
+        configAsMap(config.get("servers.path")).ifPresent(builder::pathServers);
+        configAsMap(config.get("servers.operation")).ifPresent(builder::operationServers);
+        return builder.build();
+    }
+
+    private static Optional<Map<String, String>> configAsMap(Config config) {
+        return config.asNodeList()
+                .map(list -> list.stream()
+                        .map(c -> Map.entry(c.key().name(), c.asString().get()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
 }

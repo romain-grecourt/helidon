@@ -51,7 +51,7 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
     /**
      * Returns a new builder.
      *
-     * @return new builder
+     * @return new builder`
      */
     public static OpenApiFeatureConfig.Builder builder() {
         return OpenApiFeatureConfig.builder();
@@ -116,27 +116,29 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
 
     OpenApiFeature(OpenApiFeatureConfig config) {
         this.config = config;
-        String staticFile = builder().staticFile();
+        String staticFile = builder().staticFile().orElse(null);
+        String defaultContent = null;
         if (staticFile != null) {
-            content = readContent(staticFile);
-            if (content == null) {
-                LOGGER.log(Level.WARNING, "Static OpenAPI file not found: %s", staticFile);
+            defaultContent = readContent(staticFile);
+            if (defaultContent == null) {
+                defaultContent = "";
+                LOGGER.log(Level.WARNING, "Static OpenAPI file not found: {0}", staticFile);
             }
         } else {
-            String defaultContent = null;
             for (String path : DEFAULT_FILE_PATHS) {
                 defaultContent = readContent(path);
                 if (defaultContent != null) {
                     break;
                 }
             }
-            content = defaultContent;
-            if (content == null) {
-                LOGGER.log(Level.WARNING, "Static OpenAPI file not found, checked: %s", DEFAULT_FILE_PATHS);
+            if (defaultContent == null) {
+                defaultContent = "";
+                LOGGER.log(Level.WARNING, "Static OpenAPI file not found, checked: {0}", DEFAULT_FILE_PATHS);
             }
         }
+        content = defaultContent;
         manager = config.manager().orElseGet(SimpleOpenApiManager::new);
-        corsService = CorsEnabledServiceHelper.create("openapi", config.cors());
+        corsService = CorsEnabledServiceHelper.create("openapi", config.cors().orElse(null));
         model = LazyValue.create(() -> manager.load(content));
     }
 
@@ -195,7 +197,7 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
 
             if (contentType == null) {
                 if (LOGGER.isLoggable(Level.TRACE)) {
-                    LOGGER.log(Level.TRACE, "Accepted types not supported: %s", req.headers().acceptedTypes());
+                    LOGGER.log(Level.TRACE, "Accepted types not supported: {0}", req.headers().acceptedTypes());
                 }
                 res.next();
                 return;
@@ -211,7 +213,7 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
         OpenApiFormat format = OpenApiFormat.valueOf(mediaType);
         if (format == OpenApiFormat.UNSUPPORTED) {
             if (LOGGER.isLoggable(Level.TRACE)) {
-                LOGGER.log(Level.TRACE, "Requested format %s not supported", mediaType.toString());
+                LOGGER.log(Level.TRACE, "Requested format {0} not supported", mediaType);
             }
         }
         return cachedDocuments.computeIfAbsent(format, fmt -> format(manager, fmt, model.get()));

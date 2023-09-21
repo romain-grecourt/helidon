@@ -178,11 +178,9 @@ final class OpenApiSerializer {
                 return new NodeTuple(representData("$ref"), defaultTuple.getValueNode());
             }
             if (javaBean instanceof Schema) {
-                /*
-                 * At most one of additionalPropertiesBoolean and additionalPropertiesSchema will return a non-null value.
-                 * Whichever one does (if either), replace the name with "additionalProperties" for output. Skip whatever is
-                 * returned from the deprecated additionalProperties method itself.
-                 */
+                // At most one of additionalPropertiesBoolean and additionalPropertiesSchema will return a non-null value.
+                // Whichever one does (if either), replace the name with "additionalProperties" for output. Skip whatever is
+                // returned from the deprecated additionalProperties method itself.
                 String propertyName = property.getName();
                 if (propertyName.equals("additionalProperties")) {
                     return null;
@@ -194,11 +192,10 @@ final class OpenApiSerializer {
         }
 
         private Object adjustPropertyValue(Object propertyValue) {
-            /* Some MP OpenAPI TCK tests expect an integer-style format, even for BigDecimal types, if the
-             * value is an integer. Because the formatting is done in SnakeYAML code based on the type of the value,
-             * we need to replace a for example BigDecimal that happen to be an integer value, with an Integer.
-             * See https://github.com/eclipse/microprofile-open-api/issues/412
-             */
+            // Some MP OpenAPI TCK tests expect an integer-style format, even for BigDecimal types, if the
+            // value is an integer. Because the formatting is done in SnakeYAML code based on the type of the value,
+            // we need to replace a for example BigDecimal that happen to be an integer value, with an Integer.
+            // See https://github.com/eclipse/microprofile-open-api/issues/412
             if (propertyValue instanceof Number n && !Boolean.getBoolean("io.helidon.openapi.skipTCKWorkaround")) {
                 float diff = n.floatValue() - n.intValue();
                 if (diff == 0) {
@@ -283,12 +280,15 @@ final class OpenApiSerializer {
          * @param property the property being serialized
          * @return true if the property should be processes; false otherwise
          */
+        @SuppressWarnings("ConstantValue")
         private boolean okToProcess(Object javaBean, Property property) {
             // The following construct might look awkward - and it is. But if SmallRye adds additional properties to its
             // implementation classes that are not in the corresponding interfaces - and therefore we want to skip processing
             // them - then we can just add additional lines like the "reject |= ..." one, testing for the new case, without
             // having to change any other lines in the method.
-            return !Parameter.class.isAssignableFrom(javaBean.getClass()) && property.getName().equals("hidden");
+            boolean reject = false;
+            reject |= Parameter.class.isAssignableFrom(javaBean.getClass()) && property.getName().equals("hidden");
+            return !reject;
         }
     }
 

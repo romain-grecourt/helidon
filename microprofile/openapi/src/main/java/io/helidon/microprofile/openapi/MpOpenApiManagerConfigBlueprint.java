@@ -17,17 +17,16 @@ package io.helidon.microprofile.openapi;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import io.helidon.builder.api.Prototype;
-import io.helidon.config.metadata.Configured;
 import io.helidon.config.metadata.ConfiguredOption;
 
 /**
  * {@link MpOpenApiManager} prototype.
  */
 @Prototype.Blueprint
-@Configured
 interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint {
 
     /**
@@ -36,7 +35,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      *
      * @return {@code true} if enabled, {@code false} otherwise
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false)
     boolean useJaxRsSemantics();
 
     /**
@@ -44,7 +43,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      *
      * @return list of Jandex index path
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, value = "META-INF/jandex.idx")
     List<String> indexPaths();
 
     /**
@@ -53,6 +52,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return {@code true} if scanning is disabled
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_DISABLE
      */
+    @ConfiguredOption(configured = false,key = "scan.disable")
     boolean scanDisable();
 
     /**
@@ -61,8 +61,8 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return FQN of the OASModelReader implementation
      * @see org.eclipse.microprofile.openapi.OASConfig#MODEL_READER
      */
-    @ConfiguredOption
-    String modelReader();
+    @ConfiguredOption(configured = false,key = "model.reader")
+    Optional<String> modelReader();
 
     /**
      * Fully qualified name of the OASFilter implementation.
@@ -70,8 +70,8 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return FQN of the OASFilter implementation
      * @see org.eclipse.microprofile.openapi.OASConfig#FILTER
      */
-    @ConfiguredOption
-    String filter();
+    @ConfiguredOption(configured = false)
+    Optional<String> filter();
 
     /**
      * Specify the set of packages to scan.
@@ -79,7 +79,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return set of classes
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_PACKAGES
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "scan.packages")
     Set<String> scanPackages();
 
     /**
@@ -88,7 +88,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return set of classes
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_CLASSES
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "scan.classes")
     Set<String> scanClasses();
 
     /**
@@ -97,7 +97,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return set of packages
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_EXCLUDE_PACKAGES
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "scan.exclude.packages")
     Set<String> scanExcludePackages();
 
     /**
@@ -106,7 +106,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return set of classes
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_EXCLUDE_CLASSES
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "scan.exclude.classes")
     Set<String> scanExcludeClasses();
 
     /**
@@ -115,7 +115,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return {@code true} if scanning is enabled
      * @see org.eclipse.microprofile.openapi.OASConfig#SCAN_BEANVALIDATION
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "scan.beanvalidation")
     boolean scanBeanValidation();
 
     /**
@@ -124,7 +124,8 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return list of servers
      * @see org.eclipse.microprofile.openapi.OASConfig#SERVERS
      */
-    @ConfiguredOption
+    @ConfiguredOption(configured = false, key = "servers")
+    @Prototype.Singular
     List<String> servers();
 
     /**
@@ -133,8 +134,9 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return Map of path to alternative list of servers
      * @see org.eclipse.microprofile.openapi.OASConfig#SERVERS_PATH_PREFIX
      */
-    @ConfiguredOption(key = "servers.path")
-    List<AlternatePathServers> pathServers();
+    @ConfiguredOption(configured = false, key = "servers.path")
+    @Prototype.Singular
+    Map<String, String> pathServers();
 
     /**
      * Specify an alternative list of servers to service an operation.
@@ -142,24 +144,7 @@ interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint
      * @return Map of operation to alternative list of servers
      * @see org.eclipse.microprofile.openapi.OASConfig#SERVERS_OPERATION_PREFIX
      */
-    @ConfiguredOption(key = "servers.operations")
-    List<AlternateOperationServers> operationServers();
-
-    /**
-     * Alternate path servers.
-     *
-     * @param path    path
-     * @param servers servers
-     */
-    record AlternatePathServers(String path, List<String> servers) {
-    }
-
-    /**
-     * Alternate operation servers.
-     *
-     * @param operation operation
-     * @param servers   servers
-     */
-    record AlternateOperationServers(String operation, List<String> servers) {
-    }
+    @ConfiguredOption(configured = false, key = "servers.operation")
+    @Prototype.Singular
+    Map<String, String> operationServers();
 }

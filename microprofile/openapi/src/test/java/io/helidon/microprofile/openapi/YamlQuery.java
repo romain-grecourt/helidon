@@ -17,37 +17,37 @@ package io.helidon.microprofile.openapi;
 
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.fail;
-
 /**
- * Useful utility methods during testing.
+ * Utility to query a tree structure using a dotted path notation.
  */
-public class TestUtil {
+class YamlQuery {
+
+    private YamlQuery() {
+    }
 
     /**
-     * Treats the provided {@code Map} as a YAML map and navigates through it
+     * Treats the provided {@code Map} as a tree and navigates through it
      * using the dotted-name convention as expressed in the {@code dottedPath}
      * argument, finally casting the value retrieved from the last segment of
      * the path as the specified type and returning that cast value.
      *
-     * @param <T> type to which the final value will be cast
-     * @param map the YAML-inspired map
-     * @param dottedPath navigation path to the item of interest in the YAML
-     * maps-of-maps; note that the {@code dottedPath} must not use dots except
-     * as path segment separators
-     * @param cl {@code Class} for the return type {@code <T>}
-     * @return value from the lowest-level map retrieved using the last path
-     * segment, cast to the specified type
+     * @param <T>        type to which the final value will be cast
+     * @param map        the tree
+     * @param dottedPath navigation path to the item of interest ;
+     *                   note that the {@code dottedPath} must not use dots except as path segment separators
+     * @param cl         {@code Class} for the return type {@code <T>}
+     * @return value from the lowest-level map retrieved using the last path segment, cast to the specified type
      */
     @SuppressWarnings(value = "unchecked")
-    public static <T> T fromYaml(Map<String, Object> map, String dottedPath, Class<T> cl) {
+    public static <T> T get(Map<String, Object> map, String dottedPath, Class<T> cl) {
         Map<String, Object> originalMap = map;
         String[] segments = dottedPath.split("\\.");
         for (int i = 0; i < segments.length - 1; i++) {
             map = (Map<String, Object>) map.get(segments[i]);
             if (map == null) {
-                fail("Traversing dotted path " + dottedPath + " segment " + segments[i] + " not found in parsed map "
-                        + originalMap);
+                throw new AssertionError(String.format(
+                        "Traversing dotted path %s segment %s not found in parsed map %s",
+                        dottedPath, segments[i], originalMap));
             }
         }
         return cl.cast(map.get(segments[segments.length - 1]));
