@@ -19,9 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -30,7 +27,6 @@ import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.http.Http.HeaderNames;
 import io.helidon.http.HttpMediaType;
-import io.helidon.openapi.OpenApiFeature;
 import io.helidon.webclient.api.ClientResponseTyped;
 import io.helidon.webclient.api.WebClient;
 import io.helidon.webserver.http.HttpRouting;
@@ -38,12 +34,14 @@ import io.helidon.webserver.testing.junit5.RoutingTest;
 import io.helidon.webserver.testing.junit5.SetUpRoute;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.yaml.snakeyaml.Yaml;
 
+import static io.helidon.common.testing.junit5.MapMatcher.mapEqualTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.isEmptyString;
 
 /**
  * Tests {@link io.helidon.openapi.OpenApiFeature}.
@@ -69,9 +67,12 @@ class OpenApiFeatureTest {
                                     .servicesDiscoverServices(false)
                                     .staticFile("src/test/resources/time-server.yml")
                                     .webContext("/openapi-time")
-                                    .cors(cors -> cors.allowOrigins("http://foo.bar", "http://bar.foo")));
-        // TODO add petstore and uncomment corresponding tests
-
+                                    .cors(cors -> cors.allowOrigins("http://foo.bar", "http://bar.foo")))
+                .addFeature(OpenApiFeature.builder()
+                                    .servicesDiscoverServices(false)
+                                    .staticFile("src/test/resources/petstore.yaml")
+                                    .webContext("/openapi-petstore")
+                                    .cors(cors -> cors.enabled(false)));
     }
 
     @Test
@@ -80,7 +81,7 @@ class OpenApiFeatureTest {
                 .accept(MediaTypes.APPLICATION_OPENAPI_YAML)
                 .request(String.class);
         assertThat(response.status(), is(Http.Status.OK_200));
-        assertThat(yamlDiffs(response.entity(), resource("/greeting.yml")), isEmptyString());
+        assertThat(parse(response.entity()), mapEqualTo(parse(resource("/greeting.yml"))));
     }
 
     static Stream<MediaType> checkExplicitResponseMediaTypeViaHeaders() {
@@ -90,8 +91,8 @@ class OpenApiFeatureTest {
                          MediaTypes.APPLICATION_JSON);
     }
 
-    //@ParameterizedTest
-    //@MethodSource()
+    @ParameterizedTest
+    @MethodSource()
     void checkExplicitResponseMediaTypeViaHeaders(MediaType testMediaType) {
         ClientResponseTyped<String> response = client.get("/openapi-petstore")
                 .accept(testMediaType)
@@ -103,28 +104,29 @@ class OpenApiFeatureTest {
         if (contentType.test(MediaTypes.APPLICATION_OPENAPI_YAML)
                 || contentType.test(MediaTypes.APPLICATION_YAML)) {
 
-            assertThat(response.entity(), is(resource("/petstore.yaml")));
+            assertThat(parse(response.entity()), mapEqualTo(parse(resource("/petstore.yaml"))));
         } else if (contentType.test(MediaTypes.APPLICATION_OPENAPI_JSON)
                 || contentType.test(MediaTypes.APPLICATION_JSON)) {
 
-            assertThat(response.entity(), is(resource("/petstore.json")));
+            // parsing normalizes the entity, so we can compare the entity to the original YAML
+            assertThat(parse(response.entity()), mapEqualTo(parse(resource("/petstore.yaml"))));
         } else {
             throw new AssertionError("Expected either JSON or YAML response but received " + contentType);
         }
     }
 
-    //@ParameterizedTest
-    //@ValueSource(strings = {"JSON", "YAML"})
+    @ParameterizedTest
+    @ValueSource(strings = {"JSON", "YAML"})
     void checkExplicitResponseMediaTypeViaQueryParam(String format) {
-        ClientResponseTyped<String> response = client.get("/openapi-greeting")
+        ClientResponseTyped<String> response = client.get("/openapi-petstore")
                 .queryParam("format", format)
                 .accept(MediaTypes.APPLICATION_JSON)
                 .request(String.class);
         assertThat(response.status(), is(Http.Status.OK_200));
 
         switch (format) {
-            case "YAML" -> assertThat(response.entity(), is(resource("/petstore.yaml")));
-            case "JSON" -> assertThat(response.entity(), is(resource("/petstore.json")));
+            // parsing normalizes the entity, so we can compare the entity to the original YAML
+            case "YAML", "JSON" -> assertThat(parse(response.entity()), mapEqualTo(parse(resource("/petstore.yaml"))));
             default -> throw new AssertionError("Format not supported: " + format);
         }
     }
@@ -135,7 +137,7 @@ class OpenApiFeatureTest {
                 .accept(MediaTypes.APPLICATION_OPENAPI_YAML)
                 .request(String.class);
         assertThat(response.status(), is(Http.Status.OK_200));
-        assertThat(yamlDiffs(response.entity(), resource("/time-server.yml")), isEmptyString());
+        assertThat(parse(response.entity()), mapEqualTo(parse(resource("/time-server.yml"))));
     }
 
     @Test
@@ -146,15 +148,11 @@ class OpenApiFeatureTest {
                 .header(HeaderNames.HOST, "localhost")
                 .request(String.class);
         assertThat(response.status(), is(Http.Status.OK_200));
-        assertThat(yamlDiffs(response.entity(), resource("/time-server.yml")), isEmptyString());
+        assertThat(parse(response.entity()), mapEqualTo(parse(resource("/time-server.yml"))));
     }
 
-    private static String yamlDiffs(String left, String right) {
-        Yaml yaml = new Yaml();
-        Map<String, ?> leftMap = yaml.load(left);
-        Map<String, ?> rightMap = yaml.load(right);
-        List<MapDiffs.Diff> diffs = MapDiffs.diffs(leftMap, rightMap);
-        return String.join(System.lineSeparator(), diffs.stream().map(MapDiffs.Diff::toString).toList());
+    private static Map<String, Object> parse(String content) {
+        return new Yaml().load(content);
     }
 
     private static String resource(String path) {
