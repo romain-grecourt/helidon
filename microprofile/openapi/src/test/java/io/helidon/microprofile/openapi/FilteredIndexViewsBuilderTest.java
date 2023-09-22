@@ -21,7 +21,11 @@ import java.util.Set;
 import io.helidon.microprofile.openapi.other.TestApp2;
 import io.helidon.microprofile.server.JaxRsApplication;
 
+import io.smallrye.openapi.api.OpenApiConfig;
+import io.smallrye.openapi.api.OpenApiConfigImpl;
 import io.smallrye.openapi.runtime.scanner.FilteredIndexView;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.junit.jupiter.api.Test;
@@ -40,17 +44,15 @@ class FilteredIndexViewsBuilderTest {
         // The pom builds two differently-named test Jandex files, as an approximation
         // to handling multiple same-named index files in the class path.
 
-        MpOpenApiManagerConfig managerConfig = MpOpenApiManagerConfig.builder()
-                .indexPaths(List.of("META-INF/jandex.idx", "META-INF/other.idx"))
-                .build();
-
-        OpenApiConfigAdapter openApiConfig = new OpenApiConfigAdapter(managerConfig);
+        OpenApiConfig openApiConfig = openApiConfig();
+        List<String> indexPaths = List.of("META-INF/jandex.idx", "META-INF/other.idx");
 
         List<JaxRsApplication> apps = List.of(
                 JaxRsApplication.create(new TestApp()),
                 JaxRsApplication.create(new TestApp2()));
 
-        List<FilteredIndexView> indexViews = new FilteredIndexViewsBuilder(openApiConfig, apps, Set.of()).buildViews();
+        List<FilteredIndexView> indexViews = new FilteredIndexViewsBuilder(
+                openApiConfig, apps, Set.of(), indexPaths, false).buildViews();
 
         List<ClassInfo> filteredIndexViews = indexViews.stream()
                 .flatMap(view -> view.getKnownClasses().stream())
@@ -70,5 +72,10 @@ class FilteredIndexViewsBuilderTest {
                 .findFirst()
                 .orElse(null);
         assertThat(testApp2Info, notNullValue());
+    }
+
+    private static OpenApiConfig openApiConfig() {
+        Config config = ConfigProviderResolver.instance().getBuilder().build();
+        return new OpenApiConfigImpl(config);
     }
 }

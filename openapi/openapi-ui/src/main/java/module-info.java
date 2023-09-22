@@ -16,7 +16,7 @@
 import io.helidon.common.features.api.Feature;
 import io.helidon.common.features.api.HelidonFlavor;
 import io.helidon.openapi.spi.OpenApiServiceProvider;
-import io.helidon.openapi.ui.OpenApiUiProvider;
+import io.helidon.openapi.OpenApiUiProvider;
 
 @Feature(value = "OpenAPI",
          description = "OpenAPI support",

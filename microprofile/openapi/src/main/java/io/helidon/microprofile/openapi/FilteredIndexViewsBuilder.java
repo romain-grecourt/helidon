@@ -59,19 +59,23 @@ class FilteredIndexViewsBuilder {
 
     private static final System.Logger LOGGER = System.getLogger(FilteredIndexViewsBuilder.class.getName());
 
-    private final OpenApiConfigAdapter config;
+    private final OpenApiConfig config;
     private final FilteredIndexView view;
     private final List<JaxRsApplication> apps;
     private final Set<String> requiredClasses;
-    private final boolean jaxRsSemantics;
+    private final boolean useJaxRsSemantics;
 
-    FilteredIndexViewsBuilder(OpenApiConfigAdapter config, List<JaxRsApplication> apps, Set<Class<?>> types) {
+    FilteredIndexViewsBuilder(OpenApiConfig config,
+                              List<JaxRsApplication> apps,
+                              Set<Class<?>> types,
+                              List<String> indexPaths,
+                              boolean useJaxRsSemantics) {
+
         this.config = config;
-        MpOpenApiManagerConfig managerConfig = config.unwrap();
-        this.view = new FilteredIndexView(indexView(managerConfig.indexPaths(), apps, types), config);
+        this.view = new FilteredIndexView(indexView(indexPaths, apps, types), config);
         this.apps = apps;
         this.requiredClasses = requiredClassNames(view);
-        this.jaxRsSemantics = managerConfig.useJaxRsSemantics();
+        this.useJaxRsSemantics = useJaxRsSemantics;
     }
 
     /**
@@ -121,7 +125,7 @@ class FilteredIndexViewsBuilder {
 
         // Note that the MP OpenAPI TCK does not follow JAX-RS behavior wen getSingletons returns a non-empty set.
         // The TCK incorrectly expects the endpoints defined by other resources as well to appear in the OpenAPI document.
-        if ((classes.isEmpty() && (singletons.isEmpty() || !jaxRsSemantics)) && apps.size() == 1) {
+        if ((classes.isEmpty() && (singletons.isEmpty() || !useJaxRsSemantics)) && apps.size() == 1) {
             if (LOGGER.isLoggable(Level.TRACE)) {
                 LOGGER.log(Level.TRACE, String.format(
                         "No filtering required for %s because JAX-RS semantics is disabled",

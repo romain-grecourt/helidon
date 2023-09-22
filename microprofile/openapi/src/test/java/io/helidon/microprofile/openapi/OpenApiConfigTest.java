@@ -15,13 +15,17 @@
  */
 package io.helidon.microprofile.openapi;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.StringJoiner;
 
-import io.helidon.config.Config;
-import io.helidon.config.ConfigSources;
+import io.helidon.config.mp.MpConfigSources;
 
 import io.smallrye.openapi.api.OpenApiConfig;
+import io.smallrye.openapi.api.OpenApiConfigImpl;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -45,18 +49,18 @@ class OpenApiConfigTest {
     private static final String SCHEMA_OVERRIDE_CONFIG_FQCN = "java.util.Date";
 
     private static final Map<String, String> SIMPLE_CONFIG = Map.of(
-            "openapi.model.reader", "io.helidon.microprofile.openapi.test.MyModelReader",
-            "openapi.filter", "io.helidon.microprofile.openapi.test.MySimpleFilter",
-            "openapi.servers", "s1,s2",
-            "openapi.servers.path.path1", "p1s1,p1s2",
-            "openapi.servers.path.path2", "p2s1,p2s2",
-            "openapi.servers.operation.op1", "o1s1,o1s2",
-            "openapi.servers.operation.op2", "o2s1,o2s2",
-            "openapi.scan.disable", "true"
+            "mp.openapi.model.reader", "io.helidon.microprofile.openapi.test.MyModelReader",
+            "mp.openapi.filter", "io.helidon.microprofile.openapi.test.MySimpleFilter",
+            "mp.openapi.servers", "s1,s2",
+            "mp.openapi.servers.path.path1", "p1s1,p1s2",
+            "mp.openapi.servers.path.path2", "p2s1,p2s2",
+            "mp.openapi.servers.operation.op1", "o1s1,o1s2",
+            "mp.openapi.servers.operation.op2", "o2s1,o2s2",
+            "mp.openapi.scan.disable", "true"
     );
 
     private static final Map<String, String> SCHEMA_OVERRIDE_CONFIG = Map.of(
-            "openapi.schema." + Config.Key.escapeName(SCHEMA_OVERRIDE_CONFIG_FQCN), SCHEMA_OVERRIDE_JSON
+            "mp.openapi.schema." + SCHEMA_OVERRIDE_CONFIG_FQCN, SCHEMA_OVERRIDE_JSON
     );
 
     private static String prepareSchemaOverrideJSON() {
@@ -67,8 +71,7 @@ class OpenApiConfigTest {
 
     @Test
     public void simpleConfigTest() {
-        Config config = Config.just(ConfigSources.create(SIMPLE_CONFIG));
-        OpenApiConfig openApiConfig = openApiConfig(config);
+        OpenApiConfig openApiConfig = openApiConfig(SIMPLE_CONFIG);
 
         assertThat(openApiConfig.modelReader(), is("io.helidon.microprofile.openapi.test.MyModelReader"));
         assertThat(openApiConfig.filter(), is("io.helidon.microprofile.openapi.test.MySimpleFilter"));
@@ -80,16 +83,30 @@ class OpenApiConfigTest {
 
     @Test
     void checkSchemaConfig() {
-        Config config = Config.just(
-                ConfigSources.create(SIMPLE_CONFIG),
-                ConfigSources.create(SCHEMA_OVERRIDE_CONFIG));
-        OpenApiConfig openApiConfig = openApiConfig(config);
+        OpenApiConfig openApiConfig = openApiConfig(SIMPLE_CONFIG, SCHEMA_OVERRIDE_CONFIG);
+        Map<String, String> schemas = openApiConfig.getSchemas();
 
-        assertThat(openApiConfig.getSchemas(), hasKey(SCHEMA_OVERRIDE_CONFIG_FQCN));
-        assertThat(openApiConfig.getSchemas().get(SCHEMA_OVERRIDE_CONFIG_FQCN), is(SCHEMA_OVERRIDE_JSON));
+        assertThat(schemas, hasKey(SCHEMA_OVERRIDE_CONFIG_FQCN));
+        assertThat(schemas.get(SCHEMA_OVERRIDE_CONFIG_FQCN), is(SCHEMA_OVERRIDE_JSON));
     }
 
-    private static OpenApiConfig openApiConfig(Config config) {
-        return new OpenApiConfigAdapter(MpOpenApiManagerConfig.create(config.get("openapi")));
+    @SafeVarargs
+    private static OpenApiConfig openApiConfig(Map<String, String>... configSources) {
+        return new OpenApiConfigImpl(config(configSources));
+    }
+
+    @SafeVarargs
+    private static Config config(Map<String, String>... configSources) {
+        return ConfigProviderResolver.instance()
+                .getBuilder()
+                .withSources(configSources(configSources))
+                .build();
+    }
+
+    @SafeVarargs
+    private static ConfigSource[] configSources(Map<String, String>... configSources) {
+        return Arrays.stream(configSources)
+                .map(MpConfigSources::create)
+                .toArray(ConfigSource[]::new);
     }
 }

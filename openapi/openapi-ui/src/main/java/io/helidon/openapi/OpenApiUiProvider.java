@@ -1,4 +1,4 @@
-package io.helidon.openapi.ui;
+package io.helidon.openapi;
 
 import io.helidon.common.config.Config;
 import io.helidon.openapi.spi.OpenApiServiceProvider;

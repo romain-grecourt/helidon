@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.openapi.ui;
+package io.helidon.openapi;
 
 import java.util.Map;
 

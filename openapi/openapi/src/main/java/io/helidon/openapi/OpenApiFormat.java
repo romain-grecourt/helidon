@@ -68,6 +68,16 @@ public enum OpenApiFormat {
         return fileTypes;
     }
 
+    private boolean supports(MediaType mediaType) {
+        for (MediaType mt : mediaTypes) {
+            if (mediaType.type().equals(mt.type())
+                    && mediaType.subtype().equals(mt.subtype())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Find OpenAPI media type by media type.
      *
@@ -76,7 +86,7 @@ public enum OpenApiFormat {
      */
     public static OpenApiFormat valueOf(MediaType mediaType) {
         for (OpenApiFormat candidateType : values()) {
-            if (candidateType.mediaTypes.contains(mediaType)) {
+            if (candidateType.supports(mediaType)) {
                 return candidateType;
             }
         }

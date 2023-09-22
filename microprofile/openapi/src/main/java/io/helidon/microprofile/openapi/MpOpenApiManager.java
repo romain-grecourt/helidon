@@ -19,10 +19,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.System.Logger.Level;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import io.helidon.common.LazyValue;
 import io.helidon.microprofile.server.JaxRsApplication;
@@ -30,6 +27,8 @@ import io.helidon.microprofile.server.JaxRsCdiExtension;
 import io.helidon.openapi.OpenApiFormat;
 import io.helidon.openapi.OpenApiManager;
 
+import io.smallrye.openapi.api.OpenApiConfig;
+import io.smallrye.openapi.api.OpenApiConfigImpl;
 import io.smallrye.openapi.api.OpenApiDocument;
 import io.smallrye.openapi.api.models.OpenAPIImpl;
 import io.smallrye.openapi.api.util.MergeUtil;
@@ -50,18 +49,23 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
 
     private static final System.Logger LOGGER = System.getLogger(MpOpenApiManager.class.getName());
     private static final List<AnnotationScannerExtension> SCANNER_EXTENSIONS = List.of(new JsonpAnnotationScannerExtension());
+    private static final String CONFIG_EXT_PREFIX = "mp.openapi.extensions.helidon.";
 
-    private final MpOpenApiManagerConfig config;
-    private final OpenApiConfigAdapter openApiConfig;
+    /**
+     * Full config key for the {@code JAXRS_SEMANTICS} option.
+     */
+    static final String USE_JAXRS_SEMANTICS_KEY = CONFIG_EXT_PREFIX + "use-jaxrs-semantics";
+
+    private final MpOpenApiManagerConfig managerConfig;
+    private final OpenApiConfig openApiConfig;
     private final LazyValue<List<FilteredIndexView>> filteredIndexViews = LazyValue.create(this::buildFilteredIndexViews);
 
     MpOpenApiManager(Config config) {
-        this(createManagerConfig(config));
-    }
-
-    MpOpenApiManager(MpOpenApiManagerConfig config) {
-        this.config = config;
-        this.openApiConfig = new OpenApiConfigAdapter(config);
+        this.managerConfig = MpOpenApiManagerConfig.builder()
+                .update(builder -> config.getOptionalValue(USE_JAXRS_SEMANTICS_KEY, Boolean.class)
+                        .ifPresent(builder::useJaxRsSemantics))
+                .build();
+        this.openApiConfig = new OpenApiConfigImpl(config);
     }
 
     @Override
@@ -140,21 +144,10 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
         BeanManager beanManager = CDI.current().getBeanManager();
         List<JaxRsApplication> jaxRsApps = beanManager.getExtension(JaxRsCdiExtension.class).applicationsToRun();
         Set<Class<?>> annotatedTypes = beanManager.getExtension(OpenApiCdiExtension.class).annotatedTypes();
-        return new FilteredIndexViewsBuilder(openApiConfig, jaxRsApps, annotatedTypes).buildViews();
-    }
-
-    private static MpOpenApiManagerConfig createManagerConfig(Config config) {
-        MpOpenApiManagerConfig.Builder builder = MpOpenApiManagerConfig.builder().config(config);
-        config.get("servers").asList(String.class).ifPresent(builder::servers);
-        configAsMap(config.get("servers.path")).ifPresent(builder::pathServers);
-        configAsMap(config.get("servers.operation")).ifPresent(builder::operationServers);
-        return builder.build();
-    }
-
-    private static Optional<Map<String, String>> configAsMap(Config config) {
-        return config.asNodeList()
-                .map(list -> list.stream()
-                        .map(c -> Map.entry(c.key().name(), c.asString().get()))
-                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+        return new FilteredIndexViewsBuilder(openApiConfig,
+                                             jaxRsApps,
+                                             annotatedTypes,
+                                             managerConfig.indexPaths(),
+                                             managerConfig.useJaxRsSemantics()).buildViews();
     }
 }

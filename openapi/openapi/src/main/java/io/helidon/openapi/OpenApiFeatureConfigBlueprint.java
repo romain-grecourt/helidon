@@ -71,6 +71,7 @@ interface OpenApiFeatureConfigBlueprint extends Prototype.Factory<OpenApiFeature
      * @return the OpenAPI services
      */
     @ConfiguredOption(provider = true, providerType = OpenApiServiceProvider.class)
+    @Prototype.Singular
     List<OpenApiService> services();
 
     /**

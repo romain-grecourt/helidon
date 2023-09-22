@@ -157,7 +157,7 @@ record FactoryMethods(Optional<FactoryMethod> createTargetType,
 
         for (TypeInfo typeInfo : candidates) {
             // is this a config object?
-            if (doesImplement(typeInfo, PROTOTYPE_TYPE)) {
+//            if (doesImplement(typeInfo, PROTOTYPE_TYPE)) {
                 // it should have create(Config) with the correct typing
                 Optional<FactoryMethod> foundMethod = TypeInfoPredicates.findMethod(
                                 new MethodSignature(typeInfo.typeName(), createMethod, List.of(CONFIG_TYPE)),
@@ -170,7 +170,7 @@ record FactoryMethods(Optional<FactoryMethod> createTargetType,
                 if (foundMethod.isPresent()) {
                     return foundMethod;
                 }
-            }
+//            }
         }
 
         for (TypeInfo typeInfo : candidates) {

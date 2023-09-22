@@ -83,9 +83,7 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
      * @return new instance
      */
     public static OpenApiFeature create(Consumer<OpenApiFeatureConfig.Builder> builderConsumer) {
-        OpenApiFeatureConfig.Builder b = OpenApiFeatureConfig.builder();
-        builderConsumer.accept(b);
-        return b.build();
+        return OpenApiFeatureConfig.builder().update(builderConsumer).build();
     }
 
     private static final String DEFAULT_STATIC_FILE_PATH_PREFIX = "META-INF/openapi.";
@@ -116,7 +114,7 @@ public final class OpenApiFeature implements FeatureSupport, RuntimeType.Api<Ope
 
     OpenApiFeature(OpenApiFeatureConfig config) {
         this.config = config;
-        String staticFile = builder().staticFile().orElse(null);
+        String staticFile = config.staticFile().orElse(null);
         String defaultContent = null;
         if (staticFile != null) {
             defaultContent = readContent(staticFile);
