@@ -216,8 +216,8 @@ final class OpenApiSerializer {
             // property assigned.
             MappingNode result = super.representJavaBean(properties, javaBean);
 
-            // Now promote the individual sub-nodes for each extension property (if any) up one level so that they are peers of the
-            // other properties. Also remove the "extensions" node.
+            // Now promote the individual sub-nodes for each extension property (if any) up one level so that they are peers of
+            // the other properties. Also remove the "extensions" node.
             processExtensions(result, javaBean);
 
             // Clearing representedObjects is an awkward but effective way of preventing SnakeYAML from using anchors and

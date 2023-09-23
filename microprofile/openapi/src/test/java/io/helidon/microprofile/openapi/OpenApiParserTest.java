@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 
@@ -29,11 +27,12 @@ import org.eclipse.microprofile.openapi.models.servers.ServerVariable;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.testing.junit5.OptionalMatcher.optionalValue;
+import static io.helidon.microprofile.openapi.TestUtils.OAI_HELPER;
+import static io.helidon.microprofile.openapi.TestUtils.resource;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
 
 /**
  * Tests {@link OpenApiParser}.
@@ -41,7 +40,7 @@ import static org.hamcrest.Matchers.containsString;
 class OpenApiParserTest {
 
     @Test
-    void testParserUsingYAML() throws IOException {
+    void testParserUsingYAML() {
         OpenAPI openAPI = parse("/petstore.yaml");
         assertThat(openAPI.getOpenapi(), is("3.0.0"));
         assertThat(openAPI.getPaths().getPathItem("/pets").getGET().getParameters().get(0).getIn(),
@@ -49,7 +48,7 @@ class OpenApiParserTest {
     }
 
     @Test
-    void testExtensions() throws IOException {
+    void testExtensions() {
         OpenAPI openAPI = parse("/openapi-greeting.yml");
         Object xMyPersonalMap = openAPI.getExtensions().get("x-my-personal-map");
         assertThat(xMyPersonalMap, is(instanceOf(Map.class)));
@@ -86,7 +85,7 @@ class OpenApiParserTest {
 
 
     @Test
-    void testYamlRef() throws IOException {
+    void testYamlRef() {
         OpenAPI openAPI = parse("/petstore.yaml");
         Paths paths = openAPI.getPaths();
         String ref = paths.getPathItem("/pets")
@@ -102,7 +101,7 @@ class OpenApiParserTest {
     }
 
     @Test
-    void testJsonRef() throws IOException {
+    void testJsonRef() {
         OpenAPI openAPI = parse("/petstore.json");
         Paths paths = openAPI.getPaths();
         String ref = paths.getPathItem("/user")
@@ -117,7 +116,7 @@ class OpenApiParserTest {
     }
 
     @Test
-    void testParserUsingJSON() throws IOException {
+    void testParserUsingJSON() {
         OpenAPI openAPI = parse("/petstore.json");
         assertThat(openAPI.getOpenapi(), is("3.0.0"));
 
@@ -128,7 +127,7 @@ class OpenApiParserTest {
 
     @Test
     @SuppressWarnings("HttpUrlsUsage")
-    void testComplicatedPetstoreDocument() throws IOException {
+    void testComplicatedPetstoreDocument() {
         OpenAPI openAPI = parse("/petstore-with-fake-endpoints-models.yaml");
         assertThat(openAPI.getOpenapi(), is("3.0.0"));
         assertThat("Default for server variable 'port'",
@@ -144,12 +143,8 @@ class OpenApiParserTest {
                    optionalValue(is("petstore")));
     }
 
-    private static OpenAPI parse(String path) throws IOException {
-        try (InputStream is = OpenApiParserTest.class.getResourceAsStream(path)) {
-            if (is == null) {
-                throw new IllegalArgumentException("Resource not found: " + path);
-            }
-            return OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, new InputStreamReader(is));
-        }
+    private static OpenAPI parse(String path) {
+        String document = resource(path);
+        return OpenApiParser.parse(OAI_HELPER.types(), OpenAPI.class, new StringReader(document));
     }
 }

@@ -218,10 +218,8 @@ public class ExpandedTypeDescription extends TypeDescription {
 
     private static boolean setupExtensionType(String key, Node valueNode) {
         if (isExtension(key)) {
-            /*
-             * The nodeId in a node is more like node "category" in SnakeYAML. For those OpenAPI interfaces which implement
-             * Extensible we need to set the node's type if the extension is a List or Map.
-             */
+            // The nodeId in a node is more like node "category" in SnakeYAML. For those OpenAPI interfaces which implement
+            // Extensible we need to set the node's type if the extension is a List or Map.
             switch (valueNode.getNodeId()) {
                 case sequence -> {
                     valueNode.setType(List.class);
@@ -230,6 +228,9 @@ public class ExpandedTypeDescription extends TypeDescription {
                 case mapping -> {
                     valueNode.setType(Map.class);
                     return true;
+                }
+                default -> {
+                    return false;
                 }
             }
         }

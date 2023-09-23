@@ -49,14 +49,14 @@ class BasicServerTest {
     @Test
     public void simpleTest() {
         Map<String, Object> document = document();
-        String summary = YamlQuery.get(document, "paths./testapp/go.get.summary", String.class);
+        String summary = TestUtils.query(document, "paths./testapp/go.get.summary", String.class);
         assertThat(summary, is(equalTo(TestApp.GO_SUMMARY)));
     }
 
     @Test
     public void testMultipleApps() {
         Map<String, Object> document = document();
-        String summary = YamlQuery.get(document, "paths./testapp3/go3.get.summary", String.class);
+        String summary = TestUtils.query(document, "paths./testapp3/go3.get.summary", String.class);
         assertThat(summary, is(equalTo(TestApp3.GO_SUMMARY)));
     }
 

@@ -15,14 +15,67 @@
  */
 package io.helidon.microprofile.openapi;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
+
+import io.helidon.config.mp.MpConfigSources;
+
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
+import org.eclipse.microprofile.config.spi.ConfigSource;
 
 /**
  * Utility to query a tree structure using a dotted path notation.
  */
-class YamlQuery {
+class TestUtils {
 
-    private YamlQuery() {
+    private TestUtils() {
+    }
+
+    /**
+     * {@link io.helidon.microprofile.openapi.OpenApiHelper} initialized with empty config.
+     */
+    static final OpenApiHelper OAI_HELPER = new OpenApiHelper(config());
+
+    /**
+     * Get a class-path resource.
+     * @param path resource path
+     * @return resource content as a string
+     */
+    static String resource(String path) {
+        try (InputStream is = TestUtils.class.getResourceAsStream(path)) {
+            if (is == null) {
+                throw new IllegalArgumentException("Resource not found: " + path);
+            }
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    /**
+     * Create a new instance of {@link Config} with the given maps as config sources.
+     *
+     * @param configSources config sources
+     * @return config
+     */
+    @SafeVarargs
+    static Config config(Map<String, String>... configSources) {
+        return ConfigProviderResolver.instance()
+                .getBuilder()
+                .withSources(configSources(configSources))
+                .build();
+    }
+
+    @SafeVarargs
+    private static ConfigSource[] configSources(Map<String, String>... configSources) {
+        return Arrays.stream(configSources)
+                .map(MpConfigSources::create)
+                .toArray(ConfigSource[]::new);
     }
 
     /**
@@ -39,7 +92,7 @@ class YamlQuery {
      * @return value from the lowest-level map retrieved using the last path segment, cast to the specified type
      */
     @SuppressWarnings(value = "unchecked")
-    public static <T> T get(Map<String, Object> map, String dottedPath, Class<T> cl) {
+    public static <T> T query(Map<String, Object> map, String dottedPath, Class<T> cl) {
         Map<String, Object> originalMap = map;
         String[] segments = dottedPath.split("\\.");
         for (int i = 0; i < segments.length - 1; i++) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Map;
 
@@ -28,6 +26,9 @@ import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
+import static io.helidon.microprofile.openapi.TestUtils.OAI_HELPER;
+import static io.helidon.microprofile.openapi.TestUtils.query;
+import static io.helidon.microprofile.openapi.TestUtils.resource;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasKey;
@@ -39,7 +40,7 @@ import static org.hamcrest.Matchers.nullValue;
 class AdditionalPropertiesTest {
 
     @Test
-    void checkParsingBooleanAdditionalProperties() throws IOException {
+    void checkParsingBooleanAdditionalProperties() {
         OpenAPI openAPI = parse("/withBooleanAddlProps.yml");
         Schema itemSchema = openAPI.getComponents().getSchemas().get("item");
 
@@ -52,7 +53,7 @@ class AdditionalPropertiesTest {
     }
 
     @Test
-    void checkParsingSchemaAdditionalProperties() throws IOException {
+    void checkParsingSchemaAdditionalProperties() {
         OpenAPI openAPI = parse("/withSchemaAddlProps.yml");
         Schema itemSchema = openAPI.getComponents().getSchemas().get("item");
 
@@ -68,7 +69,7 @@ class AdditionalPropertiesTest {
     }
 
     @Test
-    void checkWritingSchemaAdditionalProperties() throws IOException {
+    void checkWritingSchemaAdditionalProperties() {
         OpenAPI openAPI = parse("/withSchemaAddlProps.yml");
         String document = format(openAPI);
 
@@ -82,43 +83,27 @@ class AdditionalPropertiesTest {
         //            type: string
         Yaml yaml = new Yaml();
         Map<String, Object> model = yaml.load(document);
-        Map<String, ?> item = asMap(model, "components", "schemas", "item");
-
-        Object additionalProperties = item.get("additionalProperties");
+        Object additionalProperties = query(model, "components.schemas.item.additionalProperties", Object.class);
 
         assertThat(additionalProperties, is(instanceOf(Map.class)));
-
     }
 
     @Test
-    void checkWritingBooleanAdditionalProperties() throws IOException {
+    void checkWritingBooleanAdditionalProperties() {
         OpenAPI openAPI = parse("/withBooleanAddlProps.yml");
         String document = format(openAPI);
 
         assertThat(document, containsString("additionalProperties: false"));
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<String, ?> asMap(Map<String, ?> map, String... keys) {
-        Map<String, ?> m = map;
-        for (String key : keys) {
-            m = (Map<String, ?>) m.get(key);
-        }
-        return m;
-    }
-
     private static String format(OpenAPI model) {
         StringWriter sw = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), model, OpenApiFormat.YAML, sw);
+        OpenApiSerializer.serialize(OAI_HELPER.types(), model, OpenApiFormat.YAML, sw);
         return sw.toString();
     }
 
-    private static OpenAPI parse(String path) throws IOException {
-        try (InputStream is = AdditionalPropertiesTest.class.getResourceAsStream(path)) {
-            if (is == null) {
-                throw new IllegalArgumentException("Resource not found: " + path);
-            }
-            return OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, new InputStreamReader(is));
-        }
+    private static OpenAPI parse(String path) {
+        String document = resource(path);
+        return OpenApiParser.parse(OAI_HELPER.types(), OpenAPI.class, new StringReader(document));
     }
 }

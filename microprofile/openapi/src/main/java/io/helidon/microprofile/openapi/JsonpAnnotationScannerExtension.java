@@ -37,14 +37,18 @@ import org.yaml.snakeyaml.representer.Representer;
 class JsonpAnnotationScannerExtension implements AnnotationScannerExtension {
 
     private static final System.Logger LOGGER = System.getLogger(JsonpAnnotationScannerExtension.class.getName());
-
     private static final JsonReaderFactory JSON_READER_FACTORY = Json.createReaderFactory(Collections.emptyMap());
-
     private static final Representer MISSING_FIELD_TOLERANT_REPRESENTER;
 
     static {
         MISSING_FIELD_TOLERANT_REPRESENTER = new Representer(new DumperOptions());
         MISSING_FIELD_TOLERANT_REPRESENTER.getPropertyUtils().setSkipMissingProperties(true);
+    }
+
+    private final OpenApiHelper openApiHelper;
+
+    JsonpAnnotationScannerExtension(OpenApiHelper openApiHelper) {
+        this.openApiHelper = openApiHelper;
     }
 
     @Override
@@ -93,6 +97,8 @@ class JsonpAnnotationScannerExtension implements AnnotationScannerExtension {
                     throw ex;
                 }
             }
+            default -> {
+            }
         }
 
         // Treat as JSON string.
@@ -101,7 +107,7 @@ class JsonpAnnotationScannerExtension implements AnnotationScannerExtension {
 
     @Override
     public Schema parseSchema(String jsonSchema) {
-        return OpenApiParser.parse(OpenApiHelper.types(),
+        return OpenApiParser.parse(openApiHelper.types(),
                                    Schema.class,
                                    new StringReader(jsonSchema),
                                    MISSING_FIELD_TOLERANT_REPRESENTER);

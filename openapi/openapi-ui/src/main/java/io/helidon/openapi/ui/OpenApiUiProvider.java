@@ -13,31 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.openapi;
+package io.helidon.openapi.ui;
 
-import io.helidon.common.config.NamedService;
+import io.helidon.common.config.Config;
+import io.helidon.openapi.spi.OpenApiServiceProvider;
 
 /**
- * OpenApi manager.
- *
- * @param <T> model type
+ * A {@link OpenApiServiceProvider} that provides {@link OpenApiUi}.
  */
-public interface OpenApiManager<T> extends NamedService {
+public final class OpenApiUiProvider implements OpenApiServiceProvider {
 
     /**
-     * Load the model.
+     * Create a new instance.
      *
-     * @param content initial static content, may be empty
-     * @return in-memory model
+     * @deprecated to be used solely by {@link java.util.ServiceLoader}
      */
-    T load(String content);
+    @Deprecated
+    public OpenApiUiProvider() {
+    }
 
-    /**
-     * Format the model.
-     *
-     * @param model  model
-     * @param format desired format
-     * @return formatted content
-     */
-    String format(T model, OpenApiFormat format);
+    @Override
+    public String configKey() {
+        return "ui";
+    }
+
+    @Override
+    public OpenApiUi create(Config config, String name) {
+        return OpenApiUi.builder().config(config).build();
+    }
 }

@@ -24,12 +24,11 @@ import io.helidon.microprofile.server.JaxRsApplication;
 import io.smallrye.openapi.api.OpenApiConfig;
 import io.smallrye.openapi.api.OpenApiConfigImpl;
 import io.smallrye.openapi.runtime.scanner.FilteredIndexView;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.microprofile.openapi.TestUtils.config;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -75,7 +74,6 @@ class FilteredIndexViewsBuilderTest {
     }
 
     private static OpenApiConfig openApiConfig() {
-        Config config = ConfigProviderResolver.instance().getBuilder().build();
-        return new OpenApiConfigImpl(config);
+        return new OpenApiConfigImpl(config());
     }
 }

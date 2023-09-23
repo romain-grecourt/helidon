@@ -37,7 +37,6 @@ import io.helidon.common.processor.classmodel.Method;
 import io.helidon.common.processor.classmodel.TypeArgument;
 import io.helidon.common.types.AccessModifier;
 import io.helidon.common.types.TypeName;
-import io.helidon.common.types.TypeNames;
 
 import static io.helidon.builder.processor.Types.CHAR_ARRAY_TYPE;
 import static io.helidon.builder.processor.Types.CONFIG_TYPE;

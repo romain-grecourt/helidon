@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.helidon.openapi;
+package io.helidon.openapi.ui;
 
 import java.util.Map;
 
@@ -21,12 +21,12 @@ import io.helidon.common.media.type.MediaType;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.http.HttpMediaType;
+import io.helidon.openapi.OpenApiFeature;
 import io.helidon.webclient.api.HttpClientResponse;
 import io.helidon.webclient.api.WebClient;
-import io.helidon.webserver.WebServerConfig;
-import io.helidon.webserver.testing.junit5.ServerTest;
-import io.helidon.webserver.testing.junit5.SetUpServer;
-import io.helidon.webserver.testing.junit5.Socket;
+import io.helidon.webserver.http.HttpRouting;
+import io.helidon.webserver.testing.junit5.RoutingTest;
+import io.helidon.webserver.testing.junit5.SetUpRoute;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,10 +37,8 @@ import static org.hamcrest.Matchers.is;
 /**
  * Tests {@link OpenApiUi}.
  */
-@ServerTest
+@RoutingTest
 class OpenApiUiTest {
-
-    private static final String GREETING_OPENAPI_PATH = "/openapi-greeting";
 
     private static final MediaType[] SIMULATED_BROWSER_ACCEPT = new MediaType[] {
             MediaTypes.TEXT_HTML,
@@ -58,29 +56,26 @@ class OpenApiUiTest {
     };
 
     private final WebClient client;
-    private final WebClient altClient;
 
-    OpenApiUiTest(WebClient client, @Socket("alt") WebClient altClient) {
+    OpenApiUiTest(WebClient client) {
         this.client = client;
-        this.altClient = altClient;
     }
 
-    @SetUpServer
-    public static void setup(WebServerConfig.Builder server) {
-        server.routing(routing -> routing
-                        .addFeature(OpenApiFeature.builder()
-                                            .servicesDiscoverServices(false)
-                                            .staticFile("src/test/resources/greeting.yml")
-                                            .webContext("/openapi-greeting")
-                                            .cors(cors -> cors.enabled(false))
-                                            .addService(OpenApiUi.create())))
-                .putSocket("alt", socket -> socket
-                        .routing(routing -> routing
-                                .addFeature(OpenApiFeature.builder()
-                                                    .servicesDiscoverServices(false)
-                                                    .staticFile("src/test/resources/time.yml")
-                                                    .cors(cors -> cors.enabled(false))
-                                                    .addService(OpenApiUi.create()))));
+    @SetUpRoute
+    public static void setup(HttpRouting.Builder routing) {
+        routing.addFeature(OpenApiFeature.builder()
+                                   .servicesDiscoverServices(false)
+                                   .staticFile("src/test/resources/greeting.yml")
+                                   .webContext("/openapi-greeting")
+                                   .cors(cors -> cors.enabled(false))
+                                   .addService(OpenApiUi.create()))
+                .addFeature(OpenApiFeature.builder()
+                                    .servicesDiscoverServices(false)
+                                    .staticFile("src/test/resources/time.yml")
+                                    .cors(cors -> cors.enabled(false))
+                                    .addService(OpenApiUi.builder()
+                                                        .webContext("/my-ui")
+                                                        .build()));
     }
 
     @Test
@@ -95,7 +90,7 @@ class OpenApiUiTest {
 
     @Test
     void checkSimulatedBrowserAccessToMainEndpoint() {
-        try (HttpClientResponse response = client.get(GREETING_OPENAPI_PATH)
+        try (HttpClientResponse response = client.get("/openapi-greeting")
                 .accept(SIMULATED_BROWSER_ACCEPT)
                 .request()) {
 
@@ -108,7 +103,7 @@ class OpenApiUiTest {
 
     @Test
     void checkAlternateUiWebContext() {
-        try (HttpClientResponse response = altClient.get("/my-ui")
+        try (HttpClientResponse response = client.get("/my-ui")
                 .accept(MediaTypes.TEXT_PLAIN)
                 .request()) {
             assertThat(response.status(), is(Http.Status.NOT_FOUND_404));

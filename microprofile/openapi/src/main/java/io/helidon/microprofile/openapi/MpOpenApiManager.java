@@ -48,7 +48,6 @@ import org.jboss.jandex.IndexView;
 final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
 
     private static final System.Logger LOGGER = System.getLogger(MpOpenApiManager.class.getName());
-    private static final List<AnnotationScannerExtension> SCANNER_EXTENSIONS = List.of(new JsonpAnnotationScannerExtension());
     private static final String CONFIG_EXT_PREFIX = "mp.openapi.extensions.helidon.";
 
     /**
@@ -58,6 +57,8 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
 
     private final MpOpenApiManagerConfig managerConfig;
     private final OpenApiConfig openApiConfig;
+    private final OpenApiHelper openApiHelper;
+    private final List<AnnotationScannerExtension> scannerExtensions;
     private final LazyValue<List<FilteredIndexView>> filteredIndexViews = LazyValue.create(this::buildFilteredIndexViews);
 
     MpOpenApiManager(Config config) {
@@ -65,7 +66,9 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
                 .update(builder -> config.getOptionalValue(USE_JAXRS_SEMANTICS_KEY, Boolean.class)
                         .ifPresent(builder::useJaxRsSemantics))
                 .build();
+        this.openApiHelper = new OpenApiHelper(config);
         this.openApiConfig = new OpenApiConfigImpl(config);
+        this.scannerExtensions = List.of(new JsonpAnnotationScannerExtension(openApiHelper));
     }
 
     @Override
@@ -85,7 +88,7 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
         OpenApiDocument.INSTANCE.config(openApiConfig);
         OpenApiDocument.INSTANCE.modelFromReader(OpenApiProcessor.modelFromReader(openApiConfig, contextClassLoader));
         if (!content.isBlank()) {
-            OpenAPI document = OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, new StringReader(content));
+            OpenAPI document = OpenApiParser.parse(openApiHelper.types(), OpenAPI.class, new StringReader(content));
             OpenApiDocument.INSTANCE.modelFromStaticFile(document);
         }
         if (!openApiConfig.scanDisable()) {
@@ -104,7 +107,7 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
     @Override
     public String format(OpenAPI model, OpenApiFormat format) {
         StringWriter sw = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), model, format, sw);
+        OpenApiSerializer.serialize(openApiHelper.types(), model, format, sw);
         return sw.toString();
     }
 
@@ -127,7 +130,7 @@ final class MpOpenApiManager implements OpenApiManager<OpenAPI> {
         // merging the resulting OpenAPI models into one.
         OpenAPI model = new OpenAPIImpl(); // Start with skeletal model
         for (IndexView indexView : indexViews) {
-            OpenApiAnnotationScanner scanner = new OpenApiAnnotationScanner(openApiConfig, indexView, SCANNER_EXTENSIONS);
+            OpenApiAnnotationScanner scanner = new OpenApiAnnotationScanner(openApiConfig, indexView, scannerExtensions);
             OpenAPI scanned = scanner.scan();
             if (LOGGER.isLoggable(Level.DEBUG)) {
                 LOGGER.log(Level.DEBUG, String.format(

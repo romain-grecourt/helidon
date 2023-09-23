@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.openapi;
+package io.helidon.openapi.ui;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -28,6 +28,7 @@ import io.helidon.common.media.type.MediaType;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.http.HttpMediaType;
+import io.helidon.openapi.OpenApiService;
 import io.helidon.webserver.http.HttpRules;
 import io.helidon.webserver.http.ServerRequest;
 import io.helidon.webserver.http.ServerResponse;

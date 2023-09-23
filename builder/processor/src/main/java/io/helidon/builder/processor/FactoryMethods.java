@@ -29,7 +29,6 @@ import io.helidon.common.types.TypedElementInfo;
 
 import static io.helidon.builder.processor.Types.CONFIG_TYPE;
 import static io.helidon.builder.processor.Types.FACTORY_METHOD_TYPE;
-import static io.helidon.builder.processor.Types.PROTOTYPE_TYPE;
 import static io.helidon.builder.processor.Types.RUNTIME_OBJECT_TYPE;
 import static io.helidon.common.types.TypeNames.OBJECT;
 

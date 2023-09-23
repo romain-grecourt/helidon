@@ -26,7 +26,7 @@ import io.helidon.config.metadata.ConfiguredOption;
  */
 @Prototype.Blueprint
 @Configured
-interface MpOpenApiManagerConfigBlueprint extends SmallRyeOpenApiConfigBlueprint {
+interface MpOpenApiManagerConfigBlueprint {
 
     /**
      * If {@code true} and the {@code jakarta.ws.rs.core.Application} class returns a non-empty set, endpoints defined by

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 package io.helidon.microprofile.openapi;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.Reader;
 import java.io.StringReader;
@@ -39,6 +37,8 @@ import jakarta.json.JsonValue;
 import org.eclipse.microprofile.openapi.models.OpenAPI;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.microprofile.openapi.TestUtils.config;
+import static io.helidon.microprofile.openapi.TestUtils.resource;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -48,11 +48,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class OpenApiSerializerTest {
 
+    private static final OpenApiHelper OAI_HELPER = new OpenApiHelper(config());
+
     @Test
-    public void testJSONSerialization() throws IOException {
+    public void testJSONSerialization() {
         OpenAPI openAPI = parse("/openapi-greeting.yml");
         Writer writer = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), openAPI, OpenApiFormat.JSON, writer);
+        OpenApiSerializer.serialize(OAI_HELPER.types(), openAPI, OpenApiFormat.JSON, writer);
 
         JsonStructure json = readJson(writer.toString());
 
@@ -111,9 +113,9 @@ class OpenApiSerializerTest {
     public void testYAMLSerialization() throws IOException {
         OpenAPI openAPI = parse("/openapi-greeting.yml");
         Writer writer = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), openAPI, OpenApiFormat.YAML, writer);
+        OpenApiSerializer.serialize(OAI_HELPER.types(), openAPI, OpenApiFormat.YAML, writer);
         try (Reader reader = new StringReader(writer.toString())) {
-            openAPI = OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, reader);
+            openAPI = OpenApiParser.parse(OAI_HELPER.types(), OpenAPI.class, reader);
         }
         Object candidateMap = openAPI.getExtensions()
                 .get("x-my-personal-map");
@@ -140,10 +142,10 @@ class OpenApiSerializerTest {
     void testRefSerializationAsOpenAPI() throws IOException {
         OpenAPI openAPI = parse("/petstore.yaml");
         Writer writer = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), openAPI, OpenApiFormat.YAML, writer);
+        OpenApiSerializer.serialize(OAI_HELPER.types(), openAPI, OpenApiFormat.YAML, writer);
 
         try (Reader reader = new StringReader(writer.toString())) {
-            openAPI = OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, reader);
+            openAPI = OpenApiParser.parse(OAI_HELPER.types(), OpenAPI.class, reader);
         }
 
         String ref = openAPI.getPaths()
@@ -167,7 +169,7 @@ class OpenApiSerializerTest {
 
         OpenAPI openAPI = parse("/petstore.yaml");
         Writer writer = new StringWriter();
-        OpenApiSerializer.serialize(OpenApiHelper.types(), openAPI, OpenApiFormat.YAML, writer);
+        OpenApiSerializer.serialize(OAI_HELPER.types(), openAPI, OpenApiFormat.YAML, writer);
 
         try (LineNumberReader reader = new LineNumberReader(new StringReader(writer.toString()))) {
             String line;
@@ -199,18 +201,14 @@ class OpenApiSerializerTest {
         assertThat(Integer.valueOf(val.toString()), is(expected));
     }
 
-    private static OpenAPI parse(String path) throws IOException {
-        try (InputStream is = OpenApiSerializerTest.class.getResourceAsStream(path)) {
-            if (is == null) {
-                throw new IllegalArgumentException("Resource not found: " + path);
-            }
-            return OpenApiParser.parse(OpenApiHelper.types(), OpenAPI.class, new InputStreamReader(is));
-        }
-    }
-
     private static JsonStructure readJson(String str) {
         try (JsonReader jsonReader = Json.createReader(new StringReader(str))) {
             return jsonReader.read();
         }
+    }
+
+    private static OpenAPI parse(String path) {
+        String document = resource(path);
+        return OpenApiParser.parse(OAI_HELPER.types(), OpenAPI.class, new StringReader(document));
     }
 }

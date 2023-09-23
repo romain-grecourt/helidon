@@ -28,6 +28,8 @@ import org.hamcrest.TypeSafeMatcher;
  * Hamcrest matchers for {@link java.util.Map}.
  */
 public final class MapMatcher {
+    private MapMatcher() {
+    }
 
     /**
      * A matcher for an {@link java.util.Map} that performs a deep equality.
@@ -37,6 +39,15 @@ public final class MapMatcher {
      *     assertThat(actualMap, isMapEqualTo(expectedMap));
      * </pre>
      *
+     * This method targets trees implemented using {@link java.util.Map} where values of type {@link java.util.Map}
+     * are considered tree nodes, and values with other types are considered leaf nodes.
+     * <p>
+     * The deep-equality is performed by diffing a flat string representation of each map. If the diff yields no differences,
+     * the maps are considered deeply equal.
+     * <p>
+     * The entries are compared using strings, both keys and leaf nodes must implement {@link Object#toString()}.
+     *
+     * @param expected expected map
      * @param <K> type of the map keys
      * @param <V> type of the map values
      * @return matcher validating the {@link java.util.Map} is deeply equal

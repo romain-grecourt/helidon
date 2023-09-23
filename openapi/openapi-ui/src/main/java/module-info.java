@@ -16,10 +16,10 @@
 import io.helidon.common.features.api.Feature;
 import io.helidon.common.features.api.HelidonFlavor;
 import io.helidon.openapi.spi.OpenApiServiceProvider;
-import io.helidon.openapi.OpenApiUiProvider;
+import io.helidon.openapi.ui.OpenApiUiProvider;
 
-@Feature(value = "OpenAPI",
-         description = "OpenAPI support",
+@Feature(value = "OpenAPI UI",
+         description = "OpenAPI UI support",
          in = HelidonFlavor.SE
 )
 module io.helidon.openapi.ui {

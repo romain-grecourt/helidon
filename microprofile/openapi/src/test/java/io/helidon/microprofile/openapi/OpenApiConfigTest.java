@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021 Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +15,14 @@
  */
 package io.helidon.microprofile.openapi;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.StringJoiner;
 
-import io.helidon.config.mp.MpConfigSources;
-
 import io.smallrye.openapi.api.OpenApiConfig;
 import io.smallrye.openapi.api.OpenApiConfigImpl;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
-import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.junit.jupiter.api.Test;
 
+import static io.helidon.microprofile.openapi.TestUtils.config;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasKey;
@@ -93,20 +88,5 @@ class OpenApiConfigTest {
     @SafeVarargs
     private static OpenApiConfig openApiConfig(Map<String, String>... configSources) {
         return new OpenApiConfigImpl(config(configSources));
-    }
-
-    @SafeVarargs
-    private static Config config(Map<String, String>... configSources) {
-        return ConfigProviderResolver.instance()
-                .getBuilder()
-                .withSources(configSources(configSources))
-                .build();
-    }
-
-    @SafeVarargs
-    private static ConfigSource[] configSources(Map<String, String>... configSources) {
-        return Arrays.stream(configSources)
-                .map(MpConfigSources::create)
-                .toArray(ConfigSource[]::new);
     }
 }

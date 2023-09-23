@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022 Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.io.StringReader;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.http.Http;
 import io.helidon.microprofile.tests.junit5.AddBean;
-import io.helidon.microprofile.tests.junit5.Configuration;
+import io.helidon.microprofile.tests.junit5.AddConfig;
 import io.helidon.microprofile.tests.junit5.HelidonTest;
 import io.helidon.microprofile.openapi.test.MyModelReader;
 
@@ -32,7 +32,6 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonStructure;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
@@ -46,7 +45,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
  * the OpenAPI model.
  */
 @HelidonTest
-@Configuration(configSources = "simple.properties")
+@AddConfig(key = "mp.openapi.model.reader", value = "io.helidon.microprofile.openapi.test.MyModelReader")
+@AddConfig(key = "mp.openapi.filter", value = "io.helidon.microprofile.openapi.test.MySimpleFilter")
 @AddBean(TestApp.class)
 class ServerModelReaderTest {
 
@@ -59,12 +59,13 @@ class ServerModelReaderTest {
     void checkCustomModelReader() {
         try (Response response = webTarget.path("/openapi").request(APPLICATION_OPENAPI_JSON).get()) {
             assertThat(response.getStatus(), is(Http.Status.OK_200.code()));
-            assertThat(response.getMediaType(), is(MediaType.APPLICATION_JSON));
+            assertThat(response.getMediaType().toString(), is(APPLICATION_OPENAPI_JSON));
             String text = response.readEntity(String.class);
             JsonStructure json = readJson(text);
 
             // The model reader adds the following key/value (among others) to the model.
-            JsonValue v = json.getValue(String.format("/paths/%s/get/summary", escapeJsonPointer(MyModelReader.MODEL_READER_PATH)));
+            JsonValue v = json.getValue(String.format("/paths/%s/get/summary",
+                                                      escapeJsonPointer(MyModelReader.MODEL_READER_PATH)));
             assertThat(v.getValueType(), is(JsonValue.ValueType.STRING));
             assertThat(((JsonString) v).getString(), is(MyModelReader.SUMMARY));
         }
@@ -74,7 +75,7 @@ class ServerModelReaderTest {
     void makeSureFilteredPathIsMissing() {
         try (Response response = webTarget.path("/openapi").request(APPLICATION_OPENAPI_JSON).get()) {
             assertThat(response.getStatus(), is(Http.Status.OK_200.code()));
-            assertThat(response.getMediaType(), is(MediaType.APPLICATION_JSON));
+            assertThat(response.getMediaType().toString(), is(APPLICATION_OPENAPI_JSON));
             String text = response.readEntity(String.class);
             JsonStructure json = readJson(text);
 

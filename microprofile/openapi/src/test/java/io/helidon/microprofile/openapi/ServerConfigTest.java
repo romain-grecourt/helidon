@@ -45,7 +45,7 @@ class ServerConfigTest {
     @Test
     public void testAlternatePath() {
         Map<String, Object> document = document();
-        String summary = YamlQuery.get(document, "paths./testapp/go.get.summary", String.class);
+        String summary = TestUtils.query(document, "paths./testapp/go.get.summary", String.class);
         assertThat(summary, is(TestApp.GO_SUMMARY));
     }
 

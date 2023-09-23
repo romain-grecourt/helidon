@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.helidon.openapi;
+package io.helidon.openapi.ui;
 
 import java.util.Map;
 
@@ -49,6 +49,6 @@ interface OpenApiUiConfigBlueprint extends Prototype.Factory<OpenApiUi> {
      *
      * @return full web context path
      */
-    @ConfiguredOption
+    @ConfiguredOption(value = "/openapi/ui")
     String webContext();
 }
