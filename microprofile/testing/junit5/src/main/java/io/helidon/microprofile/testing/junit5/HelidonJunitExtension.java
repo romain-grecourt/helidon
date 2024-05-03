@@ -25,12 +25,15 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -159,6 +162,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
             classLevelBeans.add(WeldRequestScopeLiteral.INSTANCE);
         }
 
+        addConfigMaps();
         configure(classLevelConfigMeta);
 
         if (!classLevelConfigMeta.useExisting) {
@@ -381,6 +385,35 @@ class HelidonJunitExtension implements BeforeAllCallback,
             configProviderResolver.registerConfig(config, Thread.currentThread().getContextClassLoader());
         }
     }
+
+    private void addConfigMaps() {
+        Deque<Class<?>> stack = new ArrayDeque<>();
+        stack.push(testClass);
+        while (!stack.isEmpty()) {
+            Class<?> clazz = stack.pop();
+            try {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (Modifier.isStatic(method.getModifiers()) && method.isAnnotationPresent(AddConfigMap.class)) {
+                        method.setAccessible(true);
+                        Object value = method.invoke(null);
+                        if (value instanceof Map<?, ?> map) {
+                            classLevelConfigMeta.addConfigMap(map);
+                        }
+                    }
+                }
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            Class<?> superclass = clazz.getSuperclass();
+            if (superclass != null) {
+                stack.push(superclass);
+            }
+            for (Class<?> interfaceClass : clazz.getInterfaces()) {
+                stack.push(interfaceClass);
+            }
+        }
+    }
+
     private void releaseConfig() {
         if (configProviderResolver != null && config != null) {
             configProviderResolver.releaseConfig(config);
@@ -691,6 +724,15 @@ class HelidonJunitExtension implements BeforeAllCallback,
             }
             this.type = config.type();
             this.block = config.value();
+        }
+
+        private void addConfigMap(Map<?, ?> map) {
+            map.forEach((k, v) -> {
+                String key = k.toString();
+                if (v != null) {
+                    additionalKeys.put(key, v.toString());
+                }
+            });
         }
 
         ConfigMeta nextMethod() {
