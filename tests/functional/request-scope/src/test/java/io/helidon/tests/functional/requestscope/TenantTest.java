@@ -17,6 +17,7 @@
 package io.helidon.tests.functional.requestscope;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import io.helidon.faulttolerance.Async;
@@ -27,6 +28,7 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,18 +42,21 @@ class TenantTest {
     private WebTarget baseTarget;
 
     @Test
+    @Timeout(value = 1, unit = TimeUnit.MINUTES)
     public void test() throws Exception {
         asyncCalls(() -> baseTarget.path("test").request()
                 .header("x-tenant-id", "123").get(), null);
     }
 
     @Test
+    @Timeout(value = 1, unit = TimeUnit.MINUTES)
     public void test2() throws Exception {
         asyncCalls(() -> baseTarget.path("test2").request()
                 .header("x-tenant-id", "123").get(), null);
     }
 
     @Test
+    @Timeout(value = 1, unit = TimeUnit.MINUTES)
     public void test3() throws Exception {
         asyncCalls(() -> baseTarget.path("test3").queryParam("param1", "1").request()
                 .header("x-tenant-id", "123").get(), "1");

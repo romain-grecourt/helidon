@@ -25,11 +25,14 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -110,7 +113,6 @@ class HelidonJunitExtension implements BeforeAllCallback,
     private SeContainer container;
 
 
-    @SuppressWarnings("unchecked")
     @Override
     public void beforeAll(ExtensionContext context) {
         testClass = context.getRequiredTestClass();
@@ -154,6 +156,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
             classLevelBeans.add(WeldRequestScopeLiteral.INSTANCE);
         }
 
+        addConfigMaps();
         configure(classLevelConfigMeta);
 
         if (!classLevelConfigMeta.useExisting) {
@@ -188,7 +191,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
     }
 
     @Override
-    public void beforeEach(ExtensionContext context) throws Exception {
+    public void beforeEach(ExtensionContext context) {
         if (resetPerTest) {
             Method method = context.getRequiredTestMethod();
             AddConfig[] configs = method.getAnnotationsByType(AddConfig.class);
@@ -219,13 +222,14 @@ class HelidonJunitExtension implements BeforeAllCallback,
     }
 
     @Override
-    public void afterEach(ExtensionContext context) throws Exception {
+    public void afterEach(ExtensionContext context) {
         if (resetPerTest) {
             releaseConfig();
             stopContainer();
         }
     }
 
+    @SuppressWarnings("ExtractMethodRecommender")
     private void validatePerClass() {
         Method[] methods = testClass.getMethods();
         for (Method method : methods) {
@@ -270,6 +274,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
         return false;
     }
 
+    @SuppressWarnings("ExtractMethodRecommender")
     private void validatePerTest() {
         Constructor<?>[] constructors = testClass.getConstructors();
         if (constructors.length > 1) {
@@ -337,6 +342,35 @@ class HelidonJunitExtension implements BeforeAllCallback,
             configProviderResolver.registerConfig(config, Thread.currentThread().getContextClassLoader());
         }
     }
+
+    private void addConfigMaps() {
+        Deque<Class<?>> stack = new ArrayDeque<>();
+        stack.push(testClass);
+        while (!stack.isEmpty()) {
+            Class<?> clazz = stack.pop();
+            try {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (Modifier.isStatic(method.getModifiers()) && method.isAnnotationPresent(AddConfigMap.class)) {
+                        method.setAccessible(true);
+                        Object value = method.invoke(null);
+                        if (value instanceof Map<?, ?> map) {
+                            classLevelConfigMeta.addConfigMap(map);
+                        }
+                    }
+                }
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            Class<?> superclass = clazz.getSuperclass();
+            if (superclass != null) {
+                stack.push(superclass);
+            }
+            for (Class<?> interfaceClass : clazz.getInterfaces()) {
+                stack.push(interfaceClass);
+            }
+        }
+    }
+
     private void releaseConfig() {
         if (configProviderResolver != null && config != null) {
             configProviderResolver.releaseConfig(config);
@@ -400,11 +434,12 @@ class HelidonJunitExtension implements BeforeAllCallback,
         if (container == null) {
             // at this early stage the class should be checked whether it is annotated with
             // @TestInstance(TestInstance.Lifecycle.PER_CLASS) to start correctly the container
+            Class<?> testClass = extensionContext.getRequiredTestClass();
             TestInstance testClassAnnotation = testClass.getAnnotation(TestInstance.class);
             if (testClassAnnotation != null && testClassAnnotation.value().equals(TestInstance.Lifecycle.PER_CLASS)){
                 throw new RuntimeException("When a class is annotated with @HelidonTest, "
                         + "it is not compatible with @TestInstance(TestInstance.Lifecycle.PER_CLASS)"
-                        + "annotation, as it is a Singleton CDI Bean.");
+                        + " annotation, as it is a Singleton CDI Bean.");
             }
             startContainer(classLevelBeans, classLevelExtensions, classLevelDisableDiscovery);
         }
@@ -444,11 +479,8 @@ class HelidonJunitExtension implements BeforeAllCallback,
             if (paramType.equals(SeContainer.class)) {
                 return true;
             }
-            if (paramType.equals(WebTarget.class)) {
-                return true;
-            }
+            return paramType.equals(WebTarget.class);
         }
-
         return false;
     }
 
@@ -518,7 +550,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
         }
 
 
-        void processSocketInjectionPoints(@Observes ProcessInjectionPoint<?, WebTarget> event) throws Exception{
+        void processSocketInjectionPoints(@Observes ProcessInjectionPoint<?, WebTarget> event) {
              InjectionPoint injectionPoint = event.getInjectionPoint();
              Set<Annotation> qualifiers = injectionPoint.getQualifiers();
                 for (Annotation qualifier : qualifiers) {
@@ -533,17 +565,16 @@ class HelidonJunitExtension implements BeforeAllCallback,
 
         void registerOtherBeans(@Observes AfterBeanDiscovery event) {
 
+            @SuppressWarnings("resource")
             Client client = ClientBuilder.newClient();
 
             //register for all named Ports
-            socketAnnotations.forEach((namedPort, qualifier) -> {
-
-                event.addBean()
-                        .addType(WebTarget.class)
-                        .scope(ApplicationScoped.class)
-                        .qualifiers(qualifier)
-                        .createWith(context -> getWebTarget(client, namedPort));
-            });
+            socketAnnotations.forEach((namedPort, qualifier) -> event
+                    .addBean()
+                    .addType(WebTarget.class)
+                    .scope(ApplicationScoped.class)
+                    .qualifiers(qualifier)
+                    .createWith(context -> getWebTarget(client, namedPort)));
 
             event.addBean()
                     .addType(jakarta.ws.rs.client.WebTarget.class)
@@ -592,7 +623,7 @@ class HelidonJunitExtension implements BeforeAllCallback,
         }
 
         private boolean hasBda(Class<?> value) {
-            // does it have bean defining annotation?
+            // does it have a "bean defining annotation"?
             for (Class<? extends Annotation> aClass : BEAN_DEFINING.keySet()) {
                 if (value.getAnnotation(aClass) != null) {
                     return true;
@@ -647,6 +678,15 @@ class HelidonJunitExtension implements BeforeAllCallback,
             }
             this.type = config.type();
             this.block = config.value();
+        }
+
+        private void addConfigMap(Map<?, ?> map) {
+            map.forEach((k, v) -> {
+                String key = k.toString();
+                if (v != null) {
+                    additionalKeys.put(key, v.toString());
+                }
+            });
         }
 
         ConfigMeta nextMethod() {
@@ -747,5 +787,4 @@ class HelidonJunitExtension implements BeforeAllCallback,
             return CdiComponentProvider.class;
         }
     }
-
 }
