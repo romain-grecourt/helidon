@@ -49,6 +49,13 @@ public final class GlobalServiceRegistry {
      */
     public static final String STATIC_CONTEXT_CLASSIFIER = "helidon-registry-static-context";
 
+    /**
+     * Classifier used to register the global service registry.
+     *
+     * @see #STATIC_CONTEXT_CLASSIFIER
+     */
+    public static final Object CONTEXT_QUALIFIER = new Object();
+
     private static final ReadWriteLock RW_LOCK = new ReentrantReadWriteLock();
 
     private GlobalServiceRegistry() {
@@ -130,7 +137,7 @@ public final class GlobalServiceRegistry {
     public static ServiceRegistry registry(ServiceRegistry newGlobalRegistry) {
         RW_LOCK.writeLock().lock();
         try {
-            context().register(ContextQualifier.INSTANCE, newGlobalRegistry);
+            context().register(CONTEXT_QUALIFIER, newGlobalRegistry);
         } finally {
             RW_LOCK.writeLock().unlock();
         }
@@ -150,16 +157,9 @@ public final class GlobalServiceRegistry {
     private static Optional<ServiceRegistry> current() {
         RW_LOCK.readLock().lock();
         try {
-            return context().get(ContextQualifier.INSTANCE, ServiceRegistry.class);
+            return context().get(CONTEXT_QUALIFIER, ServiceRegistry.class);
         } finally {
             RW_LOCK.readLock().unlock();
-        }
-    }
-
-    private static final class ContextQualifier {
-        private static final ContextQualifier INSTANCE = new ContextQualifier();
-
-        private ContextQualifier() {
         }
     }
 }

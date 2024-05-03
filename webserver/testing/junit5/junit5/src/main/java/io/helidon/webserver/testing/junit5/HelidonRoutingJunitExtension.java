@@ -63,10 +63,10 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
+    public void beforeAll(ExtensionContext ctx) {
+        super.beforeAll(ctx);
 
-        Class<?> testClass = context.getRequiredTestClass();
+        Class<?> testClass = ctx.getRequiredTestClass();
         super.testClass(testClass);
         RoutingTest testAnnot = testClass.getAnnotation(RoutingTest.class);
         if (testAnnot == null) {
@@ -78,7 +78,7 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
                 .config(GlobalConfig.config().get("server"))
                 .host("localhost");
 
-        extensions.forEach(it -> it.beforeAll(context));
+        extensions.forEach(it -> it.beforeAll(ctx));
 
         setupServer(builder);
         serverConfig = builder.buildPrototype();
@@ -103,16 +103,16 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+    public boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
         for (DirectJunitExtension extension : extensions) {
-            if (extension.supportsParameter(parameterContext, extensionContext)) {
+            if (extension.supportsParameter(pc, ctx)) {
                 return true;
             }
         }
 
-        Class<?> paramType = parameterContext.getParameter().getType();
+        Class<?> paramType = pc.getParameter().getType();
         return Contexts.context()
                 .orElseGet(Contexts::globalContext)
                 .get(paramType)
@@ -120,14 +120,14 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
-        Class<?> paramType = parameterContext.getParameter().getType();
+        Class<?> paramType = pc.getParameter().getType();
 
         for (DirectJunitExtension extension : extensions) {
-            if (extension.supportsParameter(parameterContext, extensionContext)) {
-                return extension.resolveParameter(parameterContext, extensionContext, paramType);
+            if (extension.supportsParameter(pc, ctx)) {
+                return extension.resolveParameter(pc, ctx, paramType);
             }
         }
 

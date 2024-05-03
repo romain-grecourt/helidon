@@ -72,16 +72,16 @@ class HelidonServerJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
+    public void beforeAll(ExtensionContext ctx) {
+        super.beforeAll(ctx);
 
-        run(context, () -> {
+        run(ctx, () -> {
             if (System.getProperty("helidon.config.profile") == null
                     && System.getProperty("config.profile") == null) {
                 System.setProperty("helidon.config.profile", "test");
             }
 
-            Class<?> testClass = context.getRequiredTestClass();
+            Class<?> testClass = ctx.getRequiredTestClass();
             super.testClass(testClass);
             ServerTest testAnnot = testClass.getAnnotation(ServerTest.class);
             if (testAnnot == null) {
@@ -99,7 +99,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
             builder.config(GlobalConfig.config().get("server"))
                     .host("localhost");
 
-            extensions.forEach(it -> it.beforeAll(context));
+            extensions.forEach(it -> it.beforeAll(ctx));
             extensions.forEach(it -> it.updateServerBuilder(builder));
 
             // port will be random
@@ -110,7 +110,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
             addRouting(builder);
 
             server = builder
-                    .serverContext(super.context(context).orElseThrow()) // created above when we call super.beforeAll
+                    .serverContext(super.staticContext(ctx).orElseThrow()) // created above when we call super.beforeAll
                     .build()
                     .start();
             if (server.hasTls()) {
@@ -147,11 +147,11 @@ class HelidonServerJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+    public boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
-        return supplyChecked(extensionContext, () -> {
-            Class<?> paramType = parameterContext.getParameter().getType();
+        return supplyChecked(ctx, () -> {
+            Class<?> paramType = pc.getParameter().getType();
             if (paramType.equals(WebServer.class)) {
                 return true;
             }
@@ -160,7 +160,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
             }
 
             for (ServerJunitExtension extension : extensions) {
-                if (extension.supportsParameter(parameterContext, extensionContext)) {
+                if (extension.supportsParameter(pc, ctx)) {
                     return true;
                 }
             }
@@ -174,26 +174,26 @@ class HelidonServerJunitExtension extends JunitExtensionBase
             if (context.get(paramType).isPresent()) {
                 return true;
             }
-            return super.supportsParameter(parameterContext, extensionContext);
+            return super.supportsParameter(pc, ctx);
         });
     }
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
-        return supplyChecked(extensionContext, () -> {
-            Class<?> paramType = parameterContext.getParameter().getType();
+        return supplyChecked(ctx, () -> {
+            Class<?> paramType = pc.getParameter().getType();
             if (paramType.equals(WebServer.class)) {
                 return server;
             }
             if (paramType.equals(URI.class)) {
-                return uri(parameterContext.getDeclaringExecutable(), Junit5Util.socketName(parameterContext.getParameter()));
+                return uri(pc.getDeclaringExecutable(), Junit5Util.socketName(pc.getParameter()));
             }
 
             for (ServerJunitExtension extension : extensions) {
-                if (extension.supportsParameter(parameterContext, extensionContext)) {
-                    return extension.resolveParameter(parameterContext, extensionContext, paramType, server);
+                if (extension.supportsParameter(pc, ctx)) {
+                    return extension.resolveParameter(pc, ctx, paramType, server);
                 }
             }
 
@@ -210,7 +210,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
                 return fromContext;
             }
 
-            return super.resolveParameter(parameterContext, extensionContext);
+            return super.resolveParameter(pc, ctx);
         });
     }
 
