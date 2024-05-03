@@ -26,21 +26,21 @@
         <version>4.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-
     <packaging>pom</packaging>
-
     <groupId>io.helidon.tests.integration.jpa</groupId>
     <artifactId>helidon-tests-integration-jpa-project</artifactId>
-    <name>Helidon Tests Integration JPA</name>
+    <name>Helidon Tests Integration JPA Project</name>
 
     <description>
         A set of tests that validate JPA API implementation
     </description>
 
     <modules>
-        <module>model</module>
-        <module>simple</module>
-        <module>appl</module>
+        <module>common</module>
+        <module>parent</module>
+        <module>oracle</module>
+        <module>mysql</module>
+        <module>pgsql</module>
+        <module>h2</module>
     </modules>
-
 </project>

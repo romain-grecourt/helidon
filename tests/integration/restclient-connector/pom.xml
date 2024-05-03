@@ -26,7 +26,7 @@
     </parent>
 
     <artifactId>helidon-tests-integration-restclient-connector</artifactId>
-    <name>Helidon Integration Test RestClient Webclient Connector</name>
+    <name>Helidon Tests Integration RestClient Connector</name>
 
     <dependencies>
         <dependency>
