@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2024 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.helidon.common.socket.HelidonSocket;
 import io.helidon.common.tls.Tls;
 import io.helidon.http.ClientRequestHeaders;
 import io.helidon.http.HeaderValues;
@@ -131,7 +132,29 @@ class Http1ConnectionCache extends ClientConnectionCache {
                                       it -> new LinkedBlockingDeque<>(clientConfig.connectionCacheSize()));
 
         TcpClientConnection connection;
-        while ((connection = connectionQueue.poll()) != null && !connection.isConnected()) {
+        while ((connection = connectionQueue.poll()) != null) {
+            if (connection.isConnected()) {
+                try {
+                    HelidonSocket socket = connection.helidonSocket();
+                    socket.endIdle();
+                    if (socket.isConnected()) {
+                        break;
+                    }
+                    if (LOGGER.isLoggable(DEBUG)) {
+                        LOGGER.log(DEBUG, String.format("[%s] client connection closed %s",
+                                connection.channelId(),
+                                Thread.currentThread().getName()));
+                    }
+                } catch (RuntimeException ex) {
+                    if (LOGGER.isLoggable(DEBUG)) {
+                        LOGGER.log(DEBUG,
+                                String.format("[%s] client connection severed %s",
+                                        connection.channelId(),
+                                        Thread.currentThread().getName()),
+                                ex);
+                    }
+                }
+            }
         }
 
         if (connection == null) {

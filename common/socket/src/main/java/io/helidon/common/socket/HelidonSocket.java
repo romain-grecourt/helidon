@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,17 @@ public interface HelidonSocket extends SocketContext, Supplier<byte[]> {
      * Idle mode should be used in case of client side connection caching.
      */
     void idle();
+
+    /**
+     * If the socket is in idle mode, block until one byte is read sucessfully
+     * to ensure that the connection is usable.
+     *
+     * @throws IllegalStateException if an exception occurred while reading from the connection
+     * @see #idle()
+     */
+    default void endIdle() throws IllegalStateException {
+        // no-op
+    }
 
     /**
      * Check if socket is connected.

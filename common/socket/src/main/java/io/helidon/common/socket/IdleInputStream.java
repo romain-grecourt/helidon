@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2024 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,9 +53,6 @@ class IdleInputStream extends InputStream {
 
     @Override
     public int read() throws IOException {
-        if (idlingThread != null) {
-            endIdle();
-        }
         if (next < 0) {
             return upstream.read();
         } else {
@@ -67,9 +64,6 @@ class IdleInputStream extends InputStream {
 
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        if (idlingThread != null) {
-            endIdle();
-        }
         if (next < 0) {
             return upstream.read(b, off, len);
         } else {
@@ -90,15 +84,29 @@ class IdleInputStream extends InputStream {
     }
 
     /**
-     * Enable idle mode, connection is expected to be idle,
-     * single byte will be read asynchronously
-     * in blocking manner to detect severed connection.
+     * @see HelidonSocket#idle()
      */
     void idle() {
         if (idlingThread != null) {
             return;
         }
         idlingThread = executor.get().submit(this::handle);
+    }
+
+    /**
+     * @see HelidonSocket#endIdle()
+     */
+    void endIdle() throws IllegalStateException {
+        if (idlingThread != null) {
+            try {
+                idlingThread.get();
+                idlingThread = null;
+            } catch (InterruptedException | ExecutionException e) {
+                closed = true;
+                Throwable cause = e instanceof ExecutionException ? e.getCause() : e;
+                throw new IllegalStateException("Exception in socket monitor thread.", cause);
+            }
+        }
     }
 
     boolean isClosed() {
@@ -114,16 +122,6 @@ class IdleInputStream extends InputStream {
         } catch (IOException e) {
             closed = true;
             throw new UncheckedIOException(e);
-        }
-    }
-
-    private void endIdle() {
-        try {
-            idlingThread.get();
-            idlingThread = null;
-        } catch (InterruptedException | ExecutionException e) {
-            closed = true;
-            throw new RuntimeException("Exception in socket monitor thread.", e);
         }
     }
 }

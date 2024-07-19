@@ -21,14 +21,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import io.helidon.common.GenericType;
+import io.helidon.http.ClientRequestHeaders;
 import io.helidon.http.Header;
 import io.helidon.http.HeaderName;
 import io.helidon.http.HeaderNames;
@@ -43,6 +50,7 @@ import io.helidon.http.media.MediaContext;
 import io.helidon.http.media.MediaContextConfig;
 import io.helidon.webclient.api.ClientConnection;
 import io.helidon.webclient.api.ClientResponseTyped;
+import io.helidon.webclient.api.ClientUri;
 import io.helidon.webclient.api.HttpClientRequest;
 import io.helidon.webclient.api.HttpClientResponse;
 import io.helidon.webclient.api.Proxy;
@@ -371,6 +379,48 @@ class Http1ClientTest {
         HttpClientResponse responseNow = request.request();
         // Verify that the connection was dequeued
         assertThat(connectionNow, is(connection));
+    }
+
+    @Test
+    void testConnectionClosed() throws IOException {
+        Future<?> serverFuture = null;
+        try (ServerSocket serverSocket = new ServerSocket(0);
+                ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+            // A server that accepts a single connection closed after a delay
+            // The delay ensures that the closed connection detection is blocked upon when polling the cache
+            serverFuture = executor.submit(() -> {
+                try {
+                    Socket socket = serverSocket.accept();
+                    Thread.sleep(1000);
+                    socket.close();
+                } catch (IOException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Http1ClientImpl client = (Http1ClientImpl) Http1Client.create();
+            ClientRequestHeaders headers = ClientRequestHeaders.create(WritableHeaders.create());
+            ClientUri uri = ClientUri.create().port(serverSocket.getLocalPort());
+            Http1ConnectionCache cache = Http1ConnectionCache.create();
+
+            Supplier<ClientConnection> supplier = () -> cache.connection(
+                    client, Duration.ZERO, null, Proxy.noProxy(), uri, headers, true);
+
+            // get the 1st connection, and release it for re-use
+            ClientConnection conn1 = supplier.get();
+            conn1.releaseResource();
+
+            // get the 2nd connection, it should create a new one
+            // otherwise we get a closed connection
+            ClientConnection conn2 = supplier.get();
+
+            assertThat(conn1, is(not(conn2)));
+        } finally {
+            if (serverFuture != null) {
+                serverFuture.cancel(true);
+            }
+        }
     }
 
     @Test
