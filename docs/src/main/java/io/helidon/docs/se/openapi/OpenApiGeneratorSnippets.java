@@ -29,280 +29,95 @@ import io.helidon.webserver.http.ServerResponse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-public class OpenApiGeneratorSnippets {
+@SuppressWarnings("ALL")
+class OpenApiGeneratorSnippets {
 
     /*
-    To generate a project containing the types which need to be mocked--in case of changes in the upstream generator.
-    Here {downloadLocation} is where you downloaded the generator JAR to, and {helidonRoot} is your root directory
-    for the Helidon source.
+        # Instructions to generate a project containing the types which need to be mocked.
+        # In case of changes in the upstream generator.
+        # See https://github.com/OpenAPITools/openapi-generator
 
-    1. Download the generator: see [these instructions](https://github.com/OpenAPITools/openapi-generator?tab=readme-ov-file#13---download-jar).
-    2. `mkdir seServer`
-    3. `cd seServer`
-    4. ```java
-       java -jar {downloadLocation}/openapi-generator-cli.jar generate \
-       -g java-helidon-server \
-       --library se \
-       -i {helidonRoot}/docs/src/main/resources/petstorex.yaml \
-       -p useAbstractClass=true \
-       --helidonVersion x.y.z
-       ```
-       where `x.y.z` is the version of Helidon you are working with.
-    5. `mkdir ../seClient`
-    6. `cd ../seClient`
-    7. ```java
-       java -jar {downloadLocation}/openapi-generator-cli.jar generate \
-       -g java-helidon-client \
-       --library se \
-       -i {helidonRoot}/docs/src/main/resources/petstorex.yaml \
-          --helidonVersion x.y.z
-       ```
-       where `x.y.z` is the version of Helidon you are working with.
+        # download the openapi-generator cli
+        curl -O \
+            --output-dir /tmp \
+            https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.7.0/openapi-generator-cli-7.7.0.jar
 
-     */
-    public static class Pet {
+        # generate the petapi server project (replace helidonVersion accordingly)
+        java -jar /tmp/openapi-generator-cli-7.7.0.jar generate \
+           -o /tmp/petapi-server \
+           -g java-helidon-server \
+           --library se \
+           -i etc/petstorex.yaml \
+           -p useAbstractClass=true \
+           -p helidonVersion=4
 
-        public String getName() {
-            return null;
-        }
+        # generate the petapi client project (replace helidonVersion accordingly)
+        java -jar /tmp/openapi-generator-cli-7.7.0.jar generate \
+           -o /tmp/petapi-client \
+           -g java-helidon-client \
+           --library se \
+           -i etc/petstorex.yaml \
+           -p helidonVersion=4
+    */
 
-        public long getId() {
-            return 0L;
-        }
-
-        public enum StatusEnum {
-            AVAILABLE;
-
-            public String value() {
-                return "";
-            }
-        }
-
-        public List<Tag> getTags() {
-            return List.of();
-        }
-
-
-    }
-
-    public static class Tag {
-
-        public String getName() {
-            return null;
-        }
-    }
-
-    public interface PetApi {
-
-        ApiResponse<List<Pet>> findPetsByStatus(List<String> statusValues);
-    }
-
-    public static class PetApiImpl implements PetApi {
-
-        public static PetApi create(ApiClient apiClient) {
-            return null;
-        }
-
-        @Override
-        public ApiResponse<List<Pet>> findPetsByStatus(List<String> statusValues) {
-            return null;
-        }
-    }
-
-    public static class ApiClient {
-
-        static Builder builder() {
-            return null;
-        }
-
-        public static class Builder {
-
-            public ApiClient build() {
-                return null;
-            }
-
-            Builder objectMapper(Object om) {
-                return this;
-            }
-
-            Builder webClientBuilder(WebClientConfig.Builder webClientConfigBuilder){
-                return this;
-            }
-
-            WebClientConfig.Builder webClientBuilder() {
-                return WebClientConfig.builder();
-            }
-        }
-    }
-
-    public static class ApiResponse<T> {
-
-        public HttpClientResponse webClientResponse() {
-            return null;
-        }
-
-        public T result() {
-            return null;
-        }
-    }
-
-    // tag::ExampleClientclassDeclFull[]
-    // tag::ExampleClientclassDecl[]
-    public class ExampleClient {
-
-        private ApiClient apiClient;                                // <1>
-
-        // end::ExampleClientclassDecl[]
-        private PetApi petApi;                                      // <2>
-
-        // end::ExampleClientclassDeclFull[]
-        // tag::ExampleClientinitDecl[]
-        void init() {
-            // end::ExampleClientinitDecl[]
-            // tag::ExampleClientDefaultApiClient[]
-            ApiClient apiClient = ApiClient.builder().build();      // <2>
-            // end::ExampleClientDefaultApiClient[]
-            // tag::ExampleClientApiClientWithObjMapper[]
-            ObjectMapper myObjectMapper = null;                     // <2>
-
-            apiClient = ApiClient.builder()
-                    .objectMapper(myObjectMapper)                   // <3>
-                    .build();
-            // end::ExampleClientApiClientWithObjMapper[]
-
-            // tag::ExampleClientApiClientWithAdjustedBuilder[]
-            ApiClient.Builder apiClientAdjustedBuilder = ApiClient.builder();   // <2>
-
-            apiClientAdjustedBuilder
-                    .webClientBuilder()                                         // <3>
-                    .connectTimeout(Duration.ofSeconds(4));                     // <4>
-
-            apiClient = apiClientAdjustedBuilder.build();                       // <5>
-            // end::ExampleClientApiClientWithAdjustedBuilder[]
-            // tag::ExampleClientApiClientWithCustomWebClientBuilder[]
-            WebClientConfig.Builder customWebClientBuilder = WebClient.builder()// <2>
-                    .connectTimeout(Duration.ofSeconds(3))                      // <3>
-                    .baseUri("https://myservice.mycompany.com");                // <4>
-
-            apiClient = ApiClient.builder()                                     // <5>
-                    .webClientBuilder(customWebClientBuilder)                   // <6>
-                    .build();                                                   // <7>
-            // end::ExampleClientApiClientWithCustomWebClientBuilder[]
-            // tag::ExampleClientinitEnd[]
-        }
-        // end::ExampleClientinitEnd[]
-
-        // tag::ExampleClientPrepPetApi[]
-        void preparePetApi() {
-            petApi = PetApiImpl.create(apiClient);                  // <3>
-        }
-        // end::ExampleClientPrepPetApi[]
-        // tag::ExampleClientFindAvailableDecl[]
-        void findAvailablePets() {
-            // end::ExampleClientFindAvailableDecl[]
-            // tag::ExampleClientFindAvailableSimple[]
-            ApiResponse<List<Pet>> apiResponse =
-                    petApi.findPetsByStatus(List.of(Pet.StatusEnum.AVAILABLE.value())); // <1>
-            // end::ExampleClientFindAvailableSimple[]
-            // tag::ExampleClientFindAvailableResponseCheck[]
-
-            try (HttpClientResponse webClientResponse = apiResponse.webClientResponse()) {  // <2>
-                if (webClientResponse.status().code() != 200) {                             // <3>
-                    // Handle a non-successful status.
-                }
-            }
-
-            List<Pet> avlPets = apiResponse.result();                                       // <4>
-            // end::ExampleClientFindAvailableResponseCheck[]
-            // tag::ExampleClientFindAvailableUseResult[]
-
-            List<Pet> availablePets = apiResponse.result();     // <2>
-            // end::ExampleClientFindAvailableUseResult[]
-            // tag::ExampleClientFindAvailableEnd[]
-        }
-        // end::ExampleClientFindAvailableEnd[]
-
-        // tag::ExampleClientclassEnd[]
-    }
-    // end::ExampleClientclassEnd[]
-
-    // tag::AddPetOpCustomClassDecl[]
+    // stub
     public class AddPetOpCustom extends PetService.AddPetOp {
-        // end::AddPetOpCustomClassDecl[]
-
-        // tag::AddPetOpCustompetMethod[]
-        @Override
-        protected Pet pet(ServerRequest request, ValidatorUtils.Validator validator) {
-            Pet result = request.content().hasEntity()          // <1>
-                    ? request.content().as(Pet.class)
-                    : null;
-
-            /*
-             Insist that pet names never start with a lower-case letter.
-             */
-            if (result != null) {
-                validator.validatePattern("pet", result.getName(), "[^a-z].*"); // <2>
-            }
-            return result;                                      // <3>
-        }
-        // end::AddPetOpCustompetMethod[]
     }
 
-    public static class PetService {
+    // stub
+    class PetService {
 
-        protected void handleAddPet(ServerRequest request, ServerResponse response, Pet pet) {
+        void handleAddPet(ServerRequest request, ServerResponse response, Pet pet) {
         }
 
-        protected void handleFindPetsByTags(ServerRequest request, ServerResponse response,
+        void handleFindPetsByTags(ServerRequest request, ServerResponse response,
                                             List<String> tags) {
         }
 
-        protected AddPetOp createAddPetOp() {
+        AddPetOp createAddPetOp() {
             return null;
         }
 
+        static class AddPetOp {
 
-        public static class AddPetOp {
-
-            protected Pet pet(ServerRequest request, ValidatorUtils.Validator validator) {
+            Pet pet(ServerRequest request, ValidatorUtils.Validator validator) {
                 return null;
             }
 
-            public record Response405() {
+            record Response405() {
 
-                public static Response405.Builder builder() {
+                static Response405.Builder builder() {
                     return new Builder();
                 }
 
-                public static class Builder {
+                static class Builder {
                     void send(ServerResponse response) {
                     }
                 }
             }
 
-            public record Response200(Pet response) {
+            record Response200(Pet response) {
 
-                public static Response200.Builder builder() {
+                static Response200.Builder builder() {
                     return new Builder();
                 }
 
-                public static class Builder {
+                static class Builder {
                     void send(ServerResponse response) {
-
                     }
                 }
             }
         }
 
-        public static class FindPetsByTagsOp {
+        static class FindPetsByTagsOp {
 
-            public record Response200() {
+            record Response200() {
 
-                public static Response200.Builder builder() {
+                static Response200.Builder builder() {
                     return new Response200.Builder();
                 }
 
-                public static class Builder {
+                static class Builder {
                     public void send(ServerResponse response) {
                     }
 
@@ -314,75 +129,298 @@ public class OpenApiGeneratorSnippets {
         }
     }
 
-    public static class ValidatorUtils {
-
-        public static class Validator {
+    // stub
+    class ValidatorUtils {
+        class Validator {
             void validatePattern(String itemName, String value, String pattern) {
             }
         }
     }
 
-// tag::PetServiceImplCustomclass-declaration[]
-// tag::PetServiceImplCustomclass-header[]
-    public class PetServiceImpl extends PetService {
-// end::PetServiceImplCustomclass-header[]
-// tag::PetServiceImplCustomaddedFields[]
+    // stub
+    class Pet {
 
-        private final Map<Long, Pet> pets = new HashMap<>(); // <1>
+        String getName() {
+            return null;
+        }
 
-// end::PetServiceImplCustomaddedFields[]
-// tag::PetServiceImplCustomhandleAddPetDecl[]
-        @Override
-        protected void handleAddPet(ServerRequest request, ServerResponse response,
-                                    Pet pet) {
-// end::PetServiceImplCustomhandleAddPetDecl[]
-// tag::PetServiceImplCustomhandleAddPetGenerated[]
-            response.status(Status.NOT_IMPLEMENTED_501).send();
-// end::PetServiceImplCustomhandleAddPetGenerated[]
-// tag::PetServiceImplCustomhandleAddPetCustom[]
-            if (pets.containsKey(pet.getId())) {            // <2>
-                AddPetOp.Response405.builder().send(response);
+        long getId() {
+            return 0L;
+        }
+
+        enum StatusEnum {
+            AVAILABLE;
+
+            String value() {
+                return null;
             }
-            pets.put(pet.getId(), pet);                     // <3>
-            AddPetOp.Response200.builder().send(response);  // <4>
-// end::PetServiceImplCustomhandleAddPetCustom[]
-// tag::PetServiceImplCustomhandleAddPetEnd[]
         }
-// end::PetServiceImplCustomhandleAddPetEnd[]
 
-// tag::PetServiceImplCustomhandleFindPetsByTagsDecl[]
-        @Override
-        protected void handleFindPetsByTags(ServerRequest request, ServerResponse response,
-                                            List<String> tags) { // <2>
-// end::PetServiceImplCustomhandleFindPetsByTagsDecl[]
-// tag::PetServiceImplCustomhandleFindPetsByTagsCustom[]
-
-            List<Pet> result = pets.values().stream()
-                    .filter(pet -> pet.getTags()
-                            .stream()
-                            .anyMatch(petTag -> tags.contains(petTag.getName())))
-                    .toList();                                  // <3>
-
-            FindPetsByTagsOp.Response200.builder()              // <4>
-                    .response(result)                           // <5>
-                    .send(response);                            // <6>
-
-// end::PetServiceImplCustomhandleFindPetsByTagsCustom[]
-            response.status(Status.NOT_IMPLEMENTED_501).send();
-// tag::PetServiceImplCustomhandleFindPetsByTagsEnd[]
+        List<Tag> getTags() {
+            return List.of();
         }
-// end::PetServiceImplCustomhandleFindPetsByTagsEnd[]
-
-// tag::PetServiceImplCustomcreateAddPetOp[]
-        @Override
-        protected AddPetOp createAddPetOp() {
-            return new AddPetOpCustom();
-        }
-// end::PetServiceImplCustomcreateAddPetOp[]
-// tag::PetServiceImplCustomclass-end[]
     }
-    // end::PetServiceImplCustomclass-end[]
-// end::PetServiceImplCustomclass-declaration[]
+
+    // stub
+    class Tag {
+
+        String getName() {
+            return null;
+        }
+    }
+
+    interface PetApi {
+        ApiResponse<List<Pet>> findPetsByStatus(List<String> statusValues);
+    }
+
+    class PetApiImpl implements PetApi {
+
+        static PetApi create(ApiClient apiClient) {
+            return null;
+        }
+
+        @Override
+        public ApiResponse<List<Pet>> findPetsByStatus(List<String> statusValues) {
+            return null;
+        }
+    }
+
+    class ApiClient {
+
+        static Builder builder() {
+            return null;
+        }
+
+        class Builder {
+
+            ApiClient build() {
+                return null;
+            }
+
+            Builder objectMapper(Object om) {
+                return this;
+            }
+
+            Builder webClientBuilder(WebClientConfig.Builder webClientConfigBuilder) {
+                return this;
+            }
+
+            WebClientConfig.Builder webClientBuilder() {
+                return WebClientConfig.builder();
+            }
+        }
+    }
+
+    class ApiResponse<T> {
+
+        HttpClientResponse webClientResponse() {
+            return null;
+        }
+
+        T result() {
+            return null;
+        }
+    }
+
+    class Snippet1 {
+        // tag::snippet_1[]
+        public class PetServiceImpl extends PetService {
+            @Override
+            protected void handleAddPet(ServerRequest request, ServerResponse response,
+                                        Pet pet) {
+                response.status(Status.NOT_IMPLEMENTED_501).send();
+            }
+        }
+        // end::snippet_1[]
+    }
+
+    class Snippet2 {
+        // tag::snippet_2[]
+        public class PetServiceImpl extends PetService {
+
+            private final Map<Long, Pet> pets = new HashMap<>(); // <1>
+
+            @Override
+            protected void handleAddPet(ServerRequest request, ServerResponse response,
+                                        Pet pet) {
+                if (pets.containsKey(pet.getId())) { // <2>
+                    AddPetOp.Response405.builder().send(response);
+                }
+                pets.put(pet.getId(), pet); // <3>
+                AddPetOp.Response200.builder().send(response); // <4>
+            }
+        }
+        // end::snippet_2[]
+    }
+
+    class Snippet3 {
+        // tag::snippet_3[]
+        public class PetServiceImpl extends PetService {
+
+            private final Map<Long, Pet> pets = new HashMap<>(); // <1>
+
+            @Override
+            protected void handleFindPetsByTags(ServerRequest request, ServerResponse response,
+                                                List<String> tags) { // <2>
+
+                List<Pet> result = pets.values().stream()
+                        .filter(pet -> pet.getTags()
+                                .stream()
+                                .anyMatch(petTag -> tags.contains(petTag.getName())))
+                        .toList(); // <3>
+
+                FindPetsByTagsOp.Response200.builder() // <4>
+                        .response(result) // <5>
+                        .send(response); // <6>
+
+            }
+        }
+        // end::snippet_3[]
+    }
+
+    class Snippet4 {
+        // tag::snippet_4[]
+        public class AddPetOpCustom extends PetService.AddPetOp {
+            @Override
+            protected Pet pet(ServerRequest request, ValidatorUtils.Validator validator) {
+                Pet result = request.content().hasEntity() // <1>
+                        ? request.content().as(Pet.class)
+                        : null;
+
+                // Insist that pet names never start with a lower-case letter.
+                if (result != null) {
+                    validator.validatePattern("pet", result.getName(), "[^a-z].*"); // <2>
+                }
+                return result; // <3>
+            }
+        }
+        // end::snippet_4[]
+    }
+
+    class Snippet5 {
+        public class PetServiceImpl extends PetService {
+            // tag::snippet_5[]
+            @Override
+            protected AddPetOp createAddPetOp() {
+                return new AddPetOpCustom();
+            }
+            // end::snippet_5[]
+        }
+    }
+
+    class Snippet6 {
+        // tag::snippet_6[]
+        public class ExampleClient {
+
+            private ApiClient apiClient; // <1>
+
+            void init() {
+                ApiClient apiClient = ApiClient.builder().build(); // <2>
+            }
+        }
+        // end::snippet_6[]
+    }
+
+    class Snippet7 {
+        // tag::snippet_7[]
+        public class ExampleClient {
+
+            private ApiClient apiClient; // <1>
+
+            void init() {
+                ObjectMapper myObjectMapper = new ObjectMapper(); // <2>
+                apiClient = ApiClient.builder()
+                        .objectMapper(myObjectMapper) // <3>
+                        .build();
+            }
+        }
+        // end::snippet_7[]
+    }
+
+    class Snippet8 {
+        // tag::snippet_8[]
+        public class ExampleClient {
+
+            private ApiClient apiClient; // <1>
+
+            void init() {
+                ApiClient.Builder apiClientAdjustedBuilder = ApiClient.builder(); // <2>
+
+                apiClientAdjustedBuilder
+                        .webClientBuilder() // <3>
+                        .connectTimeout(Duration.ofSeconds(4)); // <4>
+
+                apiClient = apiClientAdjustedBuilder.build(); // <5>
+            }
+        }
+        // end::snippet_8[]
+    }
+
+    class Snippet9 {
+        // tag::snippet_9[]
+        public class ExampleClient {
+
+            private ApiClient apiClient; // <1>
+
+            void init() {
+                WebClientConfig.Builder customWebClientBuilder = WebClient.builder() // <2>
+                        .connectTimeout(Duration.ofSeconds(3)) // <3>
+                        .baseUri("https://myservice.mycompany.com"); // <4>
+
+                apiClient = ApiClient.builder() // <5>
+                        .webClientBuilder(customWebClientBuilder) // <6>
+                        .build(); // <7>
+            }
+        }
+        // end::snippet_9[]
+    }
+
+    class Snippet10 {
+        // tag::snippet_10[]
+        public class ExampleClient {
+
+            private ApiClient apiClient; // <1>
+
+            private PetApi petApi; // <2>
+
+            void preparePetApi() {
+                petApi = PetApiImpl.create(apiClient); // <3>
+            }
+        }
+        // end::snippet_10[]
+    }
+
+    class Snippet11 {
+        PetApi petApi;
+
+        // tag::snippet_11[]
+        void findAvailablePets() {
+            ApiResponse<List<Pet>> apiResponse =
+                    petApi.findPetsByStatus(List.of(Pet.StatusEnum.AVAILABLE.value())); // <1>
+
+            List<Pet> availablePets = apiResponse.result(); // <2>
+        }
+        // end::snippet_11[]
+    }
+
+    class Snippet12 {
+        PetApi petApi;
+
+        // tag::snippet_12[]
+        void findAvailablePets() {
+            ApiResponse<List<Pet>> apiResponse =
+                    petApi.findPetsByStatus(List.of(Pet.StatusEnum.AVAILABLE.value())); // <1>
+
+            try (HttpClientResponse webClientResponse = apiResponse.webClientResponse()) { // <2>
+                if (webClientResponse.status().code() != 200) { // <3>
+                    // Handle a non-successful status.
+                }
+            }
+
+            List<Pet> avlPets = apiResponse.result(); // <4>
+        }
+        // end::snippet_12[]
+    }
 }
 
 

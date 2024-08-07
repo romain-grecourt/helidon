@@ -24,49 +24,58 @@ import jakarta.ws.rs.core.MediaType;
 
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-public class OpenApiGeneratorSnippets {
+@SuppressWarnings("ALL")
+class OpenApiGeneratorSnippets {
 
     /*
-    To generate a project containing the types which need to be mocked--in case of changes in the upstream generator:
+        # Instructions to generate a project containing the types which need to be mocked.
+        # In case of changes in the upstream generator.
+        # See https://github.com/OpenAPITools/openapi-generator
 
-    1. Download the generator: see [these instructions](https://github.com/OpenAPITools/openapi-generator?tab=readme-ov-file#13---download-jar).
-    2. `mkdir mpClient`
-    3. `cd mpClient`
-    4. ```java
-       java -jar {downloadLocation}/openapi-generator-cli.jar generate \
-       -g java-helidon-client \
-       --library mp \
-       -i {helidon-root}/docs/src/main/resources/petstorex.yaml \
-       --helidonVersion 4
-       ```
-       or specify the appropriate Helidon major or exact version.
-     */
+        # download the openapi-generator cli
+        curl -O \
+            --output-dir /tmp \
+            https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/7.7.0/openapi-generator-cli-7.7.0.jar
 
+        # generate the petapi client project (replace helidonVersion accordingly)
+        java -jar /tmp/openapi-generator-cli-7.7.0.jar generate \
+           -o /tmp/petapi-client2 \
+           -g java-helidon-client \
+           --library mp \
+           -i etc/petstorex.yaml \
+           -p helidonVersion=4.0.11
+    */
+
+    // stub
     interface Pet {
     }
 
+    // stub
     interface PetApi {
         Pet getPetById(long petId);
     }
 
+    // stub
     class ApiException extends Exception {
     }
 
-// tag::class-declaration[]
-    @Path("/exampleServiceCallingService") // <1>
-    public class ExampleOpenApiGenClientResource {
-        @Inject // <2>
-        @RestClient // <3>
-        private PetApi petApi; // <4>
+    class Snippet1 {
+        // tag::snippet_1[]
+        @Path("/exampleServiceCallingService") // <1>
+        public class ExampleOpenApiGenClientResource {
+            @Inject // <2>
+            @RestClient // <3>
+            private PetApi petApi; // <4>
 
-        @GET
-        @Path("/getPet/{petId}")
-        @Produces(MediaType.APPLICATION_JSON)
-        public Pet getPetUsingId(@PathParam("petId") Long petId) throws ApiException {
-            Pet pet = petApi.getPetById(petId); // <5>
-            return pet;
+            @GET
+            @Path("/getPet/{petId}")
+            @Produces(MediaType.APPLICATION_JSON)
+            public Pet getPetUsingId(@PathParam("petId") Long petId) throws ApiException {
+                Pet pet = petApi.getPetById(petId); // <5>
+                return pet;
+            }
         }
+        // end::snippet_1[]
     }
-// end::class-declaration[]
 
 }

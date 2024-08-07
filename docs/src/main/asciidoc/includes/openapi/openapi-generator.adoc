@@ -15,13 +15,6 @@
     limitations under the License.
 
 ///////////////////////////////////////////////////////////////////////////////
-// tag::preamble[]
-:description: Helidon {flavor-uc} OpenAPI Generator
-:keywords: helidon, {flavor-lc}, openapi, generator
-:feature-name: Helidon {flavor-uc} OpenAPI Generator
-// DO NOT CHANGE THE FOLLOWING - it's used as a minimum release that will not normally change with new releases of the OpenAPI generator
-// Update the following when it is convenient to keep pace with the latest releases of the OpenAPITools generator
-// end::preamble[]
 
 // tag::intro[]
 == Contents
@@ -85,23 +78,23 @@ To use the OpenAPI generator plug-in to generate or regenerate files during your
 [source,xml,subs="+attributes,+macros"]
 .Declaring the OpenAPI Generator Plug-in
 ----
-<properties>
-    <openapi-generator-version>{openapi-generator-version}</openapi-generator-version>
-</properties>
-...
-<build>
-    ...
-    <plugin-management>
-        ...
-        <plugin>
-             <groupId>org.openapitools</groupId>
-             <artifactId>openapi-generator-maven-plugin</artifactId>
-             <version>++${openapi-generator-version}++</version>
-        </plugin>
-        ...
-    </plugin-management>
-    ...
-</build>
+<project>
+    <!-- ... -->
+    <properties>
+        <openapi-generator-version>{openapi-generator-version}</openapi-generator-version>
+    </properties>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                     <groupId>org.openapitools</groupId>
+                     <artifactId>openapi-generator-maven-plugin</artifactId>
+                     <version>++${openapi-generator-version}++</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
 ----
 
 A <<invoking-the-plugin,later section>> describes how to invoke the plug-in during your build.
@@ -225,12 +218,13 @@ You must specify the following options:
 | `java-helidon-server` +
 `java-helidon-client`
 
-|`--library` +
-`<library>`
+|`--library`
 | {nbsp}
+|`<library>`
 |Library you want to use
 |`mp` +
 `se`
+
 |===
 
 === Recommended Settings for the OpenAPI Generator
