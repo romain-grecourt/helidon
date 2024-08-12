@@ -70,11 +70,6 @@
                         <include>tests/integration/packaging/**</include>
                     </includes>
                 </moduleSet>
-                <moduleSet name="jpa">
-                    <includes>
-                        <include>tests/integration/packaging/**</include>
-                    </includes>
-                </moduleSet>
                 <moduleSet name="it">
                     <includes>
                         <include>tests/integration/**</include>
