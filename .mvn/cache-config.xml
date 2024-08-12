@@ -23,6 +23,7 @@
             <projectFilesExcludes>
                 <exclude>.*/**</exclude>
                 <exclude>etc/**</exclude>
+                <exclude>docs/src/main/asciidoc/config/*</exclude>
             </projectFilesExcludes>
         </project>
         <executionsExcludes>
@@ -66,11 +67,6 @@
                     </includes>
                 </moduleSet>
                 <moduleSet name="packaging">
-                    <includes>
-                        <include>tests/integration/packaging/**</include>
-                    </includes>
-                </moduleSet>
-                <moduleSet name="jpa">
                     <includes>
                         <include>tests/integration/packaging/**</include>
                     </includes>
