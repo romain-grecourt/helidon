@@ -308,4 +308,6 @@ deploy_snapshots() {
   nexus_upload "${NEXUS_URL}/content/repositories/snapshots" "${STAGING_DIR}"
 }
 
+curl --version
+
 ${COMMAND}
