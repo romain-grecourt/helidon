@@ -96,17 +96,17 @@ class HelidonJunitExtension implements BeforeAllCallback,
         testClass = context.getRequiredTestClass();
         AnnotationFinder finder = new AnnotationFinder(testClass, TEST_ANNOTATIONS);
 
-        finder.ifPresent(HelidonTest.class, a -> resetPerTest = a.resetPerTest());
         finder.ifPresent(DisableDiscovery.class, a -> classLevelDisableDiscovery = a.value());
+        finder.ifPresent(HelidonTest.class, a -> resetPerTest = a.resetPerTest());
 
-        finder.forEach(AddExtensions.class, AddExtensions::value, classLevelExtensions::add);
         finder.forEach(AddBeans.class, AddBeans::value, classLevelBeans::add);
         finder.forEach(AddConfigs.class, AddConfigs::value, classLevelConfigMeta::config);
-        finder.forEach(AddExtension.class, classLevelExtensions::add);
+        finder.forEach(AddExtensions.class, AddExtensions::value, classLevelExtensions::add);
         finder.forEach(AddBean.class, classLevelBeans::add);
         finder.forEach(AddConfig.class, classLevelConfigMeta::config);
-        finder.ifPresent(Configuration.class, classLevelConfigMeta::config);
         finder.ifPresent(AddConfigBlock.class, classLevelConfigMeta::config);
+        finder.forEach(AddExtension.class, classLevelExtensions::add);
+        finder.ifPresent(Configuration.class, classLevelConfigMeta::config);
 
         visitMethods(testClass, m -> isStatic(m, AddConfigSource.class), classLevelConfigMeta::config);
 
