@@ -23,12 +23,20 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Identifies static methods of which the values should be added to MicroProfile configuration.
- * The return type of the annotated methods must be of type {@code Map<String, String>}.
+ * Mark a static method that provides a {@link org.eclipse.microprofile.config.spi.ConfigSource}
+ * to add to MicroProfile configuration.
+ * <p>
+ * E.g.
+ * <code><pre>
+ * &#064;AddConfigSource
+ * static ConfigSource config() {
+ *     return MpConfigSources.create(Map.of("foo", "bar"));
+ * }</pre></code>
+ * </p>
+ * @see io.helidon.config.mp.MpConfigSources
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 @Inherited
-public @interface AddConfigMap {
+public @interface AddConfigSource {
 }
-

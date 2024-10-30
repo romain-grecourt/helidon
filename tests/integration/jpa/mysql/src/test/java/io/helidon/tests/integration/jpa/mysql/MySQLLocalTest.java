@@ -15,10 +15,10 @@
  */
 package io.helidon.tests.integration.jpa.mysql;
 
-import java.util.Map;
+import io.helidon.config.mp.MpConfigSources;
+import io.helidon.microprofile.testing.junit5.AddConfigSource;
 
-import io.helidon.microprofile.testing.junit5.AddConfigMap;
-
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -32,8 +32,8 @@ abstract class MySQLLocalTest {
     @Container
     static final MySQLContainer<?> CONTAINER = MySQLTestContainer.CONTAINER;
 
-    @AddConfigMap
-    static Map<String, String> config() {
-        return MySQLTestContainer.config();
+    @AddConfigSource
+    static ConfigSource config() {
+        return MpConfigSources.create(MySQLTestContainer.config());
     }
 }

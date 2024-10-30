@@ -15,10 +15,10 @@
  */
 package io.helidon.tests.integration.jpa.pgsql;
 
-import java.util.Map;
+import io.helidon.config.mp.MpConfigSources;
+import io.helidon.microprofile.testing.junit5.AddConfigSource;
 
-import io.helidon.microprofile.testing.junit5.AddConfigMap;
-
+import org.eclipse.microprofile.config.spi.ConfigSource;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -32,8 +32,8 @@ abstract class PostgreSQLLocalTest {
     @Container
     static final JdbcDatabaseContainer<?> CONTAINER = PostgreSQLTestContainer.CONTAINER;
 
-    @AddConfigMap
-    static Map<String, String> config() {
-        return PostgreSQLTestContainer.config();
+    @AddConfigSource
+    static ConfigSource config() {
+        return MpConfigSources.create(PostgreSQLTestContainer.config());
     }
 }
