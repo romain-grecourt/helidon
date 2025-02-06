@@ -16,6 +16,7 @@
 
 package io.helidon.common.socket;
 
+import java.time.Duration;
 import java.util.NoSuchElementException;
 import java.util.function.Supplier;
 
@@ -36,6 +37,13 @@ public interface HelidonSocket extends SocketContext, Supplier<byte[]> {
      * Idle mode should be used in case of client side connection caching.
      */
     void idle();
+
+    /**
+     * Set the read
+     * @param duration
+     */
+    default void readTimeout(Duration duration) {
+    }
 
     /**
      * Check if socket is connected.

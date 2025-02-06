@@ -19,6 +19,10 @@ package io.helidon.common.socket;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -36,19 +40,26 @@ import io.helidon.common.LazyValue;
  */
 class IdleInputStream extends InputStream {
 
+    private final Socket socket;
     private final InputStream upstream;
     private final LazyValue<ExecutorService> executor;
     private volatile int next = -1;
     private volatile boolean closed = false;
+    private volatile boolean canceled = false;
+    private Duration readTimeout = Duration.ZERO;
     private Future<?> idlingThread;
 
-    IdleInputStream(InputStream upstream, String childSocketId, String socketId) {
-        this.upstream = upstream;
-        executor = LazyValue.create(() -> Executors.newThreadPerTaskExecutor(
-                Thread.ofVirtual()
-                        .name("helidon-socket-monitor-" + childSocketId + "-" + socketId, 0)
-                        .factory())
-        );
+    IdleInputStream(Socket socket, String childSocketId, String socketId) {
+        try {
+            this.socket = socket;
+            this.upstream = socket.getInputStream();
+            this.executor = LazyValue.create(() -> Executors.newThreadPerTaskExecutor(
+                    Thread.ofVirtual()
+                            .name("helidon-socket-monitor-" + childSocketId + "-" + socketId, 0)
+                            .factory()));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override
@@ -101,24 +112,36 @@ class IdleInputStream extends InputStream {
         idlingThread = executor.get().submit(this::handle);
     }
 
+    void readTimeout(Duration duration) {
+        this.readTimeout = duration;
+    }
+
     boolean isClosed() {
         return closed;
     }
 
     private void handle() {
-        try {
-            next = upstream.read();
-            if (next <= 0) {
+        while (!canceled) {
+            try {
+                socket.setSoTimeout(500);
+                next = upstream.read();
+                if (next <= 0) {
+                    closed = true;
+                }
+                // restore SO_TIMEOUT
+                socket.setSoTimeout((int) readTimeout.toMillis());
+                return;
+            } catch(SocketTimeoutException ignored) {
+            } catch (IOException e) {
                 closed = true;
+                throw new UncheckedIOException(e);
             }
-        } catch (IOException e) {
-            closed = true;
-            throw new UncheckedIOException(e);
         }
     }
 
     private void endIdle() {
         try {
+            canceled = true;
             idlingThread.get();
             idlingThread = null;
         } catch (InterruptedException | ExecutionException e) {

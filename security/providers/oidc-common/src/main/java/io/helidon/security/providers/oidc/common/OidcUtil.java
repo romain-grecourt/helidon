@@ -55,6 +55,9 @@ final class OidcUtil {
                                                         boolean relativeUris,
                                                         Duration clientTimeout) {
         WebClientConfig.Builder webClientBuilder = WebClient.builder()
+//                .sendExpectContinue(false)
+//                .readContinueTimeout(Duration.ZERO)
+//                .readContinueTimeout(Duration.ofSeconds(30))
                 .addService(WebClientTracing.create())
                 .servicesDiscoverServices(false)
                 .mediaContext(MediaContext.builder()

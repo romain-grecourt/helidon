@@ -22,6 +22,8 @@ import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
+import java.time.Duration;
 import java.util.Arrays;
 
 import io.helidon.common.buffers.BufferData;
@@ -52,7 +54,7 @@ public sealed class PlainSocket implements HelidonSocket permits TlsSocket {
         this.childSocketId = childSocketId;
         this.socketId = socketId;
         try {
-            this.inputStream = new IdleInputStream(delegate.getInputStream(), childSocketId, socketId);
+            this.inputStream = new IdleInputStream(delegate, childSocketId, socketId);
             this.outputStream = delegate.getOutputStream();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -119,6 +121,16 @@ public sealed class PlainSocket implements HelidonSocket permits TlsSocket {
     @Override
     public void idle() {
         inputStream.idle();
+    }
+
+    @Override
+    public void readTimeout(Duration duration) {
+        try {
+            delegate.setSoTimeout((int) duration.toMillis());
+            inputStream.readTimeout(duration);
+        } catch (SocketException e) {
+            throw new UncheckedIOException("Could not set read timeout on socket: " + socketId, e);
+        }
     }
 
     @Override

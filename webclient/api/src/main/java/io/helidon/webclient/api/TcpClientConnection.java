@@ -21,7 +21,6 @@ import java.io.UncheckedIOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
@@ -214,16 +213,10 @@ public class TcpClientConnection implements ClientConnection {
         if (closed) {
             throw new IllegalStateException("Attempt to call readTimeout(Duration) on a closed connection");
         }
-
         if (socket == null) {
             throw new IllegalStateException("Attempt to call readTimeout(Duration) on a connection that is not connected");
         }
-
-        try {
-            socket.setSoTimeout((int) readTimeout.toMillis());
-        } catch (SocketException e) {
-            throw new UncheckedIOException("Could not set read timeout to the connection with the channel id: " + channelId, e);
-        }
+        helidonSocket.readTimeout(readTimeout);
     }
 
     @Override
