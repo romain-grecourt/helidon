@@ -65,7 +65,7 @@
                 <include>src/main/resources/META-INF/beans.xml</include>
             </includes>
         </files>
-        <templates engine="mustache" transformations="basedir,hbs,packaged">
+        <templates engine="mustache" transformations="hbs,packaged,basedir">
             <directory>files</directory>
             <includes>
                 <include>src/main/resources/META-INF/microprofile-config.properties.hbs</include>
@@ -86,13 +86,6 @@
 
         <model>
             <value key="app-type">${app-type}</value>
-            <value key="parent-artifactId">helidon-mp</value>
-            <list key="dependencies">
-                <map>
-                    <value key="groupId">io.helidon.microprofile.metrics</value>
-                    <value key="artifactId">helidon-microprofile-metrics</value>
-                </map>
-            </list>
             <value key="parent-artifactId">helidon-mp</value>
             <list key="dependencies">
                 <map>

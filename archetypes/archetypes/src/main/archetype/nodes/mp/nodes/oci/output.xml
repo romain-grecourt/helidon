@@ -51,7 +51,7 @@
                     <replace regex="groupid" replacement="${groupId/\./\/}"/>
                     <replace regex="artifactid" replacement="${artifactId/\./\/}"/>
                 </transformation>
-                <templates engine="mustache" transformations="basedir,hbs,packaged">
+                <templates engine="mustache" transformations="hbs,packaged,basedir">
                     <directory>/nodes/mp/features/common/files</directory>
                     <includes>
                         <include>.helidon.hbs</include>
@@ -68,13 +68,13 @@
     <call method="pre-processed-models"/>
     <call method="common"/>
     <output>
-        <templates engine="mustache" transformations="basedir,hbs">
+        <templates engine="mustache" transformations="hbs,basedir">
             <directory>../../features/security/files</directory>
             <includes>
                 <include>src/*/resources/**/application.yaml.hbs</include>
             </includes>
         </templates>
-        <templates engine="mustache" transformations="basedir,hbs,packaged">
+        <templates engine="mustache" transformations="hbs,packaged,basedir">
             <directory>files</directory>
             <includes>
                 <include>**/*.hbs</include>
@@ -84,7 +84,7 @@
                 <exclude>maven-*.hbs</exclude>
             </excludes>
         </templates>
-        <templates engine="mustache" transformations="basedir,hbs,packaged">
+        <templates engine="mustache" transformations="hbs,packaged,basedir">
             <directory>../../features/common/files</directory>
             <includes>
                 <include>src/main/resources/**</include>
