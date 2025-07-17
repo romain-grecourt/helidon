@@ -61,7 +61,7 @@
                             <match>any</match>
                             <fail>true</fail>
                             <patterns>
-                                <pattern>**/*.mustache</pattern>
+                                <pattern>**/*.hbs</pattern>
                                 <pattern>**/__pkg__/**</pattern>
                             </patterns>
                         </validation>
