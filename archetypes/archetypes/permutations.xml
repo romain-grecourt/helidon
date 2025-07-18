@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (c) 2025 Oracle and/or its affiliates.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<rules>
+    <rule if="${app-type} == 'custom'">
+        <rule if="${media} != []">
+            <!-- do not combine media and metrics -->
+            <exclude if="${metrics}"/>
+
+            <!-- do not combine docker and metrics -->
+            <exclude if="${docker}" />
+
+            <!-- do not combine media and security -->
+            <exclude if="${security}" />
+        </rule>
+        <rule if="${security}">
+            <!-- do not combine security and metrics -->
+            <exclude if="${metrics}" />
+
+            <!-- do not combine security and docker -->
+            <exclude if="${docker}" />
+
+            <!-- do not combine security and extra -->
+            <exclude if="${extra} != []" />
+
+            <!-- force single option for security.atn -->
+            <rule if="${security.atz} == []">
+                <exclude if="sizeof ${security.atn} != 1"/>
+            </rule>
+
+            <!-- only combine security.atz with security.atn=oidc -->
+            <rule if="${security.atz} == ['abc']">
+                <exclude if="${security.atn} != ['oidc']"/>
+            </rule>
+        </rule>
+        <rule if="${docker}">
+
+            <!-- do not combine docker and tracing -->
+            <exclude if="${tracing}" />
+
+            <!-- do not combine docker and extra -->
+            <exclude if="${extra} != []" />
+        </rule>
+
+        <!-- do not combine custom and db -->
+        <exclude if="${db}" />
+
+        <!-- restrict multi-module -->
+        <rule if="${multi-module}">
+            <exclude if="${flavor} != 'se'"/>
+            <exclude if="${extra} != []"/>
+            <exclude if="${db}"/>
+            <exclude if="${security}" />
+            <exclude if="${metrics}" />
+            <exclude if="${tracing}" />
+            <exclude if="${health}" />
+            <exclude if="${docker}" />
+            <exclude if="${k8s}" />
+            <exclude if="${jpms}" />
+            <exclude if="${media} != ['json']"/>
+            <rule if="${media} == ['json']">
+                <exclude if="${media.json-lib} != 'jsonp"/>
+            </rule>
+        </rule>
+    </rule>
+    <rule if="${app-type} == 'database'">
+        <rule if="${db.auto-ddl}">
+
+            <!-- do not combine jackson and auto-ddl -->
+            <exclude if="${media.json-lib} == 'jackson'"/>
+        </rule>
+        <rule if="${db.cp} == 'hikaricp'">
+
+            <!-- do not combine jackson and hikaricp -->
+            <exclude if="${media.json-lib} == 'jackson'"/>
+        </rule>
+
+        <!-- do not combine app-type=database and health -->
+        <exclude if="${health}" />
+    </rule>
+</rules>
