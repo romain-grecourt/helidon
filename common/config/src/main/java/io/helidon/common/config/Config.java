@@ -29,6 +29,7 @@ import java.util.stream.Stream;
  * @deprecated use {@code io.helidon.config.Config} instead
  */
 @Deprecated(forRemoval = true, since = "4.3.0")
+@SuppressWarnings("removal")
 public interface Config {
     /**
      * Empty instance of {@code Config}.
@@ -47,7 +48,7 @@ public interface Config {
      * @return a new configuration
      */
     static Config create() {
-        return GlobalConfig.create();
+        return ConfigFactory.createDefault();
     }
 
     /**
@@ -69,12 +70,11 @@ public interface Config {
      * <p>
      * The name of a node is the last token in its fully-qualified key.
      * <p>
-     * The exact format of the name depends on the {@code Type} of the
-     * containing node:
+     * The exact format of the name depends on the type of the containing node:
      * <ul>
-     * <li>from a Type#OBJECT node the token for a child is the
+     * <li>from an "object" node the token for a child is the
      * <strong>name of the object member</strong>;</li>
-     * <li>from a Type#LIST node the token for a child is a zero-based
+     * <li>from a "list" node the token for a child is a zero-based
      * <strong>index of the element</strong>, an unsigned base-10 integer value
      * with no leading zeros.</li>
      * </ul>
@@ -206,17 +206,17 @@ public interface Config {
     boolean isLeaf();
 
     /**
-     * Returns {@code true} if this node exists and is Type#Object.
+     * Returns {@code true} if this node exists and is an "object" node.
      *
-     * @return {@code true} if the node exists and is Type#Object, {@code false}
+     * @return {@code true} if the node exists and is an "object" node, {@code false}
      *         otherwise.
      */
     boolean isObject();
 
     /**
-     * Returns {@code true} if this node exists and is Type#List.
+     * Returns {@code true} if this node exists and is a "list" node.
      *
-     * @return {@code true} if the node exists and is Type#List, {@code false}
+     * @return {@code true} if the node exists and is a "list" node, {@code false}
      *         otherwise.
      */
     boolean isList();
@@ -224,7 +224,7 @@ public interface Config {
     /**
      * Returns {@code true} if this configuration node has a direct value.
      * <p>
-     * This may be a value node (e.g. a leaf) or object node or a list node
+     * This may be a "value" node (e.g. a leaf) or "object" node or a "list" node
      * (e.g. a branch with value). The application can invoke methods such as
      * {@link #as(Class)} on nodes that have value.
      *
@@ -274,7 +274,7 @@ public interface Config {
     /**
      * Returns this node as a list mapping each list value using the provided mapper.
      *
-     * @param mapper mapper to convert each list node into a typed value
+     * @param mapper mapper to convert each "list" node into a typed value
      * @param <T>    type of list elements
      * @return a typed list with values
      * @throws io.helidon.common.config.ConfigException in case the mapper fails to map the values
@@ -282,14 +282,14 @@ public interface Config {
     <T> ConfigValue<List<T>> mapList(Function<Config, T> mapper) throws ConfigException;
 
     /**
-     * Returns a list of child {@code Config} nodes if the node is {@code Type#OBJECT}.
-     * Returns a list of element nodes if the node is {@code Type#LIST}.
-     * Throws {@code MissingValueException} if the node is {@code Type#MISSING}.
-     * Otherwise, if node is {@code Type#VALUE}, it throws {@code ConfigMappingException}.
+     * Returns a list of child {@code Config} nodes if the node is an "object" node.
+     * Returns a list of element nodes if the node is a "list" node.
+     * Throws {@code MissingValueException} if the node is a missing node.
+     * Otherwise, if the node is a "value" node, it throws {@code ConfigMappingException}.
      *
-     * @return a list of {@code Type#OBJECT} members or a list of {@code Type#LIST} members
+     * @return a list of "object" node members or a list of "list" node members
      * @param <C> the common config derived type
-     * @throws io.helidon.common.config.ConfigException in case the node is {@code Type#VALUE}
+     * @throws io.helidon.common.config.ConfigException in case the node is a "value" node
      */
     <C extends Config> ConfigValue<List<C>> asNodeList() throws ConfigException;
 
@@ -297,7 +297,7 @@ public interface Config {
      * Transform all leaf nodes (values) into Map instance.
      *
      * @return new Map instance that contains all config leaf node values
-     * @throws io.helidon.common.config.ConfigException in case the node is Type#MISSING.
+     * @throws io.helidon.common.config.ConfigException in case the node is a "missing" node.
      */
     ConfigValue<Map<String, String>> asMap() throws ConfigException;
 
@@ -363,8 +363,8 @@ public interface Config {
      * Fully-qualified key is list of key tokens separated by {@code .} (dot character).
      * Depending on context the key token is evaluated one by one:
      * <ul>
-     * <li>in Type#OBJECT node the token represents a <strong>name of object member</strong>;</li>
-     * <li>in Type#LIST node the token represents an zero-based <strong>index of list
+     * <li>in "object" nodes the token represents a <strong>name of object member</strong>;</li>
+     * <li>in "list" nodes the token represents a zero-based <strong>index of list
      * element</strong>,
      * an unsigned base-10 integer value, leading zeros are not allowed.</li>
      * </ul>
@@ -445,9 +445,9 @@ public interface Config {
          * The name of a node is the last token in fully-qualified key.
          * Depending on context the name is evaluated one by one:
          * <ul>
-         * <li>in Type#OBJECT} node the name represents a <strong>name of object member</strong>;
+         * <li>in "object" nodes the name represents a <strong>name of object member</strong>;
          * </li>
-         * <li>in Type#LIST} node the name represents an zero-based <strong>index of list
+         * <li>in "list" nodes the name represents a zero-based <strong>index of list
          * element</strong>,
          * an unsigned base-10 integer value, leading zeros are not allowed.</li>
          * </ul>
@@ -475,5 +475,4 @@ public interface Config {
         Key child(Key key);
 
     }
-
 }

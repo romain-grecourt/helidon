@@ -23,8 +23,8 @@ import io.helidon.integrations.micronaut.cdi.data.app.DbOwnerRepository;
 import io.helidon.integrations.micronaut.cdi.data.app.DbPetRepository;
 import io.helidon.integrations.micronaut.cdi.data.app.Owner;
 import io.helidon.integrations.micronaut.cdi.data.app.Pet;
-import io.helidon.microprofile.testing.junit5.AddBean;
-import io.helidon.microprofile.testing.junit5.Configuration;
+import io.helidon.microprofile.testing.AddBean;
+import io.helidon.microprofile.testing.Configuration;
 import io.helidon.microprofile.testing.junit5.HelidonTest;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -58,7 +58,7 @@ class MicronautDataCdiExtensionTest {
         Optional<Pet> dinoOptional = petRepository.findByName("Dino");
         assertThat(dinoOptional, is(optionalPresent()));
 
-        Pet pet = dinoOptional.get();
+        Pet pet = dinoOptional.orElseThrow();
         assertThat(pet.getName(), is("Dino"));
         Owner owner = pet.getOwner();
         assertThat(owner.getName(), is("Fred"));
@@ -70,7 +70,7 @@ class MicronautDataCdiExtensionTest {
         Optional<Owner> maybeBarney = ownerRepository.findByName("Barney");
         assertThat(maybeBarney, is(optionalPresent()));
 
-        Owner barney = maybeBarney.get();
+        Owner barney = maybeBarney.orElseThrow();
         assertThat(barney.getName(), is("Barney"));
         assertThat(barney.getAge(), is(40));
     }

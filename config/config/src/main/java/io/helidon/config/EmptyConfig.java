@@ -68,9 +68,9 @@ final class EmptyConfig {
         @Override
         public Config.Key child(io.helidon.common.config.Config.Key key) {
             if (isRoot()) {
-                return new ConfigProvider.CommonKeyWrapper(key);
+                return CommonConfig.wrap(key);
             }
-            List<String> path = path(new ConfigProvider.CommonKeyWrapper(key));
+            List<String> path = path(CommonConfig.wrap(key));
             Config.Key node = this;
             for (String name : path) {
                 node = new KeyImpl(node, name);

@@ -22,21 +22,20 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import io.helidon.builder.api.Option;
-import io.helidon.common.config.GlobalConfig;
 import io.helidon.common.types.Annotation;
 import io.helidon.config.Config;
 import io.helidon.service.registry.Dependency;
+import io.helidon.service.registry.GlobalServiceRegistry;
 import io.helidon.service.registry.Qualifier;
 import io.helidon.service.registry.Service;
 import io.helidon.service.registry.ServiceRegistry;
-import io.helidon.service.registry.ServiceRegistryConfig;
 import io.helidon.service.registry.ServiceRegistryException;
-import io.helidon.service.registry.ServiceRegistryManager;
+import io.helidon.service.registry.Services;
+import io.helidon.testing.junit5.Testing;
 
 import com.oracle.bmc.Region;
 import com.oracle.bmc.auth.AbstractAuthenticationDetailsProvider;
 import com.oracle.bmc.auth.SimpleAuthenticationDetailsProvider;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,29 +47,14 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@Testing.Test
+@SuppressWarnings("removal")
 class OciAuthenticationDetailsProviderTest {
-
-    static ServiceRegistryManager registryManager;
-    static ServiceRegistry registry;
 
     @BeforeEach
     @AfterEach
     void reset() {
         OciExtension.ociConfigFileName(null);
-    }
-
-    @AfterAll
-    static void tearDown() {
-        if (registryManager != null) {
-            registryManager.shutdown();
-        }
-    }
-
-    void resetWith(Config config, ServiceRegistryConfig injectionConfig) {
-        GlobalConfig.config(() -> config, true);
-        tearDown();
-        registryManager = ServiceRegistryManager.create(injectionConfig);
-        registry = registryManager.registry();
     }
 
     @Test
@@ -163,7 +147,8 @@ class OciAuthenticationDetailsProviderTest {
 
     @Test
     void selectionWhenNoConfigIsSet() {
-        resetWith(Config.empty(), ServiceRegistryConfig.create());
+        Services.set(Config.class, Config.empty());
+        ServiceRegistry registry = GlobalServiceRegistry.registry();
 
         assertThat(OciExtension.isSufficientlyConfigured(Config.empty()),
                    is(false));
@@ -184,7 +169,9 @@ class OciAuthenticationDetailsProviderTest {
         Config config = OciExtensionTest.createTestConfig(
                 OciExtensionTest.ociAuthConfigStrategies(OciAuthenticationDetailsProvider.VAL_AUTO),
                 OciExtensionTest.ociAuthConfigFile("./target", "profile"));
-        resetWith(config, ServiceRegistryConfig.create());
+
+        Services.set(Config.class, config);
+        ServiceRegistry registry = GlobalServiceRegistry.registry();
 
         Supplier<AbstractAuthenticationDetailsProvider> authServiceProvider =
                 registry.supply(AbstractAuthenticationDetailsProvider.class);
@@ -199,7 +186,9 @@ class OciAuthenticationDetailsProviderTest {
         Config config = OciExtensionTest.createTestConfig(
                 OciExtensionTest.ociAuthConfigStrategies(OciAuthenticationDetailsProvider.VAL_AUTO),
                 OciExtensionTest.ociAuthSimpleConfig("tenant", "user", "passphrase", "fp", "privKey", null, "us-phoenix-1"));
-        resetWith(config, ServiceRegistryConfig.create());
+
+        Services.set(Config.class, config);
+        ServiceRegistry registry = GlobalServiceRegistry.registry();
 
         Supplier<AbstractAuthenticationDetailsProvider> authServiceProvider =
                 registry.supply(AbstractAuthenticationDetailsProvider.class);

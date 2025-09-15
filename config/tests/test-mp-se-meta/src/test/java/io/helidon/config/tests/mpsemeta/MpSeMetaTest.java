@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
  */
 
 package io.helidon.config.tests.mpsemeta;
-
-import io.helidon.common.config.GlobalConfig;
 
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
@@ -47,7 +45,7 @@ public class MpSeMetaTest {
         Config config = ConfigProvider.getConfig();
         assertThat(config.getValue("helidon.test.value", String.class), is("value"));
 
-        assertThat(GlobalConfig.config()
+        assertThat(io.helidon.config.Config.global()
                            .get("helidon.test.value")
                            .asString()
                            .asOptional(), optionalValue(is("value")));

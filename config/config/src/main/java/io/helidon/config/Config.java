@@ -29,7 +29,6 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.config.ConfigException;
 import io.helidon.config.spi.ConfigFilter;
 import io.helidon.config.spi.ConfigMapper;
 import io.helidon.config.spi.ConfigMapperProvider;
@@ -123,7 +122,7 @@ import io.helidon.service.registry.Services;
  * if no configuration is present using the corresponding key. The application
  * can invoke the {@link #type} method to find out the type of the node,
  * represented by one of the {@link Type} enum values. The {@link #exists}
- * method tells whether or not the {@code Config} node represents existing
+ * method tells whether the {@code Config} node represents existing
  * configuration.
  * <pre>{@code
  * if (!config.get("very.rare.prop42").exists()) {
@@ -242,6 +241,7 @@ import io.helidon.service.registry.Services;
  * have priority over values from config sources with lower weight.
  */
 @Service.Contract
+@SuppressWarnings("removal")
 public interface Config extends io.helidon.common.config.Config {
     /**
      * Generic type of configuration.
@@ -286,7 +286,7 @@ public interface Config extends io.helidon.common.config.Config {
      * <li>Configuration
      * <p>
      * In the absence of meta-configuration the config system loads the default
-     * configuration from all of the following sources:
+     * configuration from all the following sources:
      * <ol type="a">
      * <li>{@link ConfigSources#environmentVariables() environment variables};</li>
      * <li>{@link ConfigSources#systemProperties() system properties}</li>
@@ -401,44 +401,36 @@ public interface Config extends io.helidon.common.config.Config {
     }
 
     /**
-     * Either return the registered global config, or get a config from ServiceRegistry and register
-     * it as global.
-     * The instance returned may differ from {@link io.helidon.common.config.GlobalConfig#config()} in case the
-     * global config registered in not an instance of this type.
+     * Get the global config instance.
      * <p>
-     * NOTE: Behavior of this method will change in the next major version of Helidon, as we are discontinuing the support
-     * for {@link io.helidon.common.config.GlobalConfig} class; this method will then return the current config instance
-     * from {@link io.helidon.service.registry.ServiceRegistry#get(Class)}
+     * The global config instance is maintained in {@link io.helidon.service.registry.GlobalServiceRegistry} and is statically
+     * available.
+     * </p>
+     * <p>
+     * A custom instance can be registered before the first access using
+     * {@link io.helidon.service.registry.Services#set(Class, Object[])},
+     * </p>
      *
-     * @return global config instance, or {@link io.helidon.service.registry.ServiceRegistry} instance if not registered
+     * @return global config instance
      */
-    @SuppressWarnings("removal")
     static Config global() {
-        if (io.helidon.common.config.GlobalConfig.configured()) {
-            io.helidon.common.config.Config global = io.helidon.common.config.GlobalConfig.config();
-            if (global instanceof Config cfg) {
-                return cfg;
-            }
-            return BuilderImpl.GlobalConfigHolder.get();
-        }
-        Config config = Services.get(Config.class);
-        io.helidon.common.config.GlobalConfig.config(config, true);
-        return config;
+        return Services.get(Config.class);
     }
 
     /**
-     * Configure the provided configuration as the global configuration.
-     * This method registers also {@link io.helidon.common.config.GlobalConfig} instance.
+     * Set the global config instance.
+     * <p>
+     * NOTE: Setting the global config instance after the first access is a deprecated behavior and will result in WARNING
+     * log messages. Use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead.
+     * </p>
      *
      * @param config to configure as global
-     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} to register a static instance for the
-     *      global service registry; when using a custom service registry instance, set is on the registry configuration builder
+     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} to set the global config instance
      */
     @SuppressWarnings("removal")
     @Deprecated(forRemoval = true, since = "4.2.0")
     static void global(Config config) {
-        io.helidon.common.config.GlobalConfig.config(config, false);
-        BuilderImpl.GlobalConfigHolder.set(config);
+        io.helidon.common.config.GlobalConfig.config(() -> config, true);
     }
 
     /**
@@ -453,7 +445,7 @@ public interface Config extends io.helidon.common.config.Config {
     @SuppressWarnings("removal")
     @Deprecated(forRemoval = true, since = "4.3.0")
     static Config config(io.helidon.common.config.Config commonConfig) {
-        return ConfigProvider.wrapCommon(commonConfig);
+        return CommonConfig.wrap(commonConfig);
     }
 
     /**
@@ -813,12 +805,12 @@ public interface Config extends io.helidon.common.config.Config {
     /**
      * Typed value as a {@link io.helidon.common.config.ConfigValue} created from factory method.
      * To convert from String, you can use
-     * {@link #asString() config.asString()}{@link io.helidon.common.config.ConfigValue#as(java.util.function.Function) .as(Function)}.
+     * {@link #asString() config.asString()}{@link io.helidon.common.config.ConfigValue#as(java.util.function.Function)
+     * .as(Function)}.
      *
      * @param mapper method to create an instance from config
      * @param <T>    type
      * @return typed value
-     *
      * @deprecated use {@link #as(java.util.function.Function)} instead
      */
     @SuppressWarnings("removal")
@@ -903,7 +895,6 @@ public interface Config extends io.helidon.common.config.Config {
      * @param <T>    type of list elements
      * @return a typed list with values
      * @throws io.helidon.common.config.ConfigException in case the mapper fails to map the values
-     *
      * @deprecated use {@link #asList(java.util.function.Function)} instead
      */
     @SuppressWarnings("removal")
@@ -921,8 +912,8 @@ public interface Config extends io.helidon.common.config.Config {
      */
     default ConfigValue<Config> asNode() {
         return ConfigValues.create(this,
-                                   () -> exists() ? Optional.of(this) : Optional.empty(),
-                                   Config::asNode);
+                () -> exists() ? Optional.of(this) : Optional.empty(),
+                Config::asNode);
     }
 
     /**
@@ -1003,7 +994,7 @@ public interface Config extends io.helidon.common.config.Config {
      * Depending on context the key token is evaluated one by one:
      * <ul>
      * <li>in {@link Type#OBJECT} node the token represents a <strong>name of object member</strong>;</li>
-     * <li>in {@link Type#LIST} node the token represents an zero-based <strong>index of list element</strong>,
+     * <li>in {@link Type#LIST} node the token represents a zero-based <strong>index of list element</strong>,
      * an unsigned base-10 integer value, leading zeros are not allowed.</li>
      * </ul>
      * <p>
@@ -1026,8 +1017,8 @@ public interface Config extends io.helidon.common.config.Config {
          * If the key represents root config node it throws an exception.
          *
          * @return key that represents key of parent config node.
-         * @see #isRoot()
          * @throws java.lang.IllegalStateException in case you attempt to call this method on a root node
+         * @see #isRoot()
          */
         @Override
         Key parent();
@@ -1046,8 +1037,8 @@ public interface Config extends io.helidon.common.config.Config {
          * otherwise it returns {@code false}.
          *
          * @return {@code true} in case the key represents root node, otherwise {@code false}.
-         * @see #parent()
          * @throws io.helidon.config.ConfigException if not defined
+         * @see #parent()
          */
         @Override
         boolean isRoot();
@@ -1058,9 +1049,9 @@ public interface Config extends io.helidon.common.config.Config {
          * The name of a node is the last token in fully-qualified key.
          * Depending on context the name is evaluated one by one:
          * <ul>
-         * <li>in Type#OBJECT} node the name represents a <strong>name of object member</strong>;
+         * <li>in {@link Type#OBJECT} node the name represents a <strong>name of object member</strong>;
          * </li>
-         * <li>in Type#LIST} node the name represents an zero-based <strong>index of list
+         * <li>in {@link Type#LIST} node the name represents a zero-based <strong>index of list
          * element</strong>,
          * an unsigned base-10 integer value, leading zeros are not allowed.</li>
          * </ul>
@@ -1098,21 +1089,7 @@ public interface Config extends io.helidon.common.config.Config {
          * @return escaped name
          */
         static String escapeName(String name) {
-            if (!name.contains("~") && !name.contains(".")) {
-                return name;
-            }
-            StringBuilder sb = new StringBuilder();
-            char[] chars = name.toCharArray();
-            for (char ch : chars) {
-                if (ch == '~') {
-                    sb.append("~0");
-                } else if (ch == '.') {
-                    sb.append("~1");
-                } else {
-                    sb.append(ch);
-                }
-            }
-            return sb.toString();
+            return io.helidon.common.config.Config.Key.escapeName(name);
         }
 
         /**
@@ -1175,7 +1152,7 @@ public interface Config extends io.helidon.common.config.Config {
         /**
          * Returns {@code true} if this configuration node is existing a value node.
          * <p>
-         * Leaf configuration node does not contain any nested configuration sub-trees,
+         * Leaf configuration node does not contain any nested configuration subtrees,
          * but only a single associated value.
          *
          * @return {@code true} if the node is existing leaf node, {@code false} otherwise.
@@ -1330,7 +1307,7 @@ public interface Config extends io.helidon.common.config.Config {
          * Merging Strategy to use when more than one config source is used.
          *
          * @param strategy strategy to use, defaults to a strategy where a value for first source wins over values from later
-         *                sources
+         *                 sources
          * @return updated builder instance
          */
         Builder mergingStrategy(MergingStrategy strategy);
@@ -1469,7 +1446,8 @@ public interface Config extends io.helidon.common.config.Config {
          * with a value of the key with the token as a key.
          * <p>
          * By default, a value resolving filter is added to configuration. When this method is called, the filter will
-         *  not be added and value resolving will be disabled
+         * not be added and value resolving will be disabled
+         *
          * @return an updated builder instance
          */
         Builder disableValueResolving();
@@ -1743,7 +1721,7 @@ public interface Config extends io.helidon.common.config.Config {
             } catch (MetaConfigException e) {
                 System.getLogger(getClass().getName())
                         .log(System.Logger.Level.WARNING, "Failed to load SE meta-configuration,"
-                                + " please make sure it has correct format.", e);
+                                                          + " please make sure it has correct format.", e);
             }
 
             return this;
@@ -1820,7 +1798,7 @@ public interface Config extends io.helidon.common.config.Config {
          * <tr>
          *     <td>type</td>
          *     <td>&nbsp;</td>
-         *     <td>Type of a config source - a string supported by a provider.</td>
+         *     <td>Type of config source - a string supported by a provider.</td>
          *     <td>{@link io.helidon.config.spi.ConfigSourceProvider#create(String, Config)}</td>
          * </tr>
          * <tr>

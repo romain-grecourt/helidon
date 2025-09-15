@@ -32,7 +32,7 @@ import io.helidon.common.types.TypeName;
  * There is always a single instance of a registry available within an application that can be access through
  * methods on this class.
  * <p>
- * This instance can be explicitly configured using {@link #registry(ServiceRegistry)} in case you want to setup a
+ * This instance can be explicitly configured using {@link #registry(ServiceRegistry)} in case you want to set up a
  * registry instance yourself.
  * <p>
  * We support "late binding" of services using this class, such as by using {@link #set(Class, Object[])}.
@@ -194,6 +194,25 @@ public final class Services {
     }
 
     /**
+     * Test if a service instance matching the contract and qualifiers is available.
+     *
+     * @param contract   contract to look-up
+     * @param qualifiers qualifiers to find
+     * @return {@code true} if available, {@code false} otherwise
+     */
+    public static boolean contains(Class<?> contract, Qualifier... qualifiers) {
+        Objects.requireNonNull(contract);
+        ServiceRegistry registry = GlobalServiceRegistry.registry();
+        if (registry instanceof CoreServiceRegistry csr) {
+            return csr.contains(Lookup.builder()
+                    .addContract(contract)
+                    .qualifiers(Set.of(qualifiers))
+                    .build());
+        }
+        return false;
+    }
+
+    /**
      * Get the first instance of the contract, expecting the contract is available.
      *
      * @param contract contract to find
@@ -241,9 +260,9 @@ public final class Services {
 
         return GlobalServiceRegistry.registry()
                 .get(Lookup.builder()
-                             .addContract(contract)
-                             .qualifiers(Set.of(qualifiers))
-                             .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
     /**
@@ -289,9 +308,9 @@ public final class Services {
     public static <T> T get(TypeName contract, Qualifier... qualifiers) {
         return GlobalServiceRegistry.registry()
                 .get(Lookup.builder()
-                             .addContract(contract)
-                             .qualifiers(Set.of(qualifiers))
-                             .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
     /**
@@ -305,9 +324,9 @@ public final class Services {
     public static <T> List<T> all(Class<T> contract, Qualifier... qualifiers) {
         return GlobalServiceRegistry.registry()
                 .all(Lookup.builder()
-                             .addContract(contract)
-                             .qualifiers(Set.of(qualifiers))
-                             .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
     /**
@@ -334,9 +353,9 @@ public final class Services {
     public static <T> List<T> all(TypeName contract, Qualifier... qualifiers) {
         return GlobalServiceRegistry.registry()
                 .all(Lookup.builder()
-                             .addContract(contract)
-                             .qualifiers(Set.of(qualifiers))
-                             .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
     /**
@@ -392,9 +411,9 @@ public final class Services {
     public static <T> Optional<T> first(Class<T> contract, Qualifier... qualifiers) {
         return GlobalServiceRegistry.registry()
                 .first(Lookup.builder()
-                               .addContract(contract)
-                               .qualifiers(Set.of(qualifiers))
-                               .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
     /**
@@ -437,9 +456,9 @@ public final class Services {
     public static <T> Optional<T> first(TypeName contract, Qualifier... qualifiers) {
         return GlobalServiceRegistry.registry()
                 .first(Lookup.builder()
-                               .addContract(contract)
-                               .qualifiers(Set.of(qualifiers))
-                               .build());
+                        .addContract(contract)
+                        .qualifiers(Set.of(qualifiers))
+                        .build());
     }
 
 }

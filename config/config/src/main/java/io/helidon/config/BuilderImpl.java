@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -55,7 +54,7 @@ class BuilderImpl implements Config.Builder {
     /*
      * Config sources
      */
-    // sources "pre-sorted" - all user defined sources without priority will be ordered
+    // "pre-sorted" - all user defined sources without priority will be ordered
     // as added, as well as config sources from meta configuration
     private final List<ConfigSource> sources = new LinkedList<>();
     // to use when more than one source is configured
@@ -362,7 +361,7 @@ class BuilderImpl implements Config.Builder {
 
     private static void addBuiltInMapperServices(List<PrioritizedMapperProvider> prioritizedMappers) {
         // we must add default mappers using a known priority (200), so they can be overridden by services
-        // and yet we can still define a service that is only used after these (such as config beans)
+        // and yet, we can still define a service that is only used after these (such as config beans)
         prioritizedMappers
                 .add(new HelidonMapperWrapper(new InternalMapperProvider(ConfigMappers.essentialMappers(),
                                                                          "essential"), 1));
@@ -381,14 +380,9 @@ class BuilderImpl implements Config.Builder {
         disableSystemPropertiesSource();
         disableEnvironmentVariablesSource();
 
-        List<ConfigSource> sourceList = new LinkedList<>();
-
-        metaConfig.get("sources")
-                .asNodeList()
-                .ifPresent(list -> list.forEach(it -> sourceList.addAll(MetaConfig.configSource(it))));
-
-        sourceList.forEach(this::addSource);
-        sourceList.clear();
+        for (ConfigSource configSource : MetaConfig.configSources(metaConfig)) {
+            addSource(configSource);
+        }
 
         Config overrideConfig = metaConfig.get("override-source");
         if (overrideConfig.exists()) {
@@ -541,7 +535,7 @@ class BuilderImpl implements Config.Builder {
         /*
          * The filterProviders field holds a list of Function<Config,
          * ConfigFilter> so the filters can be instantiated later in
-         * ProviderImpl when we actually have a Config instance. Auto-loaded
+         * ProviderImpl when we actually have a Config instance. Autoloaded
          * filters can come from Java services that provide a ConfigFilter
          * instance. We need to convert the results from loading the services to
          * Function<Config, ConfigFilter> so we can store the functions into
@@ -610,23 +604,6 @@ class BuilderImpl implements Config.Builder {
                     .forEach(result::addAll);
 
             return result;
-        }
-    }
-
-    static final class GlobalConfigHolder {
-        private static final AtomicReference<Config> GLOBAL_CONFIG = new AtomicReference<>();
-
-        static Config get() {
-            Config config = GLOBAL_CONFIG.get();
-            if (config == null) {
-                config = Config.create();
-                GLOBAL_CONFIG.set(config);
-            }
-            return config;
-        }
-
-        static void set(Config config) {
-            GLOBAL_CONFIG.set(config);
         }
     }
 

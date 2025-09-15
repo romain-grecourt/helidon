@@ -49,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Tests for {@link OciExtension} and {@link OciConfig}.
  */
+@SuppressWarnings("removal")
 class OciExtensionTest {
     private ServiceRegistryManager registryManager;
 

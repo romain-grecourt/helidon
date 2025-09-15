@@ -21,14 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import io.helidon.common.LazyValue;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigValue;
 import io.helidon.http.HeaderValues;
 import io.helidon.http.NotFoundException;
 import io.helidon.http.media.EntityWriter;
 import io.helidon.http.media.jsonp.JsonpSupport;
-import io.helidon.service.registry.Services;
 import io.helidon.webserver.http.HttpRules;
 import io.helidon.webserver.http.HttpService;
 import io.helidon.webserver.http.SecureHandler;
@@ -47,7 +45,6 @@ class ConfigService implements HttpService {
     private final List<Pattern> secretPatterns;
     private final String profile;
     private final boolean permitAll;
-    private final LazyValue<Config> config = LazyValue.create(() -> Services.get(Config.class));
 
     ConfigService(List<Pattern> secretPatterns, String profile, boolean permitAll) {
         this.secretPatterns = secretPatterns;
@@ -68,7 +65,7 @@ class ConfigService implements HttpService {
     private void value(ServerRequest req, ServerResponse res) {
         String name = req.path().pathParameters().get("name");
 
-        ConfigValue<String> value = config.get().get(name).asString();
+        ConfigValue<String> value = Config.global().get(name).asString();
         if (value.isPresent()) {
             JsonObjectBuilder json = JSON.createObjectBuilder()
                     .add("name", name);
@@ -81,7 +78,7 @@ class ConfigService implements HttpService {
     }
 
     private void values(ServerRequest req, ServerResponse res) {
-        Map<String, String> mapOfValues = new HashMap<>(config.get().asMap()
+        Map<String, String> mapOfValues = new HashMap<>(Config.global().asMap()
                                                                 .orElseGet(Map::of));
 
         JsonObjectBuilder json = JSON.createObjectBuilder();

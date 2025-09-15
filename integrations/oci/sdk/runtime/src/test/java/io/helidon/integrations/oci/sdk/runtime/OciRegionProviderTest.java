@@ -18,26 +18,23 @@ package io.helidon.integrations.oci.sdk.runtime;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 
-import io.helidon.common.config.GlobalConfig;
 import io.helidon.common.types.AccessModifier;
 import io.helidon.common.types.ElementKind;
 import io.helidon.common.types.TypeName;
 import io.helidon.config.Config;
 import io.helidon.service.registry.Dependency;
 import io.helidon.service.registry.FactoryType;
+import io.helidon.service.registry.GlobalServiceRegistry;
 import io.helidon.service.registry.Lookup;
 import io.helidon.service.registry.Qualifier;
 import io.helidon.service.registry.Service;
 import io.helidon.service.registry.ServiceRegistry;
-import io.helidon.service.registry.ServiceRegistryConfig;
 import io.helidon.service.registry.ServiceRegistryException;
-import io.helidon.service.registry.ServiceRegistryManager;
+import io.helidon.service.registry.Services;
+import io.helidon.testing.junit5.Testing;
 
 import com.oracle.bmc.Region;
-import org.hamcrest.CoreMatchers;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import static io.helidon.common.testing.junit5.OptionalMatcher.optionalPresent;
@@ -46,42 +43,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SuppressWarnings("removal")
+@Testing.Test
 class OciRegionProviderTest {
-    static ServiceRegistryManager registryManager;
-    static ServiceRegistry registry;
-
-    @AfterAll
-    static void tearDown() {
-        if (registryManager != null) {
-            registryManager.shutdown();
-        }
-        registryManager = null;
-        registry = null;
-    }
-
-    void resetWith(Config config, ServiceRegistryConfig injectionConfig) {
-        if (registryManager != null) {
-            registryManager.shutdown();
-        }
-        registryManager = ServiceRegistryManager.create(injectionConfig);
-        OciExtension.serviceRegistry(registryManager);
-        registry = registryManager.registry();
-        GlobalConfig.config(() -> config, true);
-    }
 
     @Test
     void regionProviderService() {
         Config config = OciExtensionTest.createTestConfig(
                 OciExtensionTest.ociAuthConfigStrategies(OciAuthenticationDetailsProvider.VAL_AUTO),
                 OciExtensionTest.ociAuthSimpleConfig("tenant", "user", "phrase", "fp", null, null, "region"));
-        resetWith(config, ServiceRegistryConfig.create());
+        Services.set(Config.class, config);
 
-        Supplier<Region> regionSupplier = registryManager
-                .registry()
-                .supply(Lookup.builder().addContract(Region.class).build());
-        assertThrows(ServiceRegistryException.class,
-                     regionSupplier::get);
+        ServiceRegistry registry = GlobalServiceRegistry.registry();
+
+        assertThrows(ServiceRegistryException.class, () -> registry.get(Region.class));
 
         TypeName regionType = TypeName.create(Region.class);
 
@@ -98,16 +72,14 @@ class OciRegionProviderTest {
                         .addQualifier(Qualifier.createNamed("us-phoenix-1"))
                         .build());
 
-        Service.InjectionPointFactory<Region> regionProvider = registryManager
-                .registry()
-                .get(Lookup.builder()
-                             .addFactoryType(FactoryType.INJECTION_POINT)
-                             .addContract(Region.class)
-                             .build());
+        Service.InjectionPointFactory<Region> regionProvider = registry.get(Lookup.builder()
+                .addFactoryType(FactoryType.INJECTION_POINT)
+                .addContract(Region.class)
+                .build());
 
         Optional<Service.QualifiedInstance<Region>> regionInstance = regionProvider.first(query);
         assertThat(regionInstance, optionalPresent());
-        Service.QualifiedInstance<Region> regionQualifiedInstance = regionInstance.get();
+        Service.QualifiedInstance<Region> regionQualifiedInstance = regionInstance.orElseThrow();
         Region region = regionQualifiedInstance.get();
         Set<Qualifier> qualifiers = regionQualifiedInstance.qualifiers();
 

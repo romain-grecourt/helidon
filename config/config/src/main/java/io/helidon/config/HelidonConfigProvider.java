@@ -16,17 +16,14 @@
 
 package io.helidon.config;
 
-import io.helidon.common.LazyValue;
-
 /**
  * Service loader provider implementation for common config.
  *
  * @deprecated this class is only for common config, which will be removed
  */
 @Deprecated(forRemoval = true, since = "4.3.0")
-@SuppressWarnings("removal")
+@SuppressWarnings({"removal", "DeprecatedIsStillUsed"})
 public class HelidonConfigProvider implements io.helidon.common.config.spi.ConfigProvider {
-    private static final LazyValue<io.helidon.config.Config> DEFAULT_CONFIG = LazyValue.create(io.helidon.config.Config::create);
 
     /**
      * This should only be used by service loader and (possibly) tests.
@@ -38,7 +35,7 @@ public class HelidonConfigProvider implements io.helidon.common.config.spi.Confi
     }
 
     @Override
-    public io.helidon.common.config.Config create() {
-        return DEFAULT_CONFIG.get();
+    public Config create() {
+        return Config.create();
     }
 }

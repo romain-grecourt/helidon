@@ -24,11 +24,9 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import io.helidon.common.LazyValue;
-import io.helidon.common.config.GlobalConfig;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
-import io.helidon.service.registry.ServiceRegistry;
-import io.helidon.service.registry.ServiceRegistryManager;
+import io.helidon.service.registry.GlobalServiceRegistry;
 
 import com.oracle.bmc.auth.AbstractAuthenticationDetailsProvider;
 
@@ -118,6 +116,7 @@ import static java.util.function.Predicate.not;
  * href="https://docs.oracle.com/en-us/iaas/tools/java/latest/index.html"
  * target="_top">Oracle Cloud Infrastructure Java SDK</a>
  */
+@SuppressWarnings("removal")
 @Deprecated(forRemoval = true, since = "4.1.0")
 public final class OciExtension {
     /**
@@ -132,9 +131,6 @@ public final class OciExtension {
                                     .toList())
             .build());
 
-    // the field is not final (and volatile) so tests can replace the injection services used by this instance
-    private static volatile LazyValue<ServiceRegistryManager> injectionServices =
-            LazyValue.create(ServiceRegistryManager::create);
     private static String overrideOciConfigFile;
     private static volatile Supplier<io.helidon.common.config.Config> ociConfigSupplier;
     private static volatile Supplier<io.helidon.common.config.Config> fallbackConfigSupplier;
@@ -181,7 +177,7 @@ public final class OciExtension {
         }
 
         // fallback
-        config = GlobalConfig.config().get("oci");
+        config = Config.global().get("oci");
         if (isSufficientlyConfigured(config)) {
             return OciConfig.create(config);
         }
@@ -197,12 +193,7 @@ public final class OciExtension {
      * @see #configSupplier()
      */
     public static Supplier<? extends AbstractAuthenticationDetailsProvider> ociAuthenticationProvider() {
-        return () -> {
-            ServiceRegistry registry = injectionServices.get().registry();
-            Supplier<AbstractAuthenticationDetailsProvider> authProvider =
-                    registry.supply(AbstractAuthenticationDetailsProvider.class);
-            return authProvider.get();
-        };
+        return GlobalServiceRegistry.registry().supply(AbstractAuthenticationDetailsProvider.class);
     }
 
     /**
@@ -284,9 +275,5 @@ public final class OciExtension {
     // in support for testing a variant of oci.yaml
     static String ociConfigFilename() {
         return (overrideOciConfigFile == null) ? DEFAULT_OCI_GLOBAL_CONFIG_FILE : overrideOciConfigFile;
-    }
-
-    static void serviceRegistry(ServiceRegistryManager services) {
-        OciExtension.injectionServices = LazyValue.create(services);
     }
 }

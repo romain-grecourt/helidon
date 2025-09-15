@@ -33,7 +33,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import io.helidon.common.LazyValue;
 import io.helidon.common.LruCache;
@@ -182,6 +181,18 @@ class CoreServiceRegistry implements ServiceRegistry, Scopes {
         });
 
         this.serviceManagerForInstanceName = new InstanceNameServiceManager(this);
+    }
+
+    public boolean contains(Lookup lookup) {
+        for (ServiceInfo service : lookupServices(lookup)) {
+            if (Service.Singleton.TYPE.equals(service.scope())) {
+                ServiceManager<?> manager = servicesByDescriptor.get(service);
+                if (!manager.activator().instances(lookup).orElse(List.of()).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -657,8 +668,7 @@ class CoreServiceRegistry implements ServiceRegistry, Scopes {
         if (serviceInfos == null) {
             return List.of();
         }
-        return serviceInfos.stream()
-                .collect(Collectors.toList());
+        return new ArrayList<>(serviceInfos);
     }
 
     @SuppressWarnings("unchecked")

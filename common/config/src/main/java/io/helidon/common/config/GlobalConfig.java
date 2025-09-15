@@ -16,51 +16,27 @@
 
 package io.helidon.common.config;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.LazyValue;
 import io.helidon.service.registry.Services;
 
 /**
- * Global configuration can be set by a user before any Helidon code is invoked, to override default discovery
- * of configuration done by Helidon components.
+ * Global configuration facade.
  * <p>
- * If method {@link #config(java.util.function.Supplier)} is called before Helidon is started, Helidon will only use that
- * configuration.
+ * The global config instance is maintained in {@link io.helidon.service.registry.GlobalServiceRegistry} and is statically
+ * available.
+ * </p>
  * <p>
- * You may still use custom instances of configuration when using configurable APIs directly.
- * @deprecated Use {@link io.helidon.service.registry.Services#get(Class)}, or
- * {@link io.helidon.service.registry.ServiceRegistry#get(Class)} if you have an instance ready to obtain the "global"
- * configuration; in case you are writing a registry service, simply inject the config instance; use
- * {@link io.helidon.service.registry.Services#set(Class, Object[])} to use a custom instance of configuration, just make sure
- * it is registered before it is used the first time
+ * NOTE: Setting the global config instance after the first access is a deprecated behavior and will result in WARNING
+ * log messages. Use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead.
+ * </p>
+ *
+ * @deprecated The package {@link io.helidon.common.config} will be removed in the next major version.
  */
-@SuppressWarnings("removal")
 @Deprecated(forRemoval = true, since = "4.2.0")
+@SuppressWarnings({"removal", "DeprecatedIsStillUsed"})
 public final class GlobalConfig {
-    private static final System.Logger LOGGER = System.getLogger(GlobalConfig.class.getName());
-    private static final AtomicBoolean LOGGED_REGISTERED = new AtomicBoolean(false);
-    private static final Config EMPTY = Config.empty();
-    private static final AtomicBoolean GLOBAL_FROM_REGISTRY = new AtomicBoolean();
-    private static final LazyValue<Config> DEFAULT_CONFIG = LazyValue.create(() -> {
-        List<io.helidon.common.config.spi.ConfigProvider> providers =
-                HelidonServiceLoader.create(ServiceLoader.load(io.helidon.common.config.spi.ConfigProvider.class))
-                .asList();
-        // no implementations available, use empty configuration
-        if (providers.isEmpty()) {
-            return EMPTY;
-        }
-        // there is a valid provider, let's use its default configuration
-        return providers.getFirst()
-                .create();
-    });
-    private static final AtomicReference<Config> CONFIG = new AtomicReference<>();
 
     private GlobalConfig() {
     }
@@ -71,103 +47,70 @@ public final class GlobalConfig {
      * @return {@code true} if there is a global configuration set already, {@code false} otherwise
      */
     public static boolean configured() {
-        return CONFIG.get() != null;
+        return Services.contains(Config.class);
     }
 
     /**
-     * Global configuration instance.
+     * Get the "global" config instance.
+     * <p>
+     * The "global" config instance is maintained in {@link io.helidon.service.registry.GlobalServiceRegistry} and is statically
+     * available.
+     * </p>
+     * <p>
+     * A custom instance can be registered before the first access using
+     * {@link io.helidon.service.registry.Services#set(Class, Object[])},
+     * </p>
      *
-     * @return Helidon shared configuration instance if configured, or an empty configuration if not
+     * @return "global" config instance
      * @see #config(java.util.function.Supplier)
      * @see #config(java.util.function.Supplier, boolean)
      * @deprecated use {@link io.helidon.service.registry.Services#get(Class)} instead
      */
     @Deprecated(forRemoval = true, since = "4.2.0")
     public static Config config() {
-        if (GLOBAL_FROM_REGISTRY.get()) {
-            return Services.get(Config.class);
-        }
-
-        return configured() ? CONFIG.get() : DEFAULT_CONFIG.get();
+        return Services.get(Config.class);
     }
 
     /**
-     * Set global configuration if not yet configured.
+     * Set the global config instance.
+     * <p>
+     * NOTE: Setting the global config instance after the first access is a deprecated behavior and will result in WARNING
+     * log messages. Use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead.
+     * </p>
      *
-     * @param config configuration supplier to use if config is not yet configured
-     * @return used global configuration instance
-     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead
+     * @param supplier config supplier
+     * @return "global" config instance
+     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} to set the global config instance
      */
     @Deprecated(forRemoval = true, since = "4.2.0")
-    public static Config config(Supplier<Config> config) {
-        return config(config, false);
+    public static Config config(Supplier<Config> supplier) {
+        return config(supplier, false);
     }
 
     /**
-     * Set global configuration.
+     * Set the global config instance.
+     * <p>
+     * NOTE: Setting the global config instance after the first access is a deprecated behavior and will result in WARNING
+     * log messages. Use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead.
+     * </p>
      *
-     * @param config configuration to use
+     * @param supplier  config supplier
      * @param overwrite whether to overwrite an existing configured value
      * @return current global config
-     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} instead
+     * @deprecated use {@link io.helidon.service.registry.Services#set(Class, Object[])} to set the global config instance
      */
     @Deprecated(forRemoval = true, since = "4.2.0")
-    public static Config config(Supplier<Config> config, boolean overwrite) {
-        Objects.requireNonNull(config);
-
-        if (GLOBAL_FROM_REGISTRY.get()) {
-            return Services.get(Config.class);
-        }
-
+    public static Config config(Supplier<Config> supplier, boolean overwrite) {
+        Objects.requireNonNull(supplier);
         if (overwrite || !configured()) {
-            // there is a certain risk we may do this twice, if two components try to set global config in parallel.
-            // as the result was already unclear (as order matters), we do not need to be 100% thread safe here
-            Config configInstance = config.get();
-            config(configInstance, false);
-
+            Config config = supplier.get();
             try {
-                Services.set(Config.class, configInstance);
+                Services.set(Config.class, config);
             } catch (Exception e) {
-                Config registryInstance = Services.get(Config.class);
-                if (registryInstance != configInstance) {
-                    // only warn if the instance we are trying to set differs from the one in registry
-                    // if they are the same, somebody already used Services.get and then tried to register it as global
-                    if (LOGGED_REGISTERED.compareAndSet(false, true)) {
-                        // only log this once
-                        LOGGER.log(System.Logger.Level.WARNING,
-                                   "Attempting to set a config instance when it either was already "
-                                           + "set once, or it was already used by a component. "
-                                           + "This will not work in future versions of Helidon",
-                                   e);
-                    }
-                }
+                Services.get(ConfigRef.class).set(config);
             }
+            return config;
         }
-
-        return CONFIG.get();
-    }
-
-    /**
-     * This is a temporary method to allow backward compatibility. Please do not use this method.
-     *
-     * @param config config to set
-     * @param fromServiceRegistry whether the instance was explicitly configured by user, or obtained from service registry
-     */
-    @Deprecated(forRemoval = true, since = "4.3.0")
-    public static void config(Config config, boolean fromServiceRegistry) {
-        GLOBAL_FROM_REGISTRY.set(fromServiceRegistry);
-        CONFIG.set(config);
-    }
-
-    static Config create() {
-        var providers = HelidonServiceLoader.create(ServiceLoader.load(io.helidon.common.config.spi.ConfigProvider.class))
-                .asList();
-        // no implementations available, use empty configuration
-        if (providers.isEmpty()) {
-            return EMPTY;
-        }
-        // there is a valid provider, let's use its default configuration
-        return providers.getFirst()
-                .create();
+        return Services.get(Config.class);
     }
 }

@@ -52,7 +52,7 @@ public final class MpConfig {
 
         if (mpConfig instanceof MpConfigImpl) {
 
-            // If the mpConfig is based on an SE config (such as when we use meta configuration)pom.xml
+            // If the mpConfig is based on an SE config (such as when we use meta configuration)
             // we must reuse that se config instance
             Iterator<ConfigSource> configSources = mpConfig.getConfigSources().iterator();
             ConfigSource first = configSources.hasNext() ? configSources.next() : null;
@@ -61,7 +61,7 @@ public final class MpConfig {
 
                 // just make sure we are not returning an existing delegate, to prevent stack overflow
                 var unwrapped = ((MpHelidonConfigSource) first).unwrap();
-                if (!(unwrapped instanceof MpConfigProviderResolver.ConfigDelegate)) {
+                if (!(unwrapped instanceof CompositeConfig)) {
                     return unwrapped;
                 }
             }

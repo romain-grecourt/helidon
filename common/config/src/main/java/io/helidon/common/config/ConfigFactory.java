@@ -18,21 +18,44 @@ package io.helidon.common.config;
 
 import java.util.function.Supplier;
 
+import io.helidon.common.LazyValue;
 import io.helidon.common.Weight;
 import io.helidon.common.Weighted;
 import io.helidon.service.registry.Service;
+import io.helidon.service.registry.Services;
 
 /**
- * Default factory for configuration, that returns the current global config, or creates a new config instance.
- * This is to ensure we have a config instance in service registry even when there is no config implementation on classpath.
+ * Default {@link Config} factory.
+ * This factory exists as a fallback if there is no config implementation on classpath.
+ * <br>
+ * The created config instance is a delegate that honors the current "global" config.
  */
-@SuppressWarnings("removal")
-@Weight(Weighted.DEFAULT_WEIGHT - 20)
 @Service.Singleton
+@Weight(Weighted.DEFAULT_WEIGHT - 20)
+@SuppressWarnings({"removal", "ClassCanBeRecord"})
 class ConfigFactory implements Supplier<Config> {
+
+    private final LazyValue<Config> defaultConfig;
+    private final ConfigRef ref;
+
+    @Service.Inject
+    ConfigFactory(io.helidon.common.config.spi.ConfigProvider provider, ConfigRef ref) {
+        this.defaultConfig = LazyValue.create(provider::create);
+        this.ref = ref;
+    }
+
     @Override
     public Config get() {
-        // once GlobalConfig gets removed, we just return Config.create()
-        return GlobalConfig.configured() ? GlobalConfig.config() : Config.create();
+        return new ConfigDelegate(this::delegate);
+    }
+
+    private Config delegate() {
+        return ref.isSet() ? ref.get() : defaultConfig.get();
+    }
+
+    static Config createDefault() {
+        return Services.first(io.helidon.common.config.spi.ConfigProvider.class)
+                .map(io.helidon.common.config.spi.ConfigProvider::create)
+                .orElse(Config.empty());
     }
 }
