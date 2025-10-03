@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
-import io.helidon.tests.integration.dbclient.common.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote observability test.
- */
 final class PostgreSQLObservabilityRemoteTestIT extends PostgreSQLRemoteTest implements ObservabilityTest {
 
     PostgreSQLObservabilityRemoteTestIT() {

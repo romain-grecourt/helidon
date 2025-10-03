@@ -21,16 +21,15 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.ServiceLoader;
 
 import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.config.GlobalConfig;
 import io.helidon.common.context.Contexts;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.spi.ServerFeature;
 import io.helidon.webserver.testing.junit5.spi.DirectJunitExtension;
+import io.helidon.webserver.testing.junit5.spi.DirectJunitExtension.ParamHandler;
 
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -42,9 +41,12 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
+import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
+
 /**
  * JUnit5 extension to support Helidon WebServer in tests.
  */
+@SuppressWarnings({"removal", "deprecation"})
 class HelidonRoutingJunitExtension extends JunitExtensionBase
         implements BeforeAllCallback,
                    AfterAllCallback,
@@ -65,31 +67,32 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
         super.beforeAll(context);
 
         Class<?> testClass = context.getRequiredTestClass();
-        super.testClass(testClass);
         RoutingTest testAnnot = testClass.getAnnotation(RoutingTest.class);
         if (testAnnot == null) {
-            throw new IllegalStateException("Invalid test class for this extension: " + testClass + ", missing "
-                                                    + RoutingTest.class.getName() + " annotation");
+            throw new IllegalStateException(
+                    "Test class %s is not annotated with %s"
+                            .formatted(testClass, RoutingTest.class));
         }
 
+        var config = io.helidon.common.config.GlobalConfig.config().get("server");
         WebServerConfig.Builder builder = WebServer.builder()
-                .config(GlobalConfig.config().get("server"))
+                .config(config)
                 .host("localhost");
 
         extensions.forEach(it -> it.beforeAll(context));
 
-        setupFeatures(builder);
-        setupServer(builder);
+        setupFeatures(builder, testClass);
+        setupServer(builder, testClass);
 
         serverConfig = builder.buildPrototype();
 
-        initRoutings();
+        initRoutings(testClass);
     }
 
     @Override
-    public void afterAll(ExtensionContext context) {
-        extensions.forEach(it -> it.afterAll(context));
-        super.afterAll(context);
+    public void afterAll(ExtensionContext ctx) {
+        extensions.forEach(it -> it.afterAll(ctx));
+        super.afterAll(ctx);
     }
 
     @Override
@@ -135,65 +138,60 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
                 .orElseGet(Contexts::globalContext)
                 .get(paramType)
                 .orElseThrow(() -> new ParameterResolutionException("Failed to resolve parameter of type "
-                                                                            + paramType.getName()));
+                                                                    + paramType.getName()));
     }
 
-    private void initRoutings() {
+    private void initRoutings(Class<?> testClass) {
         List<ServerFeature> features = serverConfig.features();
-
-        Junit5Util.withStaticMethods(testClass(), SetUpRoute.class, (
-                (setUpRoute, method) -> {
-                    String socketName = setUpRoute.value();
-                    SetUpRouteHandler methodConsumer = createRoutingMethodCall(features, method);
-                    methodConsumer.handle(socketName);
-                }));
+        withStaticMethods(testClass, SetUpRoute.class, (annot, method) -> {
+            String socket = annot.value();
+            handleParams(features, method, socket);
+        });
     }
 
-    private SetUpRouteHandler createRoutingMethodCall(List<ServerFeature> features, Method method) {
-
-        // @SetUpRoute may have parameters handled by different extensions
-        List<DirectJunitExtension.ParamHandler> handlers = new ArrayList<>();
+    private List<ParamHandler<?>> handlers(Method method, List<ServerFeature> features) {
+        List<ParamHandler<?>> handlers = new ArrayList<>();
         for (Parameter parameter : method.getParameters()) {
-            // for each parameter, resolve parameter handler
             boolean found = false;
+            Class<?> paramType = parameter.getType();
             for (DirectJunitExtension extension : extensions) {
-                Optional<? extends DirectJunitExtension.ParamHandler> paramHandler =
-                        extension.setUpRouteParamHandler(features, parameter.getType());
-                if (paramHandler.isPresent()) {
-                    // we care about the extension with the highest priority only
-                    handlers.add(paramHandler.get());
+                var handler = extension.setUpRouteParamHandler(features, paramType).orElse(null);
+                if (handler != null) {
+                    handlers.add(handler);
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                throw new IllegalArgumentException("Method " + method + " has a parameter " + parameter.getType() + " that is "
-                                                           + "not supported by any available testing extension");
+                throw new IllegalArgumentException(
+                        "Method %s has a parameter %s that is not supported"
+                                .formatted(method, paramType));
             }
         }
-        return socketName -> {
-            Object[] values = new Object[handlers.size()];
-
-            for (int i = 0; i < handlers.size(); i++) {
-                values[i] = handlers.get(i).get(socketName);
-            }
-
-            try {
-                method.setAccessible(true);
-                method.invoke(null, values);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalStateException("Cannot invoke @SetUpRoute method", e);
-            }
-
-            for (int i = 0; i < values.length; i++) {
-                Object value = values[i];
-                DirectJunitExtension.ParamHandler handler = handlers.get(i);
-                handler.handle(method, socketName, value);
-            }
-        };
+        return handlers;
     }
 
-    private interface SetUpRouteHandler {
-        void handle(String socketName);
+    @SuppressWarnings("unchecked")
+    private static <T> void handleParam(ParamHandler<T> handler, Method method, String socket, Object value) {
+        handler.handle(method, socket, (T) value);
+    }
+
+    private void handleParams(List<ServerFeature> features, Method method, String socket) {
+        List<ParamHandler<?>> handlers = handlers(method, features);
+        Object[] values = new Object[handlers.size()];
+        for (int i = 0; i < handlers.size(); i++) {
+            values[i] = handlers.get(i).get(socket);
+        }
+
+        try {
+            method.setAccessible(true);
+            method.invoke(null, values);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new IllegalStateException("Cannot invoke @SetUpRoute method", e);
+        }
+
+        for (int i = 0; i < values.length; i++) {
+            handleParam(handlers.get(i), method, socket, values[i]);
+        }
     }
 }

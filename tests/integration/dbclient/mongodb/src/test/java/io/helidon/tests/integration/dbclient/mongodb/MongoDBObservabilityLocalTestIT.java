@@ -15,10 +15,11 @@
  */
 package io.helidon.tests.integration.dbclient.mongodb;
 
-import io.helidon.tests.integration.dbclient.common.DbClientITMain;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTest;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTestImpl;
+import io.helidon.config.Config;
+import io.helidon.service.registry.Services;
+import io.helidon.tests.integration.dbclient.common.TestFactories;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
 import io.helidon.webclient.http1.Http1Client;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.testing.junit5.ServerTest;
@@ -26,55 +27,62 @@ import io.helidon.webserver.testing.junit5.SetUpServer;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Local observability test.
- */
+@Testcontainers(disabledWithoutDocker = true)
 @ServerTest
-final class MongoDBObservabilityLocalTestIT extends MongoDBLocalTest implements ObservabilityTest {
+final class MongoDBObservabilityLocalTestIT implements ObservabilityTest, HttpObservabilityTest {
 
-    private static Http1Client client;
-    private static LocalTextContext<ObservabilityTestImpl> ctx;
+    @Container
+    static final GenericContainer<?> CONTAINER = MongoDBTestContainer.CONTAINER;
+
+    private final ObservabilityTest delegate = new ObservabilityTest.TestImpl();
+    private final HttpObservabilityTest httpDelegate;
+
+    MongoDBObservabilityLocalTestIT(Http1Client client) {
+        this.httpDelegate = new HttpObservabilityTest.TestImpl(client);
+    }
 
     @BeforeAll
-    static void beforeAll(Http1Client aClient) {
-        client = aClient;
+    static void setUp() {
+        Services.set(Config.class, TestFactories.config(MongoDBTestContainer.config()));
     }
 
     @SetUpServer
-    static void setUp(WebServerConfig.Builder builder) {
-        ctx = context((db, c) -> new ObservabilityTestImpl(db, c, () -> client));
-        DbClientITMain.setup(ctx.db(), ctx.config(), builder);
+    static void setUpRoutes(WebServerConfig.Builder server) {
+        Main.setup(server);
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        ctx.delegate().testHttpHealthNoDetails();
+        httpDelegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        ctx.delegate().testHttpHealthDetails();
+        httpDelegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        ctx.delegate().testHttpMetrics();
+        httpDelegate.testHttpMetrics();
     }
 
     @Test
     @Override
     public void testHealthCheck() {
-        ctx.delegate().testHealthCheck();
+        delegate.testHealthCheck();
     }
 
     @Test
     @Override
     public void testHealthCheckWithName() {
-        ctx.delegate().testHealthCheckWithName();
+        delegate.testHealthCheckWithName();
     }
 
     @Override
@@ -92,12 +100,12 @@ final class MongoDBObservabilityLocalTestIT extends MongoDBLocalTest implements 
     @Test
     @Override
     public void testHealthCheckWithCustomNamedQuery() {
-        ctx.delegate().testHealthCheckWithCustomNamedQuery();
+        delegate.testHealthCheckWithCustomNamedQuery();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomQuery() {
-        ctx.delegate().testHealthCheckWithCustomQuery();
+        delegate.testHealthCheckWithCustomQuery();
     }
 }

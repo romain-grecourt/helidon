@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.mysql;
 
-import io.helidon.tests.integration.dbclient.common.StatementTest;
+import io.helidon.tests.integration.dbclient.common.tests.StatementTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote statement test.
- */
 final class MySQLStatementRemoteTestIT extends MySQLRemoteTest implements StatementTest {
 
     MySQLStatementRemoteTestIT() {

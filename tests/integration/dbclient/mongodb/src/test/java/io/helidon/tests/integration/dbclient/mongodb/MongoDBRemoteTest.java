@@ -18,7 +18,7 @@ package io.helidon.tests.integration.dbclient.mongodb;
 import java.nio.file.Path;
 import java.util.Map;
 
-import io.helidon.tests.integration.dbclient.common.RemoteTest;
+import io.helidon.tests.integration.dbclient.common.tests.RemoteTest;
 import io.helidon.tests.integration.harness.ProcessRunner;
 import io.helidon.tests.integration.harness.ProcessRunner.ExecMode;
 import io.helidon.tests.integration.harness.WaitStrategy;
@@ -29,9 +29,6 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Base class for the remote tests.
- */
 @Testcontainers(disabledWithoutDocker = true)
 @TestProcesses
 abstract class MongoDBRemoteTest extends RemoteTest {
@@ -44,6 +41,7 @@ abstract class MongoDBRemoteTest extends RemoteTest {
             .finalName("helidon-tests-integration-dbclient-mongodb")
             .properties(Map.of("java.util.logging.config.file", Path.of("target/classes/logging.properties").toAbsolutePath()))
             .properties(MongoDBTestContainer::config)
+            .port(0)
             .waitingFor(WaitStrategy.waitForPort());
 
     /**

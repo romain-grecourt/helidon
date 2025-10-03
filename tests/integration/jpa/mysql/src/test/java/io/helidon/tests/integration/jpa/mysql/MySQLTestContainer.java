@@ -25,10 +25,15 @@ import org.testcontainers.utility.DockerImageName;
  */
 abstract class MySQLTestContainer {
 
-    private static final DockerImageName IMAGE = DockerImageName.parse("container-registry.oracle.com/mysql/community-server")
-            .asCompatibleSubstituteFor("mysql");
+    private static final boolean IS_ARM = System.getProperty("os.arch", "amd64").equals("aarch64");
+    private static final DockerImageName X86_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0")
+                    .asCompatibleSubstituteFor("mysql");
+    private static final DockerImageName ARM_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0-aarch64")
+                    .asCompatibleSubstituteFor("mysql");
 
-    static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(IMAGE)
+    static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(IS_ARM ? ARM_IMAGE : X86_IMAGE)
             .withPassword("mysql123");
 
     static Map<String, String> config() {

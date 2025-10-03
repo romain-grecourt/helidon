@@ -28,6 +28,10 @@
     <artifactId>helidon-tests-integration-dbclient-mysql</artifactId>
     <name>Helidon Tests Integration DbClient MySQL</name>
 
+    <properties>
+        <mainClass>io.helidon.tests.integration.dbclient.mysql.Main</mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.helidon.dbclient</groupId>

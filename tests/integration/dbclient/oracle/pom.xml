@@ -28,6 +28,10 @@
     <artifactId>helidon-tests-integration-dbclient-oracle</artifactId>
     <name>Helidon Tests Integration DbClient Oracle</name>
 
+    <properties>
+        <mainClass>io.helidon.tests.integration.dbclient.oracle.Main</mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.helidon.dbclient</groupId>

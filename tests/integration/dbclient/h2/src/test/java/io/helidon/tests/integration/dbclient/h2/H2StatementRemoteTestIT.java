@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import io.helidon.tests.integration.dbclient.common.StatementTest;
+import io.helidon.tests.integration.dbclient.common.tests.StatementTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote statement test.
- */
 final class H2StatementRemoteTestIT extends H2RemoteTest implements StatementTest {
 
     H2StatementRemoteTestIT() {

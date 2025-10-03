@@ -15,89 +15,72 @@
  */
 package io.helidon.tests.integration.dbclient.mysql;
 
-import io.helidon.tests.integration.dbclient.common.DbClientITMain;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTest;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTestImpl;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
 import io.helidon.webclient.http1.Http1Client;
-import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.testing.junit5.ServerTest;
-import io.helidon.webserver.testing.junit5.SetUpServer;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * Local observability test.
- */
 @ServerTest
 final class MySQLObservabilityLocalTestIT extends MySQLLocalTest implements ObservabilityTest {
 
-    private static Http1Client client;
-    private static LocalTextContext<ObservabilityTestImpl> ctx;
+    private final ObservabilityTest delegate;
 
-    @BeforeAll
-    static void beforeAll(Http1Client aClient) {
-        client = aClient;
-    }
-
-    @SetUpServer
-    static void setUp(WebServerConfig.Builder builder) {
-        ctx = context((db, c) -> new ObservabilityTestImpl(db, c, () -> client));
-        DbClientITMain.setup(ctx.db(), ctx.config(), builder);
+    MySQLObservabilityLocalTestIT(Http1Client client) {
+        this.delegate = new ObservabilityTest.TestImpl(client);
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        ctx.delegate().testHttpHealthNoDetails();
+        delegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        ctx.delegate().testHttpHealthDetails();
+        delegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        ctx.delegate().testHttpMetrics();
+        delegate.testHttpMetrics();
     }
 
     @Test
     @Override
     public void testHealthCheck() {
-        ctx.delegate().testHealthCheck();
+        delegate.testHealthCheck();
     }
 
     @Test
     @Override
     public void testHealthCheckWithName() {
-        ctx.delegate().testHealthCheckWithName();
+        delegate.testHealthCheckWithName();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomNamedDML() {
-        ctx.delegate().testHealthCheckWithCustomNamedDML();
+        delegate.testHealthCheckWithCustomNamedDML();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomDML() {
-        ctx.delegate().testHealthCheckWithCustomDML();
+        delegate.testHealthCheckWithCustomDML();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomNamedQuery() {
-        ctx.delegate().testHealthCheckWithCustomNamedQuery();
+        delegate.testHealthCheckWithCustomNamedQuery();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomQuery() {
-        ctx.delegate().testHealthCheckWithCustomQuery();
+        delegate.testHealthCheckWithCustomQuery();
     }
 }

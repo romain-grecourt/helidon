@@ -18,16 +18,13 @@ package io.helidon.tests.integration.dbclient.h2;
 import java.nio.file.Path;
 import java.util.Map;
 
-import io.helidon.tests.integration.dbclient.common.RemoteTest;
+import io.helidon.tests.integration.dbclient.common.tests.RemoteTest;
 import io.helidon.tests.integration.harness.ProcessRunner;
 import io.helidon.tests.integration.harness.ProcessRunner.ExecMode;
 import io.helidon.tests.integration.harness.WaitStrategy;
 import io.helidon.tests.integration.harness.TestProcess;
 import io.helidon.tests.integration.harness.TestProcesses;
 
-/**
- * Base class for the remote tests.
- */
 @TestProcesses
 abstract class H2RemoteTest extends RemoteTest {
 
@@ -35,13 +32,9 @@ abstract class H2RemoteTest extends RemoteTest {
     static final ProcessRunner PROCESS_RUNNER = ProcessRunner.of(ExecMode.CLASS_PATH)
             .finalName("helidon-tests-integration-dbclient-h2")
             .properties(Map.of("java.util.logging.config.file", Path.of("target/classes/logging.properties").toAbsolutePath()))
+            .port(0)
             .waitingFor(WaitStrategy.waitForPort());
 
-    /**
-     * Create a new instance.
-     *
-     * @param path base path
-     */
     @SuppressWarnings("resource")
     H2RemoteTest(String path) {
         super(path, PROCESS_RUNNER.process().port());

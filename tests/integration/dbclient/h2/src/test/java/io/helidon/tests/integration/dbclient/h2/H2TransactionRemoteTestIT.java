@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import io.helidon.tests.integration.dbclient.common.TransactionTest;
+import io.helidon.tests.integration.dbclient.common.tests.TransactionTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote transaction test.
- */
 final class H2TransactionRemoteTestIT extends H2RemoteTest implements TransactionTest {
 
     H2TransactionRemoteTestIT() {

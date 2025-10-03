@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,25 @@
 package io.helidon.tests.integration.dbclient.mysql;
 
 import java.util.Map;
-import java.util.function.Supplier;
 
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Database container utility.
- */
 abstract class MySQLTestContainer {
 
-    private static final DockerImageName IMAGE = DockerImageName.parse("container-registry.oracle.com/mysql/community-server")
-            .asCompatibleSubstituteFor("mysql");
+    private static final boolean IS_ARM = System.getProperty("os.arch", "amd64").equals("aarch64");
+    private static final DockerImageName X86_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0")
+                    .asCompatibleSubstituteFor("mysql");
+    private static final DockerImageName ARM_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0-aarch64")
+                    .asCompatibleSubstituteFor("mysql");
 
-    static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(IMAGE)
-            .withUsername("test")
-            .withPassword("mysql123")
-            .withDatabaseName("test");
+    static final MySQLContainer<?> CONTAINER = new MySQLContainer<>(IS_ARM ? ARM_IMAGE : X86_IMAGE)
+            .withPassword("mysql123");
 
-    static Map<String, Supplier<?>> config() {
-        return Map.of("db.connection.url", CONTAINER::getJdbcUrl);
+    static Map<String, String> config() {
+        return Map.of("db.connection.url", CONTAINER.getJdbcUrl());
     }
 
     private MySQLTestContainer() {

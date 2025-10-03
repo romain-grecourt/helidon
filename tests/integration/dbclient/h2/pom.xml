@@ -28,6 +28,10 @@
     <artifactId>helidon-tests-integration-dbclient-h2</artifactId>
     <name>Helidon Tests Integration DbClient H2</name>
 
+    <properties>
+        <mainClass>io.helidon.tests.integration.dbclient.h2.Main</mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.helidon.dbclient</groupId>

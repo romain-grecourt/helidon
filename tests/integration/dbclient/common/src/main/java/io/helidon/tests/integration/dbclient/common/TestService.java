@@ -17,13 +17,13 @@ package io.helidon.tests.integration.dbclient.common;
 
 import java.lang.reflect.InvocationTargetException;
 
-import io.helidon.common.context.Contexts;
-import io.helidon.config.Config;
-import io.helidon.dbclient.DbClient;
 import io.helidon.http.InternalServerException;
 import io.helidon.http.NotFoundException;
-import io.helidon.webclient.http1.Http1Client;
-import io.helidon.webserver.WebServer;
+import io.helidon.tests.integration.dbclient.common.tests.InsertHandler;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
+import io.helidon.tests.integration.dbclient.common.tests.SimpleTest;
+import io.helidon.tests.integration.dbclient.common.tests.StatementTest;
+import io.helidon.tests.integration.dbclient.common.tests.TransactionTest;
 import io.helidon.webserver.http.HttpRules;
 import io.helidon.webserver.http.HttpService;
 import io.helidon.webserver.http.ServerRequest;
@@ -32,31 +32,23 @@ import io.helidon.webserver.http.ServerResponse;
 import static java.util.Objects.requireNonNullElse;
 
 /**
- * Service to expose all tests.
+ * Http service to invoke the tests remotely.
  */
-final class TestService implements HttpService {
+public final class TestService implements HttpService {
 
-    private final TransactionTestImpl transaction;
-    private final StatementTestImpl statement;
-    private final SimpleTestImpl simple;
-    private final MiscTestImpl misc;
-    private final ObservabilityTestImpl observability;
+    private final TransactionTest.TestImpl transaction;
+    private final StatementTest.TestImpl statement;
+    private final SimpleTest.TestImpl simple;
+    private final MiscTest.TestImpl misc;
 
-    TestService(DbClient db, Config config) {
-        transaction = new TransactionTestImpl(db, config);
-        statement = new StatementTestImpl(db, config);
-        simple = new SimpleTestImpl(db, config);
-        misc = new MiscTestImpl(db, config);
-        observability = new ObservabilityTestImpl(db, config, this::client);
-    }
-
-    private Http1Client client() {
-        return Contexts.context()
-                .flatMap(c -> c.get(WebServer.class))
-                .map(server -> Http1Client.builder()
-                        .baseUri("http://localhost:" + server.port())
-                        .build())
-                .orElseThrow(() -> new IllegalStateException("Unable to get server instance from current context"));
+    /**
+     * Create a new instance.
+     */
+    public TestService(InsertHandler insertHandler) {
+        transaction = new TransactionTest.TestImpl(insertHandler);
+        simple = new SimpleTest.TestImpl(insertHandler);
+        statement = new StatementTest.TestImpl();
+        misc = new MiscTest.TestImpl();
     }
 
     @Override
@@ -65,8 +57,7 @@ final class TestService implements HttpService {
                 .get("/transaction/{testName}", this::transaction)
                 .get("/statement/{testName}", this::statement)
                 .get("/simple/{testName}", this::simple)
-                .get("/misc/{testName}", this::misc)
-                .get("/observability/{testName}", this::observability);
+                .get("/misc/{testName}", this::misc);
     }
 
     private void transaction(ServerRequest req, ServerResponse res) {
@@ -79,15 +70,10 @@ final class TestService implements HttpService {
 
     private void simple(ServerRequest req, ServerResponse res) {
         invokeTest(simple, req, res);
-
     }
 
     private void misc(ServerRequest req, ServerResponse res) {
         invokeTest(misc, req, res);
-    }
-
-    private void observability(ServerRequest req, ServerResponse res) {
-        invokeTest(observability, req, res);
     }
 
     private static void invokeTest(Object o, ServerRequest req, ServerResponse res) {

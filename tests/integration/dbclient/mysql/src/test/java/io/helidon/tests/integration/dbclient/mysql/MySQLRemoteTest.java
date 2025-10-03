@@ -18,7 +18,7 @@ package io.helidon.tests.integration.dbclient.mysql;
 import java.nio.file.Path;
 import java.util.Map;
 
-import io.helidon.tests.integration.dbclient.common.RemoteTest;
+import io.helidon.tests.integration.dbclient.common.tests.RemoteTest;
 import io.helidon.tests.integration.harness.ProcessRunner;
 import io.helidon.tests.integration.harness.ProcessRunner.ExecMode;
 import io.helidon.tests.integration.harness.WaitStrategy;
@@ -29,9 +29,6 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Base class for the remote tests.
- */
 @Testcontainers(disabledWithoutDocker = true)
 @TestProcesses
 abstract class MySQLRemoteTest extends RemoteTest {
@@ -46,11 +43,6 @@ abstract class MySQLRemoteTest extends RemoteTest {
             .properties(MySQLTestContainer::config)
             .waitingFor(WaitStrategy.waitForPort());
 
-    /**
-     * Create a new instance.
-     *
-     * @param path base path
-     */
     @SuppressWarnings("resource")
     MySQLRemoteTest(String path) {
         super(path, PROCESS_RUNNER.process().port());

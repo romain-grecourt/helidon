@@ -15,26 +15,26 @@
  */
 package io.helidon.tests.integration.dbclient.oracle;
 
-import java.util.function.BiFunction;
 
 import io.helidon.config.Config;
-import io.helidon.dbclient.DbClient;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
+import io.helidon.service.registry.Services;
+import io.helidon.testing.junit5.Testing;
+import io.helidon.tests.integration.dbclient.common.TestFactories;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Base class for the local tests.
- */
 @Testcontainers(disabledWithoutDocker = true)
+@Testing.Test
 abstract class OracleLocalTest {
 
     @Container
     static final GenericContainer<?> CONTAINER = OracleTestContainer.CONTAINER;
 
-    static <T> LocalTextContext<T> context(BiFunction<DbClient, Config, T> factory) {
-        return LocalTextContext.create(factory, OracleTestContainer.config(), true);
+    @BeforeAll
+    static void setUp() {
+        Services.set(Config.class, TestFactories.config(OracleTestContainer.config()));
     }
 }

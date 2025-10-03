@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.mongodb;
 
-import io.helidon.tests.integration.dbclient.common.SimpleTest;
+import io.helidon.tests.integration.dbclient.common.tests.SimpleTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote simple test.
- */
 final class MongoDBSimpleRemoteTestIT extends MongoDBRemoteTest implements SimpleTest {
 
     MongoDBSimpleRemoteTestIT() {

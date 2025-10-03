@@ -31,7 +31,6 @@
     <packaging>pom</packaging>
 
     <properties>
-        <mainClass>io.helidon.tests.integration.dbclient.common.DbClientITMain</mainClass>
         <redirectTestOutputToFile>true</redirectTestOutputToFile>
     </properties>
 

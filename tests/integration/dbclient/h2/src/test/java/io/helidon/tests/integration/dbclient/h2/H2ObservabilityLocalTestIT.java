@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,72 +15,65 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import io.helidon.tests.integration.dbclient.common.DbClientITMain;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTest;
-import io.helidon.tests.integration.dbclient.common.ObservabilityTestImpl;
+import io.helidon.dbclient.DbClient;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
 import io.helidon.webclient.http1.Http1Client;
-import io.helidon.webserver.WebServerConfig;
+import io.helidon.webserver.http.HttpRouting;
 import io.helidon.webserver.testing.junit5.ServerTest;
-import io.helidon.webserver.testing.junit5.SetUpServer;
+import io.helidon.webserver.testing.junit5.SetUpRoute;
 
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * Local observability test.
- */
 @ServerTest
-final class H2ObservabilityLocalTestIT extends H2LocalTest implements ObservabilityTest {
+final class H2ObservabilityLocalTestIT implements ObservabilityTest, HttpObservabilityTest {
 
-    private static LocalTextContext<ObservabilityTestImpl> ctx;
-    private static Http1Client client;
+    private final ObservabilityTest delegate = new ObservabilityTest.TestImpl();
+    private final HttpObservabilityTest httpDelegate;
 
-    @BeforeAll
-    static void beforeAll(Http1Client aClient) {
-        client = aClient;
+    H2ObservabilityLocalTestIT(Http1Client client) {
+        this.httpDelegate = new HttpObservabilityTest.TestImpl(client);
     }
 
-    @SetUpServer
-    static void setUp(WebServerConfig.Builder builder) {
-        ctx = context((db, c) -> new ObservabilityTestImpl(db, c, () -> client));
-        DbClientITMain.setup(ctx.db(), ctx.config(), builder);
+    @SetUpRoute
+    static void setUp(HttpRouting.Builder routing) {
+        Main.routing(routing);
     }
 
     @AfterAll
-    static void tearDown() {
-        shutdown(ctx);
+    static void tearDown(DbClient db) {
+        H2LocalTest.shutdown(db);
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        ctx.delegate().testHttpHealthNoDetails();
+        httpDelegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        ctx.delegate().testHttpHealthDetails();
+        httpDelegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        ctx.delegate().testHttpMetrics();
+        httpDelegate.testHttpMetrics();
     }
 
     @Test
     @Override
     public void testHealthCheck() {
-        ctx.delegate().testHealthCheck();
+        delegate.testHealthCheck();
     }
 
     @Test
     @Override
     public void testHealthCheckWithName() {
-        ctx.delegate().testHealthCheckWithName();
+        delegate.testHealthCheckWithName();
     }
 
     @Override
@@ -98,12 +91,12 @@ final class H2ObservabilityLocalTestIT extends H2LocalTest implements Observabil
     @Test
     @Override
     public void testHealthCheckWithCustomNamedQuery() {
-        ctx.delegate().testHealthCheckWithCustomNamedQuery();
+        delegate.testHealthCheckWithCustomNamedQuery();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomQuery() {
-        ctx.delegate().testHealthCheckWithCustomQuery();
+        delegate.testHealthCheckWithCustomQuery();
     }
 }

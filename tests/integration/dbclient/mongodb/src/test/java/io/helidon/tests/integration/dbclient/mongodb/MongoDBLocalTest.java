@@ -15,26 +15,28 @@
  */
 package io.helidon.tests.integration.dbclient.mongodb;
 
-import java.util.function.BiFunction;
+import java.util.HashMap;
+import java.util.Map;
 
 import io.helidon.config.Config;
-import io.helidon.dbclient.DbClient;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
+import io.helidon.service.registry.Services;
+import io.helidon.testing.junit5.Testing;
+import io.helidon.tests.integration.dbclient.common.TestFactories;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Base class for the local tests.
- */
 @Testcontainers(disabledWithoutDocker = true)
+@Testing.Test
 abstract class MongoDBLocalTest {
 
     @Container
     static final GenericContainer<?> CONTAINER = MongoDBTestContainer.CONTAINER;
 
-    static <T> LocalTextContext<T> context(BiFunction<DbClient, Config, T> factory) {
-        return LocalTextContext.create(factory, MongoDBTestContainer.config(), false);
+    @BeforeAll
+    static void setUp() {
+        Services.set(Config.class, TestFactories.config(MongoDBTestContainer.config()));
     }
 }

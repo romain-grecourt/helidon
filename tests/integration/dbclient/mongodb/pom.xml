@@ -28,6 +28,10 @@
     <artifactId>helidon-tests-integration-dbclient-mongodb</artifactId>
     <name>Helidon Tests Integration DbClient MongoDB</name>
 
+    <properties>
+        <mainClass>io.helidon.tests.integration.dbclient.mongodb.Main</mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.helidon.dbclient</groupId>

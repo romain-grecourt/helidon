@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,8 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.StatementTest;
-import io.helidon.tests.integration.dbclient.common.StatementTestImpl;
+import io.helidon.tests.integration.dbclient.common.tests.StatementTest;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -28,177 +24,167 @@ import org.junit.jupiter.api.Test;
  */
 final class H2StatementLocalTestIT extends H2LocalTest implements StatementTest {
 
-    static LocalTextContext<StatementTestImpl> ctx;
-
-    @BeforeAll
-    static void setUp() {
-        ctx = context(StatementTestImpl::new);
-    }
-
-    @AfterAll
-    static void tearDown() {
-        shutdown(ctx);
-    }
+    private final StatementTest delegate = new TestImpl();
 
     @Test
     @Override
     public void testCreateNamedQueryNonExistentStmt() {
-        ctx.delegate().testCreateNamedQueryNonExistentStmt();
+        delegate.testCreateNamedQueryNonExistentStmt();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedAndOrderArgsWithoutArgs() {
-        ctx.delegate().testCreateNamedQueryNamedAndOrderArgsWithoutArgs();
+        delegate.testCreateNamedQueryNamedAndOrderArgsWithoutArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedAndOrderArgsWithArgs() {
-        ctx.delegate().testCreateNamedQueryNamedAndOrderArgsWithArgs();
+        delegate.testCreateNamedQueryNamedAndOrderArgsWithArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedArgsSetOrderArg() {
-        ctx.delegate().testCreateNamedQueryNamedArgsSetOrderArg();
+        delegate.testCreateNamedQueryNamedArgsSetOrderArg();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryOrderArgsSetNamedArg() {
-        ctx.delegate().testCreateNamedQueryOrderArgsSetNamedArg();
+        delegate.testCreateNamedQueryOrderArgsSetNamedArg();
     }
 
     @Test
     @Override
     public void testGetArrayParams() {
-        ctx.delegate().testGetArrayParams();
+        delegate.testGetArrayParams();
     }
 
     @Test
     @Override
     public void testGetListParams() {
-        ctx.delegate().testGetListParams();
+        delegate.testGetListParams();
     }
 
     @Test
     @Override
     public void testGetMapParams() {
-        ctx.delegate().testGetMapParams();
+        delegate.testGetMapParams();
     }
 
     @Test
     @Override
     public void testGetOrderParam() {
-        ctx.delegate().testGetOrderParam();
+        delegate.testGetOrderParam();
     }
 
     @Test
     @Override
     public void testGetNamedParam() {
-        ctx.delegate().testGetNamedParam();
+        delegate.testGetNamedParam();
     }
 
     @Test
     @Override
     public void testGetMappedNamedParam() {
-        ctx.delegate().testGetMappedNamedParam();
+        delegate.testGetMappedNamedParam();
     }
 
     @Test
     @Override
     public void testGetMappedOrderParam() {
-        ctx.delegate().testGetMappedOrderParam();
+        delegate.testGetMappedOrderParam();
     }
 
     @Test
     @Override
     public void testQueryArrayParams() {
-        ctx.delegate().testQueryArrayParams();
+        delegate.testQueryArrayParams();
     }
 
     @Test
     @Override
     public void testQueryListParams() {
-        ctx.delegate().testQueryListParams();
+        delegate.testQueryListParams();
     }
 
     @Test
     @Override
     public void testQueryMapParams() {
-        ctx.delegate().testQueryMapParams();
+        delegate.testQueryMapParams();
     }
 
     @Test
     @Override
     public void testQueryMapMissingParams() {
-        ctx.delegate().testQueryMapMissingParams();
+        delegate.testQueryMapMissingParams();
     }
 
     @Test
     @Override
     public void testQueryOrderParam() {
-        ctx.delegate().testQueryOrderParam();
+        delegate.testQueryOrderParam();
     }
 
     @Test
     @Override
     public void testQueryNamedParam() {
-        ctx.delegate().testQueryNamedParam();
+        delegate.testQueryNamedParam();
     }
 
     @Test
     @Override
     public void testQueryMappedNamedParam() {
-        ctx.delegate().testQueryMappedNamedParam();
+        delegate.testQueryMappedNamedParam();
     }
 
     @Test
     @Override
     public void testQueryMappedOrderParam() {
-        ctx.delegate().testQueryMappedOrderParam();
+        delegate.testQueryMappedOrderParam();
     }
 
     @Test
     @Override
     public void testDmlArrayParams() {
-        ctx.delegate().testDmlArrayParams();
+        delegate.testDmlArrayParams();
     }
 
     @Test
     @Override
     public void testDmlListParams() {
-        ctx.delegate().testDmlListParams();
+        delegate.testDmlListParams();
     }
 
     @Test
     @Override
     public void testDmlMapParams() {
-        ctx.delegate().testDmlMapParams();
+        delegate.testDmlMapParams();
     }
 
     @Test
     @Override
     public void testDmlOrderParam() {
-        ctx.delegate().testDmlOrderParam();
+        delegate.testDmlOrderParam();
     }
 
     @Test
     @Override
     public void testDmlNamedParam() {
-        ctx.delegate().testDmlNamedParam();
+        delegate.testDmlNamedParam();
     }
 
     @Test
     @Override
     public void testDmlMappedNamedParam() {
-        ctx.delegate().testDmlMappedNamedParam();
+        delegate.testDmlMappedNamedParam();
     }
 
     @Test
     @Override
     public void testDmlMappedOrderParam() {
-        ctx.delegate().testDmlMappedOrderParam();
+        delegate.testDmlMappedOrderParam();
     }
 }

@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.oracle;
 
-import io.helidon.tests.integration.dbclient.common.TransactionTest;
+import io.helidon.tests.integration.dbclient.common.tests.TransactionTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote transaction test.
- */
 final class OracleTransactionRemoteTestIT extends OracleRemoteTest implements TransactionTest {
 
     OracleTransactionRemoteTestIT() {

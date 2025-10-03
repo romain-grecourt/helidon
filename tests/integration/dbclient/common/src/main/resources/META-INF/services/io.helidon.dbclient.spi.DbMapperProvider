@@ -14,4 +14,4 @@
 # limitations under the License.
 #
 
-io.helidon.tests.integration.dbclient.common.DbMapperProviderImpl
+io.helidon.tests.integration.dbclient.common.TestProviders$DbMapperProviderImpl

@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.oracle;
 
-import io.helidon.tests.integration.dbclient.common.StatementTest;
+import io.helidon.tests.integration.dbclient.common.tests.StatementTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote statement test.
- */
 final class OracleStatementRemoteTestIT extends OracleRemoteTest implements StatementTest {
 
     OracleStatementRemoteTestIT() {

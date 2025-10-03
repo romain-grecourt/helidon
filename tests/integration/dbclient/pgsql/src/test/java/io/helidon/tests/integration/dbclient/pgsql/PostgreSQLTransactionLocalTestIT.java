@@ -15,274 +15,263 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.TransactionTest;
-import io.helidon.tests.integration.dbclient.common.TransactionTestImpl;
+import io.helidon.tests.integration.dbclient.common.tests.TransactionTest;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * Local transaction test.
- */
 final class PostgreSQLTransactionLocalTestIT extends PostgreSQLLocalTest implements TransactionTest {
 
-    static LocalTextContext<TransactionTestImpl> ctx;
-
-    @BeforeAll
-    static void setUp() {
-        ctx = context(TransactionTestImpl::new);
-    }
+    private final TransactionTest delegate = new TransactionTest.TestImpl(new PostgreSQLInsertHandler());
 
     @Test
     @Override
     public void testCreateNamedDeleteStrStrOrderArgs() {
-        ctx.delegate().testCreateNamedDeleteStrStrOrderArgs();
+        delegate.testCreateNamedDeleteStrStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedDeleteStrNamedArgs() {
-        ctx.delegate().testCreateNamedDeleteStrNamedArgs();
+        delegate.testCreateNamedDeleteStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedDeleteStrOrderArgs() {
-        ctx.delegate().testCreateNamedDeleteStrOrderArgs();
+        delegate.testCreateNamedDeleteStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateDeleteNamedArgs() {
-        ctx.delegate().testCreateDeleteNamedArgs();
+        delegate.testCreateDeleteNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateDeleteOrderArgs() {
-        ctx.delegate().testCreateDeleteOrderArgs();
+        delegate.testCreateDeleteOrderArgs();
     }
 
     @Test
     @Override
     public void testNamedDeleteOrderArgs() {
-        ctx.delegate().testNamedDeleteOrderArgs();
+        delegate.testNamedDeleteOrderArgs();
     }
 
     @Test
     @Override
     public void testDeleteOrderArgs() {
-        ctx.delegate().testDeleteOrderArgs();
+        delegate.testDeleteOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNonExistentStmt() {
-        ctx.delegate().testCreateNamedQueryNonExistentStmt();
+        delegate.testCreateNamedQueryNonExistentStmt();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedAndOrderArgsWithoutArgs() {
-        ctx.delegate().testCreateNamedQueryNamedAndOrderArgsWithoutArgs();
+        delegate.testCreateNamedQueryNamedAndOrderArgsWithoutArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedAndOrderArgsWithArgs() {
-        ctx.delegate().testCreateNamedQueryNamedAndOrderArgsWithArgs();
+        delegate.testCreateNamedQueryNamedAndOrderArgsWithArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryNamedArgsSetOrderArg() {
-        ctx.delegate().testCreateNamedQueryNamedArgsSetOrderArg();
+        delegate.testCreateNamedQueryNamedArgsSetOrderArg();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryOrderArgsSetNamedArg() {
-        ctx.delegate().testCreateNamedQueryOrderArgsSetNamedArg();
+        delegate.testCreateNamedQueryOrderArgsSetNamedArg();
     }
 
     @Test
     @Override
     public void testCreateNamedGetStrStrNamedArgs() {
-        ctx.delegate().testCreateNamedGetStrStrNamedArgs();
+        delegate.testCreateNamedGetStrStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedGetStrNamedArgs() {
-        ctx.delegate().testCreateNamedGetStrNamedArgs();
+        delegate.testCreateNamedGetStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedGetStrOrderArgs() {
-        ctx.delegate().testCreateNamedGetStrOrderArgs();
+        delegate.testCreateNamedGetStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateGetNamedArgs() {
-        ctx.delegate().testCreateGetNamedArgs();
+        delegate.testCreateGetNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateGetOrderArgs() {
-        ctx.delegate().testCreateGetOrderArgs();
+        delegate.testCreateGetOrderArgs();
     }
 
     @Test
     @Override
     public void testNamedGetStrOrderArgs() {
-        ctx.delegate().testNamedGetStrOrderArgs();
+        delegate.testNamedGetStrOrderArgs();
     }
 
     @Test
     @Override
     public void testGetStrOrderArgs() {
-        ctx.delegate().testGetStrOrderArgs();
+        delegate.testGetStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedInsertStrStrNamedArgs() {
-        ctx.delegate().testCreateNamedInsertStrStrNamedArgs();
+        delegate.testCreateNamedInsertStrStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedInsertStrNamedArgs() {
-        ctx.delegate().testCreateNamedInsertStrNamedArgs();
+        delegate.testCreateNamedInsertStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedInsertStrOrderArgs() {
-        ctx.delegate().testCreateNamedInsertStrOrderArgs();
+        delegate.testCreateNamedInsertStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateInsertNamedArgs() {
-        ctx.delegate().testCreateInsertNamedArgs();
+        delegate.testCreateInsertNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateInsertOrderArgs() {
-        ctx.delegate().testCreateInsertOrderArgs();
+        delegate.testCreateInsertOrderArgs();
     }
 
     @Test
     @Override
     public void testNamedInsertOrderArgs() {
-        ctx.delegate().testNamedInsertOrderArgs();
+        delegate.testNamedInsertOrderArgs();
     }
 
     @Test
     @Override
     public void testInsertOrderArgs() {
-        ctx.delegate().testInsertOrderArgs();
+        delegate.testInsertOrderArgs();
     }
 
     @Test
     @Override
     public void testInsertNamedArgsReturnedKeys() throws Exception {
-        ctx.delegate().testInsertNamedArgsReturnedKeys();
+        delegate.testInsertNamedArgsReturnedKeys();
     }
 
     @Test
     @Override
     public void testInsertNamedArgsReturnedColumns() throws Exception {
-        ctx.delegate().testInsertNamedArgsReturnedColumns();
+        delegate.testInsertNamedArgsReturnedColumns();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryStrStrOrderArgs() {
-        ctx.delegate().testCreateNamedQueryStrStrOrderArgs();
+        delegate.testCreateNamedQueryStrStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryStrNamedArgs() {
-        ctx.delegate().testCreateNamedQueryStrNamedArgs();
+        delegate.testCreateNamedQueryStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedQueryStrOrderArgs() {
-        ctx.delegate().testCreateNamedQueryStrOrderArgs();
+        delegate.testCreateNamedQueryStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateQueryNamedArgs() {
-        ctx.delegate().testCreateQueryNamedArgs();
+        delegate.testCreateQueryNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateQueryOrderArgs() {
-        ctx.delegate().testCreateQueryOrderArgs();
+        delegate.testCreateQueryOrderArgs();
     }
 
     @Test
     @Override
     public void testNamedQueryOrderArgs() {
-        ctx.delegate().testNamedQueryOrderArgs();
+        delegate.testNamedQueryOrderArgs();
     }
 
     @Test
     @Override
     public void testQueryOrderArgs() {
-        ctx.delegate().testQueryOrderArgs();
+        delegate.testQueryOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedUpdateStrStrNamedArgs() {
-        ctx.delegate().testCreateNamedUpdateStrStrNamedArgs();
+        delegate.testCreateNamedUpdateStrStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedUpdateStrNamedArgs() {
-        ctx.delegate().testCreateNamedUpdateStrNamedArgs();
+        delegate.testCreateNamedUpdateStrNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateNamedUpdateStrOrderArgs() {
-        ctx.delegate().testCreateNamedUpdateStrOrderArgs();
+        delegate.testCreateNamedUpdateStrOrderArgs();
     }
 
     @Test
     @Override
     public void testCreateUpdateNamedArgs() {
-        ctx.delegate().testCreateUpdateNamedArgs();
+        delegate.testCreateUpdateNamedArgs();
     }
 
     @Test
     @Override
     public void testCreateUpdateOrderArgs() {
-        ctx.delegate().testCreateUpdateOrderArgs();
+        delegate.testCreateUpdateOrderArgs();
     }
 
     @Test
     @Override
     public void testNamedUpdateNamedArgs() {
-        ctx.delegate().testNamedUpdateNamedArgs();
+        delegate.testNamedUpdateNamedArgs();
     }
 
     @Test
     @Override
     public void testUpdateOrderArgs() {
-        ctx.delegate().testUpdateOrderArgs();
+        delegate.testUpdateOrderArgs();
     }
 }

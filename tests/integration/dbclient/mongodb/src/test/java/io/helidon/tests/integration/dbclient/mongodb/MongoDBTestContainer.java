@@ -18,15 +18,11 @@ package io.helidon.tests.integration.dbclient.mongodb;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
-/**
- * Database container utility.
- */
 abstract class MongoDBTestContainer {
 
     private static final ImageFromDockerfile IMAGE = new ImageFromDockerfile("mongodb", false)
@@ -40,8 +36,8 @@ abstract class MongoDBTestContainer {
             .waitingFor(Wait.forLogMessage("\\s*Container ready!\\s*", 1)
                     .withStartupTimeout(Duration.ofMinutes(1)));
 
-    static Map<String, Supplier<?>> config() {
-        return Map.of("db.connection.url", MongoDBTestContainer::connectionString);
+    static Map<String, String> config() {
+        return Map.of("db.connection.url", connectionString());
     }
 
     static String connectionString() {

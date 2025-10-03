@@ -17,32 +17,29 @@ package io.helidon.tests.integration.dbclient.oracle;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Database container utility.
- */
 abstract class OracleTestContainer {
 
-    private static final DockerImageName IMAGE = DockerImageName.parse("container-registry.oracle.com/database/express");
+    private static final DockerImageName IMAGE = DockerImageName.parse("container-registry.oracle.com/database/free:latest-lite");
 
     static final GenericContainer<?> CONTAINER = new GenericContainer<>(IMAGE)
             .withEnv("ORACLE_PWD", "oracle123")
             .withExposedPorts(1521)
             .withStartupAttempts(3)
-            .waitingFor(Wait.forHealthcheck()
+            .waitingFor(Wait.forLogMessage(".*DATABASE IS READY TO USE.*", 1)
                     .withStartupTimeout(Duration.ofMinutes(5)));
 
-    static Map<String, Supplier<?>> config() {
-        return Map.of("db.connection.url", OracleTestContainer::jdbcUrl);
+
+    static Map<String, String> config() {
+        return Map.of("db.connection.url", jdbcUrl());
     }
 
     private static String jdbcUrl() {
-        return "jdbc:oracle:thin:@localhost:%s/XE".formatted(CONTAINER.getMappedPort(1521));
+        return "jdbc:oracle:thin:@localhost:%s/FREE".formatted(CONTAINER.getMappedPort(1521));
     }
 
     private OracleTestContainer() {

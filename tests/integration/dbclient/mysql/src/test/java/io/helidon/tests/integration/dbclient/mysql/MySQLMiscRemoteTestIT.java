@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.mysql;
 
-import io.helidon.tests.integration.dbclient.common.MiscTest;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote misc test.
- */
 final class MySQLMiscRemoteTestIT extends MySQLRemoteTest implements MiscTest {
 
     MySQLMiscRemoteTestIT() {

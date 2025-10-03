@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import io.helidon.tests.integration.dbclient.common.MiscTest;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote misc test.
- */
 final class H2MiscRemoteTestIT extends H2RemoteTest implements MiscTest {
 
     H2MiscRemoteTestIT() {

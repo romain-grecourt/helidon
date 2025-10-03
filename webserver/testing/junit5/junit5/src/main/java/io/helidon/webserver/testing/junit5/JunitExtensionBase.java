@@ -32,19 +32,17 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
 
 abstract class JunitExtensionBase extends TestJunitExtension implements AfterAllCallback {
-    private Class<?> testClass;
-
     JunitExtensionBase() {
     }
 
     @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        callAfterStop();
-        super.afterAll(extensionContext);
+    public void afterAll(ExtensionContext ctx) {
+        callAfterStop(ctx.getRequiredTestClass());
+        super.afterAll(ctx);
     }
 
-    void setupServer(WebServerConfig.Builder builder) {
-        withStaticMethods(testClass(), SetUpServer.class, (setUpServer, method) -> {
+    void setupServer(WebServerConfig.Builder builder, Class<?> testClass) {
+        withStaticMethods(testClass, SetUpServer.class, (setUpServer, method) -> {
             Class<?>[] parameterTypes = method.getParameterTypes();
             if (parameterTypes.length != 1) {
                 throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpServer.class.getSimpleName()
@@ -68,8 +66,8 @@ abstract class JunitExtensionBase extends TestJunitExtension implements AfterAll
     }
 
     @SuppressWarnings("unchecked")
-    void setupFeatures(WebServerConfig.Builder builder) {
-        withStaticMethods(testClass(), SetUpFeatures.class, ((setUpFeatures, method) -> {
+    void setupFeatures(WebServerConfig.Builder builder, Class<?> testClass) {
+        withStaticMethods(testClass, SetUpFeatures.class, ((setUpFeatures, method) -> {
             if (!setUpFeatures.value()) {
                 builder.featuresDiscoverServices(false);
             }
@@ -111,20 +109,7 @@ abstract class JunitExtensionBase extends TestJunitExtension implements AfterAll
         }));
     }
 
-
-    void testClass(Class<?> testClass) {
-        this.testClass = testClass;
-    }
-
-    Class<?> testClass() {
-        return testClass;
-    }
-
-    private void callAfterStop() {
-        if (testClass == null) {
-            return;
-        }
-
+    private void callAfterStop(Class<?> testClass) {
         List<Method> toInvoke = new ArrayList<>();
 
         Method[] methods = testClass.getMethods();

@@ -15,25 +15,18 @@
  */
 package io.helidon.tests.integration.dbclient.h2;
 
-import java.util.Map;
-import java.util.function.BiFunction;
-
-import io.helidon.config.Config;
 import io.helidon.dbclient.DbClient;
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
+import io.helidon.testing.junit5.Testing;
 
-/**
- * Base class for the local tests.
- */
+import org.junit.jupiter.api.AfterAll;
+
+@Testing.Test
 abstract class H2LocalTest {
 
-    static <T> LocalTextContext<T> context(BiFunction<DbClient, Config, T> factory) {
-        return LocalTextContext.create(factory, Map.of(), true);
-    }
-
-    static void shutdown(LocalTextContext<?> ctx) {
+    @AfterAll
+    static void shutdown(DbClient db) {
         try {
-            ctx.db().execute().dml("SHUTDOWN");
+            db.execute().dml("SHUTDOWN");
         } catch (Throwable ignored) {
         }
     }

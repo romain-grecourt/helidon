@@ -15,70 +15,90 @@
  */
 package io.helidon.tests.integration.dbclient.mysql;
 
-import io.helidon.tests.integration.dbclient.common.ObservabilityTest;
+import io.helidon.testing.junit5.Testing;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.harness.ProcessRunner;
+import io.helidon.tests.integration.harness.TestProcess;
+import io.helidon.tests.integration.harness.TestProcesses;
+import io.helidon.webclient.http1.Http1Client;
 
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Remote observability test.
- */
-final class MySQLObservabilityRemoteTestIT extends MySQLRemoteTest implements ObservabilityTest {
+@Testcontainers(disabledWithoutDocker = true)
+@TestProcesses
+@Testing.Test
+final class MySQLObservabilityRemoteTestIT implements ObservabilityTest {
 
+    @Container
+    static final MySQLContainer<?> CONTAINER = MySQLTestContainer.CONTAINER;
+
+    @TestProcess
+    static final ProcessRunner PROCESS_RUNNER = MySQLRemoteTest.PROCESS_RUNNER;
+
+    private final ObservabilityTest delegate;
+
+    @SuppressWarnings("resource")
     MySQLObservabilityRemoteTestIT() {
-        super("/test/observability");
+        String serverUrl = "http://localhost:%d".formatted(PROCESS_RUNNER.process().port());
+        delegate = new ObservabilityTest.TestImpl(Http1Client.builder()
+                .baseUri(serverUrl)
+                .build());
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        remoteTest();
+        delegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        remoteTest();
+        delegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        remoteTest();
+        delegate.testHttpMetrics();
     }
 
     @Test
     @Override
     public void testHealthCheck() {
-        remoteTest();
+        delegate.testHealthCheck();
     }
 
     @Test
     @Override
     public void testHealthCheckWithName() {
-        remoteTest();
+        delegate.testHealthCheckWithName();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomNamedDML() {
-        remoteTest();
+        delegate.testHealthCheckWithCustomNamedDML();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomDML() {
-        remoteTest();
+        delegate.testHealthCheckWithCustomDML();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomNamedQuery() {
-        remoteTest();
+        delegate.testHealthCheckWithCustomNamedQuery();
     }
 
     @Test
     @Override
     public void testHealthCheckWithCustomQuery() {
-        remoteTest();
+        delegate.testHealthCheckWithCustomQuery();
     }
 }

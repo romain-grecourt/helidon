@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
-import io.helidon.tests.integration.dbclient.common.SimpleTest;
+import io.helidon.tests.integration.dbclient.common.tests.SimpleTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote simple test.
- */
 final class PostgreSQLSimpleRemoteTestIT extends PostgreSQLRemoteTest implements SimpleTest {
 
     PostgreSQLSimpleRemoteTestIT() {

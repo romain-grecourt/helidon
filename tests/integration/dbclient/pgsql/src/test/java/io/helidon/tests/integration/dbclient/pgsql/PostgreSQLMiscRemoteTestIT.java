@@ -15,7 +15,7 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
-import io.helidon.tests.integration.dbclient.common.MiscTest;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
 
 import org.junit.jupiter.api.Test;
 

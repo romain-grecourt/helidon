@@ -20,15 +20,11 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.function.Supplier;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
-/**
- * Database container utility.
- */
 abstract class PostgreSQLTestContainer {
 
     private static final ImageFromDockerfile IMAGE = new ImageFromDockerfile("pgsql", false)
@@ -37,8 +33,8 @@ abstract class PostgreSQLTestContainer {
     static final JdbcDatabaseContainer<?> CONTAINER = new PostgreSQLContainer(IMAGE)
             .withPassword("pgsql123");
 
-    static Map<String, Supplier<?>> config() {
-        return Map.of("db.connection.url", CONTAINER::getJdbcUrl);
+    static Map<String, String> config() {
+        return Map.of("db.connection.url", CONTAINER.getJdbcUrl());
     }
 
     private PostgreSQLTestContainer() {

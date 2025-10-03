@@ -15,13 +15,10 @@
  */
 package io.helidon.tests.integration.dbclient.mongodb;
 
-import io.helidon.tests.integration.dbclient.common.MiscTest;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Remote misc test.
- */
 final class MongoDBMiscRemoteTestIT extends MongoDBRemoteTest implements MiscTest {
 
     MongoDBMiscRemoteTestIT() {

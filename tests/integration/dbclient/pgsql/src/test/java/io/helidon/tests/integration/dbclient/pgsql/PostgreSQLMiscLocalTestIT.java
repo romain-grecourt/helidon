@@ -15,82 +15,71 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
-import io.helidon.tests.integration.dbclient.common.LocalTextContext;
-import io.helidon.tests.integration.dbclient.common.MiscTest;
-import io.helidon.tests.integration.dbclient.common.MiscTestImpl;
+import io.helidon.tests.integration.dbclient.common.tests.MiscTest;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-/**
- * Local misc test.
- */
 final class PostgreSQLMiscLocalTestIT extends PostgreSQLLocalTest implements MiscTest {
 
-    static LocalTextContext<MiscTestImpl> ctx;
-
-    @BeforeAll
-    static void setUp() {
-        ctx = context(MiscTestImpl::new);
-    }
+    private final MiscTest delegate = new MiscTest.TestImpl();
 
     @Test
     @Override
     public void testFlowControl() {
-        ctx.delegate().testFlowControl();
+        delegate.testFlowControl();
     }
 
     @Test
     @Override
     public void testStatementInterceptor() {
-        ctx.delegate().testStatementInterceptor();
+        delegate.testStatementInterceptor();
     }
 
     @Test
     @Override
     public void testInsertWithOrderMapping() {
-        ctx.delegate().testInsertWithOrderMapping();
+        delegate.testInsertWithOrderMapping();
     }
 
     @Test
     @Override
     public void testInsertWithNamedMapping() {
-        ctx.delegate().testInsertWithNamedMapping();
+        delegate.testInsertWithNamedMapping();
     }
 
     @Test
     @Override
     public void testUpdateWithOrderMapping() {
-        ctx.delegate().testUpdateWithOrderMapping();
+        delegate.testUpdateWithOrderMapping();
     }
 
     @Test
     @Override
     public void testUpdateWithNamedMapping() {
-        ctx.delegate().testUpdateWithNamedMapping();
+        delegate.testUpdateWithNamedMapping();
     }
 
     @Test
     @Override
     public void testDeleteWithOrderMapping() {
-        ctx.delegate().testDeleteWithOrderMapping();
+        delegate.testDeleteWithOrderMapping();
     }
 
     @Test
     @Override
     public void testDeleteWithNamedMapping() {
-        ctx.delegate().testDeleteWithNamedMapping();
+        delegate.testDeleteWithNamedMapping();
     }
 
     @Test
     @Override
     public void testQueryWithMapping() {
-        ctx.delegate().testQueryWithMapping();
+        delegate.testQueryWithMapping();
     }
 
     @Test
     @Override
     public void testGetWithMapping() {
-        ctx.delegate().testGetWithMapping();
+        delegate.testGetWithMapping();
     }
 }
