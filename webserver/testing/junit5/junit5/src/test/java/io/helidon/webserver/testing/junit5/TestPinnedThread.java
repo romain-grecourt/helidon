@@ -25,10 +25,7 @@ import io.helidon.webserver.http.HttpRouting;
 import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledForJreRange;
-import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.DisabledOnJre;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.junit.jupiter.api.condition.JRE;
 import org.junit.platform.testkit.engine.EngineTestKit;
@@ -42,12 +39,14 @@ import static org.junit.platform.testkit.engine.EventConditions.finishedWithFail
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
 import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
 
+@SuppressWarnings("ALL")
 class TestPinnedThread {
 
     @Test
     @EnabledOnJre(JRE.JAVA_21)
     void engineTest() {
         Events events = EngineTestKit.engine("junit-jupiter")
+                .configurationParameter("TestPinnedThread", "true")
                 .selectors(
                         selectClass(PinningTestCase.class),
                         selectClass(PinningExtraThreadTestCase.class),
@@ -103,6 +102,7 @@ class TestPinnedThread {
     }
 
     @ServerTest(pinningDetection = true)
+    @EnabledIfParameter(key = "TestPinnedThread", value = "true")
     static class PinningTestCase {
 
         static final Object monitor = new Object();
@@ -129,6 +129,7 @@ class TestPinnedThread {
     }
 
     @ServerTest(pinningDetection = true)
+    @EnabledIfParameter(key = "TestPinnedThread", value = "true")
     static class PinningExtraThreadTestCase {
 
         @Test
@@ -146,6 +147,7 @@ class TestPinnedThread {
     }
 
     @ServerTest(pinningDetection = true)
+    @EnabledIfParameter(key = "TestPinnedThread", value = "true")
     static class PinningDisabledExtraThreadTestCase {
 
         @Test
@@ -163,6 +165,7 @@ class TestPinnedThread {
     }
 
     @ServerTest(pinningDetection = true)
+    @EnabledIfParameter(key = "TestPinnedThread", value = "true")
     static class NoPinningTestCase {
 
         static final Object monitor = new Object();
@@ -189,6 +192,7 @@ class TestPinnedThread {
     }
 
     @ServerTest(pinningDetection = true)
+    @EnabledIfParameter(key = "TestPinnedThread", value = "true")
     static class NoPinningExtraThreadTestCase {
 
         @Test

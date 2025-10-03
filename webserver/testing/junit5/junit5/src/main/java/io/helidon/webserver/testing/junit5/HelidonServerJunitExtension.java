@@ -16,7 +16,6 @@
 
 package io.helidon.webserver.testing.junit5;
 
-import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -27,13 +26,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.config.Config;
 import io.helidon.common.context.Context;
-import io.helidon.common.context.Contexts;
 import io.helidon.common.testing.virtualthreads.PinningRecorder;
 import io.helidon.config.spi.ConfigNode;
 import io.helidon.config.spi.ConfigSource;
@@ -46,334 +42,230 @@ import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.WebServerService__ServiceDescriptor;
 import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension;
+import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension.ParamHandler;
 
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
 
 import static io.helidon.webserver.WebServer.DEFAULT_SOCKET_NAME;
+import static io.helidon.webserver.testing.junit5.Junit5Util.socketName;
 import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
 
 /**
  * JUnit5 extension to support Helidon WebServer in tests.
  */
-class HelidonServerJunitExtension extends JunitExtensionBase
-        implements BeforeAllCallback,
-                   AfterAllCallback,
-                   AfterEachCallback,
-                   ParameterResolver {
+class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtension> {
+
+    private static final Set<Class<?>> SUPPORTED_TYPES = Set.of(WebServer.class, URI.class);
 
     private final Map<String, URI> uris = new ConcurrentHashMap<>();
-    private final List<ServerJunitExtension> extensions;
-
     private WebServer server;
     private PinningRecorder pinningRecorder;
 
     HelidonServerJunitExtension() {
-        this.extensions = HelidonServiceLoader.create(ServiceLoader.load(ServerJunitExtension.class)).asList();
+        super(ServerJunitExtension.class, SUPPORTED_TYPES);
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
-
-        run(context, () -> {
-            if (System.getProperty("helidon.config.profile") == null
-                    && System.getProperty("config.profile") == null) {
-                System.setProperty("helidon.config.profile", "test");
+    @SuppressWarnings({"removal", "deprecation"})
+    void init(Class<?> testClass, Context ctx) {
+        // lazy config source for test.server.port
+        Services.add(ConfigSource.class, 10000D, (ConfigSource & LazyConfigSource) key -> {
+            if ("test.server.port".equals(key)) {
+                return Optional.ofNullable(server)
+                        .map(s -> ConfigNode.ValueNode.create(String.valueOf(s.port())));
             }
-            TestConfigSource testConfigSource = new TestConfigSource();
-            Services.add(ConfigSource.class, 10000D, testConfigSource);
-
-            Class<?> testClass = context.getRequiredTestClass();
-            super.testClass(testClass);
-            ServerTest testAnnot = testClass.getAnnotation(ServerTest.class);
-            if (testAnnot == null) {
-                throw new IllegalStateException("Invalid test class for this extension: " + testClass);
-            }
-
-            if (testAnnot.pinningDetection()) {
-                pinningRecorder = PinningRecorder.create();
-                pinningRecorder.record(Duration.ofMillis(testAnnot.pinningThreshold()));
-            }
-
-            WebServerConfig.Builder builder = WebServer.builder();
-
-            builder.config(Services.get(Config.class).get("server"));
-            setupWebServerFromRegistry(builder);
-            builder.host("localhost");
-
-            extensions.forEach(it -> it.beforeAll(context));
-            extensions.forEach(it -> it.updateServerBuilder(builder));
-
-            // port will be random
-            builder.port(0)
-                    .shutdownHook(false);
-
-            setupFeatures(builder);
-            setupServer(builder);
-            addRouting(builder);
-
-            server = builder
-                    .serverContext(staticContext(context).orElseThrow()) // created above when we call super.beforeAll
-                    .build()
-                    .start();
-            if (server.hasTls()) {
-                uris.put(DEFAULT_SOCKET_NAME, URI.create("https://localhost:" + server.port() + "/"));
-            } else {
-                uris.put(DEFAULT_SOCKET_NAME, URI.create("http://localhost:" + server.port() + "/"));
-            }
-
-            testConfigSource.set("test.server.port", String.valueOf(server.port()));
+            return Optional.empty();
         });
-    }
 
-    @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        run(extensionContext, () -> {
-            extensions.forEach(it -> it.afterAll(extensionContext));
+        var annot = testClass.getAnnotation(ServerTest.class);
+        if (annot == null) {
+            throw new IllegalStateException(
+                    "Test class %s is not annotated with @ServerTest"
+                            .formatted(testClass));
+        }
 
-            if (server != null) {
-                server.stop();
-            }
+        if (annot.pinningDetection()) {
+            pinningRecorder = PinningRecorder.create();
+            pinningRecorder.record(Duration.ofMillis(annot.pinningThreshold()));
+        }
 
-            super.afterAll(extensionContext);
+        var builder = WebServer.builder();
+        var config = Services.get(io.helidon.common.config.Config.class);
+        builder.config(config.get("server"));
+        updateServerBuilder(builder);
+        builder.host("localhost");
 
-            if (pinningRecorder != null) {
-                pinningRecorder.close();
-                pinningRecorder = null;
-            }
-        });
-    }
+        extensions().forEach(it -> it.updateServerBuilder(builder));
 
-    @Override
-    public void afterEach(ExtensionContext extensionContext) {
-        runChecked(extensionContext, () -> extensions.forEach(it -> it.afterEach(extensionContext)));
-    }
+        // port will be random
+        builder.port(0).shutdownHook(false);
 
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
-            throws ParameterResolutionException {
+        setupFeatures(builder, testClass);
+        setupServer(builder, testClass);
+        setupRouting(builder, testClass);
 
-        return supplyChecked(extensionContext, () -> {
-            Class<?> paramType = parameterContext.getParameter().getType();
-            if (paramType.equals(WebServer.class)) {
-                return true;
-            }
-            if (paramType.equals(URI.class)) {
-                return true;
-            }
+        server = builder
+                .serverContext(ctx)
+                .build()
+                .start();
 
-            for (ServerJunitExtension extension : extensions) {
-                if (extension.supportsParameter(parameterContext, extensionContext)) {
-                    return true;
-                }
-            }
-
-            Context context;
-            if (server == null) {
-                context = Contexts.context().orElseGet(Contexts::globalContext);
-            } else {
-                context = server.context();
-            }
-            if (context.get(paramType).isPresent()) {
-                return true;
-            }
-            return super.supportsParameter(parameterContext, extensionContext);
-        });
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
-            throws ParameterResolutionException {
-
-        return supplyChecked(extensionContext, () -> {
-            Class<?> paramType = parameterContext.getParameter().getType();
-            if (paramType.equals(WebServer.class)) {
-                return server;
-            }
-            if (paramType.equals(URI.class)) {
-                return uri(parameterContext.getDeclaringExecutable(), Junit5Util.socketName(parameterContext.getParameter()));
-            }
-
-            for (ServerJunitExtension extension : extensions) {
-                if (extension.supportsParameter(parameterContext, extensionContext)) {
-                    return extension.resolveParameter(parameterContext, extensionContext, paramType, server);
-                }
-            }
-
-            Context context;
-            if (server == null) {
-                context = Contexts.context().orElseGet(Contexts::globalContext);
-            } else {
-                context = server.context();
-            }
-
-            var fromContext = context.get(paramType);
-
-            if (fromContext.isPresent()) {
-                return fromContext;
-            }
-
-            return super.resolveParameter(parameterContext, extensionContext);
-        });
-    }
-
-    private static void setupWebServerFromRegistry(WebServerConfig.Builder serverBuilder) {
-        Object o = GlobalServiceRegistry.registry()
-                .get(WebServerService__ServiceDescriptor.INSTANCE)
-                .orElseThrow(() -> {
-                    return new IllegalStateException("Could not discover WebServerService in service registry, both "
-                                                             + "'helidon-service-registry' and `helidon-webserver` must be on "
-                                                             + "classpath.");
-                });
-        // the service is package local
-        Class<?> clazz = o.getClass();
-        try {
-            Method method = clazz.getDeclaredMethod("updateServerBuilder", WebServerConfig.BuilderBase.class);
-            method.setAccessible(true);
-            method.invoke(o, serverBuilder);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to get service registry specific method on WebServerService", e);
+        if (server.hasTls()) {
+            uris.put(DEFAULT_SOCKET_NAME, URI.create("https://localhost:%d/".formatted(server.port())));
+        } else {
+            uris.put(DEFAULT_SOCKET_NAME, URI.create("http://localhost:%d/".formatted(server.port())));
         }
     }
 
-    private URI uri(Executable declaringExecutable, String socketName) {
-        URI uri = uris.computeIfAbsent(socketName, it -> {
-            int port = server.port(it);
-            if (port == -1) {
-                return null;
-            }
-            if (server.hasTls(it)) {
-                return URI.create("https://localhost:" + port + "/");
-            }
-            return URI.create("http://localhost:" + port + "/");
-        });
-
-        if (uri == null) {
-            throw new IllegalStateException(declaringExecutable + " expects injection of URI parameter for socket named "
-                                                    + socketName
-                                                    + ", which is not available on the running webserver");
+    @Override
+    public Object resolve(ParameterContext pc, ExtensionContext ctx) {
+        var paramType = pc.getParameter().getType();
+        if (paramType.equals(WebServer.class)) {
+            init(ctx);
+            return server;
         }
-        return uri;
+        if (paramType.equals(URI.class)) {
+            init(ctx);
+            var socketName = socketName(pc.getParameter());
+            var uri = uris.computeIfAbsent(socketName, it -> {
+                int port = server.port(it);
+                if (port == -1) {
+                    return null;
+                }
+                if (server.hasTls()) {
+                    return URI.create("https://localhost:%d/".formatted(port));
+                }
+                return URI.create("http://localhost:%d/".formatted(port));
+            });
+            if (uri == null) {
+                throw new IllegalStateException("Socket not found: " + socketName);
+            }
+            return uri;
+        }
+        for (ServerJunitExtension e : extensions()) {
+            if (e.supportsParameter(pc, ctx)) {
+                init(ctx);
+                return e.resolveParameter(pc, ctx, paramType, server);
+            }
+        }
+        return null;
     }
 
-    private void addRouting(WebServerConfig.Builder builder) {
-        Map<String, ListenerConfig.Builder> listenerConfigs = new HashMap<>();
-        Map<String, Router.Builder> routerBuilders = new HashMap<>();
+    @Override
+    void close(Class<?> testClass) {
+        if (server != null) {
+            server.stop();
+        }
+        super.close(testClass);
+        if (pinningRecorder != null) {
+            pinningRecorder.close();
+        }
+    }
 
-        listenerConfigs.put(DEFAULT_SOCKET_NAME, ListenerConfig.builder().from(builder));
+    private void setupRouting(WebServerConfig.Builder builder, Class<?> testClass) {
+        Map<String, ListenerConfig.Builder> listeners = new HashMap<>();
+        Map<String, Router.Builder> routers = new HashMap<>();
 
-        withStaticMethods(testClass(), SetUpRoute.class, (setUpRoute, method) -> {
-            // validate parameters
-            String socketName = setUpRoute.value();
+        listeners.put(DEFAULT_SOCKET_NAME, ListenerConfig.builder().from(builder));
 
-            SetUpRouteHandler methodConsumer = createRoutingMethodCall(method);
-
-            ListenerConfig.Builder socketBuilder = listenerConfigs.computeIfAbsent(socketName, it -> ListenerConfig.builder());
-            Router.RouterBuilder<?> route = routerBuilders.computeIfAbsent(socketName, it -> Router.builder());
-
-            extensions.forEach(it -> it.updateListenerBuilder(socketName,
-                                                              socketBuilder,
-                                                              route));
-
-            methodConsumer.handle(socketName, builder, socketBuilder, route);
+        withStaticMethods(testClass, SetUpRoute.class, (annot, method) -> {
+            var socket = annot.value();
+            var listener = listeners.computeIfAbsent(socket, it -> ListenerConfig.builder());
+            var route = routers.computeIfAbsent(socket, it -> Router.builder());
+            extensions().forEach(it -> it.updateListenerBuilder(socket, listener, route));
+            handleParams(method, socket, builder, listener, route);
         });
 
-        routerBuilders.forEach((socketName, routerBuilder) -> {
-            if (DEFAULT_SOCKET_NAME.equals(socketName)) {
-                builder.addRoutings(routerBuilder.routings());
+        routers.forEach((socket, router) -> {
+            if (DEFAULT_SOCKET_NAME.equals(socket)) {
+                builder.addRoutings(router.routings());
             } else {
-                listenerConfigs.computeIfAbsent(socketName, it -> ListenerConfig.builder())
-                        .addRoutings(routerBuilder.routings());
+                listeners.computeIfAbsent(socket, it -> ListenerConfig.builder())
+                        .addRoutings(router.routings());
             }
         });
 
-        listenerConfigs.forEach((socketName, listenerBuilder) -> {
-            if (DEFAULT_SOCKET_NAME.equals(socketName)) {
-                builder.from(listenerBuilder);
+        listeners.forEach((socket, listener) -> {
+            if (DEFAULT_SOCKET_NAME.equals(socket)) {
+                builder.from(listener);
             } else {
-                ListenerConfig listenerConfig = builder.sockets().get(socketName);
-                if (listenerConfig == null) {
-                    builder.putSocket(socketName, listenerBuilder.build());
+                ListenerConfig config = builder.sockets().get(socket);
+                if (config == null) {
+                    builder.putSocket(socket, listener.build());
                 } else {
-                    builder.putSocket(socketName, ListenerConfig.builder(listenerConfig).from(listenerBuilder).build());
+                    builder.putSocket(socket, ListenerConfig.builder(config)
+                            .from(listener)
+                            .build());
                 }
             }
         });
     }
 
-    private SetUpRouteHandler createRoutingMethodCall(Method method) {
-        // @SetUpRoute may have parameters handled by different extensions
-        List<ServerJunitExtension.ParamHandler> handlers = new ArrayList<>();
+    private void handleParams(Method method,
+                              String socket,
+                              WebServerConfig.Builder server,
+                              ListenerConfig.Builder listener,
+                              Router.RouterBuilder<?> router) {
 
-        Parameter[] parameters = method.getParameters();
+        List<ParamHandler<?>> handlers = new ArrayList<>();
+        var parameters = method.getParameters();
         for (Parameter parameter : parameters) {
-            Class<?> paramType = parameter.getType();
-
-            // for each parameter, resolve a parameter handler
+            var paramType = parameter.getType();
             boolean found = false;
-            for (ServerJunitExtension extension : extensions) {
-                Optional<? extends ServerJunitExtension.ParamHandler> paramHandler =
-                        extension.setUpRouteParamHandler(paramType);
-                if (paramHandler.isPresent()) {
-                    // we care about the extension with the highest priority only
-                    handlers.add(paramHandler.get());
+            for (ServerJunitExtension e : extensions()) {
+                var handler = e.setUpRouteParamHandler(paramType).orElse(null);
+                if (handler != null) {
+                    handlers.add(handler);
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                throw new IllegalArgumentException("Method " + method + " has a parameter " + paramType + " that is "
-                                                           + "not supported by any available testing extension");
+                throw new IllegalArgumentException(
+                        "Method %s has a parameter %s that is not supported"
+                                .formatted(method, paramType));
             }
         }
-        // now we have the same number of parameter handlers as we have parameters
-        return (socketName, serverBuilder, listenerBuilder, routerBuilder) -> {
-            Object[] values = new Object[handlers.size()];
+        Object[] values = new Object[handlers.size()];
 
-            for (int i = 0; i < handlers.size(); i++) {
-                ServerJunitExtension.ParamHandler<?> handler = handlers.get(i);
-                values[i] = handler.get(socketName, serverBuilder, listenerBuilder, routerBuilder);
-            }
-
-            try {
-                method.setAccessible(true);
-                method.invoke(null, values);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalStateException("Cannot invoke router/socket method", e);
-            }
-
-            for (int i = 0; i < values.length; i++) {
-                Object value = values[i];
-                ServerJunitExtension.ParamHandler handler = handlers.get(i);
-                handler.handle(socketName, serverBuilder, listenerBuilder, routerBuilder, value);
-            }
-        };
-    }
-
-    private interface SetUpRouteHandler {
-        void handle(String socketName,
-                    WebServerConfig.Builder serverBuilder,
-                    ListenerConfig.Builder listenerBuilder,
-                    Router.RouterBuilder<?> routerBuilder);
-    }
-
-    private static class TestConfigSource implements ConfigSource, LazyConfigSource {
-        private final Map<String, String> values = new HashMap<>();
-
-        @Override
-        public Optional<ConfigNode> node(String key) {
-            return Optional.ofNullable(values.get(key))
-                    .map(ConfigNode.ValueNode::create);
+        for (int i = 0; i < handlers.size(); i++) {
+            var handler = handlers.get(i);
+            values[i] = handler.get(socket, server, listener, router);
         }
 
-        private void set(String key, String value) {
-            values.put(key, value);
+        try {
+            method.setAccessible(true);
+            method.invoke(null, values);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new IllegalStateException("Cannot invoke @SetUpServer method", e);
+        }
+
+        for (int i = 0; i < values.length; i++) {
+            handleParam(handlers.get(i), socket, server, listener, router, values[i]);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> void handleParam(ParamHandler<T> handler,
+                                 String socket,
+                                 WebServerConfig.Builder server,
+                                 ListenerConfig.Builder listener,
+                                 Router.RouterBuilder<?> router,
+                                 Object value) {
+
+        handler.handle(socket, server, listener, router, (T) value);
+    }
+
+    private void updateServerBuilder(WebServerConfig.Builder builder) {
+        try {
+            var svc = GlobalServiceRegistry.registry()
+                    .get(WebServerService__ServiceDescriptor.INSTANCE)
+                    .orElseThrow();
+            var method = svc.getClass().getDeclaredMethod("updateServerBuilder", WebServerConfig.BuilderBase.class);
+            method.setAccessible(true); // the service is package local
+            method.invoke(svc, builder);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
         }
     }
 }

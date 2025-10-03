@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,9 +74,10 @@ public final class Junit5Util {
                     if (Modifier.isStatic(method.getModifiers())) {
                         handler.accept(annotation, method);
                     } else {
-                        throw new IllegalStateException("Method " + method + " is annotated with "
-                                                                + annotationType.getSimpleName()
-                                                                + " yet it is not static");
+                        throw new IllegalStateException(
+                                "Method %s is annotated with %s yet it is not static".formatted(
+                                        method,
+                                        annotationType.getSimpleName()));
                     }
                 }
             }

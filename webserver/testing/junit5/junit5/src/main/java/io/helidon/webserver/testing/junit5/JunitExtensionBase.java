@@ -19,44 +19,184 @@ package io.helidon.webserver.testing.junit5;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
+import io.helidon.common.HelidonServiceLoader;
+import io.helidon.common.context.Context;
+import io.helidon.common.context.Contexts;
 import io.helidon.testing.junit5.TestJunitExtension;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.spi.ServerFeature;
+import io.helidon.webserver.testing.junit5.spi.HelidonJunitExtension;
 
 import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 
 import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
 
-abstract class JunitExtensionBase extends TestJunitExtension implements AfterAllCallback {
-    private Class<?> testClass;
+abstract class JunitExtensionBase<T extends HelidonJunitExtension>
+        extends TestJunitExtension
+        implements BeforeAllCallback,
+                   AfterAllCallback,
+                   InvocationInterceptor {
 
-    JunitExtensionBase() {
+    private final List<T> extensions;
+    private final Set<Class<?>> paramTypes;
+
+    JunitExtensionBase(Class<T> extensionType, Set<Class<?>> paramTypes) {
+        this.extensions = HelidonServiceLoader.create(ServiceLoader.load(extensionType)).asList();
+        this.paramTypes = paramTypes;
     }
 
     @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        callAfterStop();
-        super.afterAll(extensionContext);
+    public final void beforeAll(ExtensionContext ctx) {
+        if (System.getProperty("helidon.config.profile") == null && System.getProperty("config.profile") == null) {
+            System.setProperty("helidon.config.profile", "test");
+        }
+        super.beforeAll(ctx);
+        var tc = ctx.getRequiredTestClass();
+        var hc = staticContext(ctx).orElseThrow();
+        var resource = new State(tc, hc, this::init, this::close);
+        store(ctx, resource.testClass).put("state", resource);
+        run(ctx, () -> extensions().forEach(it -> it.beforeAll(ctx)));
     }
 
-    void setupServer(WebServerConfig.Builder builder) {
-        withStaticMethods(testClass(), SetUpServer.class, (setUpServer, method) -> {
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            if (parameterTypes.length != 1) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpServer.class.getSimpleName()
-                                                           + " does not have exactly one parameter (WebServerConfig.Builder)");
+    @Override
+    public final void interceptDynamicTest(Invocation<Void> inv, DynamicTestInvocationContext ic, ExtensionContext ctx)
+            throws Throwable {
+
+        state(ctx).init();
+        inv.proceed();
+    }
+
+    @Override
+    public final void interceptTestMethod(Invocation<Void> inv, ReflectiveInvocationContext<Method> ic, ExtensionContext ctx)
+            throws Throwable {
+
+        state(ctx).init();
+        inv.proceed();
+    }
+
+    @Override
+    public final void afterAll(ExtensionContext ctx) {
+        runChecked(ctx, () -> extensions.forEach(it -> it.afterAll(ctx)));
+        super.afterAll(ctx);
+    }
+
+    @Override
+    public final void beforeEach(ExtensionContext ctx) throws Exception {
+        runChecked(ctx, () -> extensions.forEach(it -> it.beforeEach(ctx)));
+        super.beforeEach(ctx);
+    }
+
+    @Override
+    public final void afterEach(ExtensionContext ctx) throws Exception {
+        runChecked(ctx, () -> extensions.forEach(it -> it.afterEach(ctx)));
+        super.beforeEach(ctx);
+    }
+
+    @Override
+    public final boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
+            throws ParameterResolutionException {
+
+        var state = state(ctx);
+        return supplyChecked(ctx, () -> {
+            Class<?> paramType = pc.getParameter().getType();
+            if (paramTypes.contains(paramType)) {
+                return true;
             }
-            if (!parameterTypes[0].equals(WebServerConfig.Builder.class)) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpServer.class.getSimpleName()
-                                                           + " does not have exactly one parameter (WebServerConfig.Builder)");
+            for (T extension : extensions()) {
+                if (extension.supportsParameter(pc, ctx)) {
+                    return true;
+                }
+            }
+            var value = state.ctx.get(paramType).orElse(null);
+            if (value != null) {
+                return true;
+            }
+            return super.supportsParameter(pc, ctx);
+        });
+    }
+
+    @Override
+    public final Object resolveParameter(ParameterContext pc, ExtensionContext ctx)
+            throws ParameterResolutionException {
+
+        var state = state(ctx);
+        return supplyChecked(ctx, () -> {
+            Object resolved = resolve(pc, ctx);
+            if (resolved == null) {
+                var paramType = pc.getParameter().getType();
+                resolved = state.ctx.get(paramType).orElse(null);
+            }
+            return resolved != null ? resolved : super.resolveParameter(pc, ctx);
+        });
+    }
+
+    abstract void init(Class<?> testClass, Context ctx);
+
+    abstract Object resolve(ParameterContext pc, ExtensionContext ctx);
+
+    void close(Class<?> testClass) {
+        for (Method method : testClass.getMethods()) {
+            var annot = method.getAnnotation(AfterStop.class);
+            if (annot != null) {
+                if (method.getParameterCount() != 0) {
+                    throw new IllegalStateException(
+                            "Method annotated @AfterStop has parameters: " + method);
+                }
+                if (Modifier.isStatic(method.getModifiers())) {
+                    method.setAccessible(true);
+                    try {
+                        method.invoke(testClass);
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Failed to invoke method: " + method, e);
+                    }
+                } else {
+                    throw new IllegalStateException(
+                            "Method annotated with @AfterStop is not static: " + method);
+                }
+            }
+        }
+    }
+
+    final List<T> extensions() {
+        return extensions;
+    }
+
+    final void init(ExtensionContext ctx) {
+        state(ctx).init();
+    }
+
+    protected static void setupServer(WebServerConfig.Builder builder, Class<?> testClass) {
+        withStaticMethods(testClass, SetUpServer.class, (setUpServer, method) -> {
+            Class<?>[] paramTypes = method.getParameterTypes();
+            if (paramTypes.length != 1) {
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpServer must have one parameter: %s".formatted(
+                                method, WebServerConfig.Builder.class.getCanonicalName()));
+            }
+            if (!paramTypes[0].equals(WebServerConfig.Builder.class)) {
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpServer must have one parameter: %s".formatted(
+                                method, WebServerConfig.Builder.class.getCanonicalName()));
             }
             if (!Modifier.isStatic(method.getModifiers())) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpServer.class.getSimpleName()
-                                                           + " is not static");
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpServer is not static".formatted(
+                                method));
             }
             try {
                 method.setAccessible(true);
@@ -68,20 +208,21 @@ abstract class JunitExtensionBase extends TestJunitExtension implements AfterAll
     }
 
     @SuppressWarnings("unchecked")
-    void setupFeatures(WebServerConfig.Builder builder) {
-        withStaticMethods(testClass(), SetUpFeatures.class, ((setUpFeatures, method) -> {
-            if (!setUpFeatures.value()) {
+    protected static void setupFeatures(WebServerConfig.Builder builder, Class<?> testClass) {
+        withStaticMethods(testClass, SetUpFeatures.class, (annot, method) -> {
+            if (!annot.value()) {
                 builder.featuresDiscoverServices(false);
             }
             Class<?>[] parameterTypes = method.getParameterTypes();
             if (parameterTypes.length != 0) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpFeatures.class.getSimpleName()
-                                                           + " has parameter(s), which is not allowed. It should return "
-                                                           + " List<ServerFeature>.");
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpFeatures must only return List<ServerFeature>".formatted(
+                                method));
             }
             if (!Modifier.isStatic(method.getModifiers())) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpFeatures.class.getSimpleName()
-                                                           + " is not static");
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpFeatures is not static".formatted(
+                                method));
             }
             Object result;
             try {
@@ -91,64 +232,64 @@ abstract class JunitExtensionBase extends TestJunitExtension implements AfterAll
                 throw new IllegalStateException("Could not invoke method " + method, e);
             }
 
-            List<ServerFeature> features;
             try {
-                features = (List<ServerFeature>) result;
-            } catch (ClassCastException e) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpFeatures.class.getSimpleName()
-                                                           + " returned a result that is not a List. Supported is "
-                                                           + "List<? extends ServerFeature>.", e);
-            }
-            try {
-                for (ServerFeature feature : features) {
+                for (ServerFeature feature : (List<ServerFeature>) result) {
                     builder.addFeature(feature);
                 }
             } catch (ClassCastException e) {
-                throw new IllegalArgumentException("Method " + method + " annotated with " + SetUpFeatures.class.getSimpleName()
-                                                           + " returned a result that is a List, but an element was not "
-                                                           + "a ServerFeature.", e);
+                throw new IllegalArgumentException(
+                        "Method %s annotated with @SetUpFeatures must return List<ServerFeature>".formatted(
+                                method), e);
             }
-        }));
+        });
     }
 
-
-    void testClass(Class<?> testClass) {
-        this.testClass = testClass;
+    private static State state(ExtensionContext ctx) {
+        ExtensionContext.Store store = store(ctx, ctx.getRequiredTestClass());
+        return storeLookup(store, "state", State.class).orElseThrow();
     }
 
-    Class<?> testClass() {
-        return testClass;
-    }
+    private static final class State implements ExtensionContext.Store.CloseableResource {
+        private final BiConsumer<Class<?>, Context> initFunc;
+        private final Consumer<Class<?>> closeFunc;
+        private final Lock lock = new ReentrantLock();
+        private final Class<?> testClass;
+        private final Context ctx;
+        private boolean initialized;
+        private RuntimeException error;
 
-    private void callAfterStop() {
-        if (testClass == null) {
-            return;
+        State(Class<?> testClass, Context ctx, BiConsumer<Class<?>, Context> initFunc, Consumer<Class<?>> closeFunc) {
+            this.testClass = testClass;
+            this.ctx = ctx;
+            this.initFunc = initFunc;
+            this.closeFunc = closeFunc;
         }
 
-        List<Method> toInvoke = new ArrayList<>();
-
-        Method[] methods = testClass.getMethods();
-        for (Method method : methods) {
-            AfterStop annotation = method.getAnnotation(AfterStop.class);
-            if (annotation != null) {
-                if (method.getParameterCount() != 0) {
-                    throw new IllegalStateException("Method " + method + " is annotated with @AfterStop, but it has parameters");
+        void init() {
+            if (error == null && !initialized) {
+                try {
+                    lock.lock();
+                    if (error == null && !initialized) {
+                        Contexts.runInContext(ctx, () -> {
+                            initFunc.accept(testClass, ctx);
+                            initialized = true;
+                        });
+                    }
+                } catch (RuntimeException ex) {
+                    error = ex;
+                    throw ex;
+                } finally {
+                    lock.unlock();
                 }
-                if (Modifier.isStatic(method.getModifiers())) {
-                    method.setAccessible(true);
-                    toInvoke.add(method);
-                } else {
-                    throw new IllegalStateException("Method " + method + " is annotated with @AfterStop, but it is not static");
-                }
+            }
+            if (error != null) {
+                throw error;
             }
         }
 
-        for (Method method : toInvoke) {
-            try {
-                method.invoke(testClass);
-            } catch (Exception e) {
-                throw new IllegalStateException("Failed to invoke method: " + method, e);
-            }
+        @Override
+        public void close() {
+            closeFunc.accept(testClass);
         }
     }
 }
