@@ -35,6 +35,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
+import static io.helidon.webserver.testing.junit5.Junit5Util.socketName;
+
 /**
  * Java {@link java.util.ServiceLoader} provider implementation of
  * a {@link io.helidon.webserver.testing.junit5.spi.ServerJunitExtension} that adds support for HTTP/1.1.
@@ -51,53 +53,40 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
     }
 
     @Override
-    public void afterEach(ExtensionContext context) {
+    public void afterEach(ExtensionContext ctx) {
         socketHttpClients.values().forEach(SocketHttpClient::disconnect);
     }
 
     @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+    public boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
-        Class<?> paramType = parameterContext.getParameter().getType();
+        Class<?> paramType = pc.getParameter().getType();
         if (paramType.equals(Http1Client.class)) {
             return true;
         }
         if (paramType.equals(SocketHttpClient.class)) {
             return true;
         }
-        if (paramType.equals(WebClient.class)) {
-            return true;
-        }
-
-        return false;
+        return paramType.equals(WebClient.class);
     }
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext,
-                                   ExtensionContext extensionContext,
-                                   Class<?> parameterType,
-                                   WebServer server) {
-
-        if (parameterType.equals(SocketHttpClient.class)) {
-            return socketHttpClients.computeIfAbsent(Junit5Util.socketName(parameterContext.getParameter()),
-                                                     it -> socketHttpClient(server, it));
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ctx, Class<?> paramType, WebServer server) {
+        if (paramType.equals(SocketHttpClient.class)) {
+            return socketHttpClients.computeIfAbsent(socketName(pc.getParameter()), it -> socketHttpClient(server, it));
         }
-        if (parameterType.equals(Http1Client.class)) {
-            return httpClients.computeIfAbsent(Junit5Util.socketName(parameterContext.getParameter()),
-                                               it -> httpClient(server, it));
+        if (paramType.equals(Http1Client.class)) {
+            return httpClients.computeIfAbsent(socketName(pc.getParameter()), it -> httpClient(server, it));
         }
-        if (parameterType.equals(WebClient.class)) {
-            return webClients.computeIfAbsent(Junit5Util.socketName(parameterContext.getParameter()),
-                                              it -> webClient(server, it));
+        if (paramType.equals(WebClient.class)) {
+            return webClients.computeIfAbsent(socketName(pc.getParameter()), it -> webClient(server, it));
         }
-
-        throw new ParameterResolutionException("Parameter of type " + parameterType.getName() + " not supported");
+        throw new ParameterResolutionException("Parameter of type " + paramType.getName() + " not supported");
     }
 
     @Override
     public Optional<ParamHandler<?>> setUpRouteParamHandler(Class<?> type) {
-
         if (ListenerConfig.Builder.class.equals(type)) {
             return Optional.of(new ListenerConfigurationParamHandler());
         } else if (Router.RouterBuilder.class.equals(type)) {
@@ -105,19 +94,18 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
         } else if (HttpRules.class.equals(type) || HttpRouting.Builder.class.equals(type)) {
             return Optional.of(new RoutingParamHandler());
         }
-
         return Optional.empty();
     }
 
-    private WebClient webClient(WebServer server, String socketName) {
+    private WebClient webClient(WebServer server, String socket) {
         return WebClient.builder()
-                .baseUri("http://localhost:" + server.port(socketName))
+                .baseUri("http://localhost:" + server.port(socket))
                 .build();
     }
 
-    private Http1Client httpClient(WebServer server, String socketName) {
+    private Http1Client httpClient(WebServer server, String socket) {
         return Http1Client.builder()
-                .baseUri("http://localhost:" + server.port(socketName))
+                .baseUri("http://localhost:" + server.port(socket))
                 .build();
     }
 
@@ -127,44 +115,44 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
 
     private static class RoutingParamHandler implements ParamHandler<HttpRouting.Builder> {
         @Override
-        public HttpRouting.Builder get(String socketName,
-                                       WebServerConfig.Builder serverBuilder,
-                                       ListenerConfig.Builder listenerBuilder,
-                                       Router.RouterBuilder<?> routerBuilder) {
-            if (listenerBuilder.routing().isEmpty()) {
-                listenerBuilder.routing(HttpRouting.builder());
+        public HttpRouting.Builder get(String socket,
+                                       WebServerConfig.Builder server,
+                                       ListenerConfig.Builder listener,
+                                       Router.RouterBuilder<?> router) {
+            if (listener.routing().isEmpty()) {
+                listener.routing(HttpRouting.builder());
             }
-            return listenerBuilder.routing().get();
+            return listener.routing().get();
         }
 
         @Override
-        public void handle(String socketName,
-                           WebServerConfig.Builder serverBuilder,
-                           ListenerConfig.Builder listenerBuilder,
-                           Router.RouterBuilder<?> routerBuilder,
+        public void handle(String socket,
+                           WebServerConfig.Builder server,
+                           ListenerConfig.Builder listener,
+                           Router.RouterBuilder<?> router,
                            HttpRouting.Builder value) {
 
-            routerBuilder.addRouting(value);
+            router.addRouting(value);
         }
     }
 
     private static class RouterParamHandler implements ParamHandler<Router.RouterBuilder<?>> {
         @Override
-        public Router.RouterBuilder<?> get(String socketName,
-                                           WebServerConfig.Builder serverBuilder,
-                                           ListenerConfig.Builder listenerBuilder,
-                                           Router.RouterBuilder<?> routerBuilder) {
-            return routerBuilder;
+        public Router.RouterBuilder<?> get(String socket,
+                                           WebServerConfig.Builder server,
+                                           ListenerConfig.Builder listener,
+                                           Router.RouterBuilder<?> router) {
+            return router;
         }
     }
 
     private static class ListenerConfigurationParamHandler implements ParamHandler<ListenerConfig.Builder> {
         @Override
-        public ListenerConfig.Builder get(String socketName,
-                                          WebServerConfig.Builder serverBuilder,
-                                          ListenerConfig.Builder listenerBuilder,
-                                          Router.RouterBuilder<?> routerBuilder) {
-            return listenerBuilder;
+        public ListenerConfig.Builder get(String socket,
+                                          WebServerConfig.Builder server,
+                                          ListenerConfig.Builder listener,
+                                          Router.RouterBuilder<?> router) {
+            return listener;
         }
     }
 }

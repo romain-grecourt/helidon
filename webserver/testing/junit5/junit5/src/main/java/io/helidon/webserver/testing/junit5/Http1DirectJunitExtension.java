@@ -39,6 +39,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 import static io.helidon.webserver.WebServer.DEFAULT_SOCKET_NAME;
+import static io.helidon.webserver.testing.junit5.Junit5Util.socketName;
 
 /**
  * A Java {@link java.util.ServiceLoader} provider implementation of
@@ -56,22 +57,8 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
 
     @Override
     public void beforeEach(ExtensionContext context) {
-        clients.values()
-                .forEach(client -> client.clientTlsPrincipal(null)
-                        .clientTlsCertificates(null)
-                        .clientHost("helidon-unit")
-                        .clientPort(65000)
-                        .serverHost("helidon-unit-server")
-                        .serverPort(8080)
-                );
-        webClients.values()
-                .forEach(client -> client.clientTlsPrincipal(null)
-                        .clientTlsCertificates(null)
-                        .clientHost("helidon-unit")
-                        .clientPort(65000)
-                        .serverHost("helidon-unit-server")
-                        .serverPort(8080)
-                );
+        clients.values().forEach(Http1DirectJunitExtension::reset);
+        webClients.values().forEach(Http1DirectJunitExtension::reset);
     }
 
     @Override
@@ -85,17 +72,13 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
         if (Http1Client.class.equals(paramType)) {
             return true;
         }
-        if (WebClient.class.equals(paramType)) {
-            return true;
-        }
-
-        return false;
+        return WebClient.class.equals(paramType);
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Class<?> paramType) {
         if (DirectClient.class.equals(paramType) || Http1Client.class.equals(paramType)) {
-            String socketName = Junit5Util.socketName(parameterContext.getParameter());
+            String socketName = socketName(parameterContext.getParameter());
 
             DirectClient directClient = clients.get(socketName);
 
@@ -103,33 +86,32 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
                 // there is no routing specified
                 if (DEFAULT_SOCKET_NAME.equals(socketName)) {
                     throw new IllegalStateException("There is no default routing specified. Please add static method "
-                                                            + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                            + " or HttpRules");
+                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
+                                                    + " or HttpRules");
                 } else {
                     throw new IllegalStateException("There is no routing specified for socket \"" + socketName + "\"."
-                                                            + " Please add static method "
-                                                            + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                            + " or HttpRules, and add @Socket(\"" + socketName + "\") "
-                                                            + "annotation to the parameter");
+                                                    + " Please add static method "
+                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
+                                                    + " or HttpRules, and add @Socket(\"" + socketName + "\") "
+                                                    + "annotation to the parameter");
                 }
             }
             return directClient;
         }
         if (WebClient.class.equals(paramType)) {
-            String socketName = Junit5Util.socketName(parameterContext.getParameter());
-            WebClient directClient = webClients.get(socketName);
-
+            var socketName = socketName(parameterContext.getParameter());
+            var directClient = webClients.get(socketName);
             if (directClient == null) {
                 if (DEFAULT_SOCKET_NAME.equals(socketName)) {
                     throw new IllegalStateException("There is no default routing specified. Please add static method "
-                                                            + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                            + " or HttpRules");
+                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
+                                                    + " or HttpRules");
                 } else {
                     throw new IllegalStateException("There is no default routing specified for socket \"" + socketName + "\"."
-                                                            + " Please add static method "
-                                                            + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                            + " or HttpRules, and add @Socket(\"" + socketName + "\") "
-                                                            + "annotation to the parameter");
+                                                    + " Please add static method "
+                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
+                                                    + " or HttpRules, and add @Socket(\"" + socketName + "\") "
+                                                    + "annotation to the parameter");
                 }
             }
             return directClient;
@@ -146,18 +128,28 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
         return Optional.empty();
     }
 
-    private static final class RoutingParamHandler implements DirectJunitExtension.ParamHandler<HttpRouting.Builder> {
-        private final Map<String, DirectClient> clients;
-        private final Map<String, DirectWebClient> webClients;
-        private final List<ServerFeature> features;
+    private static DirectClient reset(DirectClient client) {
+        return client.clientTlsPrincipal(null)
+                .clientTlsCertificates(null)
+                .clientHost("helidon-unit")
+                .clientPort(65000)
+                .serverHost("helidon-unit-server")
+                .serverPort(8080);
+    }
 
-        private RoutingParamHandler(Map<String, DirectClient> clients,
-                                    Map<String, DirectWebClient> webClients,
-                                    List<ServerFeature> features) {
-            this.clients = clients;
-            this.webClients = webClients;
-            this.features = features;
-        }
+    private static DirectWebClient reset(DirectWebClient client) {
+        return client.clientTlsPrincipal(null)
+                .clientTlsCertificates(null)
+                .clientHost("helidon-unit")
+                .clientPort(65000)
+                .serverHost("helidon-unit-server")
+                .serverPort(8080);
+    }
+
+    private record RoutingParamHandler(Map<String, DirectClient> clients,
+                                       Map<String, DirectWebClient> webClients,
+                                       List<ServerFeature> features)
+            implements ParamHandler<HttpRouting.Builder> {
 
         @Override
         public HttpRouting.Builder get(String socketName) {
@@ -165,89 +157,65 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
         }
 
         @Override
-        public void handle(Method method, String socketName, HttpRouting.Builder value) {
-            HttpRouting routing = value.copy().build();
+        public void handle(Method method, String socket, HttpRouting.Builder value) {
+            var routing = value.copy().build();
             routing.beforeStart();
 
-            ServerFeature.ServerFeatureContext featureContext = new DirectFeatureContext(socketName, value);
+            var featureContext = new DirectFeatureContext(socket, value);
             for (ServerFeature feature : features) {
                 feature.setup(featureContext);
             }
 
-            if (clients.putIfAbsent(socketName, new DirectClient(value)) != null) {
-                throw new IllegalStateException("Method "
-                                                        + method
-                                                        + " defines HTTP routing for socket \""
-                                                        + socketName
-                                                        + "\""
-                                                        + " that is already defined for class \""
-                                                        + method.getDeclaringClass().getName()
-                                                        + "\".");
-            }
-
-            if (webClients.putIfAbsent(socketName, new DirectWebClient(value)) != null) {
-                throw new IllegalStateException("Method "
-                                                        + method
-                                                        + " defines HTTP routing for socket \""
-                                                        + socketName
-                                                        + "\""
-                                                        + " that is already defined for class \""
-                                                        + method.getDeclaringClass().getName()
-                                                        + "\".");
-            }
-        }
-
-        private static class DirectFeatureContext implements ServerFeature.ServerFeatureContext {
-            private final String socketName;
-            private final HttpRouting.Builder routing;
-
-            DirectFeatureContext(String socketName, HttpRouting.Builder routing) {
-                this.socketName = socketName;
-                this.routing = routing;
-            }
-
-            @Override
-            public WebServerConfig serverConfig() {
-                return WebServerConfig.create();
-            }
-
-            @Override
-            public Set<String> sockets() {
-                return DEFAULT_SOCKET_NAME.equals(socketName) ? Set.of() : Set.of(socketName);
-            }
-
-            @Override
-            public boolean socketExists(String socketName) {
-                return socketName.equals(this.socketName);
-            }
-
-            @Override
-            public ServerFeature.SocketBuilders socket(String socketName) {
-                if (!socketName.equals(this.socketName)) {
-                    if (DEFAULT_SOCKET_NAME.equals(socketName)) {
-                        return defaultListener();
-                    }
-                    throw new NoSuchElementException("Socket " + socketName + " is not defined");
-                }
-
-                return new DirectSocketBuilders(routing);
-            }
-
-            private ServerFeature.SocketBuilders defaultListener() {
-                if (DEFAULT_SOCKET_NAME.equals(socketName)) {
-                    return new DirectSocketBuilders(routing);
-                }
-                return new DirectSocketBuilders(HttpRouting.builder());
+            if (clients.putIfAbsent(socket, reset(new DirectClient(value))) != null
+                || webClients.putIfAbsent(socket, reset(new DirectWebClient(value))) != null) {
+                throw new IllegalStateException(
+                        "Method %s defines HTTP routing for socket \"%s\" that is already defined for class \"%s\".".formatted(
+                                method,
+                                socket,
+                                method.getDeclaringClass().getName()));
             }
         }
     }
 
-    private static class DirectSocketBuilders implements ServerFeature.SocketBuilders {
-        private final HttpRouting.Builder routing;
+    private record DirectFeatureContext(String socket, HttpRouting.Builder routing)
+            implements ServerFeature.ServerFeatureContext {
 
-        DirectSocketBuilders(HttpRouting.Builder routing) {
-            this.routing = routing;
+        @Override
+        public WebServerConfig serverConfig() {
+            return WebServerConfig.create();
         }
+
+        @Override
+        public Set<String> sockets() {
+            return DEFAULT_SOCKET_NAME.equals(socket) ? Set.of() : Set.of(socket);
+        }
+
+        @Override
+        public boolean socketExists(String socket) {
+            return socket.equals(this.socket);
+        }
+
+        @Override
+        public ServerFeature.SocketBuilders socket(String socket) {
+            if (!socket.equals(this.socket)) {
+                if (DEFAULT_SOCKET_NAME.equals(socket)) {
+                    return defaultListener();
+                }
+                throw new NoSuchElementException("Socket " + socket + " is not defined");
+            }
+
+            return new DirectSocketBuilders(routing);
+        }
+
+        ServerFeature.SocketBuilders defaultListener() {
+            if (DEFAULT_SOCKET_NAME.equals(socket)) {
+                return new DirectSocketBuilders(routing);
+            }
+            return new DirectSocketBuilders(HttpRouting.builder());
+        }
+    }
+
+    private record DirectSocketBuilders(HttpRouting.Builder routing) implements ServerFeature.SocketBuilders {
 
         @Override
         public ListenerConfig listener() {

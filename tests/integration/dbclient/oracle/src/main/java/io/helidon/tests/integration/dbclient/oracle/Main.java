@@ -54,6 +54,7 @@ public class Main {
     static void setup(WebServerConfig.Builder server) {
         server.addFeature(Services.getNamed(ServerFeature.class, "healthNoDetails"));
         server.addFeature(Services.getNamed(ServerFeature.class, "healthDetails"));
+        server.routing(Main::routing);
     }
 
     static void routing(HttpRouting.Builder routing) {

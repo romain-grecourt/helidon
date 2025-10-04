@@ -74,9 +74,10 @@ public final class Junit5Util {
                     if (Modifier.isStatic(method.getModifiers())) {
                         handler.accept(annotation, method);
                     } else {
-                        throw new IllegalStateException("Method " + method + " is annotated with "
-                                                                + annotationType.getSimpleName()
-                                                                + " yet it is not static");
+                        throw new IllegalStateException(
+                                "Method %s is annotated with %s yet it is not static".formatted(
+                                        method,
+                                        annotationType.getSimpleName()));
                     }
                 }
             }

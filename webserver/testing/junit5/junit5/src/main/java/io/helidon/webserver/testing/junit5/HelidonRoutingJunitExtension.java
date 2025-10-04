@@ -21,141 +21,79 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ServiceLoader;
+import java.util.Set;
 
-import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.context.Contexts;
+import io.helidon.common.context.Context;
+import io.helidon.service.registry.Services;
 import io.helidon.webserver.WebServer;
-import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.spi.ServerFeature;
 import io.helidon.webserver.testing.junit5.spi.DirectJunitExtension;
-import io.helidon.webserver.testing.junit5.spi.DirectJunitExtension.ParamHandler;
 
 import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
 
 /**
- * JUnit5 extension to support Helidon WebServer in tests.
+ * JUnit5 extension to support Helidon WebServer in-memory unit tests.
  */
-@SuppressWarnings({"removal", "deprecation"})
-class HelidonRoutingJunitExtension extends JunitExtensionBase
-        implements BeforeAllCallback,
-                   AfterAllCallback,
-                   InvocationInterceptor,
-                   BeforeEachCallback,
-                   AfterEachCallback,
-                   ParameterResolver {
-
-    private final List<DirectJunitExtension> extensions;
-    private WebServerConfig serverConfig;
+class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtension>
+        implements AfterAllCallback, ParameterResolver {
 
     HelidonRoutingJunitExtension() {
-        this.extensions = HelidonServiceLoader.create(ServiceLoader.load(DirectJunitExtension.class)).asList();
+        super(DirectJunitExtension.class, Set.of());
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
-
-        Class<?> testClass = context.getRequiredTestClass();
+    @SuppressWarnings({"deprecation", "removal"})
+    void init(Class<?> testClass, Context ctx) {
         RoutingTest testAnnot = testClass.getAnnotation(RoutingTest.class);
         if (testAnnot == null) {
             throw new IllegalStateException(
-                    "Test class %s is not annotated with %s"
-                            .formatted(testClass, RoutingTest.class));
+                    "Test class %s is not annotated with @RoutingTest"
+                            .formatted(testClass));
         }
 
-        var config = io.helidon.common.config.GlobalConfig.config().get("server");
-        WebServerConfig.Builder builder = WebServer.builder()
-                .config(config)
+        var config = Services.get(io.helidon.common.config.Config.class);
+        var builder = WebServer.builder()
+                .config(config.get("server"))
                 .host("localhost");
-
-        extensions.forEach(it -> it.beforeAll(context));
 
         setupFeatures(builder, testClass);
         setupServer(builder, testClass);
 
-        serverConfig = builder.buildPrototype();
-
-        initRoutings(testClass);
-    }
-
-    @Override
-    public void afterAll(ExtensionContext ctx) {
-        extensions.forEach(it -> it.afterAll(ctx));
-        super.afterAll(ctx);
-    }
-
-    @Override
-    public void beforeEach(ExtensionContext context) {
-        extensions.forEach(it -> it.beforeAll(context));
-    }
-
-    @Override
-    public void afterEach(ExtensionContext context) {
-        extensions.forEach(it -> it.afterEach(context));
-    }
-
-    @Override
-    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
-            throws ParameterResolutionException {
-
-        for (DirectJunitExtension extension : extensions) {
-            if (extension.supportsParameter(parameterContext, extensionContext)) {
-                return true;
-            }
-        }
-
-        Class<?> paramType = parameterContext.getParameter().getType();
-        return Contexts.context()
-                .orElseGet(Contexts::globalContext)
-                .get(paramType)
-                .isPresent();
-    }
-
-    @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
-            throws ParameterResolutionException {
-
-        Class<?> paramType = parameterContext.getParameter().getType();
-
-        for (DirectJunitExtension extension : extensions) {
-            if (extension.supportsParameter(parameterContext, extensionContext)) {
-                return extension.resolveParameter(parameterContext, extensionContext, paramType);
-            }
-        }
-
-        return Contexts.context()
-                .orElseGet(Contexts::globalContext)
-                .get(paramType)
-                .orElseThrow(() -> new ParameterResolutionException("Failed to resolve parameter of type "
-                                                                    + paramType.getName()));
-    }
-
-    private void initRoutings(Class<?> testClass) {
-        List<ServerFeature> features = serverConfig.features();
+        var server = builder.buildPrototype();
         withStaticMethods(testClass, SetUpRoute.class, (annot, method) -> {
-            String socket = annot.value();
-            handleParams(features, method, socket);
+            var socket = annot.value();
+            handleParams(server.features(), method, socket);
         });
     }
 
-    private List<ParamHandler<?>> handlers(Method method, List<ServerFeature> features) {
-        List<ParamHandler<?>> handlers = new ArrayList<>();
+    @Override
+    Object resolve(ParameterContext pc, ExtensionContext ctx) {
+        for (DirectJunitExtension extension : extensions()) {
+            if (extension.supportsParameter(pc, ctx)) {
+                init(ctx);
+                return extension.resolveParameter(pc, ctx, pc.getParameter().getType());
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> void handleParam(DirectJunitExtension.ParamHandler<T> handler, Method method, String socket, Object value) {
+        handler.handle(method, socket, (T) value);
+    }
+
+    private void handleParams(List<ServerFeature> features, Method method, String socket) {
+        List<DirectJunitExtension.ParamHandler<?>> handlers = new ArrayList<>();
         for (Parameter parameter : method.getParameters()) {
             boolean found = false;
             Class<?> paramType = parameter.getType();
-            for (DirectJunitExtension extension : extensions) {
-                var handler = extension.setUpRouteParamHandler(features, paramType).orElse(null);
+            for (DirectJunitExtension e : extensions()) {
+                var handler = e.setUpRouteParamHandler(features, paramType).orElse(null);
                 if (handler != null) {
                     handlers.add(handler);
                     found = true;
@@ -168,17 +106,8 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
                                 .formatted(method, paramType));
             }
         }
-        return handlers;
-    }
 
-    @SuppressWarnings("unchecked")
-    private static <T> void handleParam(ParamHandler<T> handler, Method method, String socket, Object value) {
-        handler.handle(method, socket, (T) value);
-    }
-
-    private void handleParams(List<ServerFeature> features, Method method, String socket) {
-        List<ParamHandler<?>> handlers = handlers(method, features);
-        Object[] values = new Object[handlers.size()];
+        var values = new Object[handlers.size()];
         for (int i = 0; i < handlers.size(); i++) {
             values[i] = handlers.get(i).get(socket);
         }

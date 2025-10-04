@@ -16,7 +16,7 @@
 package io.helidon.tests.integration.dbclient.mysql;
 
 import io.helidon.testing.junit5.Testing;
-import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
 import io.helidon.tests.integration.harness.ProcessRunner;
 import io.helidon.tests.integration.harness.TestProcess;
 import io.helidon.tests.integration.harness.TestProcesses;
@@ -30,7 +30,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 @TestProcesses
 @Testing.Test
-final class MySQLObservabilityRemoteTestIT implements ObservabilityTest {
+final class MySQLObservabilityRemoteTestIT implements HttpObservabilityTest {
 
     @Container
     static final MySQLContainer<?> CONTAINER = MySQLTestContainer.CONTAINER;
@@ -38,12 +38,12 @@ final class MySQLObservabilityRemoteTestIT implements ObservabilityTest {
     @TestProcess
     static final ProcessRunner PROCESS_RUNNER = MySQLRemoteTest.PROCESS_RUNNER;
 
-    private final ObservabilityTest delegate;
+    private final HttpObservabilityTest delegate;
 
     @SuppressWarnings("resource")
     MySQLObservabilityRemoteTestIT() {
         String serverUrl = "http://localhost:%d".formatted(PROCESS_RUNNER.process().port());
-        delegate = new ObservabilityTest.TestImpl(Http1Client.builder()
+        delegate = new HttpObservabilityTest.TestImpl(Http1Client.builder()
                 .baseUri(serverUrl)
                 .build());
     }
@@ -64,41 +64,5 @@ final class MySQLObservabilityRemoteTestIT implements ObservabilityTest {
     @Override
     public void testHttpMetrics() {
         delegate.testHttpMetrics();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheck() {
-        delegate.testHealthCheck();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithName() {
-        delegate.testHealthCheckWithName();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomNamedDML() {
-        delegate.testHealthCheckWithCustomNamedDML();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomDML() {
-        delegate.testHealthCheckWithCustomDML();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomNamedQuery() {
-        delegate.testHealthCheckWithCustomNamedQuery();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomQuery() {
-        delegate.testHealthCheckWithCustomQuery();
     }
 }

@@ -16,6 +16,8 @@
 
 package io.helidon.webserver.testing.junit5;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,6 +59,7 @@ class DirectClientServerContext implements ConnectionContext, ListenerContext {
                 .name("@default")
                 .host(peerInfo.host())
                 .port(peerInfo.port())
+                .address(localhost())
                 .listenerContext(Context.builder().id("test-direct-listener").build())
                 .mediaContext(MediaContext.create())
                 .contentEncoding(ContentEncodingContext.create())
@@ -116,22 +119,22 @@ class DirectClientServerContext implements ConnectionContext, ListenerContext {
 
     @Override
     public Context context() {
-        return listenerConfiguration.listenerContext().get();
+        return listenerConfiguration.listenerContext().orElseThrow();
     }
 
     @Override
     public MediaContext mediaContext() {
-        return listenerConfiguration.mediaContext().get();
+        return listenerConfiguration.mediaContext().orElseThrow();
     }
 
     @Override
     public ContentEncodingContext contentEncodingContext() {
-        return listenerConfiguration.contentEncoding().get();
+        return listenerConfiguration.contentEncoding().orElseThrow();
     }
 
     @Override
     public DirectHandlers directHandlers() {
-        return listenerConfiguration.directHandlers().get();
+        return listenerConfiguration.directHandlers().orElseThrow();
     }
 
     @Override
@@ -142,5 +145,13 @@ class DirectClientServerContext implements ConnectionContext, ListenerContext {
     @Override
     public HelidonSocket serverSocket() {
         return serverSocket;
+    }
+
+    private static InetAddress localhost() {
+        try {
+            return InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

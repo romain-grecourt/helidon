@@ -49,7 +49,7 @@ public interface DirectJunitExtension extends HelidonJunitExtension {
     /**
      * Check if the type is supported and return a handler for it.
      *
-     * @param features
+     * @param features features
      * @param type     type of the parameter to {@link io.helidon.webserver.testing.junit5.SetUpRoute} method
      * @return parameter handler if the type is supported, empty otherwise
      */

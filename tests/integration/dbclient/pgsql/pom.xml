@@ -28,6 +28,10 @@
     <artifactId>helidon-tests-integration-dbclient-pgsql</artifactId>
     <name>Helidon Tests Integration DbClient PostGreSQL</name>
 
+    <properties>
+        <mainClass>io.helidon.tests.integration.dbclient.pgsql.Main</mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.helidon.dbclient</groupId>

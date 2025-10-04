@@ -15,37 +15,61 @@
  */
 package io.helidon.tests.integration.dbclient.pgsql;
 
+import io.helidon.config.Config;
+import io.helidon.service.registry.Services;
+import io.helidon.tests.integration.dbclient.common.TestFactories;
 import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
 import io.helidon.webclient.http1.Http1Client;
+import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.testing.junit5.ServerTest;
+import io.helidon.webserver.testing.junit5.SetUpServer;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
 
 @ServerTest
-final class PostgreSQLObservabilityLocalTestIT extends PostgreSQLLocalTest implements ObservabilityTest {
+final class PostgreSQLObservabilityLocalTestIT extends PostgreSQLLocalTest implements ObservabilityTest,
+                                                                                      HttpObservabilityTest {
 
-    private final ObservabilityTest delegate;
+    @Container
+    static final GenericContainer<?> CONTAINER = PostgreSQLTestContainer.CONTAINER;
+
+    private final ObservabilityTest delegate = new ObservabilityTest.TestImpl();
+    private final HttpObservabilityTest httpDelegate;
 
     PostgreSQLObservabilityLocalTestIT(Http1Client client) {
-        delegate = new ObservabilityTest.TestImpl(client);
+        this.httpDelegate = new HttpObservabilityTest.TestImpl(client);
+    }
+
+    @BeforeAll
+    static void setUp() {
+        Services.set(Config.class, TestFactories.config(PostgreSQLTestContainer.config()));
+    }
+
+    @SetUpServer
+    static void setUpRoutes(WebServerConfig.Builder server) {
+        Main.setup(server);
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        delegate.testHttpHealthNoDetails();
+        httpDelegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        delegate.testHttpHealthDetails();
+        httpDelegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        delegate.testHttpMetrics();
+        httpDelegate.testHttpMetrics();
     }
 
     @Test

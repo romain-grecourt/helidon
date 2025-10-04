@@ -41,6 +41,7 @@ abstract class PostgreSQLRemoteTest extends RemoteTest {
             .finalName("helidon-tests-integration-dbclient-pgsql")
             .properties(Map.of("java.util.logging.config.file", Path.of("target/classes/logging.properties").toAbsolutePath()))
             .properties(PostgreSQLTestContainer::config)
+            .port(0)
             .waitingFor(WaitStrategy.waitForPort());
 
     /**

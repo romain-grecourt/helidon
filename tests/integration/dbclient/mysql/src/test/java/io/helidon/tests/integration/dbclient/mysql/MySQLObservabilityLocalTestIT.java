@@ -15,37 +15,63 @@
  */
 package io.helidon.tests.integration.dbclient.mysql;
 
+import io.helidon.config.Config;
+import io.helidon.service.registry.Services;
+import io.helidon.tests.integration.dbclient.common.TestFactories;
 import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
 import io.helidon.webclient.http1.Http1Client;
+import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.testing.junit5.ServerTest;
+import io.helidon.webserver.testing.junit5.SetUpServer;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+@Testcontainers(disabledWithoutDocker = true)
 @ServerTest
-final class MySQLObservabilityLocalTestIT extends MySQLLocalTest implements ObservabilityTest {
+final class MySQLObservabilityLocalTestIT extends MySQLLocalTest implements ObservabilityTest,
+                                                                            HttpObservabilityTest {
 
-    private final ObservabilityTest delegate;
+    @Container
+    static final MySQLContainer<?> CONTAINER = MySQLTestContainer.CONTAINER;
+
+    private final ObservabilityTest delegate = new ObservabilityTest.TestImpl();
+    private final HttpObservabilityTest httpDelegate;
 
     MySQLObservabilityLocalTestIT(Http1Client client) {
-        this.delegate = new ObservabilityTest.TestImpl(client);
+        this.httpDelegate = new HttpObservabilityTest.TestImpl(client);
+    }
+
+    @BeforeAll
+    static void setUp() {
+        Services.set(Config.class, TestFactories.config(MySQLTestContainer.config()));
+    }
+
+    @SetUpServer
+    static void setUpRoutes(WebServerConfig.Builder server) {
+        Main.setup(server);
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        delegate.testHttpHealthNoDetails();
+        httpDelegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        delegate.testHttpHealthDetails();
+        httpDelegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        delegate.testHttpMetrics();
+        httpDelegate.testHttpMetrics();
     }
 
     @Test

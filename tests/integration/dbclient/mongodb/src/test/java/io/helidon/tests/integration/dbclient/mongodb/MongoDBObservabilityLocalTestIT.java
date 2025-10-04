@@ -33,7 +33,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers(disabledWithoutDocker = true)
 @ServerTest
-final class MongoDBObservabilityLocalTestIT implements ObservabilityTest, HttpObservabilityTest {
+final class MongoDBObservabilityLocalTestIT implements ObservabilityTest,
+                                                       HttpObservabilityTest {
 
     @Container
     static final GenericContainer<?> CONTAINER = MongoDBTestContainer.CONTAINER;

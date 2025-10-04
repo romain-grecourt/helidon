@@ -41,6 +41,7 @@ abstract class OracleRemoteTest extends RemoteTest {
             .finalName("helidon-tests-integration-dbclient-oracle")
             .properties(Map.of("java.util.logging.config.file", Path.of("target/classes/logging.properties").toAbsolutePath()))
             .properties(OracleTestContainer::config)
+            .port(0)
             .waitingFor(WaitStrategy.waitForPort());
 
     /**

@@ -15,67 +15,54 @@
  */
 package io.helidon.tests.integration.dbclient.oracle;
 
-import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest;
+import io.helidon.testing.junit5.Testing;
+import io.helidon.tests.integration.dbclient.common.tests.ObservabilityTest.HttpObservabilityTest;
+import io.helidon.tests.integration.harness.ProcessRunner;
+import io.helidon.tests.integration.harness.TestProcess;
+import io.helidon.tests.integration.harness.TestProcesses;
+import io.helidon.webclient.http1.Http1Client;
 
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-final class OracleObservabilityRemoteTestIT extends OracleRemoteTest implements ObservabilityTest {
+@Testcontainers(disabledWithoutDocker = true)
+@TestProcesses
+@Testing.Test
+final class OracleObservabilityRemoteTestIT implements HttpObservabilityTest {
 
+    @Container
+    static final GenericContainer<?> CONTAINER = OracleTestContainer.CONTAINER;
+
+    @TestProcess
+    static final ProcessRunner PROCESS_RUNNER = OracleRemoteTest.PROCESS_RUNNER;
+
+    private final HttpObservabilityTest delegate;
+
+    @SuppressWarnings("resource")
     OracleObservabilityRemoteTestIT() {
-        super("/test/observability");
+        String serverUrl = "http://localhost:%d".formatted(PROCESS_RUNNER.process().port());
+        delegate = new HttpObservabilityTest.TestImpl(Http1Client.builder()
+                .baseUri(serverUrl)
+                .build());
     }
 
     @Test
     @Override
     public void testHttpHealthNoDetails() {
-        remoteTest();
+        delegate.testHttpHealthNoDetails();
     }
 
     @Test
     @Override
     public void testHttpHealthDetails() {
-        remoteTest();
+        delegate.testHttpHealthDetails();
     }
 
     @Test
     @Override
     public void testHttpMetrics() {
-        remoteTest();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheck() {
-        remoteTest();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithName() {
-        remoteTest();
-    }
-
-    @Override
-    @SuppressWarnings("ALL")
-    public void testHealthCheckWithCustomNamedDML() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    @SuppressWarnings("ALL")
-    public void testHealthCheckWithCustomDML() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomNamedQuery() {
-        remoteTest();
-    }
-
-    @Test
-    @Override
-    public void testHealthCheckWithCustomQuery() {
-        remoteTest();
+        delegate.testHttpMetrics();
     }
 }

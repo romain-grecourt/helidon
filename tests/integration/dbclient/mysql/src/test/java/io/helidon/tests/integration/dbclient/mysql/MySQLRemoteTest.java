@@ -41,6 +41,7 @@ abstract class MySQLRemoteTest extends RemoteTest {
             .finalName("helidon-tests-integration-dbclient-mysql")
             .properties(Map.of("java.util.logging.config.file", Path.of("target/classes/logging.properties").toAbsolutePath()))
             .properties(MySQLTestContainer::config)
+            .port(0)
             .waitingFor(WaitStrategy.waitForPort());
 
     @SuppressWarnings("resource")
