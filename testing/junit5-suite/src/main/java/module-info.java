@@ -26,6 +26,9 @@ module io.helidon.testing.junit5.suite {
     requires transitive org.junit.jupiter.api;
     requires io.helidon.common;
     requires io.helidon.logging.common;
+    requires io.helidon.common.context;
+    requires io.helidon.service.registry;
+    requires io.helidon.testing.junit5;
 
     uses io.helidon.testing.junit5.suite.spi.SuiteProvider;
 

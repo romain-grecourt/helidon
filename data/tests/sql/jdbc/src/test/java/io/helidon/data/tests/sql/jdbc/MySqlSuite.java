@@ -29,10 +29,19 @@ import org.testcontainers.utility.DockerImageName;
  */
 public class MySqlSuite implements SuiteProvider {
 
+    private static final boolean IS_ARM = System.getProperty("os.arch", "amd64").equals("aarch64");
+    private static final DockerImageName X86_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0")
+                    .asCompatibleSubstituteFor("mysql");
+
+    private static final DockerImageName ARM_IMAGE =
+            DockerImageName.parse("container-registry.oracle.com/mysql/community-server:9.4.0-aarch64")
+                    .asCompatibleSubstituteFor("mysql");
+
     private final TestContainerHandler containerHandler;
 
     public MySqlSuite() {
-        MySQLContainer<?> container = new MySQLContainer<>(DockerImageName.parse("mysql:8.0"));
+        MySQLContainer<?> container = new MySQLContainer<>(IS_ARM ? ARM_IMAGE : X86_IMAGE);
         this.containerHandler = SqlTestContainerConfig.configureContainer(container,
                                                                           ConfigSources.classpath("application.yaml"));
     }

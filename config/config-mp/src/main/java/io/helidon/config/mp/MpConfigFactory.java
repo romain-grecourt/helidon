@@ -45,7 +45,7 @@ import io.helidon.service.registry.Service;
 @Service.Singleton
 @Weight(Weighted.DEFAULT_WEIGHT + 1)
 @SuppressWarnings("removal")
-class MpConfigProvider implements Supplier<Config> {
+class MpConfigFactory implements Supplier<Config> {
     private static final System.Logger LOGGER = System.getLogger(MpConfigProviderResolver.class.getName());
 
     private final Map<ClassLoader, CompositeConfig.MpDelegate> configs = new IdentityHashMap<>();
@@ -55,7 +55,7 @@ class MpConfigProvider implements Supplier<Config> {
     private final ConfigRef ref;
 
     @Service.Inject
-    MpConfigProvider(ConfigRef ref) {
+    MpConfigFactory(ConfigRef ref) {
         this.ref = ref;
     }
 

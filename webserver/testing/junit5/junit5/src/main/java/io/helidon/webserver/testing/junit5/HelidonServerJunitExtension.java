@@ -79,8 +79,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
 
     @Override
     public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
-
+        initStaticContext(context);
         run(context, () -> {
             if (System.getProperty("helidon.config.profile") == null
                     && System.getProperty("config.profile") == null) {
@@ -119,7 +118,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase
             addRouting(builder);
 
             server = builder
-                    .serverContext(staticContext(context).orElseThrow()) // created above when we call super.beforeAll
+                    .serverContext(staticContext(context)) // created above when we call super.beforeAll
                     .build()
                     .start();
             if (server.hasTls()) {
@@ -151,8 +150,8 @@ class HelidonServerJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) {
-        runChecked(extensionContext, () -> extensions.forEach(it -> it.afterEach(extensionContext)));
+    public void afterEach(ExtensionContext ctx) {
+        runChecked(ctx, () -> extensions.forEach(it -> it.afterEach(ctx)));
     }
 
     @Override

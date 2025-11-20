@@ -125,19 +125,19 @@ public class HelidonJunitExtension extends TestJunitExtension
     }
 
     @Override
-    public void beforeEach(ExtensionContext context) {
-        run(context, () -> {
-            Method testMethod = context.getRequiredTestMethod();
-            Class<?> testClass = context.getRequiredTestClass();
+    public void beforeEach(ExtensionContext ctx) {
+        run(ctx, () -> {
+            Method testMethod = ctx.getRequiredTestMethod();
+            Class<?> testClass = ctx.getRequiredTestClass();
 
             ClassInfo classInfo = classInfo(testClass, HelidonTestDescriptorImpl::new);
             MethodInfo methodInfo = methodInfo(testMethod, classInfo, HelidonTestDescriptorImpl::new);
 
-            ExtensionContext classContext = classContext(context);
+            ExtensionContext classContext = classContext(ctx);
             Store classStore = store(classContext);
             HelidonTestContainerImpl container = container(classStore);
 
-            if (context.getExecutionMode() == ExecutionMode.SAME_THREAD
+            if (ctx.getExecutionMode() == ExecutionMode.SAME_THREAD
                 && container != null && !container.closed()
                 && methodInfo.requiresReset()) {
 
@@ -147,8 +147,8 @@ public class HelidonJunitExtension extends TestJunitExtension
             }
 
             if (container == null || container.closed()) {
-                Store methodStore = store(context);
-                Lifecycle lifecycle = context.getTestInstanceLifecycle().orElse(PER_METHOD);
+                Store methodStore = store(ctx);
+                Lifecycle lifecycle = ctx.getTestInstanceLifecycle().orElse(PER_METHOD);
                 HelidonTestScope scope;
                 if (lifecycle == Lifecycle.PER_CLASS) {
                     scope = HelidonTestScope.ofContainer();

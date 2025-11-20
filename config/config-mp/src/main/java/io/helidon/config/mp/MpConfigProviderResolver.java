@@ -35,14 +35,14 @@ public class MpConfigProviderResolver extends ConfigProviderResolver {
      * @param config configuration to use
      */
     public static void runtimeStart(Config config) {
-        Services.get(MpConfigProvider.class).runtimeStart(config);
+        Services.get(MpConfigFactory.class).runtimeStart(config);
     }
 
     /**
      * This method should only be called when generating native image, as late in the process as possible.
      */
     public static void buildTimeEnd() {
-        Services.get(MpConfigProvider.class).buildTimeEnd();
+        Services.get(MpConfigFactory.class).buildTimeEnd();
     }
 
     @Override
@@ -58,17 +58,17 @@ public class MpConfigProviderResolver extends ConfigProviderResolver {
     @Override
     public Config getConfig(ClassLoader cl) {
         ClassLoader loader = cl == null ? Thread.currentThread().getContextClassLoader() : cl;
-        return Services.get(MpConfigProvider.class).getConfig(loader);
+        return Services.get(MpConfigFactory.class).getConfig(loader);
     }
 
     @Override
     public void registerConfig(Config config, ClassLoader cl) {
         ClassLoader loader = cl == null ? Thread.currentThread().getContextClassLoader() : cl;
-        Services.get(MpConfigProvider.class).registerConfig(l -> config, loader);
+        Services.get(MpConfigFactory.class).registerConfig(l -> config, loader);
     }
 
     @Override
     public void releaseConfig(Config config) {
-        Services.get(MpConfigProvider.class).releaseConfig(config);
+        Services.get(MpConfigFactory.class).releaseConfig(config);
     }
 }

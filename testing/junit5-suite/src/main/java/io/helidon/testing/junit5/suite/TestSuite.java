@@ -21,6 +21,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import io.helidon.testing.junit5.TestJunitExtension;
+import io.helidon.testing.junit5.Testing;
 import io.helidon.testing.junit5.suite.spi.SuiteProvider;
 
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +49,7 @@ public final class TestSuite {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @ExtendWith(SuiteExtension.class)
+    @ExtendWith(TestJunitExtension.class)
     @Inherited
     public @interface Suite {
 

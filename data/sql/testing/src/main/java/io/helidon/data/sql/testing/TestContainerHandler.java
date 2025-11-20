@@ -23,6 +23,7 @@ import java.util.function.Supplier;
 import io.helidon.config.Config;
 import io.helidon.config.ConfigSources;
 import io.helidon.config.spi.ConfigSource;
+import io.helidon.service.registry.Services;
 
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
@@ -70,7 +71,7 @@ public class TestContainerHandler {
      */
     public Config setConfig() {
         Config newConfig = config();
-        TestConfigFactory.config(newConfig);
+        Services.get(TestConfigRef.class).set(newConfig);
         return newConfig;
     }
 

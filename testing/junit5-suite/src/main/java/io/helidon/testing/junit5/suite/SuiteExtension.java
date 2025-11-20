@@ -15,14 +15,17 @@
  */
 package io.helidon.testing.junit5.suite;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
+import io.helidon.common.context.Context;
+import io.helidon.common.context.Contexts;
 import io.helidon.logging.common.LogConfig;
-import io.helidon.testing.junit5.suite.spi.SuiteProvider;
+import io.helidon.service.registry.ServiceRegistryManager;
 
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Store.CloseableResource;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
@@ -36,14 +39,11 @@ import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
  *         use with care
  */
 @Deprecated
-public class SuiteExtension
-        implements BeforeAllCallback, ExtensionContext.Store.CloseableResource, ParameterResolver {
+public class SuiteExtension implements BeforeAllCallback, ParameterResolver {
 
-    private static final System.Logger LOGGER = System.getLogger(SuiteExtension.class.getName());
+    private static final String GLOBAL_CONTEXT_CLASSIFIER = "helidon-registry-static-context";
+    private static final String GLOBAL_REGISTRY_CLASSIFIER = "helidon-registry";
 
-    // Store all stored SuiteProvider instances keys to close them.
-    private static final Set<String> PROVIDER_KEYS = new HashSet<>();
-    private ExtensionContext.Store globalStore;
     private SuiteDescriptor descriptor;
 
     /**
@@ -51,40 +51,46 @@ public class SuiteExtension
      */
     public SuiteExtension() {
         LogConfig.configureRuntime();
-        globalStore = null;
     }
 
     @Override
-    public void beforeAll(ExtensionContext context) {
-        if (context.getTestClass().isPresent()) {
-            globalStore = context.getRoot().getStore(GLOBAL);
-            TestSuite.Suite suite = suiteFromTestClass(context.getTestClass().get());
-            Class<? extends SuiteProvider> providerClass = suite.value();
-            String storeKey = providerClass.getName();
-            descriptor = providerFromStore(globalStore, storeKey);
-            // Run the initialization just once for every suite provider
-            if (descriptor == null) {
-                descriptor = SuiteDescriptor.create(suite, context);
-                LOGGER.log(System.Logger.Level.TRACE,
-                           () -> String.format("Initializing the Suite provider %s", providerClass.getSimpleName()));
-                descriptor.init();
-                storeProvider(globalStore, storeKey, descriptor);
-                ensureThisInstanceIsStored(globalStore);
+    public void beforeAll(ExtensionContext ctx) {
+        var globalStore = ctx.getRoot().getStore(GLOBAL);
+        var testClass = ctx.getRequiredTestClass();
+        var suite = testClass.getAnnotation(TestSuite.Suite.class);
+        if (suite == null) {
+            throw new IllegalStateException(String.format(
+                    "@Suite annotation was not found on %s class", testClass));
+        }
+
+        var providerClass = suite.value();
+        var storeKey = providerClass.getName();
+        descriptor = globalStore.get(storeKey, SuiteDescriptor.class);
+
+        if (descriptor == null) {
+            descriptor = SuiteDescriptor.create(suite, ctx);
+            globalStore.put(storeKey, descriptor);
+
+            var staticCtx = globalStore.get(GLOBAL_CONTEXT_CLASSIFIER, Context.class);
+            if (staticCtx == null) {
+                staticCtx = Context.builder()
+                        .id("suite-" + providerClass.getName() + "-" + System.identityHashCode(providerClass))
+                        .build();
+                var registryManager = ServiceRegistryManager.create();
+                staticCtx.register(GLOBAL_CONTEXT_CLASSIFIER, staticCtx);
+                staticCtx.register(GLOBAL_REGISTRY_CLASSIFIER, registryManager.registry());
+                globalStore.put(GLOBAL_CONTEXT_CLASSIFIER, staticCtx);
+
+                var registryManagers = globalStore.get(RegistryManagers.class.getName(), RegistryManagers.class);
+                if (registryManagers == null) {
+                    registryManagers = new RegistryManagers();
+                    globalStore.put(RegistryManagers.class.getName(), registryManagers);
+                }
+                registryManagers.add(registryManager);
             }
-        } else {
-            throw new IllegalStateException("Test class was not found in jUnit 5 extension context");
-        }
-    }
 
-    @Override
-    public void close() {
-        for (String key : PROVIDER_KEYS) {
-            SuiteDescriptor descriptor = globalStore.get(key, SuiteDescriptor.class);
-            LOGGER.log(System.Logger.Level.TRACE,
-                       () -> String.format("Closing Suite provider %s", descriptor.provider().getClass().getSimpleName()));
-            descriptor.close();
+            Contexts.runInContext(staticCtx, descriptor::init);
         }
-
     }
 
     @Override
@@ -99,28 +105,19 @@ public class SuiteExtension
         return descriptor.resolveParameter(parameterContext.getParameter().getType());
     }
 
-    private static SuiteDescriptor providerFromStore(ExtensionContext.Store globalStore, String storeKey) {
-        return globalStore.get(storeKey, SuiteDescriptor.class);
-    }
+    private static final class RegistryManagers implements CloseableResource {
 
-    private static void storeProvider(ExtensionContext.Store globalStore, String storeKey, SuiteDescriptor descriptor) {
-        globalStore.put(storeKey, descriptor);
-        PROVIDER_KEYS.add(storeKey);
-    }
+        private final List<ServiceRegistryManager> managers = new ArrayList<>();
 
-    private static TestSuite.Suite suiteFromTestClass(Class<?> testClass) {
-        TestSuite.Suite suite = testClass.getAnnotation(TestSuite.Suite.class);
-        if (suite == null) {
-            throw new IllegalStateException(
-                    String.format("Suite annotation was not found on %s class", testClass.getSimpleName()));
+        void add(ServiceRegistryManager manager) {
+            managers.add(manager);
         }
-        return suite;
-    }
 
-    private void ensureThisInstanceIsStored(ExtensionContext.Store globalStore) {
-        if (globalStore.get(SuiteExtension.class.getName()) == null) {
-            globalStore.put(SuiteExtension.class.getName(), this);
+        @Override
+        public void close() {
+            for (var manager : managers) {
+                manager.shutdown();
+            }
         }
     }
-
 }

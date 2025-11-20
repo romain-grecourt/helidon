@@ -15,154 +15,214 @@
  */
 package io.helidon.data.sql.testing;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import io.helidon.common.GenericType;
+import io.helidon.common.LazyValue;
 import io.helidon.common.Weight;
-import io.helidon.common.config.Config;
-import io.helidon.common.config.ConfigException;
-import io.helidon.common.config.ConfigValue;
+import io.helidon.config.Config;
+import io.helidon.config.ConfigMappingException;
+import io.helidon.config.ConfigValue;
+import io.helidon.config.MissingValueException;
+import io.helidon.config.spi.ConfigMapper;
 import io.helidon.service.registry.Service;
 
 /**
- * Services factory for the tests.
+ * Test config factory.
  */
 @Service.Singleton
-@Service.Named(Service.Named.WILDCARD_NAME)
 @Weight(1000)
-public class TestConfigFactory implements Service.ServicesFactory<Config> {
+final class TestConfigFactory implements Supplier<Config> {
 
-    // Hold config in static context
-    private static volatile Config config;
+    private final LazyValue<Config> defaultConfig = LazyValue.create(Config::create);
+    private final TestConfigRef ref;
 
-    private final ConfigDelegate configDelegate;
-
-    TestConfigFactory() {
-        configDelegate = new ConfigDelegate(this);
+    @Service.Inject
+    TestConfigFactory(TestConfigRef ref) {
+        this.ref = ref;
     }
 
     @Override
-    public List<Service.QualifiedInstance<Config>> services() {
-        return List.of(Service.QualifiedInstance.create(configDelegate));
+    public Config get() {
+        return new ConfigDelegate(this::delegate);
     }
 
-    private Config config() {
-        if (config == null) {
-            config = Config.create();
-        }
-        return config;
+    private Config delegate() {
+        return ref.isSet() ? ref.get() : defaultConfig.get();
     }
 
-    /**
-     * Set the config instance to use.
-     *
-     * @param config config instance to use
-     */
-    public static void config(Config config) {
-        TestConfigFactory.config = config;
-    }
+    private record ConfigDelegate(Supplier<Config> delegate) implements Config {
 
-    /**
-     * Helidon config delegate for {@link Config} in {@link TestConfigFactory}.
-     */
-    public static class ConfigDelegate implements Config {
-
-        private final TestConfigFactory factory;
-
-        ConfigDelegate(TestConfigFactory factory) {
-            this.factory = factory;
+        @Override
+        public Context context() {
+            return delegate.get().context();
         }
 
-        /**
-         * Returns {@link Config} from {@link TestConfigFactory}.
-         *
-         * @param config the {@link Config} insgtance
-         */
-        public void config(Config config) {
-            TestConfigFactory.config(config);
+        @Override
+        public Instant timestamp() {
+            return delegate.get().timestamp();
         }
 
         @Override
         public Key key() {
-            return factory.config().key();
+            return delegate.get().key();
         }
 
         @Override
-        public Config get(String s) throws ConfigException {
-            return factory.config().get(s);
+        public String name() {
+            return delegate.get().name();
+        }
+
+        @Override
+        public Config get(String key) {
+            return delegate.get().get(key);
         }
 
         @Override
         public Config root() {
-            return factory.config().root();
+            return delegate.get().root();
         }
 
         @Override
-        public Config detach() throws ConfigException {
-            return factory.config().detach();
+        public Config get(Key key) {
+            return delegate.get().get(key);
+        }
+
+        @Override
+        public Config detach() {
+            return delegate.get().detach();
+        }
+
+        @Override
+        public Type type() {
+            return delegate.get().type();
         }
 
         @Override
         public boolean exists() {
-            return factory.config().exists();
-        }
-
-        @Override
-        public Stream<? extends Config> traverse() {
-            return factory.config().traverse();
+            return delegate.get().exists();
         }
 
         @Override
         public boolean isLeaf() {
-            return factory.config().isLeaf();
+            return delegate.get().isLeaf();
         }
 
         @Override
         public boolean isObject() {
-            return factory.config().isObject();
+            return delegate.get().isObject();
         }
 
         @Override
         public boolean isList() {
-            return factory.config().isList();
+            return delegate.get().isList();
         }
 
         @Override
         public boolean hasValue() {
-            return factory.config().hasValue();
+            return delegate.get().hasValue();
         }
 
         @Override
-        public <T> ConfigValue<T> as(Class<T> aClass) {
-            return factory.config().as(aClass);
+        public void ifExists(Consumer<Config> action) {
+            delegate.get().ifExists(action);
         }
 
         @Override
-        public <T> ConfigValue<T> map(Function<Config, T> function) {
-            return factory.config().map(function);
+        public Stream<Config> traverse() {
+            return delegate.get().traverse();
         }
 
         @Override
-        public <T> ConfigValue<List<T>> asList(Class<T> aClass) throws ConfigException {
-            return factory.config().asList(aClass);
+        public Stream<Config> traverse(Predicate<Config> predicate) {
+            return traverse().filter(predicate);
         }
 
         @Override
-        public <T> ConfigValue<List<T>> mapList(Function<Config, T> function) throws ConfigException {
-            return factory.config().mapList(function);
+        public <T> T convert(Class<T> type, String value) throws ConfigMappingException {
+            return delegate.get().convert(type, value);
         }
 
         @Override
-        public <C extends Config> ConfigValue<List<C>> asNodeList() throws ConfigException {
-            return factory.config().asNodeList();
+        public ConfigMapper mapper() {
+            return delegate.get().mapper();
         }
 
         @Override
-        public ConfigValue<Map<String, String>> asMap() throws ConfigException {
-            return factory.config().asMap();
+        public <T> ConfigValue<T> as(GenericType<T> genericType) {
+            return delegate.get().as(genericType);
+        }
+
+        @Override
+        public <T> ConfigValue<T> as(Class<T> type) {
+            return delegate.get().as(type);
+        }
+
+        @Override
+        public <T> ConfigValue<T> as(Function<Config, T> mapper) {
+            return delegate.get().as(mapper);
+        }
+
+        @Override
+        public ConfigValue<Boolean> asBoolean() {
+            return delegate.get().asBoolean();
+        }
+
+        @Override
+        public ConfigValue<String> asString() {
+            return delegate.get().asString();
+        }
+
+        @Override
+        public ConfigValue<Integer> asInt() {
+            return delegate.get().asInt();
+        }
+
+        @Override
+        public ConfigValue<Long> asLong() {
+            return delegate.get().asLong();
+        }
+
+        @Override
+        public ConfigValue<Double> asDouble() {
+            return delegate.get().asDouble();
+        }
+
+        @Override
+        public <T> ConfigValue<List<T>> asList(Class<T> type) throws ConfigMappingException {
+            return delegate.get().asList(type);
+        }
+
+        @Override
+        public <T> ConfigValue<List<T>> asList(Function<Config, T> mapper) throws ConfigMappingException {
+            return delegate.get().asList(mapper);
+        }
+
+        @Override
+        public ConfigValue<Config> asNode() {
+            return delegate.get().asNode();
+        }
+
+        @Override
+        public ConfigValue<List<Config>> asNodeList() throws ConfigMappingException {
+            return delegate.get().asNodeList();
+        }
+
+        @Override
+        public ConfigValue<Map<String, String>> asMap() throws MissingValueException {
+            return delegate.get().asMap();
+        }
+
+        @Override
+        public void onChange(Consumer<Config> onChangeConsumer) {
+            delegate.get().onChange(onChangeConsumer);
         }
     }
-
 }

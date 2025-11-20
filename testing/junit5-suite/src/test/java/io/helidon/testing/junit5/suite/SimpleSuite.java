@@ -22,6 +22,7 @@ import io.helidon.testing.junit5.suite.spi.SuiteProvider;
 /**
  * Simple test suite to validate basic life-cycle.
  */
+@SuppressWarnings("deprecation")
 public class SimpleSuite implements SuiteProvider, SuiteStorage {
 
     final static String BEFORE_KEY = "SimpleSuite.before";

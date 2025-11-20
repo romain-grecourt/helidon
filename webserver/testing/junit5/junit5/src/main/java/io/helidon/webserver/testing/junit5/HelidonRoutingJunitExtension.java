@@ -62,7 +62,7 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
 
     @Override
     public void beforeAll(ExtensionContext context) {
-        super.beforeAll(context);
+        initStaticContext(context);
 
         Class<?> testClass = context.getRequiredTestClass();
         super.testClass(testClass);
@@ -93,13 +93,13 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase
     }
 
     @Override
-    public void beforeEach(ExtensionContext context) {
-        extensions.forEach(it -> it.beforeAll(context));
+    public void beforeEach(ExtensionContext ctx) {
+        extensions.forEach(it -> it.beforeAll(ctx));
     }
 
     @Override
-    public void afterEach(ExtensionContext context) {
-        extensions.forEach(it -> it.afterEach(context));
+    public void afterEach(ExtensionContext ctx) {
+        extensions.forEach(it -> it.afterEach(ctx));
     }
 
     @Override

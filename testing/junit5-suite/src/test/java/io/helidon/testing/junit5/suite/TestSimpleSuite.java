@@ -21,6 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 @TestSuite.Suite(SimpleSuite.class)
+@SuppressWarnings("deprecation")
 public class TestSimpleSuite {
 
     // Validate that shared suite context is available and @BeforeSuite was executed
