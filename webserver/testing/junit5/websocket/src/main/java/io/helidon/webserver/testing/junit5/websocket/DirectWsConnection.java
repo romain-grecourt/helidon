@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@ import io.helidon.common.buffers.BufferData;
 import io.helidon.common.buffers.DataReader;
 import io.helidon.common.buffers.DataWriter;
 import io.helidon.common.socket.HelidonSocket;
-import io.helidon.common.socket.PeerInfo;
 import io.helidon.http.HttpPrologue;
 import io.helidon.http.WritableHeaders;
 import io.helidon.webclient.api.ClientConnection;
@@ -51,9 +50,6 @@ class DirectWsConnection {
     private final WsRoute serverRoute;
     private final DataReader clientReader;
     private final DataWriter clientWriter;
-    private final DataReader serverReader;
-    private final DataWriter serverWriter;
-    private final HelidonSocket socket;
     private final ConnectionContext ctx;
     private final ExecutorService executorService;
     private volatile Future<?> serverFuture;
@@ -63,32 +59,32 @@ class DirectWsConnection {
         this.prologue = prologue;
         this.clientListener = clientListener;
         this.serverRoute = serverRoute;
-        this.executorService = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("direct-test-ws", 1)
-                                                                          .factory());
+        this.executorService = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("direct-test-ws", 1).factory());
 
-        ArrayBlockingQueue<byte[]> serverToClient = new ArrayBlockingQueue<>(1024);
-        ArrayBlockingQueue<byte[]> clientToServer = new ArrayBlockingQueue<>(1024);
+        var serverToClient = new ArrayBlockingQueue<byte[]>(1024);
+        var clientToServer = new ArrayBlockingQueue<byte[]>(1024);
         this.clientReader = reader(serverToClient);
         this.clientWriter = writer(clientToServer);
-        this.serverReader = reader(clientToServer);
-        this.serverWriter = writer(serverToClient);
-        DirectPeerInfo info = new DirectPeerInfo(InetSocketAddress.createUnresolved("localhost", 64000),
+        var serverReader = reader(clientToServer);
+        var serverWriter = writer(serverToClient);
+        var info = new DirectPeerInfo(InetSocketAddress.createUnresolved("localhost", 64000),
                                                  "localhost",
                                                  64000,
                                                  Optional.empty(),
                                                  Optional.empty());
-        this.socket = DirectSocket.create(info, info, false);
+        var socket = DirectSocket.create(info, info, false);
         this.ctx = new DirectWsServerContext(executorService,
-                                             Router.builder().build(),
-                                             socket,
-                                             serverWriter,
-                                             serverReader);
+                Router.builder().build(),
+                socket,
+                serverWriter,
+                serverReader);
     }
 
     static DirectWsConnection create(HttpPrologue prologue, WsListener clientListener, WsRoute serverRoute) {
         return new DirectWsConnection(prologue, clientListener, serverRoute);
     }
 
+    @SuppressWarnings("DuplicatedCode")
     private static DataReader reader(ArrayBlockingQueue<byte[]> queue) {
         return new DataReader(() -> {
             byte[] data;
@@ -106,14 +102,10 @@ class DirectWsConnection {
 
     void start() {
         if (serverStarted.compareAndSet(false, true)) {
-            WsConnection serverConnection = WsConnection.create(ctx, prologue, WritableHeaders.create(), "", serverRoute);
-
-            ClientWsConnection clientConnection = ClientWsConnection.create(new DirectConnect(clientReader, clientWriter),
-                                                                            clientListener);
-            serverFuture = executorService.submit(() -> {
-                serverConnection.handle(new Semaphore(1024));
-            });
-            clientFuture = executorService.submit(clientConnection);
+            var serverConn = WsConnection.create(ctx, prologue, WritableHeaders.create(), "", serverRoute);
+            var clientConn = ClientWsConnection.create(new DirectConnect(clientReader, clientWriter), clientListener);
+            serverFuture = executorService.submit(() -> serverConn.handle(new Semaphore(1024)));
+            clientFuture = executorService.submit(clientConn);
         }
     }
 
@@ -149,7 +141,7 @@ class DirectWsConnection {
 
             @Override
             public void writeNow(BufferData buffer) {
-                byte[] bytes = new byte[buffer.available()];
+                var bytes = new byte[buffer.available()];
                 buffer.read(bytes);
                 try {
                     queue.put(bytes);
@@ -163,8 +155,6 @@ class DirectWsConnection {
     private static class DirectConnect implements ClientConnection {
         private final DataReader reader;
         private final DataWriter writer;
-        private final PeerInfo clientPeer;
-        private final PeerInfo localPeer;
         private final HelidonSocket socket;
 
         private DirectConnect(DataReader reader, DataWriter writer) {
@@ -176,14 +166,14 @@ class DirectWsConnection {
             String serverHost = "server";
             int serverPort = 9999;
 
-            this.clientPeer = new DirectPeerInfo(
+            var clientPeer = new DirectPeerInfo(
                     InetSocketAddress.createUnresolved(clientHost, clientPort),
                     clientHost,
                     clientPort,
                     Optional.empty(),
                     Optional.empty());
 
-            this.localPeer = new DirectPeerInfo(
+            var localPeer = new DirectPeerInfo(
                     InetSocketAddress.createUnresolved(serverHost, serverPort),
                     serverHost,
                     serverPort,

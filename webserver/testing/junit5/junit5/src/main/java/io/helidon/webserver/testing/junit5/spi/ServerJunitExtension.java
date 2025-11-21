@@ -28,35 +28,35 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * Java {@link java.util.ServiceLoader} provider interface for extending server tests with support for additional injection,
- * such as HTTP/1.1 client.
+ * Base contract for Helidon JUnit extensions that support in-process testing.
  */
 public interface ServerJunitExtension extends HelidonJunitExtension {
     /**
-     * Update WebServer builder.
+     * Update {@link WebServer} builder.
      *
      * @param builder builder to update, will be used to build server instance
      */
+    @SuppressWarnings("unused")
     default void updateServerBuilder(WebServerConfig.Builder builder) {
+        // no-op
     }
 
     /**
-     * Called for sockets defined by {@link io.helidon.webserver.testing.junit5.SetUpRoute}.
+     * Update {@link ListenerConfig} builder.
      *
      * @param socketName      name of the socket
-     * @param listenerBuilder listener configuration builder
+     * @param listenerBuilder listener builder
      * @param routerBuilder   router builder
      */
+    @SuppressWarnings("unused")
     default void updateListenerBuilder(String socketName,
                                        ListenerConfig.Builder listenerBuilder,
                                        Router.RouterBuilder<?> routerBuilder) {
+        // no-op
     }
 
     /**
-     * Resolve a parameter. Provide an instance of the parameter. Only called if
-     * {@link #supportsParameter(org.junit.jupiter.api.extension.ParameterContext,
-     * org.junit.jupiter.api.extension.ExtensionContext)}
-     * returned {@code true}.
+     * Resolve a parameter.
      *
      * @param parameterContext JUnit parameter context
      * @param extensionContext JUnit extension context
@@ -72,29 +72,29 @@ public interface ServerJunitExtension extends HelidonJunitExtension {
     }
 
     /**
-     * Check if the type is supported and return a handler for it.
+     * Set up the parameter handler.
      *
-     * @param type type of the parameter to {@link io.helidon.webserver.testing.junit5.SetUpRoute} method
-     * @return parameter handler if the type is supported, empty otherwise
+     * @param type     parameter type
+     * @return optional parameter handler
      */
     default Optional<ParamHandler<?>> setUpRouteParamHandler(Class<?> type) {
         return Optional.empty();
     }
 
     /**
-     * Handler of server test parameters of methods annotated with {@link io.helidon.webserver.testing.junit5.SetUpRoute}.
+     * Parameter handler.
      *
-     * @param <T> type of the parameter this handler handles
+     * @param <T> type of the parameter
      */
     interface ParamHandler<T> {
         /**
-         * Get an instance to be injected.
+         * Get the initial parameter instance.
          *
-         * @param socketName      name of a socket this will belong to
-         * @param serverBuilder   builder of the webserver
-         * @param listenerBuilder builder of the listener associated with the socketName
-         * @param routerBuilder   router builder to support additional routings
-         * @return a new instance to inject as a parameter to the method
+         * @param socketName socket name
+         * @param serverBuilder   server builder
+         * @param listenerBuilder listener builder
+         * @param routerBuilder   router builder
+         * @return a new parameter instance
          */
         T get(String socketName,
               WebServerConfig.Builder serverBuilder,
@@ -102,16 +102,13 @@ public interface ServerJunitExtension extends HelidonJunitExtension {
               Router.RouterBuilder<?> routerBuilder);
 
         /**
-         * Handle the value after the method has been called, and its body updated our provided instance.
+         * Process the parameter instance post updates.
          *
          * @param socketName      socket name
-         * @param serverBuilder   builder of the webserver
-         * @param listenerBuilder builder of the listener
+         * @param serverBuilder   server builder
+         * @param listenerBuilder listener builder
          * @param routerBuilder   router builder
-         * @param value           the value we provided with
-         *                        {@link #get(String, io.helidon.webserver.WebServerConfig.Builder,
-         *                        io.helidon.webserver.ListenerConfig.Builder,
-         *                        io.helidon.webserver.Router.RouterBuilder)}
+         * @param value           parameter instance
          */
         default void handle(String socketName,
                             WebServerConfig.Builder serverBuilder,

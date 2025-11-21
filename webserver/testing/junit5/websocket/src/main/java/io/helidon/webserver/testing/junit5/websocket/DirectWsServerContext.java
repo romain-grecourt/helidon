@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package io.helidon.webserver.testing.junit5.websocket;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 
 import io.helidon.common.buffers.DataReader;
@@ -50,11 +52,12 @@ class DirectWsServerContext implements ConnectionContext, ListenerContext {
         this.dataWriter = dataWriter;
         this.dataReader = dataReader;
 
-        PeerInfo peerInfo = socket.localPeer();
+        var peerInfo = socket.localPeer();
         this.listenerConfiguration = ListenerConfig.builder()
                 .name("@default")
                 .host(peerInfo.host())
                 .port(peerInfo.port())
+                .address(localhost())
                 .listenerContext(Context.builder().id("test-ws-direct-listener").build())
                 .mediaContext(MediaContext.create())
                 .contentEncoding(ContentEncodingContext.create())
@@ -114,26 +117,34 @@ class DirectWsServerContext implements ConnectionContext, ListenerContext {
 
     @Override
     public Context context() {
-        return listenerConfiguration.listenerContext().get();
+        return listenerConfiguration.listenerContext().orElseThrow();
     }
 
     @Override
     public MediaContext mediaContext() {
-        return listenerConfiguration.mediaContext().get();
+        return listenerConfiguration.mediaContext().orElseThrow();
     }
 
     @Override
     public ContentEncodingContext contentEncodingContext() {
-        return listenerConfiguration.contentEncoding().get();
+        return listenerConfiguration.contentEncoding().orElseThrow();
     }
 
     @Override
     public DirectHandlers directHandlers() {
-        return listenerConfiguration.directHandlers().get();
+        return listenerConfiguration.directHandlers().orElseThrow();
     }
 
     @Override
     public ListenerConfig config() {
         return listenerConfiguration;
+    }
+
+    private static InetAddress localhost() {
+        try {
+            return InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

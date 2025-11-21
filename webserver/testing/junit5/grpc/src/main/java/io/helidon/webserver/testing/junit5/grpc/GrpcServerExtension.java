@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import io.helidon.webserver.Router;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.grpc.GrpcRouting;
-import io.helidon.webserver.testing.junit5.Junit5Util;
 import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -32,8 +31,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * A {@link java.util.ServiceLoader} provider implementation that adds support for injection of gRPC related
- * artifacts, such as {@link io.helidon.webclient.grpc.GrpcClient} in Helidon integration tests.
+ * A {@link ServerJunitExtension} that supports gRPC tests.
  */
 public class GrpcServerExtension implements ServerJunitExtension {
 
@@ -56,7 +54,7 @@ public class GrpcServerExtension implements ServerJunitExtension {
                                    ExtensionContext extensionContext,
                                    Class<?> parameterType,
                                    WebServer server) {
-        String socketName = Junit5Util.socketName(parameterContext.getParameter());
+        String socketName = socketName(parameterContext.getParameter());
 
         if (GrpcClient.class.equals(parameterType)) {
             return GrpcClient.builder()

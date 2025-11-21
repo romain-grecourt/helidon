@@ -94,7 +94,6 @@ public class HelidonJunitExtension extends TestJunitExtension
 
     @Override
     public Object createTestInstance(TestInstanceFactoryContext fc, ExtensionContext ctx) {
-        initStaticContext(ctx);
         return supplyChecked(ctx, () -> {
             // Instrument the test class
             // Use a proxy to start the container lazily

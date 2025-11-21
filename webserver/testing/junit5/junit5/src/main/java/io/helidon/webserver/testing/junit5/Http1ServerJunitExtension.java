@@ -35,11 +35,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
-import static io.helidon.webserver.testing.junit5.Junit5Util.socketName;
-
 /**
- * Java {@link java.util.ServiceLoader} provider implementation of
- * a {@link io.helidon.webserver.testing.junit5.spi.ServerJunitExtension} that adds support for HTTP/1.1.
+ * A {@link ServerJunitExtension} that supports HTTP/1.1 tests.
  */
 public class Http1ServerJunitExtension implements ServerJunitExtension {
     private final Map<String, SocketHttpClient> socketHttpClients = new ConcurrentHashMap<>();
@@ -47,7 +44,9 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
     private final Map<String, WebClient> webClients = new ConcurrentHashMap<>();
 
     /**
-     * Public constructor as required by {@link java.util.ServiceLoader}.
+     * Required for {@link java.util.ServiceLoader}.
+     *
+     * @deprecated only for {@link java.util.ServiceLoader}
      */
     public Http1ServerJunitExtension() {
     }
@@ -61,7 +60,7 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
     public boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
             throws ParameterResolutionException {
 
-        Class<?> paramType = pc.getParameter().getType();
+        var paramType = pc.getParameter().getType();
         if (paramType.equals(Http1Client.class)) {
             return true;
         }
@@ -82,7 +81,7 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
         if (paramType.equals(WebClient.class)) {
             return webClients.computeIfAbsent(socketName(pc.getParameter()), it -> webClient(server, it));
         }
-        throw new ParameterResolutionException("Parameter of type " + paramType.getName() + " not supported");
+        throw new ParameterResolutionException("Parameter of type %s not supported".formatted(paramType.getName()));
     }
 
     @Override

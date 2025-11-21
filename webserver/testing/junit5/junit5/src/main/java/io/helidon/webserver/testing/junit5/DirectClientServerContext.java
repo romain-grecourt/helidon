@@ -54,7 +54,7 @@ class DirectClientServerContext implements ConnectionContext, ListenerContext {
                                                                           .name("direct-test-server", 1)
                                                                           .factory());
 
-        PeerInfo peerInfo = serverSocket.localPeer();
+        var peerInfo = serverSocket.localPeer();
         this.listenerConfiguration = ListenerConfig.builder()
                 .name("@default")
                 .host(peerInfo.host())

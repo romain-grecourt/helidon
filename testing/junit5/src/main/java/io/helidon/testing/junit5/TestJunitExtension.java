@@ -43,6 +43,7 @@ import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store.CloseableResource;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -51,7 +52,7 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 
 /**
- * Helidon JUnit extension, added through {@link io.helidon.testing.junit5.Testing.Test}.
+ * A JUnit extension that supports {@link io.helidon.service.registry.ServiceRegistry}.
  * <p>
  * This extension has the following features:
  * <ul>
@@ -68,7 +69,7 @@ public class TestJunitExtension implements Extension,
                                            AfterAllCallback,
                                            ParameterResolver {
 
-    private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(TestJunitExtension.class);
+    private static final Namespace NAMESPACE = Namespace.create(TestJunitExtension.class);
 
     static {
         LogConfig.initClass();
@@ -101,7 +102,7 @@ public class TestJunitExtension implements Extension,
      * @return JUnit extension store
      */
     protected static ExtensionContext.Store store(ExtensionContext ctx, AnnotatedElement... qualifiers) {
-        ExtensionContext.Namespace ns;
+        Namespace ns;
         if (qualifiers.length > 0) {
             ns = NAMESPACE.append(Arrays.stream(qualifiers)
                                           .map(e -> switch (e) {
@@ -118,9 +119,7 @@ public class TestJunitExtension implements Extension,
 
     @Override
     public void beforeAll(ExtensionContext ctx) {
-        var store = store(ctx, ctx.getRequiredTestClass());
-        initStaticContext(store, ctx);
-        run(ctx, LogConfig::configureRuntime);
+        // no-op
     }
 
     @Override
@@ -129,17 +128,15 @@ public class TestJunitExtension implements Extension,
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
-        // before all had to execute, context must exist
-        var testContext = ourTestContext(extensionContext).orElseThrow();
+    public void beforeEach(ExtensionContext extensionContext) {
+        var testContext = testContext(extensionContext);
         String methodName = extensionContext.getRequiredTestMethod().getName();
         testContext.beforeMethod(methodName);
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
-        // before all had to execute, context must exist
-        var testContext = ourTestContext(extensionContext).orElseThrow();
+    public void afterEach(ExtensionContext extensionContext) {
+        var testContext = testContext(extensionContext);
         testContext.afterMethod();
     }
 
@@ -236,30 +233,26 @@ public class TestJunitExtension implements Extension,
     }
 
     /**
-     * Initialize the static context to be used for all actions this extension invokes, and to store the global instances.
-     * This extension creates a unit test context by default for each test class.
+     * Initialize the so-called static context that supports {@link io.helidon.service.registry.GlobalServiceRegistry}.
      *
      * @param ctx JUnit extension context
+     * @deprecated the static context is now initialized lazily, and all methods are run in-context
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     protected void initStaticContext(ExtensionContext ctx) {
-        initStaticContext(store(ctx, ctx.getRequiredTestClass()), ctx);
     }
 
     /**
-     * Initialize the static context to be used for all actions this extension invokes, and to store the global instances.
-     * This extension creates a unit test context by default for each test class.
+     * Initialize the so-called static context that supports {@link io.helidon.service.registry.GlobalServiceRegistry}.
      *
      * @param store JUnit extension store
      * @param ctx   JUnit extension context
+     * @deprecated the static context is now initialized lazily, and all methods are run in-context
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     protected void initStaticContext(ExtensionContext.Store store, ExtensionContext ctx) {
-        store.getOrComputeIfAbsent(TestContext.class, c -> {
-            var testClass = ctx.getRequiredTestClass();
-            var annotation = testClass.getAnnotation(Testing.Test.class);
-            boolean perMethod = annotation != null && annotation.perMethod();
-            return perMethod ? PerMethodTestContext.create(testClass) : PerClassTestContext.create(testClass);
-
-        });
     }
 
     /**
@@ -267,10 +260,12 @@ public class TestJunitExtension implements Extension,
      *
      * @param ctx JUnit extension context
      * @return context used by this extension
+     * @deprecated the static context is now initialized lazily, and all methods are run in-context
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     protected Optional<Context> staticContext(ExtensionContext ctx) {
-        return ourTestContext(ctx)
-                .map(TestContext::context);
+        return Optional.of(testContext(ctx).context());
     }
 
     /**
@@ -283,7 +278,8 @@ public class TestJunitExtension implements Extension,
      * @throws Throwable in case the call to callable threw an exception
      */
     protected <T> T supply(ExtensionContext ctx, Supplier<T> supplier) throws Throwable {
-        return Contexts.runInContext(staticContext(ctx).orElseThrow(), supplier::get);
+        var testContext = testContext(ctx);
+        return Contexts.runInContext(testContext.context(), supplier::get);
     }
 
     /**
@@ -301,7 +297,8 @@ public class TestJunitExtension implements Extension,
                                                        Functions.CheckedSupplier<T, E> supplier) throws E {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
 
-        T response = Contexts.runInContext(staticContext(ctx).orElseThrow(), () -> {
+        var testContext = testContext(ctx);
+        T response = Contexts.runInContext(testContext.context(), () -> {
             try {
                 return supplier.get();
             } catch (Throwable e) {
@@ -329,7 +326,8 @@ public class TestJunitExtension implements Extension,
      * @param runnable runnable to run
      */
     protected void run(ExtensionContext ctx, Runnable runnable) {
-        Contexts.runInContext(staticContext(ctx).orElseThrow(), runnable);
+        var testContext = testContext(ctx);
+        Contexts.runInContext(testContext.context(), runnable);
     }
 
     /**
@@ -344,7 +342,8 @@ public class TestJunitExtension implements Extension,
     protected <E extends Throwable> void runChecked(ExtensionContext ctx, Functions.CheckedRunnable<E> runnable) throws E {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
 
-        Contexts.runInContext(staticContext(ctx).orElseThrow(), () -> {
+        var testContext = testContext(ctx);
+        Contexts.runInContext(testContext.context(), () -> {
             try {
                 runnable.run();
             } catch (Throwable e) {
@@ -377,7 +376,8 @@ public class TestJunitExtension implements Extension,
     protected <T> T invoke(ExtensionContext ctx, Invocation<T> invocation) throws Throwable {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
 
-        T response = Contexts.runInContext(staticContext(ctx).orElseThrow(), () -> {
+        var testContext = testContext(ctx);
+        T response = Contexts.runInContext(testContext.context(), () -> {
             try {
                 return invocation.proceed();
             } catch (Throwable e) {
@@ -391,10 +391,23 @@ public class TestJunitExtension implements Extension,
         return response;
     }
 
-    private Optional<TestContext> ourTestContext(ExtensionContext ctx) {
+    private TestContext testContext(ExtensionContext ctx) {
         var store = store(ctx, ctx.getRequiredTestClass());
+        run(ctx, LogConfig::configureRuntime);
 
-        return Optional.ofNullable(store.get(TestContext.class, TestContext.class));
+        store.getOrComputeIfAbsent(TestContext.class, c -> {
+            var testClass = ctx.getRequiredTestClass();
+            var annotation = testClass.getAnnotation(Testing.Test.class);
+            boolean perMethod = annotation != null && annotation.perMethod();
+            return perMethod ? PerMethodTestContext.create(testClass) : PerClassTestContext.create(testClass);
+        });
+
+        var testContext = store.get(TestContext.class, TestContext.class);
+        if (testContext != null) {
+            return testContext;
+        } else {
+            throw new IllegalStateException("TestContext not found");
+        }
     }
 
     private void afterShutdownMethods(Class<?> requiredTestClass) {

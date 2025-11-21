@@ -39,15 +39,21 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 import static io.helidon.webserver.WebServer.DEFAULT_SOCKET_NAME;
-import static io.helidon.webserver.testing.junit5.Junit5Util.socketName;
 
 /**
- * A Java {@link java.util.ServiceLoader} provider implementation of
- * {@link io.helidon.webserver.testing.junit5.spi.DirectJunitExtension} for HTTP/1.1 tests.
+ * A {@link DirectJunitExtension} that supports HTTP/1.1 in-memory tests.
  */
 public class Http1DirectJunitExtension implements DirectJunitExtension {
     private final Map<String, DirectClient> clients = new HashMap<>();
     private final Map<String, DirectWebClient> webClients = new HashMap<>();
+
+    /**
+     * Required for {@link java.util.ServiceLoader}.
+     *
+     * @deprecated only for {@link java.util.ServiceLoader}
+     */
+    public Http1DirectJunitExtension() {
+    }
 
     @Override
     public void afterAll(ExtensionContext context) {
@@ -65,7 +71,7 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
             throws ParameterResolutionException {
 
-        Class<?> paramType = parameterContext.getParameter().getType();
+        var paramType = parameterContext.getParameter().getType();
         if (DirectClient.class.equals(paramType)) {
             return true;
         }
@@ -78,22 +84,19 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Class<?> paramType) {
         if (DirectClient.class.equals(paramType) || Http1Client.class.equals(paramType)) {
-            String socketName = socketName(parameterContext.getParameter());
-
-            DirectClient directClient = clients.get(socketName);
-
+            var socketName = socketName(parameterContext.getParameter());
+            var directClient = clients.get(socketName);
             if (directClient == null) {
-                // there is no routing specified
                 if (DEFAULT_SOCKET_NAME.equals(socketName)) {
                     throw new IllegalStateException("There is no default routing specified. Please add static method "
                                                     + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
                                                     + " or HttpRules");
                 } else {
-                    throw new IllegalStateException("There is no routing specified for socket \"" + socketName + "\"."
-                                                    + " Please add static method "
-                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                    + " or HttpRules, and add @Socket(\"" + socketName + "\") "
-                                                    + "annotation to the parameter");
+                    throw new IllegalStateException((
+                            "There is no routing specified for socket \"%s\". Please add static method annotated with"
+                            + " @SetUpRoute that accepts HttpRouting.Builder,"
+                            + " or HttpRules, and add @Socket(\"%s\") annotation to the parameter").formatted(
+                            socketName, socketName));
                 }
             }
             return directClient;
@@ -107,16 +110,16 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
                                                     + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
                                                     + " or HttpRules");
                 } else {
-                    throw new IllegalStateException("There is no default routing specified for socket \"" + socketName + "\"."
-                                                    + " Please add static method "
-                                                    + "annotated with @SetUpRoute that accepts HttpRouting.Builder,"
-                                                    + " or HttpRules, and add @Socket(\"" + socketName + "\") "
-                                                    + "annotation to the parameter");
+                    throw new IllegalStateException((
+                            "There is no default routing specified for socket \"%s\"."
+                            + " Please add static method annotated with @SetUpRoute that accepts HttpRouting.Builder,"
+                            + " or HttpRules, and add @Socket(\"%s\") annotation to the parameter").formatted(
+                            socketName,
+                            socketName));
                 }
             }
             return directClient;
         }
-
         throw new ParameterResolutionException("Cannot resolve parameter: " + parameterContext);
     }
 
@@ -169,7 +172,7 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
             if (clients.putIfAbsent(socket, reset(new DirectClient(value))) != null
                 || webClients.putIfAbsent(socket, reset(new DirectWebClient(value))) != null) {
                 throw new IllegalStateException(
-                        "Method %s defines HTTP routing for socket \"%s\" that is already defined for class \"%s\".".formatted(
+                        "Method %s defines HTTP routing for socket \"%s\" that is already defined for class %s.".formatted(
                                 method,
                                 socket,
                                 method.getDeclaringClass().getName()));
@@ -201,9 +204,8 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
                 if (DEFAULT_SOCKET_NAME.equals(socket)) {
                     return defaultListener();
                 }
-                throw new NoSuchElementException("Socket " + socket + " is not defined");
+                throw new NoSuchElementException("Socket %s is not defined".formatted(socket));
             }
-
             return new DirectSocketBuilders(routing);
         }
 

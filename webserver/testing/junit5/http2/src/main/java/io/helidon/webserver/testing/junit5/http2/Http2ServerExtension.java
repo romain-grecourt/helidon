@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import java.util.Set;
 
 import io.helidon.webclient.http2.Http2Client;
 import io.helidon.webserver.WebServer;
-import io.helidon.webserver.testing.junit5.Junit5Util;
 import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -29,15 +28,16 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * A {@link java.util.ServiceLoader} provider implementation that adds support for injection of HTTP/2 related
- * artifacts, such as {@link io.helidon.webclient.http2.Http2Client} in Helidon integration tests.
+ * A {@link ServerJunitExtension} that supports HTTP/2 tests.
  */
 public class Http2ServerExtension implements ServerJunitExtension {
 
     private static final Set<Class<?>> SUPPORTED = Set.of(Http2Client.class, Http2TestClient.class);
 
     /**
-     * Required constructor for {@link java.util.ServiceLoader}.
+     * Required for {@link java.util.ServiceLoader}.
+     *
+     * @deprecated only for {@link java.util.ServiceLoader}
      */
     public Http2ServerExtension() {
     }
@@ -47,7 +47,7 @@ public class Http2ServerExtension implements ServerJunitExtension {
                                    ExtensionContext extensionContext,
                                    Class<?> parameterType,
                                    WebServer server) {
-        String socketName = Junit5Util.socketName(parameterContext.getParameter());
+        String socketName = socketName(parameterContext.getParameter());
 
         URI uri = URI.create("http://localhost:" + server.port(socketName));
 

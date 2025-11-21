@@ -18,7 +18,6 @@ package io.helidon.webserver.testing.junit5.jsonrpc;
 
 import io.helidon.webclient.jsonrpc.JsonRpcClient;
 import io.helidon.webserver.WebServer;
-import io.helidon.webserver.testing.junit5.Junit5Util;
 import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -26,11 +25,17 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * A {@link java.util.ServiceLoader} provider implementation that adds support for
- * injection of JSON-RPC related artifacts, such as
- * {@link io.helidon.webclient.jsonrpc.JsonRpcClient} in Helidon integration tests.
+ * A {@link ServerJunitExtension} that supports JSON-RPC tests.
  */
 public class JsonRpcServerExtension implements ServerJunitExtension {
+
+    /**
+     * Required for {@link java.util.ServiceLoader}.
+     *
+     * @deprecated only for {@link java.util.ServiceLoader}
+     */
+    public JsonRpcServerExtension() {
+    }
 
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
@@ -43,7 +48,7 @@ public class JsonRpcServerExtension implements ServerJunitExtension {
                                    ExtensionContext extensionContext,
                                    Class<?> parameterType,
                                    WebServer server) {
-        String socketName = Junit5Util.socketName(parameterContext.getParameter());
+        String socketName = socketName(parameterContext.getParameter());
 
         if (JsonRpcClient.class.equals(parameterType)) {
             return JsonRpcClient.builder()

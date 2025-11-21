@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import io.helidon.webserver.ListenerConfig;
 import io.helidon.webserver.Router;
 import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
-import io.helidon.webserver.testing.junit5.Junit5Util;
 import io.helidon.webserver.testing.junit5.spi.ServerJunitExtension;
 import io.helidon.webserver.websocket.WsRouting;
 
@@ -32,10 +31,18 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * A {@link java.util.ServiceLoader} provider implementation that adds support for injection of WebSocket related
- * artifacts, such as {@link io.helidon.webclient.websocket.WsClient} in Helidon WebServer integration tests.
+ * A {@link ServerJunitExtension} that supports WebSocket tests.
  */
 public class WsServerExtension implements ServerJunitExtension {
+
+    /**
+     * Required for {@link java.util.ServiceLoader}.
+     *
+     * @deprecated only for {@link java.util.ServiceLoader}
+     */
+    public WsServerExtension() {
+    }
+
     @Override
     public Optional<ParamHandler<?>> setUpRouteParamHandler(Class<?> type) {
         if (WsRouting.Builder.class.equals(type)) {
@@ -55,8 +62,8 @@ public class WsServerExtension implements ServerJunitExtension {
                                    ExtensionContext extensionContext,
                                    Class<?> parameterType,
                                    WebServer server) {
-        String socketName = Junit5Util.socketName(parameterContext.getParameter());
 
+        var socketName = socketName(parameterContext.getParameter());
         if (WsClient.class.equals(parameterType)) {
             return WsClient.builder()
                     .baseUri("ws://localhost:" + server.port(socketName))

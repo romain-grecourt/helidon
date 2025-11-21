@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import io.helidon.webserver.testing.junit5.SetUpRoute;
-import io.helidon.webserver.testing.junit5.Socket;
 import io.helidon.webclient.http1.Http1Client;
 import io.helidon.webserver.http.HttpRouting;
 import io.helidon.websocket.WsCloseCodes;
@@ -28,8 +27,6 @@ import io.helidon.websocket.WsListener;
 import io.helidon.websocket.WsSession;
 import io.helidon.webclient.websocket.WsClient;
 import io.helidon.webserver.websocket.WsRouting;
-
-import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -57,13 +54,11 @@ abstract class WsSocketAbstractTestingTest {
         ws.endpoint("/customWs", WS_LISTENER);
     }
 
-    @Test
     void testHttpEndpoint() {
         String message = httpClient.get("/test").requestEntity(String.class);
         assertThat(message, is("http"));
     }
 
-    @Test
     void testWsEndpoint() {
         WS_LISTENER.reset();
 
@@ -78,8 +73,7 @@ abstract class WsSocketAbstractTestingTest {
         assertThat(WS_LISTENER.message, is("hello"));
     }
 
-    @Test
-    void testWsEndpointCustomSocket(@Socket("custom") WsClient wsClient) {
+    void testWsEndpointCustomSocket(WsClient wsClient) {
         WS_LISTENER.reset();
 
         ClientSideListener clientListener = new ClientSideListener();

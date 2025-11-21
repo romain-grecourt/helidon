@@ -76,6 +76,7 @@ public class Http2TestConnection implements AutoCloseable {
             Http2Headers.DynamicTable.create(Http2Setting.HEADER_TABLE_SIZE.defaultValue());
     private final Http2HuffmanDecoder requestHuffman = Http2HuffmanDecoder.create();
 
+    @SuppressWarnings("resource")
     Http2TestConnection(URI uri) {
         clientUri = ClientUri.create(uri);
         ConnectionKey connectionKey = ConnectionKey.create(clientUri.scheme(),
@@ -130,6 +131,7 @@ public class Http2TestConnection implements AutoCloseable {
      * @param http2Settings frame to send
      * @return this connection
      */
+    @SuppressWarnings("UnusedReturnValue")
     public Http2TestConnection sendSettings(Http2Settings http2Settings) {
         Http2Flag.SettingsFlags flags = Http2Flag.SettingsFlags.create(0);
         Http2FrameData frameData = http2Settings.toFrameData(null, 0, flags);
@@ -198,6 +200,7 @@ public class Http2TestConnection implements AutoCloseable {
      * @param timeout timeout for blocking
      * @return the frame
      */
+    @SuppressWarnings("UnusedReturnValue")
     public Http2RstStream assertRstStream(int streamId, Duration timeout) {
         Http2FrameData frame = assertNextFrame(Http2FrameType.RST_STREAM, timeout);
         assertThat("Stream ID doesn't match.", frame.header().streamId(), Matchers.equalTo(streamId));
@@ -209,6 +212,7 @@ public class Http2TestConnection implements AutoCloseable {
      * @param timeout timeout for blocking
      * @return the frame
      */
+    @SuppressWarnings("UnusedReturnValue")
     public Http2Settings assertSettings(Duration timeout) {
         Http2FrameData frame = assertNextFrame(Http2FrameType.SETTINGS, timeout);
         return Http2Settings.create(frame.data());
@@ -220,6 +224,7 @@ public class Http2TestConnection implements AutoCloseable {
      * @param timeout timeout for blocking
      * @return the frame
      */
+    @SuppressWarnings("UnusedReturnValue")
     public Http2WindowUpdate assertWindowsUpdate(int streamId, Duration timeout) {
         Http2FrameData frame = assertNextFrame(Http2FrameType.WINDOW_UPDATE, timeout);
         assertThat(frame.header().streamId(), Matchers.equalTo(streamId));
@@ -257,6 +262,7 @@ public class Http2TestConnection implements AutoCloseable {
      * @param timeout timeout for blocking
      * @return the frame
      */
+    @SuppressWarnings("UnusedReturnValue")
     public Http2FrameData assertGoAway(Http2ErrorCode errorCode, String message, Duration timeout) {
         Http2FrameData frame = assertNextFrame(Http2FrameType.GO_AWAY, timeout);
 

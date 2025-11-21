@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,11 @@
 
 package io.helidon.webserver.testing.junit5.spi;
 
+import java.lang.reflect.Parameter;
+
+import io.helidon.webserver.WebServer;
+import io.helidon.webserver.testing.junit5.Socket;
+
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -25,9 +30,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * Common interface for JUnit extensions that can extend features of the
- * {@link io.helidon.webserver.testing.junit5.ServerTest} or
- * {@link io.helidon.webserver.testing.junit5.RoutingTest}.
+ * Base contract for all Helidon JUnit extensions.
  */
 public interface HelidonJunitExtension extends BeforeAllCallback,
                                                AfterAllCallback,
@@ -61,5 +64,17 @@ public interface HelidonJunitExtension extends BeforeAllCallback,
     default boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
             throws ParameterResolutionException {
         return false;
+    }
+
+    /**
+     * Discover socket name using {@link Socket} annotation.
+     * If none found, {@link WebServer#DEFAULT_SOCKET_NAME} is returned.
+     *
+     * @param parameter parameter to check
+     * @return name of the socket the parameter belongs to
+     */
+    default String socketName(Parameter parameter) {
+        var socket = parameter.getAnnotation(Socket.class);
+        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
     }
 }

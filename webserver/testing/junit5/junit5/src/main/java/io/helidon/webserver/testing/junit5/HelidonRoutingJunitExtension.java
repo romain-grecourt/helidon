@@ -16,9 +16,7 @@
 
 package io.helidon.webserver.testing.junit5;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -33,12 +31,17 @@ import io.helidon.webserver.testing.junit5.spi.DirectJunitExtension.ParamHandler
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
+import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-import static io.helidon.webserver.testing.junit5.Junit5Util.withStaticMethods;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.annotated;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotated;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotations;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.invokeMethod;
 
 /**
  * JUnit5 extension to support Helidon WebServer in-memory unit tests.
+ * @see io.helidon.webserver.testing.junit5.RoutingTest
  */
 class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtension>
         implements AfterAllCallback, ParameterResolver {
@@ -48,14 +51,14 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
     }
 
     @Override
-    @SuppressWarnings({"deprecation", "removal"})
-    void init(Class<?> testClass, Context ctx) {
-        RoutingTest testAnnot = testClass.getAnnotation(RoutingTest.class);
-        if (testAnnot == null) {
-            throw new IllegalStateException(
-                    "Test class %s is not annotated with @RoutingTest"
-                            .formatted(testClass));
-        }
+    @SuppressWarnings({"removal", "deprecation"})
+    protected void initClass(ExtensionContext ctx, Context staticContext) {
+        var testClass = ctx.getRequiredTestClass();
+        var annotated = annotated(testClass);
+        filterAnnotations(annotated, RoutingTest.class).findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Test class %s is not annotated with @RoutingTest"
+                                .formatted(testClass)));
 
         var config = Services.get(io.helidon.common.config.Config.class);
         var builder = WebServer.builder()
@@ -67,21 +70,26 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
         setupServer(builder, testClass);
 
         var server = builder.buildPrototype();
-        withStaticMethods(testClass, SetUpRoute.class, (annot, method) -> {
-            var socket = annot.value();
-            handleParams(server.features(), method, socket);
-        });
+        var elements = filterAnnotated(annotated, SetUpRoute.class);
+        for (var e : elements) {
+            if (e.element() instanceof Method m) {
+                for (var a : e.annotations()) {
+                    handleParams(server.features(), m, a.value());
+                }
+            }
+        }
     }
 
     @Override
-    Object resolve(ParameterContext pc, ExtensionContext ctx) {
-        for (DirectJunitExtension extension : extensions()) {
-            if (extension.supportsParameter(pc, ctx)) {
-                init(ctx);
-                return extension.resolveParameter(pc, ctx, pc.getParameter().getType());
+    protected Object resolve(ParameterContext pc, ExtensionContext ctx) {
+        var paramType = pc.getParameter().getType();
+        for (var ext : extensions()) {
+            if (ext.supportsParameter(pc, ctx)) {
+                return ext.resolveParameter(pc, ctx, paramType);
             }
         }
-        return null;
+        throw new ParameterResolutionException(
+                "Failed to resolve parameter of type " + paramType.getName());
     }
 
     @SuppressWarnings("unchecked")
@@ -91,11 +99,11 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
 
     private void handleParams(List<ServerFeature> features, Method method, String socket) {
         List<ParamHandler<?>> handlers = new ArrayList<>();
-        for (Parameter parameter : method.getParameters()) {
+        for (var parameter : method.getParameters()) {
             boolean found = false;
             Class<?> paramType = parameter.getType();
-            for (DirectJunitExtension e : extensions()) {
-                var handler = e.setUpRouteParamHandler(features, paramType).orElse(null);
+            for (var ext : extensions()) {
+                var handler = ext.setUpRouteParamHandler(features, paramType).orElse(null);
                 if (handler != null) {
                     handlers.add(handler);
                     found = true;
@@ -114,12 +122,7 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
             values[i] = handlers.get(i).get(socket);
         }
 
-        try {
-            method.setAccessible(true);
-            method.invoke(null, values);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new IllegalStateException("Cannot invoke @SetUpRoute method", e);
-        }
+        invokeMethod(method, values);
 
         for (int i = 0; i < values.length; i++) {
             handleParam(handlers.get(i), method, socket, values[i]);

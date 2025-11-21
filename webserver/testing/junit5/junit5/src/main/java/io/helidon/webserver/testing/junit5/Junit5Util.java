@@ -16,21 +16,22 @@
 
 package io.helidon.webserver.testing.junit5;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
-import java.util.LinkedList;
-import java.util.function.BiConsumer;
 
 import io.helidon.webserver.WebServer;
+import io.helidon.webserver.testing.junit5.spi.HelidonJunitExtension;
 
 /**
  * Utility methods for JUnit5 extensions.
+ * @deprecated use {@link HelidonJunitExtension#socketName(java.lang.reflect.Parameter)} instead
  */
+@Deprecated(forRemoval = true)
 public final class Junit5Util {
     private Junit5Util() {
     }
+
+    private static final HelidonJunitExtension NOOP = new HelidonJunitExtension() {
+    };
 
     /**
      * Discover socket name using {@link Socket} annotation.
@@ -40,47 +41,6 @@ public final class Junit5Util {
      * @return name of the socket the parameter belongs to
      */
     public static String socketName(Parameter parameter) {
-        Socket socketAnnot = parameter.getAnnotation(Socket.class);
-
-        if (socketAnnot == null) {
-            return WebServer.DEFAULT_SOCKET_NAME;
-        }
-
-        return socketAnnot.value();
-    }
-
-    /**
-     * Finds all static methods annotated with the defined annotation on the test class (and its hierarchy).
-     *
-     * @param testClass      current test class
-     * @param annotationType class of the annotation
-     * @param handler        handler of discovered methods
-     * @param <T>            type of the annotation
-     */
-    static <T extends Annotation> void withStaticMethods(Class<?> testClass,
-                                                         Class<T> annotationType,
-                                                         BiConsumer<T, Method> handler) {
-        LinkedList<Class<?>> hierarchy = new LinkedList<>();
-        Class<?> analyzedClass = testClass;
-        while (analyzedClass != null && !analyzedClass.equals(Object.class)) {
-            hierarchy.addFirst(analyzedClass);
-            analyzedClass = analyzedClass.getSuperclass();
-        }
-        for (Class<?> aClass : hierarchy) {
-            for (Method method : aClass.getDeclaredMethods()) {
-                T annotation = method.getDeclaredAnnotation(annotationType);
-                if (annotation != null) {
-                    // maybe our method
-                    if (Modifier.isStatic(method.getModifiers())) {
-                        handler.accept(annotation, method);
-                    } else {
-                        throw new IllegalStateException(
-                                "Method %s is annotated with %s yet it is not static".formatted(
-                                        method,
-                                        annotationType.getSimpleName()));
-                    }
-                }
-            }
-        }
+        return NOOP.socketName(parameter);
     }
 }

@@ -27,8 +27,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 /**
- * Java {@link java.util.ServiceLoader} provider interface for extending unit tests with support for additional injection,
- * such as Direct HTTP/1.1 client.
+ * Base contract for Helidon JUnit extensions that support in-memory tests.
  */
 public interface DirectJunitExtension extends HelidonJunitExtension {
     /**
@@ -38,7 +37,7 @@ public interface DirectJunitExtension extends HelidonJunitExtension {
      * @param extensionContext JUnit extension context
      * @param parameterType    type of parameter
      * @return instance of the parameter
-     * @throws org.junit.jupiter.api.extension.ParameterResolutionException in case parameter cannot be resolved
+     * @throws ParameterResolutionException in case parameter cannot be resolved
      */
     default Object resolveParameter(ParameterContext parameterContext,
                                     ExtensionContext extensionContext,
@@ -47,41 +46,38 @@ public interface DirectJunitExtension extends HelidonJunitExtension {
     }
 
     /**
-     * Check if the type is supported and return a handler for it.
+     * Set up the parameter handler.
      *
      * @param features features
-     * @param type     type of the parameter to {@link io.helidon.webserver.testing.junit5.SetUpRoute} method
-     * @return parameter handler if the type is supported, empty otherwise
+     * @param type     parameter type
+     * @return optional parameter handler
      */
     default Optional<ParamHandler<?>> setUpRouteParamHandler(List<ServerFeature> features, Class<?> type) {
         return Optional.empty();
     }
 
     /**
-     * Handler to provide an instance that can be injected as a parameter to
-     * {@link io.helidon.webserver.testing.junit5.SetUpRoute} static methods.
+     * Parameter handler.
      *
-     * @param <T> type of the parameter (such as {@link io.helidon.webserver.http.HttpRouting.Builder}
+     * @param <T> type of the parameter
      */
     interface ParamHandler<T> {
         /**
-         * Get an instance to be injected.
+         * Get the initial parameter instance.
          *
-         * @param socketName name of a socket this will belong to
-         * @return a new instance to inject as a parameter to the method
+         * @param socketName socket name
+         * @return a new parameter instance
          */
         T get(String socketName);
 
         /**
-         * Handle the value after the method has been called, and its body updated our provided instance.
+         * Process the parameter instance post updates.
          *
-         * @param method method that updated the value
+         * @param method     update method
          * @param socketName socket name
-         * @param value the value we provided with {@link #get(String)}
+         * @param value      parameter instance
          */
-        default void handle(Method method,
-                            String socketName,
-                            T value) {
+        default void handle(Method method, String socketName, T value) {
         }
     }
 }
