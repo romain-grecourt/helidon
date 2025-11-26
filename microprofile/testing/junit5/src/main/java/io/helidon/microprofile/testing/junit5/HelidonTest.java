@@ -21,6 +21,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import io.helidon.testing.junit5.TestJunitExtension;
+
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +42,7 @@ import static io.helidon.common.testing.virtualthreads.PinningRecorder.DEFAULT_T
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@ExtendWith(TestJunitExtension.class)
 @ExtendWith(HelidonJunitExtension.class)
 @TestMethodOrder(HelidonImplicitResetOrderer.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

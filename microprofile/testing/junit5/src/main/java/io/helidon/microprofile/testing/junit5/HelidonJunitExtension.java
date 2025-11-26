@@ -16,7 +16,9 @@
 
 package io.helidon.microprofile.testing.junit5;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -24,11 +26,11 @@ import io.helidon.microprofile.testing.HelidonTestInfo.ClassInfo;
 import io.helidon.microprofile.testing.HelidonTestInfo.MethodInfo;
 import io.helidon.microprofile.testing.HelidonTestScope;
 import io.helidon.microprofile.testing.Instrumented;
-import io.helidon.testing.junit5.TestJunitExtension;
 
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
 import org.junit.jupiter.api.extension.ExtensionContext.Store.CloseableResource;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
@@ -84,153 +86,146 @@ import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_METHOD;
  *
  * @see HelidonTest
  */
-public class HelidonJunitExtension extends TestJunitExtension
-        implements BeforeEachCallback,
+public class HelidonJunitExtension implements BeforeEachCallback,
                    TestInstanceFactory,
                    InvocationInterceptor,
                    ParameterResolver {
 
+    private static final Namespace NAMESPACE = Namespace.create(HelidonJunitExtension.class);
     private final ReentrantLock lock = new ReentrantLock();
 
     @Override
     public Object createTestInstance(TestInstanceFactoryContext fc, ExtensionContext ctx) {
-        return supplyChecked(ctx, () -> {
-            // Instrument the test class
-            // Use a proxy to start the container lazily
-            Class<?> testClass = instrument(ctx.getRequiredTestClass(), List.of(), List.of(),
-                    (type, method) -> {
-                        // class context store specific to the intercepted method
-                        Store store = store(ctx, method);
-                        return requiredContainer(store).resolveInstance(type);
-                    });
-            return Instrumented.allocateInstance(testClass);
-        });
+        // Instrument the test class
+        // Use a proxy to start the container lazily
+        Class<?> testClass = instrument(ctx.getRequiredTestClass(), List.of(), List.of(),
+                (type, method) -> {
+                    // class context store specific to the intercepted method
+                    Store store = store(ctx, method);
+                    return requiredContainer(store).resolveInstance(type);
+                });
+        return Instrumented.allocateInstance(testClass);
     }
 
     @Override
     public void interceptBeforeEachMethod(Invocation<Void> invocation,
                                           ReflectiveInvocationContext<Method> ic,
-                                          ExtensionContext ctx) throws Throwable {
+                                          ExtensionContext ec) throws Throwable {
 
-        invoke(invocation, ic, ctx);
+        invoke(invocation, ic, ec);
     }
 
     @Override
     public void interceptAfterEachMethod(Invocation<Void> invocation,
                                          ReflectiveInvocationContext<Method> ic,
-                                         ExtensionContext ctx) throws Throwable {
+                                         ExtensionContext ec) throws Throwable {
 
-        invoke(invocation, ic, ctx);
+        invoke(invocation, ic, ec);
     }
 
     @Override
-    public void beforeEach(ExtensionContext context) {
-        run(context, () -> {
-            Method testMethod = context.getRequiredTestMethod();
-            Class<?> testClass = context.getRequiredTestClass();
+    public void beforeEach(ExtensionContext ec) {
+        Method testMethod = ec.getRequiredTestMethod();
+        Class<?> testClass = ec.getRequiredTestClass();
 
-            ClassInfo classInfo = classInfo(testClass, HelidonTestDescriptorImpl::new);
-            MethodInfo methodInfo = methodInfo(testMethod, classInfo, HelidonTestDescriptorImpl::new);
+        ClassInfo classInfo = classInfo(testClass, HelidonTestDescriptorImpl::new);
+        MethodInfo methodInfo = methodInfo(testMethod, classInfo, HelidonTestDescriptorImpl::new);
 
-            ExtensionContext classContext = classContext(context);
-            Store classStore = store(classContext);
-            HelidonTestContainerImpl container = container(classStore);
+        ExtensionContext classContext = classContext(ec);
+        Store classStore = store(classContext);
+        HelidonTestContainerImpl container = container(classStore);
 
-            if (context.getExecutionMode() == ExecutionMode.SAME_THREAD
-                && container != null && !container.closed()
-                && methodInfo.requiresReset()) {
+        if (ec.getExecutionMode() == ExecutionMode.SAME_THREAD
+            && container != null && !container.closed()
+            && methodInfo.requiresReset()) {
 
-                // close the "class container" only for sequential executions
-                // parallel & requireReset use multiple containers
-                container.close();
+            // close the "class container" only for sequential executions
+            // parallel & requireReset use multiple containers
+            container.close();
+        }
+
+        if (container == null || container.closed()) {
+            Store methodStore = store(ec);
+            Lifecycle lifecycle = ec.getTestInstanceLifecycle().orElse(PER_METHOD);
+            HelidonTestScope scope;
+            if (lifecycle == Lifecycle.PER_CLASS) {
+                scope = HelidonTestScope.ofContainer();
+            } else {
+                scope = HelidonTestScope.ofThread();
+                // put the scope in the method context store to auto-close
+                methodStore.put("scope", (CloseableResource) scope::close);
             }
-
-            if (container == null || container.closed()) {
-                Store methodStore = store(context);
-                Lifecycle lifecycle = context.getTestInstanceLifecycle().orElse(PER_METHOD);
-                HelidonTestScope scope;
-                if (lifecycle == Lifecycle.PER_CLASS) {
-                    scope = HelidonTestScope.ofContainer();
-                } else {
-                    scope = HelidonTestScope.ofThread();
-                    // put the scope in the method context store to auto-close
-                    methodStore.put("scope", (CloseableResource) scope::close);
-                }
-                if (methodInfo.requiresReset()) {
-                    // put in the method store to auto-close
-                    container = new HelidonTestContainerImpl(methodInfo, scope);
-                    methodStore.put("container", container);
-                } else {
-                    // put the "class container" in the class context store
-                    // to re-use between methods
-                    lock.lock();
-                    try {
-                        container = container(classStore);
-                        if (container == null || container.closed()) {
-                            container = new HelidonTestContainerImpl(classInfo, scope);
-                            classStore.put("container", container);
-                        }
-                    } finally {
-                        lock.unlock();
+            if (methodInfo.requiresReset()) {
+                // put in the method store to auto-close
+                container = new HelidonTestContainerImpl(methodInfo, scope);
+                methodStore.put("container", container);
+            } else {
+                // put the "class container" in the class context store
+                // to re-use between methods
+                lock.lock();
+                try {
+                    container = container(classStore);
+                    if (container == null || container.closed()) {
+                        container = new HelidonTestContainerImpl(classInfo, scope);
+                        classStore.put("container", container);
                     }
+                } finally {
+                    lock.unlock();
                 }
             }
-            // proxy handler uses class context
-            // hence we use a class context store specific to the test method
-            store(classContext, testMethod).put("container", container);
-        });
+        }
+        // proxy handler uses class context
+        // hence we use a class context store specific to the test method
+        store(classContext, testMethod).put("container", container);
     }
 
     @Override
-    public boolean supportsParameter(ParameterContext pc, ExtensionContext ctx)
+    public boolean supportsParameter(ParameterContext pc, ExtensionContext ec)
             throws ParameterResolutionException {
 
-        return supplyChecked(ctx, () -> {
-            Store store = store(ctx, ctx.getRequiredTestMethod());
-            HelidonTestContainerImpl container = requiredContainer(store);
-            return !container.initFailed() && container.isSupported(pc.getParameter().getType());
-        });
+        Store store = store(ec, ec.getRequiredTestMethod());
+        HelidonTestContainerImpl container = requiredContainer(store);
+        return !container.initFailed() && container.isSupported(pc.getParameter().getType());
     }
 
     @Override
-    public Object resolveParameter(ParameterContext pc, ExtensionContext ctx)
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ec)
             throws ParameterResolutionException {
 
-        return supplyChecked(ctx, () -> {
-            Store store = store(ctx, ctx.getRequiredTestMethod());
-            HelidonTestContainerImpl container = requiredContainer(store);
-            return container.initFailed() ? null : container.resolveInstance(pc.getParameter().getType());
-        });
+        Store store = store(ec, ec.getRequiredTestMethod());
+        HelidonTestContainerImpl container = requiredContainer(store);
+        return container.initFailed() ? null : container.resolveInstance(pc.getParameter().getType());
     }
 
     private void invoke(Invocation<Void> invocation,
                         ReflectiveInvocationContext<Method> ic,
                         ExtensionContext context) throws Throwable {
 
-        runChecked(context, () -> {
-            Store methodStore = store(context, context.getRequiredTestMethod());
-            HelidonTestContainerImpl container = requiredContainer(methodStore);
-            if (container.initFailed()) {
-                invocation.skip();
-            } else {
-                // proxy handler uses class context
-                // hence we use a class context store specific to the test method
-                ExtensionContext classContext = classContext(context);
-                Store store = store(classContext, ic.getExecutable());
-                store.put("container", container);
-                invocation.proceed();
-            }
-        });
+        var ns = NAMESPACE.append(context.getRequiredTestMethod());
+        var methodStore = context.getStore(ns);
+        HelidonTestContainerImpl container = requiredContainer(methodStore);
+        if (container.initFailed()) {
+            invocation.skip();
+        } else {
+            // proxy handler uses class context
+            // hence we use a class context store specific to the test method
+            ExtensionContext classContext = classContext(context);
+            Store store = store(classContext, ic.getExecutable());
+            store.put("container", container);
+            invocation.proceed();
+        }
     }
 
     private static HelidonTestContainerImpl container(Store store) {
-        return storeLookup(store, "container", HelidonTestContainerImpl.class)
-                .orElse(null);
+        return store.get("container", HelidonTestContainerImpl.class);
     }
 
     private static HelidonTestContainerImpl requiredContainer(Store store) {
-        return storeLookup(store, "container", HelidonTestContainerImpl.class)
-                .orElseThrow(() -> new IllegalStateException("Container not set"));
+        var container = container(store);
+        if (container == null) {
+            throw new IllegalStateException("Container not set");
+        }
+        return container;
     }
 
     private static ExtensionContext classContext(ExtensionContext context) {
@@ -239,5 +234,22 @@ public class HelidonJunitExtension extends TestJunitExtension
             c = c.getParent().orElseThrow();
         }
         return c;
+    }
+
+    @SuppressWarnings("DuplicatedCode")
+    private static Store store(ExtensionContext ec, AnnotatedElement... qualifiers) {
+        Namespace ns;
+        if (qualifiers.length > 0) {
+            ns = NAMESPACE.append(Arrays.stream(qualifiers)
+                    .map(e -> switch (e) {
+                        case Class<?> c -> c.getName();
+                        case Method m -> m.getName();
+                        default -> throw new IllegalArgumentException("Unsupported element: " + e);
+                    })
+                    .toArray());
+        } else {
+            ns = NAMESPACE;
+        }
+        return ec.getStore(ns);
     }
 }

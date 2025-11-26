@@ -17,15 +17,13 @@
 package io.helidon.webserver.testing.junit5;
 
 import java.security.Principal;
-import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.helidon.http.Method;
 import io.helidon.http.Status;
-import io.helidon.webclient.http1.Http1ClientResponse;
 import io.helidon.webserver.http.HttpRouting;
 import io.helidon.webserver.spi.ServerFeature;
 
@@ -33,9 +31,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertAll;
 
 @RoutingTest
+@SuppressWarnings("ClassCanBeRecord")
 class TestRoutingTest {
     private static final String ENTITY = "some nice entity";
     private static final String ADMIN_ENTITY = "admin entity";
@@ -50,7 +48,7 @@ class TestRoutingTest {
     static void routing(HttpRouting.Builder router) {
         router.get("/get", (req, res) -> res.send(ENTITY))
                 .post("/post", (req, res) -> {
-                    String requestEntity = req.content().as(String.class);
+                    var requestEntity = req.content().as(String.class);
                     if (ENTITY.equals(requestEntity)) {
                         res.status(Status.CREATED_201);
                     } else {
@@ -59,7 +57,7 @@ class TestRoutingTest {
                     res.send();
                 })
                 .get("/name", (req, res) -> {
-                    String name = req.remotePeer().tlsPrincipal().map(Principal::getName).orElse(null);
+                    var name = req.remotePeer().tlsPrincipal().map(Principal::getName).orElse(null);
                     if (name == null) {
                         res.status(Status.BAD_REQUEST_400).send("Expected client principal");
                     } else {
@@ -67,19 +65,18 @@ class TestRoutingTest {
                     }
                 })
                 .get("/certs", (req, res) -> {
-                    Certificate[] certs = req.remotePeer().tlsCertificates().orElse(null);
+                    var certs = req.remotePeer().tlsCertificates().orElse(null);
                     if (certs == null) {
                         res.status(Status.BAD_REQUEST_400).send("Expected client certificate");
                     } else {
-                        List<String> certDefs = new LinkedList<>();
-                        for (Certificate cert : certs) {
+                        var certDefs = new ArrayList<String>();
+                        for (var cert : certs) {
                             if (cert instanceof X509Certificate x509) {
                                 certDefs.add("X.509:" + x509.getSubjectX500Principal().getName());
                             } else {
                                 certDefs.add(cert.getType());
                             }
                         }
-
                         res.send(String.join("|", certDefs));
                     }
                 });
@@ -92,7 +89,7 @@ class TestRoutingTest {
 
     @SetUpFeatures
     static List<ServerFeature> features() {
-         return List.of(new TestFeature());
+        return List.of(new TestFeature());
     }
 
     @Test
@@ -102,58 +99,55 @@ class TestRoutingTest {
 
     @Test
     void testGet() {
-        String response = client.get("/get")
-                .request()
-                .as(String.class);
+        try (var response = client.get("/get")
+                .request()) {
 
-        assertThat(response, is(ENTITY));
+            String entity = response.as(String.class);
+            assertThat(entity, is(ENTITY));
+        }
     }
 
     @Test
     void testInjectGet(@Socket("admin") DirectClient client) {
-        String response = client.get("/get")
-                .request()
-                .as(String.class);
-
-        assertThat(response, is(ADMIN_ENTITY));
+        try (var response = client.get("/get")
+                .request()) {
+            var entity = response.as(String.class);
+            assertThat(entity, is(ADMIN_ENTITY));
+        }
     }
 
-    @Test // Test Explicit @default route
+    @Test
     void testInjectDefaultGet(@Socket("@default") DirectClient client) {
-        String response = client.get("/get")
-                .request()
-                .as(String.class);
-
-        assertThat(response, is(ENTITY));
+        // Test Explicit @default route
+        try (var response = client.get("/get").request()) {
+            var entity = response.as(String.class);
+            assertThat(entity, is(ENTITY));
+        }
     }
 
     @Test
     void testPost() {
-        Http1ClientResponse response = client.method(Method.POST)
+        try (var response = client.method(Method.POST)
                 .uri("/post")
-                .submit(ENTITY);
-
-        assertThat(response.status(), is(Status.CREATED_201));
+                .submit(ENTITY)) {
+            assertThat(response.status(), is(Status.CREATED_201));
+        }
     }
 
     @Test
     void testMutualTlsPrincipal() {
-        String principal = "Custom principal name";
+        var principal = "Custom principal name";
         client.clientTlsPrincipal(new TestPrincipal(principal));
-        Http1ClientResponse response = client.method(Method.GET)
+        try (var response = client.method(Method.GET)
                 .uri("/name")
-                .request();
+                .request()) {
 
-        assertAll(() -> assertThat(response.status(), is(Status.OK_200)),
-                  () -> assertThat(response.as(String.class), is(principal)));
+            assertThat(response.status(), is(Status.OK_200));
+            assertThat(response.as(String.class), is(principal));
+        }
     }
 
-    private static final class TestPrincipal implements Principal {
-        private final String name;
-
-        private TestPrincipal(String name) {
-            this.name = name;
-        }
+    private record TestPrincipal(String name) implements Principal {
 
         @Override
         public String getName() {

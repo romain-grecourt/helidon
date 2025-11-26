@@ -57,7 +57,7 @@ class TestRoutingParams {
 
         @Test
         void testEventsOrderWithNoParams() {
-            assertThat(EVENTS, is(List.of("beforeAll", "beforeEach", "setUpRouting")));
+            assertThat(EVENTS, is(List.of("beforeAll", "setUpRouting", "beforeEach")));
         }
     }
 
@@ -121,7 +121,7 @@ class TestRoutingParams {
 
         @Test
         void testMethodParams(Http1Client client) {
-            assertThat(EVENTS, is(List.of("beforeAll", "beforeEach", "setUpRouting")));
+            assertThat(EVENTS, is(List.of("beforeAll", "setUpRouting", "beforeEach")));
             assertThat(client, is(not(nullValue())));
             try (var res = client.get().request()) {
                 assertThat(res.status().code(), is(200));

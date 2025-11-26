@@ -25,7 +25,7 @@ import io.helidon.webserver.testing.junit5.spi.HelidonJunitExtension;
  * Utility methods for JUnit5 extensions.
  * @deprecated use {@link HelidonJunitExtension#socketName(java.lang.reflect.Parameter)} instead
  */
-@Deprecated(forRemoval = true)
+@Deprecated(forRemoval = true, since = "4.4.0")
 public final class Junit5Util {
     private Junit5Util() {
     }

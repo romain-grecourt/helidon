@@ -68,6 +68,25 @@ class ReflectionHelper {
     }
 
     /**
+     * Collect all the methods in the type hierarchy of the given type.
+     *
+     * @param type type
+     * @return methods
+     */
+    static List<Method> methods(Class<?> type) {
+        return typeHierarchy(type).stream()
+                .flatMap(t -> Stream.of(t.getDeclaredMethods()))
+                .collect(ArrayList::new, (l, m) -> {
+                    for (var e : l) {
+                        if (isOverride(m, e)) {
+                            return;
+                        }
+                    }
+                    l.add(m);
+                }, ArrayList::addAll);
+    }
+
+    /**
      * Collect all types in the type hiearchy of the given type.
      *
      * @param type type
@@ -154,8 +173,21 @@ class ReflectionHelper {
      * @param elements elements
      * @return annotations
      */
+    static List<Annotated<?>> annotated(AnnotatedElement... elements) {
+        return annotated(List.of(elements));
+    }
+
+
+    /**
+     * Get all annotations for the given elements.
+     *
+     * @param elements elements
+     * @return annotations
+     */
     static List<Annotated<?>> annotated(List<? extends AnnotatedElement> elements) {
-        return elements.stream().map(Annotated::create).collect(Collectors.toList());
+        return elements.stream().map(Annotated::create)
+                .filter(a -> !a.annotations().isEmpty())
+                .collect(Collectors.toList());
     }
 
     /**

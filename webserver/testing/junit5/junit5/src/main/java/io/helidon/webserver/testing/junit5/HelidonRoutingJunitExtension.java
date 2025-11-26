@@ -38,12 +38,13 @@ import static io.helidon.webserver.testing.junit5.ReflectionHelper.annotated;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotated;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotations;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.invokeMethod;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.methods;
 
 /**
  * JUnit5 extension to support Helidon WebServer in-memory unit tests.
  * @see io.helidon.webserver.testing.junit5.RoutingTest
  */
-class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtension>
+class HelidonRoutingJunitExtension extends HelidonJunitExtensionBase<DirectJunitExtension>
         implements AfterAllCallback, ParameterResolver {
 
     HelidonRoutingJunitExtension() {
@@ -54,8 +55,7 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
     @SuppressWarnings({"removal", "deprecation"})
     protected void initClass(ExtensionContext ctx, Context staticContext) {
         var testClass = ctx.getRequiredTestClass();
-        var annotated = annotated(testClass);
-        filterAnnotations(annotated, RoutingTest.class).findFirst()
+        filterAnnotations(annotated(testClass), RoutingTest.class).findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "Test class %s is not annotated with @RoutingTest"
                                 .formatted(testClass)));
@@ -70,6 +70,7 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
         setupServer(builder, testClass);
 
         var server = builder.buildPrototype();
+        var annotated = annotated(methods(testClass));
         var elements = filterAnnotated(annotated, SetUpRoute.class);
         for (var e : elements) {
             if (e.element() instanceof Method m) {
@@ -90,11 +91,6 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
         }
         throw new ParameterResolutionException(
                 "Failed to resolve parameter of type " + paramType.getName());
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> void handleParam(ParamHandler<T> handler, Method method, String socket, Object value) {
-        handler.handle(method, socket, (T) value);
     }
 
     private void handleParams(List<ServerFeature> features, Method method, String socket) {
@@ -122,10 +118,15 @@ class HelidonRoutingJunitExtension extends JunitExtensionBase<DirectJunitExtensi
             values[i] = handlers.get(i).get(socket);
         }
 
-        invokeMethod(method, values);
+        invokeMethod(method, null, values);
 
         for (int i = 0; i < values.length; i++) {
             handleParam(handlers.get(i), method, socket, values[i]);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> void handleParam(ParamHandler<T> handler, Method method, String socket, Object value) {
+        handler.handle(method, socket, (T) value);
     }
 }

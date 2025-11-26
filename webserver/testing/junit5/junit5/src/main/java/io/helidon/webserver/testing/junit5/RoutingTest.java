@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import io.helidon.testing.junit5.TestJunitExtension;
+
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@ExtendWith(TestJunitExtension.class)
 @ExtendWith(HelidonRoutingJunitExtension.class)
 @Inherited
 public @interface RoutingTest {

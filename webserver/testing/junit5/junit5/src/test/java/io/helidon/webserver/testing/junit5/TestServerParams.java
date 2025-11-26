@@ -56,10 +56,9 @@ class TestServerParams {
 
         @Test
         void testEventsOrder() {
-            assertThat(EVENTS, is(List.of("beforeAll", "beforeEach", "setUpServer")));
+            assertThat(EVENTS, is(List.of("beforeAll", "setUpServer", "beforeEach")));
         }
     }
-
 
     @Nested
     @ServerTest
@@ -121,7 +120,7 @@ class TestServerParams {
 
         @Test
         void testMethodParams(Http1Client client) {
-            assertThat(EVENTS, is(List.of("beforeAll", "beforeEach", "setUpServer")));
+            assertThat(EVENTS, is(List.of("beforeAll", "setUpServer", "beforeEach")));
             assertThat(client, is(not(nullValue())));
             try (var res = client.get().request()) {
                 assertThat(res.status().code(), is(200));

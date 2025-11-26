@@ -30,7 +30,6 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
 import org.junit.jupiter.api.condition.JRE;
 import org.junit.platform.testkit.engine.EngineTestKit;
 import org.junit.platform.testkit.engine.Event;
-import org.junit.platform.testkit.engine.Events;
 
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.testkit.engine.EventConditions.displayName;
@@ -45,7 +44,7 @@ class TestPinnedThread {
     @Test
     @EnabledOnJre(JRE.JAVA_21)
     void engineTest() {
-        Events events = EngineTestKit.engine("junit-jupiter")
+        var events = EngineTestKit.engine("junit-jupiter")
                 .configurationParameter("TestPinnedThread", "true")
                 .selectors(
                         selectClass(PinningTestCase.class),
@@ -54,8 +53,9 @@ class TestPinnedThread {
                         selectClass(NoPinningExtraThreadTestCase.class)
                 )
                 .execute()
-                .containerEvents()
-                .assertStatistics(stats -> stats
+                .containerEvents();
+
+        events.assertStatistics(stats -> stats
                         .failed(2)
                         .succeeded(3));
 
@@ -71,7 +71,8 @@ class TestPinnedThread {
     @DisabledOnJre(JRE.JAVA_21)
     void engineTestNewJava() {
         // synchronized no longer pins in Java 24
-        EngineTestKit.engine("junit-jupiter")
+        var events = EngineTestKit.engine("junit-jupiter")
+                .configurationParameter("TestPinnedThread", "true")
                 .selectors(
                         selectClass(PinningTestCase.class),
                         selectClass(PinningExtraThreadTestCase.class),
@@ -79,8 +80,9 @@ class TestPinnedThread {
                         selectClass(NoPinningExtraThreadTestCase.class)
                 )
                 .execute()
-                .containerEvents()
-                .assertStatistics(stats -> stats
+                .containerEvents();
+
+        events.assertStatistics(stats -> stats
                         .failed(0)
                         .succeeded(5));
     }

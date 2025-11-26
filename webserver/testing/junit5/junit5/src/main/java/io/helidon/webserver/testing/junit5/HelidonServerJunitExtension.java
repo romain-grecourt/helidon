@@ -50,15 +50,16 @@ import static io.helidon.webserver.testing.junit5.ReflectionHelper.annotated;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotated;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotations;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.invokeMethod;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.methods;
 
 /**
  * JUnit5 extension to support Helidon WebServer in tests.
  *
  * @see io.helidon.webserver.testing.junit5.ServerTest
  */
-class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtension> {
+class HelidonServerJunitExtension extends HelidonJunitExtensionBase<ServerJunitExtension> {
 
-    private static final Set<Class<?>> SUPPORTED_TYPES = Set.of(WebServer.class, URI.class);
+    private static final Set<Class<?>> SUPPORTED_TYPES = Set.of(URI.class);
 
     private final Map<String, URI> uris = new ConcurrentHashMap<>();
     private WebServer server;
@@ -70,7 +71,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
 
     @Override
     @SuppressWarnings({"removal", "deprecation"})
-    protected void initClass(ExtensionContext ctx, Context staticContext) {
+    protected void initClass(ExtensionContext ec, Context staticContext) {
         // lazy config source for test.server.port
         Services.add(ConfigSource.class, 10000D, (ConfigSource & LazyConfigSource) key -> {
             if ("test.server.port".equals(key)) {
@@ -80,7 +81,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
             return Optional.empty();
         });
 
-        var testClass = ctx.getRequiredTestClass();
+        var testClass = ec.getRequiredTestClass();
         var annotated = annotated(testClass);
         var annot = filterAnnotations(annotated, ServerTest.class).findFirst()
                 .orElseThrow(() -> new IllegalStateException(
@@ -112,6 +113,9 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
                 .build()
                 .start();
 
+        var serverRef = Services.get(WebServerRef.class);
+        serverRef.set(server);
+
         if (server.hasTls()) {
             uris.put(DEFAULT_SOCKET_NAME, URI.create("https://localhost:%d/".formatted(server.port())));
         } else {
@@ -120,11 +124,8 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
     }
 
     @Override
-    protected Object resolve(ParameterContext pc, ExtensionContext ctx) {
+    protected Object resolve(ParameterContext pc, ExtensionContext ec) {
         var paramType = pc.getParameter().getType();
-        if (paramType.equals(WebServer.class)) {
-            return server;
-        }
         if (paramType.equals(URI.class)) {
             var socketName = socketName(pc.getParameter());
             var uri = uris.computeIfAbsent(socketName, it -> {
@@ -143,8 +144,8 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
             return uri;
         }
         for (var ext : extensions()) {
-            if (ext.supportsParameter(pc, ctx)) {
-                return ext.resolveParameter(pc, ctx, paramType, server);
+            if (ext.supportsParameter(pc, ec)) {
+                return ext.resolveParameter(pc, ec, paramType, server);
             }
         }
         throw new ParameterResolutionException(
@@ -152,11 +153,14 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
     }
 
     @Override
-    protected void close(ExtensionContext ctx) {
+    protected void beforeClose() {
         if (server != null) {
             server.stop();
         }
-        super.close(ctx);
+    }
+
+    @Override
+    protected void afterClose() {
         if (pinningRecorder != null) {
             pinningRecorder.close();
         }
@@ -168,7 +172,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
 
         listeners.put(DEFAULT_SOCKET_NAME, ListenerConfig.builder().from(builder));
 
-        var annotated = annotated(testClass);
+        var annotated = annotated(methods(testClass));
         var elements = filterAnnotated(annotated, SetUpRoute.class);
         for (var e : elements) {
             if (e.element() instanceof Method m) {
@@ -240,7 +244,7 @@ class HelidonServerJunitExtension extends JunitExtensionBase<ServerJunitExtensio
             values[i] = handler.get(socket, server, listener, router);
         }
 
-        invokeMethod(method, values);
+        invokeMethod(method, null, values);
 
         for (int i = 0; i < values.length; i++) {
             handleParam(handlers.get(i), socket, server, listener, router, values[i]);
