@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.helidon.webserver.testing.junit5;
 
-import io.helidon.webserver.WebServer;
-
 /**
- * A {@link io.helidon.webserver.WebServer} mutable reference.
+ * JUnit5 extension to support Helidon WebServer in tests.
+ *
+ * @see io.helidon.webserver.testing.junit5.ServerTest
  */
-interface WebServerRef {
+class WebServerTestServerExtension extends WebServerTestExtension {
 
-    /**
-     * Set the server reference.
-     *
-     * @param server server
-     */
-    void server(WebServer server);
+    WebServerTestServerExtension() {
+        super(WebServerTestServerService.class);
+    }
 }

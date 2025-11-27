@@ -17,6 +17,7 @@
 package io.helidon.webserver.testing.junit5;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import io.helidon.common.Builder;
 import io.helidon.webclient.api.WebClient;
 import io.helidon.webclient.http1.Http1Client;
 import io.helidon.webserver.ListenerConfig;
+import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.http.HttpRouting;
 import io.helidon.webserver.http.HttpRules;
@@ -82,9 +84,9 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
     }
 
     @Override
-    public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext, Class<?> paramType) {
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ec, Class<?> paramType) {
         if (DirectClient.class.equals(paramType) || Http1Client.class.equals(paramType)) {
-            var socketName = socketName(parameterContext.getParameter());
+            var socketName = socketName(pc.getParameter());
             var directClient = clients.get(socketName);
             if (directClient == null) {
                 if (DEFAULT_SOCKET_NAME.equals(socketName)) {
@@ -102,7 +104,7 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
             return directClient;
         }
         if (WebClient.class.equals(paramType)) {
-            var socketName = socketName(parameterContext.getParameter());
+            var socketName = socketName(pc.getParameter());
             var directClient = webClients.get(socketName);
             if (directClient == null) {
                 if (DEFAULT_SOCKET_NAME.equals(socketName)) {
@@ -120,7 +122,7 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
             }
             return directClient;
         }
-        throw new ParameterResolutionException("Cannot resolve parameter: " + parameterContext);
+        throw new ParameterResolutionException("Cannot resolve parameter: " + pc);
     }
 
     @Override
@@ -129,6 +131,11 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
             return Optional.of(new RoutingParamHandler(clients, webClients, features));
         }
         return Optional.empty();
+    }
+
+    private static String socketName(Parameter parameter) {
+        var socket = parameter.getAnnotation(Socket.class);
+        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
     }
 
     private static DirectClient reset(DirectClient client) {

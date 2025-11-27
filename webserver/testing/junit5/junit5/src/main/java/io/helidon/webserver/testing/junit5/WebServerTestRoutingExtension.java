@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.helidon.webserver.testing.junit5;
 
-import java.util.function.Supplier;
+/**
+ * JUnit5 extension to support Helidon WebServer in-memory unit tests.
+ *
+ * @see io.helidon.webserver.testing.junit5.RoutingTest
+ */
+class WebServerTestRoutingExtension extends WebServerTestExtension {
 
-import io.helidon.common.Weight;
-import io.helidon.common.Weighted;
-import io.helidon.service.registry.Service;
-import io.helidon.webserver.WebServer;
-
-@Service.Singleton
-@Weight(Weighted.DEFAULT_WEIGHT + 20)
-record WebServerFactory(WebServerRef ref) implements Supplier<WebServer> {
-
-    @Override
-    public WebServer get() {
-        return ref.get();
+    WebServerTestRoutingExtension() {
+        super(WebServerTestRoutingService.class);
     }
 }

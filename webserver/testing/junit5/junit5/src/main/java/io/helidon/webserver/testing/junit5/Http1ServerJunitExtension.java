@@ -16,6 +16,7 @@
 
 package io.helidon.webserver.testing.junit5;
 
+import java.lang.reflect.Parameter;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,6 +95,11 @@ public class Http1ServerJunitExtension implements ServerJunitExtension {
             return Optional.of(new RoutingParamHandler());
         }
         return Optional.empty();
+    }
+
+    private static String socketName(Parameter parameter) {
+        var socket = parameter.getAnnotation(Socket.class);
+        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
     }
 
     private WebClient webClient(WebServer server, String socket) {

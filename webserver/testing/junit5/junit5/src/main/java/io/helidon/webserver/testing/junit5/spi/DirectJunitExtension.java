@@ -30,6 +30,7 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
  * Base contract for Helidon JUnit extensions that support in-memory tests.
  */
 public interface DirectJunitExtension extends HelidonJunitExtension {
+
     /**
      * Resolve a parameter.
      *

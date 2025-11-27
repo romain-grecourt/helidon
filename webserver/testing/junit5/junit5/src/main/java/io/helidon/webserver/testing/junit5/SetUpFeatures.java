@@ -26,8 +26,8 @@ import java.lang.annotation.Target;
  * Supported signatures:
  * {@code static List<? extends ServerFeature> features()}.
  * <p>
- * Method(s) annotated with this annotation will be invoked before methods annotated with
- * {@link io.helidon.webserver.testing.junit5.SetUpServer}.
+ * Method(s) annotated with this annotation will be invoked before methods annotated with {@link SetUpServer}.
+ * // TODO code snippets for a complete method
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

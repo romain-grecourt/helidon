@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,20 @@
 package io.helidon.webserver.testing.junit5;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.helidon.common.context.Context;
+import io.helidon.common.context.Contexts;
 import io.helidon.common.testing.virtualthreads.PinningRecorder;
-import io.helidon.config.spi.ConfigNode;
-import io.helidon.config.spi.ConfigSource;
-import io.helidon.config.spi.LazyConfigSource;
+import io.helidon.config.Config;
 import io.helidon.service.registry.GlobalServiceRegistry;
-import io.helidon.service.registry.Services;
+import io.helidon.service.registry.Service;
 import io.helidon.webserver.ListenerConfig;
 import io.helidon.webserver.Router;
 import io.helidon.webserver.WebServer;
@@ -47,84 +45,56 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 
 import static io.helidon.webserver.WebServer.DEFAULT_SOCKET_NAME;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.annotated;
+import static io.helidon.webserver.testing.junit5.ReflectionHelper.annotation;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotated;
-import static io.helidon.webserver.testing.junit5.ReflectionHelper.filterAnnotations;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.invokeMethod;
 import static io.helidon.webserver.testing.junit5.ReflectionHelper.methods;
 
 /**
- * JUnit5 extension to support Helidon WebServer in tests.
+ * {@link WebServerTestService} to support "in-process" tests.
  *
  * @see io.helidon.webserver.testing.junit5.ServerTest
  */
-class HelidonServerJunitExtension extends HelidonJunitExtensionBase<ServerJunitExtension> {
-
-    private static final Set<Class<?>> SUPPORTED_TYPES = Set.of(URI.class);
+@Service.Singleton
+final class WebServerTestServerService extends WebServerTestService<ServerJunitExtension> {
 
     private final Map<String, URI> uris = new ConcurrentHashMap<>();
-    private WebServer server;
+    private final WebServer server;
     private PinningRecorder pinningRecorder;
 
-    HelidonServerJunitExtension() {
-        super(ServerJunitExtension.class, SUPPORTED_TYPES);
-    }
+    WebServerTestServerService(List<ServerJunitExtension> extensions,
+                               List<WebServerRef> refs,
+                               WebServerTestClass testClass,
+                               Config config) {
 
-    @Override
-    @SuppressWarnings({"removal", "deprecation"})
-    protected void initClass(ExtensionContext ec, Context staticContext) {
-        // lazy config source for test.server.port
-        Services.add(ConfigSource.class, 10000D, (ConfigSource & LazyConfigSource) key -> {
-            if ("test.server.port".equals(key)) {
-                return Optional.ofNullable(server)
-                        .map(s -> ConfigNode.ValueNode.create(String.valueOf(s.port())));
-            }
-            return Optional.empty();
-        });
-
-        var testClass = ec.getRequiredTestClass();
-        var annotated = annotated(testClass);
-        var annot = filterAnnotations(annotated, ServerTest.class).findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Test class %s is not annotated with @ServerTest"
-                                .formatted(testClass)));
-
+        super(extensions, testClass);
+        var annot = annotation(testClass.type(), ServerTest.class);
         if (annot.pinningDetection()) {
             pinningRecorder = PinningRecorder.create();
             pinningRecorder.record(Duration.ofMillis(annot.pinningThreshold()));
         }
-
-        var builder = WebServer.builder();
-        var config = Services.get(io.helidon.common.config.Config.class);
-        builder.config(config.get("server"));
-        updateServerBuilder(builder);
-        builder.host("localhost");
-
-        extensions().forEach(it -> it.updateServerBuilder(builder));
-
-        // port will be random
-        builder.port(0).shutdownHook(false);
-
-        setupFeatures(builder, testClass);
-        setupServer(builder, testClass);
-        setupRouting(builder, testClass);
-
-        server = builder
-                .serverContext(staticContext)
-                .build()
-                .start();
-
-        var serverRef = Services.get(WebServerRef.class);
-        serverRef.set(server);
-
+        this.server = startServer(extensions, config, testClass);
         if (server.hasTls()) {
             uris.put(DEFAULT_SOCKET_NAME, URI.create("https://localhost:%d/".formatted(server.port())));
         } else {
             uris.put(DEFAULT_SOCKET_NAME, URI.create("http://localhost:%d/".formatted(server.port())));
         }
+        for (var ref : refs) {
+            ref.server(server);
+        }
     }
 
     @Override
-    protected Object resolve(ParameterContext pc, ExtensionContext ec) {
+    public boolean supportsParameter(ParameterContext pc, ExtensionContext ec) throws ParameterResolutionException {
+        var paramType = pc.getParameter().getType();
+        if (paramType.equals(URI.class)) {
+            return true;
+        }
+        return super.supportsParameter(pc, ec);
+    }
+
+    @Override
+    public Object resolveParameter(ParameterContext pc, ExtensionContext ec) throws ParameterResolutionException {
         var paramType = pc.getParameter().getType();
         if (paramType.equals(URI.class)) {
             var socketName = socketName(pc.getParameter());
@@ -153,26 +123,44 @@ class HelidonServerJunitExtension extends HelidonJunitExtensionBase<ServerJunitE
     }
 
     @Override
-    protected void beforeClose() {
-        if (server != null) {
-            server.stop();
-        }
-    }
-
-    @Override
-    protected void afterClose() {
+    public void stop() {
+        server.stop();
+        super.stop();
         if (pinningRecorder != null) {
             pinningRecorder.close();
         }
     }
 
-    private void setupRouting(WebServerConfig.Builder builder, Class<?> testClass) {
+    private WebServer startServer(List<ServerJunitExtension> extensions, Config config, WebServerTestClass testClass) {
+        var builder = WebServer.builder();
+        builder.config(config.get("server"));
+        updateServerBuilder(builder);
+        builder.host("localhost");
+
+        for (var e : extensions) {
+            e.updateServerBuilder(builder);
+        }
+
+        // port will be random
+        builder.port(0).shutdownHook(false);
+
+        testClass.setupFeatures(builder);
+        testClass.setupServer(builder);
+        setupRouting(builder);
+
+        var context = Contexts.context().orElseThrow();
+        return builder.serverContext(context)
+                .build()
+                .start();
+    }
+
+    private void setupRouting(WebServerConfig.Builder builder) {
         Map<String, ListenerConfig.Builder> listeners = new HashMap<>();
         Map<String, Router.Builder> routers = new HashMap<>();
 
         listeners.put(DEFAULT_SOCKET_NAME, ListenerConfig.builder().from(builder));
 
-        var annotated = annotated(methods(testClass));
+        var annotated = annotated(methods(testClass().type()));
         var elements = filterAnnotated(annotated, SetUpRoute.class);
         for (var e : elements) {
             if (e.element() instanceof Method m) {
@@ -252,7 +240,7 @@ class HelidonServerJunitExtension extends HelidonJunitExtensionBase<ServerJunitE
     }
 
     @SuppressWarnings("unchecked")
-    private <T> void handleParam(ParamHandler<T> handler,
+    private static <T> void handleParam(ParamHandler<T> handler,
                                  String socket,
                                  WebServerConfig.Builder server,
                                  ListenerConfig.Builder listener,
@@ -262,7 +250,12 @@ class HelidonServerJunitExtension extends HelidonJunitExtensionBase<ServerJunitE
         handler.handle(socket, server, listener, router, (T) value);
     }
 
-    private void updateServerBuilder(WebServerConfig.Builder builder) {
+    private static String socketName(Parameter parameter) {
+        var socket = parameter.getAnnotation(Socket.class);
+        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
+    }
+
+    private static void updateServerBuilder(WebServerConfig.Builder builder) {
         try {
             var svc = GlobalServiceRegistry.registry()
                     .get(WebServerService__ServiceDescriptor.INSTANCE)

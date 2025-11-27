@@ -27,16 +27,21 @@ import io.helidon.testing.junit5.TestJunitExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Test of router without opening a socket.
+ * In-memory WebServer test.
+ * <p>
+ * The {@link io.helidon.webserver.Routing} is exercised directly without opening an actual socket.
+ * <p>
  * Can be used together with:
  * <ul>
  *     <li>{@link SetUpRoute}</li>
+ *     <li>{@link SetUpFeatures}</li>
  * </ul>
+ * // TODO code snippets
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @ExtendWith(TestJunitExtension.class)
-@ExtendWith(HelidonRoutingJunitExtension.class)
+@ExtendWith(WebServerTestRoutingExtension.class)
 @Inherited
 public @interface RoutingTest {
 }

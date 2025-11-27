@@ -148,6 +148,34 @@ class ReflectionHelper {
     }
 
     /**
+     * Find an annotation on a class.
+     *
+     * @param type           class
+     * @param annotationType annotation type
+     * @param <T>            annotation type
+     * @return annotation
+     */
+    static <T extends Annotation> T annotation(Class<?> type, Class<T> annotationType) {
+        return filterAnnotations(annotated(type), annotationType).findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Class %s is not annotated with @%s"
+                                .formatted(type.getSimpleName(), annotationType.getSimpleName())));
+    }
+
+    /**
+     * Find an annotation on a class.
+     *
+     * @param type           class
+     * @param annotationType annotation type
+     * @return methods
+     */
+    static <T extends Annotation> List<Annotated<T>> methods(Class<?> type, Class<T> annotationType) {
+        var annotated = annotated(methods(type));
+        return filterAnnotated(annotated, annotationType).stream()
+                .toList();
+    }
+
+    /**
      * Get all annotations for a method and its hierarchy.
      *
      * @param method method
@@ -176,7 +204,6 @@ class ReflectionHelper {
     static List<Annotated<?>> annotated(AnnotatedElement... elements) {
         return annotated(List.of(elements));
     }
-
 
     /**
      * Get all annotations for the given elements.

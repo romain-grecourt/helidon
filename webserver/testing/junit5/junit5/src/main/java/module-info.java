@@ -34,6 +34,7 @@ module io.helidon.webserver.testing.junit5 {
     requires transitive org.junit.jupiter.api;
     requires io.helidon.service.registry;
     requires io.helidon.common;
+    requires io.helidon.common.context;
 
     exports io.helidon.webserver.testing.junit5;
     exports io.helidon.webserver.testing.junit5.spi;

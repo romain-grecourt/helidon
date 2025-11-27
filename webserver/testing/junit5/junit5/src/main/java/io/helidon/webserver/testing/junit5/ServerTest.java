@@ -29,17 +29,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static io.helidon.common.testing.virtualthreads.PinningRecorder.DEFAULT_THRESHOLD;
 
 /**
- * Test of server that opens a socket (for integration tests).
+ * In-process WebServer test.
+ * <p>
+ * A separate WebServer instance is started for each test class using an actual socket.
+ * <p>
  * Can be used together with:
  * <ul>
  *     <li>{@link SetUpRoute}</li>
+ *     <li>{@link SetUpFeatures}</li>
  *     <li>{@link SetUpServer}</li>
  * </ul>
+ * // TODO code snippets
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @ExtendWith(TestJunitExtension.class)
-@ExtendWith(HelidonServerJunitExtension.class)
+@ExtendWith(WebServerTestServerExtension.class)
 @Inherited
 public @interface ServerTest {
     /**
