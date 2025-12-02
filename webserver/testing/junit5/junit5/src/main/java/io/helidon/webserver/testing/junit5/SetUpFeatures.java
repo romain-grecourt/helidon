@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  * E.g.
  * <pre>
  * &#064;SetUpFeatures
- * static List<? extends ServerFeature> features() {
+ * static List&lt;? extends ServerFeature&gt; features() {
  *     return List.of(StaticContentFeature.builder()
  *                 .welcome("index.html")
  *                 .addClasspath(cp -> cp.location("/WEB"))
