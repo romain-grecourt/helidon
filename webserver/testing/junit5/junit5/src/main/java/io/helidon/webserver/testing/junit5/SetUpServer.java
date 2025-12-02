@@ -21,8 +21,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * A static method configuring simple handlers.
- * // TODO code snippets for a complete method
+ * Mark a static method to configure the server.
+ * <p>
+ * E.g.
+ * <pre>
+ * &#064;SetUpServer
+ * static void setUp(WebServerConfig.Builder server) {
+ *    server.routing(router -> router
+ *      .get("/test", ((req, res) -> res.send("OK!"))));
+ * }</pre>
+ *
+ * @see io.helidon.webserver.WebServerConfig.Builder
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

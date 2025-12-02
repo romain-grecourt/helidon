@@ -16,6 +16,11 @@
 
 package io.helidon.webserver.testing.junit5.spi;
 
+import java.lang.reflect.Parameter;
+
+import io.helidon.webserver.WebServer;
+import io.helidon.webserver.testing.junit5.Socket;
+
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -59,5 +64,16 @@ public interface HelidonJunitExtension extends BeforeAllCallback,
     default boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
             throws ParameterResolutionException {
         return false;
+    }
+
+    /**
+     * Resolve the socket name for a parameter.
+     *
+     * @param parameter parameter
+     * @return socket name
+     */
+    default String socketName(Parameter parameter) {
+        var socket = parameter.getAnnotation(Socket.class);
+        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
     }
 }

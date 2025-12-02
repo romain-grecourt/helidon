@@ -22,11 +22,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Named socket Qualifier for {@code Http Client}.
+ * Named socket Qualifier for {@link io.helidon.webclient.api.WebClient} and {@link io.helidon.webclient.api.HttpClient}.
  * This annotation can be used to qualify injection of parameters into test constructors or methods, such as to obtain
  * a client configured for the named socket.
+ * <p>
+ * E.g.
+ * <pre>
+ * &#064;ServerTest
+ * class MyTest {
  *
- * // TODO code snippets for a complete examples
+ *    final WebClient client;
+ *
+ *    MyTest(&#064;Socket("admin") WebClient client) {
+ *        this.client = client;
+ *    }
+ * }</pre>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
@@ -38,5 +48,4 @@ public @interface Socket {
      * @return String with the name of the Socket
      */
     String value();
-
 }

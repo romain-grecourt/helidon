@@ -17,6 +17,9 @@ package io.helidon.webserver.testing.junit5;
 
 import io.helidon.service.registry.Service;
 import io.helidon.service.registry.Services;
+import io.helidon.webserver.WebServer;
+import io.helidon.webserver.WebServerConfig;
+import io.helidon.webserver.http.HttpRouting;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,7 +31,8 @@ import static org.hamcrest.Matchers.is;
 class TestServerSetUp {
 
     @BeforeAll
-    static void setUp() {
+    static void setUp(WebServerConfig.Builder server) {
+        server.routing(r -> r.get("/test", ((req, res) -> res.send("OK!"))));
         Services.set(Message.class, new Message("Hello World!"));
     }
 

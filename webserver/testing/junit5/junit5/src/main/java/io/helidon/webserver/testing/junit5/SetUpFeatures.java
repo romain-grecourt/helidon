@@ -21,21 +21,34 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * A static method configuring server features.
- * <p>
- * Supported signatures:
- * {@code static List<? extends ServerFeature> features()}.
+ * Mark a static method to provide server features.
  * <p>
  * Method(s) annotated with this annotation will be invoked before methods annotated with {@link SetUpServer}.
- * // TODO code snippets for a complete method
+ * <p>
+ * E.g.
+ * <pre>
+ * &#064;SetUpFeatures
+ * static List<? extends ServerFeature> features() {
+ *     return List.of(StaticContentFeature.builder()
+ *                 .welcome("index.html")
+ *                 .addClasspath(cp -> cp.location("/WEB"))
+ *                 .build());
+ * }</pre>
+ *
+ * @see SetUpServer
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface SetUpFeatures {
     /**
-     * Discover services using a service loader.
+     * Configure server features discovery.
+     * <p>
+     * If {@code true}, the server is configured first with the features discovered from the class-path,
+     * and then with the features returned by the annotated method.
+     * <p>
+     * If {@code false}, the server is configured only with the features returned by the annotated method.
      *
-     * @return whether to discover services using service loader
+     * @return whether to discover server features
      */
     boolean value() default true;
 }

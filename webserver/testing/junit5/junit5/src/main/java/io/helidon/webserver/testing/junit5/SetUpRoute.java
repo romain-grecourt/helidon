@@ -23,13 +23,33 @@ import java.lang.annotation.Target;
 import io.helidon.webserver.WebServer;
 
 /**
- * A static method configuring router (and/or socket) for the server.
+ * Mark a static method to configure the routes.
+ * <p>
  * Multiple methods may exist, each configuring a different socket (see {@link #value()}).
  * <p>
- * Supported signatures:
- * {@code static void routing(HttpRouting.Builder builder)}
- * {@code static void routing(HttpRouting.Builder builder, ListenerConfiguration.Builder builder)}
- * // TODO code snippets for a complete method
+ * E.g.
+ * <pre>
+ * &#064;SetUpRoute
+ * static void setUp(HttpRouting.Builder routing) {
+ *    routing.get("/test", ((req, res) -> res.send("OK!")));
+ * }</pre>
+ * <p>
+ * When using {@link ServerTest}, the socket listener for the given route can be also be configured.
+ * <p>
+ * E.g.
+ * <pre>
+ * &#064;SetUpRoute("tls")
+ * static void setUp(HttpRouting.Builder routing, ListenerConfig.Builder socket) {
+ *    routing.get("/test-tls", ((req, res) -> res.send("OK TLS!")));
+ *    socket.tls(tls -> tls
+ *         .privateKey(key -> key.pem(pem -> pem
+ *                 .key(Resource.create("mycert.key"))))
+ *         .privateKeyCertChain(cert -> cert.pem(pem -> pem
+ *                 .certChain(Resource.create("mycert.crt")))));
+ * }</pre>
+ *
+ * @see io.helidon.webserver.WebServerConfig.Builder
+ * @see io.helidon.webserver.ListenerConfig.Builder
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

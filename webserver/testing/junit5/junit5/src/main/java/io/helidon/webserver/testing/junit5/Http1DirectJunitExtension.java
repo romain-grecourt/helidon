@@ -17,7 +17,6 @@
 package io.helidon.webserver.testing.junit5;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +28,6 @@ import io.helidon.common.Builder;
 import io.helidon.webclient.api.WebClient;
 import io.helidon.webclient.http1.Http1Client;
 import io.helidon.webserver.ListenerConfig;
-import io.helidon.webserver.WebServer;
 import io.helidon.webserver.WebServerConfig;
 import io.helidon.webserver.http.HttpRouting;
 import io.helidon.webserver.http.HttpRules;
@@ -131,11 +129,6 @@ public class Http1DirectJunitExtension implements DirectJunitExtension {
             return Optional.of(new RoutingParamHandler(clients, webClients, features));
         }
         return Optional.empty();
-    }
-
-    private static String socketName(Parameter parameter) {
-        var socket = parameter.getAnnotation(Socket.class);
-        return socket != null ? socket.value() : WebServer.DEFAULT_SOCKET_NAME;
     }
 
     private static DirectClient reset(DirectClient client) {

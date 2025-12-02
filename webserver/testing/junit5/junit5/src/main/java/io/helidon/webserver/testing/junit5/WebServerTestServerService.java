@@ -73,12 +73,8 @@ final class WebServerTestServerService extends WebServerTestService<ServerJunitE
             pinningRecorder = PinningRecorder.create();
             pinningRecorder.record(Duration.ofMillis(annot.pinningThreshold()));
         }
-        this.server = startServer(extensions, config, testClass);
-        if (server.hasTls()) {
-            uris.put(DEFAULT_SOCKET_NAME, URI.create("https://localhost:%d/".formatted(server.port())));
-        } else {
-            uris.put(DEFAULT_SOCKET_NAME, URI.create("http://localhost:%d/".formatted(server.port())));
-        }
+        server = startServer(extensions, config, testClass);
+        uris.put("@default", uri("@default"));
         for (var ref : refs) {
             ref.server(server);
         }
@@ -98,16 +94,7 @@ final class WebServerTestServerService extends WebServerTestService<ServerJunitE
         var paramType = pc.getParameter().getType();
         if (paramType.equals(URI.class)) {
             var socketName = socketName(pc.getParameter());
-            var uri = uris.computeIfAbsent(socketName, it -> {
-                int port = server.port(it);
-                if (port == -1) {
-                    return null;
-                }
-                if (server.hasTls()) {
-                    return URI.create("https://localhost:%d/".formatted(port));
-                }
-                return URI.create("http://localhost:%d/".formatted(port));
-            });
+            var uri = uris.computeIfAbsent(socketName, this::uri);
             if (uri == null) {
                 throw new IllegalStateException("Socket not found: " + socketName);
             }
@@ -154,6 +141,18 @@ final class WebServerTestServerService extends WebServerTestService<ServerJunitE
                 .start();
     }
 
+    private URI uri(String socketName) {
+        int port = server.port(socketName);
+        if (port > 0) {
+            if (server.hasTls()) {
+                return URI.create("https://localhost:%d/".formatted(port));
+            }
+            return URI.create("http://localhost:%d/".formatted(port));
+        } else {
+            return null;
+        }
+    }
+
     private void setupRouting(WebServerConfig.Builder builder) {
         Map<String, ListenerConfig.Builder> listeners = new HashMap<>();
         Map<String, Router.Builder> routers = new HashMap<>();
@@ -176,16 +175,20 @@ final class WebServerTestServerService extends WebServerTestService<ServerJunitE
             }
         }
 
-        routers.forEach((socket, router) -> {
-            if (DEFAULT_SOCKET_NAME.equals(socket)) {
+        for (var entry : routers.entrySet()) {
+            var key = entry.getKey();
+            var router = entry.getValue();
+            if (DEFAULT_SOCKET_NAME.equals(key)) {
                 builder.addRoutings(router.routings());
             } else {
-                listeners.computeIfAbsent(socket, it -> ListenerConfig.builder())
+                listeners.computeIfAbsent(key, it -> ListenerConfig.builder())
                         .addRoutings(router.routings());
             }
-        });
+        }
 
-        listeners.forEach((socket, listener) -> {
+        for (var entry : listeners.entrySet()) {
+            var socket = entry.getKey();
+            var listener = entry.getValue();
             if (DEFAULT_SOCKET_NAME.equals(socket)) {
                 builder.from(listener);
             } else {
@@ -198,7 +201,7 @@ final class WebServerTestServerService extends WebServerTestService<ServerJunitE
                             .build());
                 }
             }
-        });
+        }
     }
 
     private void handleParams(Method method,

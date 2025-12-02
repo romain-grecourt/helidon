@@ -33,13 +33,23 @@ import static io.helidon.common.testing.virtualthreads.PinningRecorder.DEFAULT_T
  * <p>
  * A separate WebServer instance is started for each test class using an actual socket.
  * <p>
- * Can be used together with:
+ * The server can be configured with static methods annotated:
  * <ul>
- *     <li>{@link SetUpRoute}</li>
- *     <li>{@link SetUpFeatures}</li>
- *     <li>{@link SetUpServer}</li>
+ *     <li>{@link SetUpRoute} to update {@link io.helidon.webserver.http.HttpRouting} and
+ *     {@link io.helidon.webserver.ListenerConfig.Builder}</li>
+ *     <li>{@link SetUpFeatures} to provide {@link io.helidon.webserver.spi.ServerFeature}</li>
+ *     <li>{@link SetUpServer} to update the server builder {@link io.helidon.webserver.WebServerConfig}</li>
  * </ul>
- * // TODO code snippets
+ * <p>
+ * Static methods annotated with {@link org.junit.jupiter.api.BeforeAll} can be used to set up global services.
+ * <p>
+ * E.g. Set up config
+ * <pre>
+ * &#064;BeforeAll
+ * static void setUp() {
+ *     Services.set(Config.class,
+ *         Config.just(ConfigSources.create(Map.of("foo", "bar"))));
+ * }</pre>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
