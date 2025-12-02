@@ -288,7 +288,7 @@ public class TestJunitExtension implements Extension,
      *         next major release.
      */
     @Deprecated(forRemoval = true, since = "4.4.0")
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "DeprecatedIsStillUsed"})
     protected <T, E extends Throwable> T supplyChecked(ExtensionContext ec, CheckedSupplier<T, E> supplier) throws E {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
         T response = Contexts.runInContext(staticContext(ec), () -> {
@@ -445,7 +445,14 @@ public class TestJunitExtension implements Extension,
     private static boolean isRegistrySet(Context context) {
         return context.get(GLOBAL_CONTEXT_CLASSIFIER, Context.class)
                 .flatMap(ctx -> ctx.get(GLOBAL_REGISTRY_CLASSIFIER, ServiceRegistry.class))
+                .filter(s -> !s.equals(defaultRegistry()))
                 .isPresent();
+    }
+
+    private static ServiceRegistry defaultRegistry() {
+        return Contexts.globalContext()
+                .get(GLOBAL_REGISTRY_CLASSIFIER, ServiceRegistry.class)
+                .orElse(null);
     }
 
     private static void afterShutdownMethods(Class<?> requiredTestClass) {
@@ -521,11 +528,11 @@ public class TestJunitExtension implements Extension,
                             var store = ec.getStore(NAMESPACE);
                             staticCtx = newStaticContext(testClass, null);
                             store.put(GLOBAL_CONTEXT_CLASSIFIER, staticCtx);
-                            if (isRegistrySet(staticCtx)) {
-                                registry = new GlobalRegistry(staticCtx, null);
-                            } else {
-                                registry = GlobalRegistry.create(staticCtx);
-                            }
+                            registry = GlobalRegistry.create(staticCtx);
+                        } else if (isRegistrySet(staticCtx)) {
+                            registry = new GlobalRegistry(staticCtx, null);
+                        } else {
+                            registry = GlobalRegistry.create(staticCtx);
                         }
                     }
                 } finally {
