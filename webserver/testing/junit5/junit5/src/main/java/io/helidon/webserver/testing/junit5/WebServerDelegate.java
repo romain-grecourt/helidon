@@ -17,24 +17,25 @@ package io.helidon.webserver.testing.junit5;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import io.helidon.common.Weight;
 import io.helidon.common.Weighted;
+import io.helidon.common.context.Context;
+import io.helidon.common.tls.Tls;
 import io.helidon.service.registry.Service;
 import io.helidon.webserver.WebServer;
+import io.helidon.webserver.WebServerConfig;
 
 /**
- * A {@link WebServer} factory backed by a mutable reference.
+ * A {@link WebServer} delegate backed by a mutable reference.
  */
 @Service.Singleton
 @Weight(Weighted.DEFAULT_WEIGHT + 20)
-final class WebServerProvider implements Supplier<WebServer>, WebServerRef {
+final class WebServerDelegate implements WebServer, WebServerRef {
 
     private final AtomicReference<WebServer> ref = new AtomicReference<>();
 
-    @Override
-    public WebServer get() {
+    private WebServer get() {
         var server = ref.get();
         if (server == null) {
             throw new NoSuchElementException("Server is not initialized");
@@ -45,5 +46,60 @@ final class WebServerProvider implements Supplier<WebServer>, WebServerRef {
     @Override
     public void server(WebServer server) {
         ref.set(server);
+    }
+
+    @Override
+    public WebServerConfig prototype() {
+        return get().prototype();
+    }
+
+    @Override
+    public WebServer start() {
+        return get().start();
+    }
+
+    @Override
+    public WebServer stop() {
+        return get().stop();
+    }
+
+    @Override
+    public boolean isRunning() {
+        return get().isRunning();
+    }
+
+    @Override
+    public int port() {
+        return get().port();
+    }
+
+    @Override
+    public boolean hasTls() {
+        return get().hasTls();
+    }
+
+    @Override
+    public int port(String socketName) {
+        return get().port(socketName);
+    }
+
+    @Override
+    public boolean hasTls(String socketName) {
+        return get().hasTls(socketName);
+    }
+
+    @Override
+    public Context context() {
+        return get().context();
+    }
+
+    @Override
+    public void reloadTls(Tls tls) {
+        get().reloadTls(tls);
+    }
+
+    @Override
+    public void reloadTls(String socketName, Tls tls) {
+        get().reloadTls(socketName, tls);
     }
 }
