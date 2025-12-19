@@ -24,7 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class ConfigDocumentationTest {
     @Test
     void testTitleFromFileName() {
-        String original = "io_helidon_tracing_jaeger_JaegerTracerBuilder.adoc";
+        String original = "io_helidon_tracing_jaeger_JaegerTracerBuilder.md";
         String expected = "JaegerTracerBuilder (tracing.jaeger)";
         String actual = ConfigDocs.titleFromFileName(original);
         assertThat(actual, is(expected));
@@ -68,7 +68,7 @@ class ConfigDocumentationTest {
                 
                 - text
                 - text
-                                
+                
                 """;
         String actual = ConfigDocs.translateHtml(original);
         assertThat(actual, is(expected));

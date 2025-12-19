@@ -61,10 +61,8 @@ import org.eclipse.yasson.YassonConfig;
  */
 public class ConfigDocs {
     private static final System.Logger LOGGER = System.getLogger(ConfigDocs.class.getName());
-    private static final String CONFIG_REFERENCE_ADOC = "config_reference.adoc";
+    private static final String CONFIG_REFERENCE_FILE = "config_reference.md";
     private static final String METADATA_JSON_LOCATION = "META-INF/helidon/config-metadata.json";
-    private static final String RELATIVE_PATH_ADOC = "{rootdir}/config/";
-    private static final Pattern MODULE_PATTERN = Pattern.compile("(.*?)(\\.spi)?\\.([a-zA-Z0-9]*?)");
     private static final Pattern COPYRIGHT_LINE_PATTERN = Pattern.compile(".*Copyright \\(c\\) (.*) Oracle and/or its "
                                                                                   + "affiliates.");
     private static final Jsonb JSON_B = JsonbBuilder.create(new YassonConfig().withFailOnUnknownProperties(true));
@@ -91,7 +89,7 @@ public class ConfigDocs {
     /**
      * Create a new instance that will update config reference documentation in the {code targetPath}.
      *
-     * @param targetPath path of the config reference documentation, must contain the {@value #CONFIG_REFERENCE_ADOC}
+     * @param targetPath path of the config reference documentation, must contain the {@value #CONFIG_REFERENCE_FILE}
      *                   file, or be empty
      * @return new instance of config documentation to call {@link #process()} on
      */
@@ -101,9 +99,8 @@ public class ConfigDocs {
 
     static String titleFromFileName(String fileName) {
         String title = fileName;
-        // string .adoc
-        if (title.endsWith(".adoc")) {
-            title = title.substring(0, title.length() - 5);
+        if (title.endsWith(".md")) {
+            title = title.substring(0, title.length() - 3);
         }
         if (title.startsWith("io_helidon_")) {
             title = title.substring("io_helidon_".length());
@@ -117,7 +114,7 @@ public class ConfigDocs {
         return title;
     }
 
-    // translate HTML to asciidoc
+    // translate HTML to Markdown
     static String translateHtml(String text) {
         String result = text;
         // <p>
@@ -144,7 +141,7 @@ public class ConfigDocs {
         // escaped end of lines
         result = result.replaceAll("\\n", "\n");
         // <b>
-        result = replace(result, "<b>", "</b>", "*", "*");
+        result = replace(result, "<b>", "</b>", "__", "__");
         // <i>
         result = replace(result, "<i>", "</i>", "_", "_");
         // <a href="">...</a>
@@ -153,15 +150,17 @@ public class ConfigDocs {
         result = replacePre(result);
         // tables
         result = handleTables(result);
-        // <h4>, <h5>
-        result = replace(result, "<h4>", "</h4>", "\n[.underline]#", "#\n");
-        result = replace(result, "<h5>", "</h5>", "\n[.underline]#", "#\n");
-        // <sup>, <sub>
-        result = replace(result, "<sup>", "</sup>", "^", "^");
-        result = replace(result, "<sub>", "</sub>", "~", "~");
 
-        // end of lines followed by a single space (multiple are probably intended)
-        result = result.replaceAll("\n ", "\n");
+        // <h4>, <h5>
+        result = replace(result, "<h1>", "</h1>", "\n#", "\n");
+        result = replace(result, "<h2>", "</h2>", "\n##", "\n");
+        result = replace(result, "<h3>", "</h3>", "\n###", "\n");
+        result = replace(result, "<h4>", "</h4>", "\n####", "\n");
+        result = replace(result, "<h5>", "</h5>", "\n#####", "\n");
+        result = replace(result, "<h6>", "</h6>", "\n######", "\n");
+
+        // remove trailing spaces
+        result = result.replaceAll(" +$", "");
 
         return result;
     }
@@ -173,7 +172,7 @@ public class ConfigDocs {
      * The documentation is updated, including copyright years
      */
     public void process() {
-        Path configReference = path.resolve(ConfigDocs.CONFIG_REFERENCE_ADOC);
+        Path configReference = path.resolve(ConfigDocs.CONFIG_REFERENCE_FILE);
         try {
             checkTargetPath(configReference);
         } catch (IOException e) {
@@ -181,8 +180,8 @@ public class ConfigDocs {
         }
 
         Handlebars handlebars = new Handlebars();
-        Template typeTemplate = template(handlebars, "type-docs.adoc.hbs");
-        Template configReferenceTemplate = template(handlebars, "config_reference.adoc.hbs");
+        Template typeTemplate = template(handlebars, "type-docs.md.hbs");
+        Template configReferenceTemplate = template(handlebars, "config_reference.md.hbs");
 
         Enumeration<URL> files;
         try {
@@ -224,7 +223,7 @@ public class ConfigDocs {
         resolveInheritance(configuredTypes);
         // add all options from merged types as direct options to each type
         resolveMerges(configuredTypes);
-        // resolve type reference (for javadocs)
+        // resolve type reference (for Javadocs)
         resolveTypeReference(configuredTypes);
         // add titles (remove io.helidon from package or similar)
         addTitle(configuredTypes);
@@ -242,8 +241,8 @@ public class ConfigDocs {
         // and now report obsolete files
         // filter out generated files
         try (Stream<Path> x = Files.list(path)
-                .filter(it -> it.getFileName().toString().endsWith(".adoc"))
-                .filter(it -> !it.getFileName().toString().equals(CONFIG_REFERENCE_ADOC))
+                .filter(it -> it.getFileName().toString().endsWith(".md"))
+                .filter(it -> !it.getFileName().toString().equals(CONFIG_REFERENCE_FILE))
                 .filter(it -> !generatedFiles.contains(String.valueOf(it.getFileName())))) {
             x.forEach(it -> LOGGER.log(Level.WARNING, "File " + it.toAbsolutePath()
                     + " should be deleted, as its config metadata no longer exists"));
@@ -265,9 +264,9 @@ public class ConfigDocs {
             }
             int endIndex = result.indexOf("</pre>", index);
             theBuilder.append(result, lastIndex, index);
-            theBuilder.append("\n----\n");
+            theBuilder.append("\n```\n");
             theBuilder.append(result, index + 5, endIndex);
-            theBuilder.append("\n----\n");
+            theBuilder.append("\n```\n");
             lastIndex = endIndex + 6;
         }
         return theBuilder.toString();
@@ -286,9 +285,6 @@ public class ConfigDocs {
             }
             int endIndex = result.indexOf("</table>", index);
             theBuilder.append(result, lastIndex, index);
-            theBuilder.append("\n++++\n");
-            theBuilder.append(result, index, endIndex + 8);
-            theBuilder.append("\n++++\n");
             lastIndex = endIndex + 8;
         }
         return theBuilder.toString();
@@ -297,8 +293,7 @@ public class ConfigDocs {
     private static String replaceLinks(String result) {
         //https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm[API Signing Key's fingerprint]
         Pattern pattern = Pattern.compile("<a.*?href=\"(.*?)\">(.*?)</a>", Pattern.DOTALL);
-        return pattern.matcher(result).replaceAll(it -> it.group(1)
-                + "[" + it.group(2) + "]");
+        return pattern.matcher(result).replaceAll(it -> "[%s](%s)".formatted(it.group(2), it.group(1)));
     }
 
     // replaces beginning and ending tags with a string, and removed end of lines in the text within
@@ -338,12 +333,12 @@ public class ConfigDocs {
                 return true;
             }
             // 2: check if exists in target directory
-            String path = type.replace('.', '_') + ".adoc";
+            String path = type.replace('.', '_') + ".md";
             return Files.exists(modulePath.resolve(path));
         };
         LOGGER.log(Level.INFO, "Documenting module " + module.getModule());
         // each type will have its own, such as:
-        // docs/io.helidon.common.configurable/LruCache.adoc
+        // docs/io.helidon.common.configurable/LruCache.md
         for (CmType type : module.getTypes()) {
             try {
                 generateType(generatedFiles, configuredTypes, template, modulePath, type, exists);
@@ -417,7 +412,7 @@ public class ConfigDocs {
     }
 
     private static String fileName(String typeName) {
-        return typeName.replace('.', '_') + ".adoc";
+        return typeName.replace('.', '_') + ".md";
     }
 
     private static void sortOptions(CmType type) {
@@ -552,7 +547,7 @@ public class ConfigDocs {
             }
             // make sure the file exists
             if (exists.apply(type)) {
-                return "xref:" + ConfigDocs.RELATIVE_PATH_ADOC + type.replace('.', '_') + ".adoc[" + displayType + "]";
+                return "[%s](%s.md)".formatted(displayType, type.replace('.', '_'));
             }
         }
         return displayType;
@@ -620,8 +615,8 @@ public class ConfigDocs {
 
                     throw new ConfigDocsException(
                             "Cannot generate config reference documentation, unless target path contains "
-                                    + CONFIG_REFERENCE_ADOC + " file or it is empty. "
-                                    + "Target path: " + path.toAbsolutePath() + " contains files");
+                            + CONFIG_REFERENCE_FILE + " file or it is empty. "
+                            + "Target path: " + path.toAbsolutePath() + " contains files");
                 }
             }
         } else {
@@ -693,8 +688,7 @@ public class ConfigDocs {
 
     private String resolveModuleFromType(CmType cmType) {
         String type = cmType.getType();
-        return "link:{javadoc-base-url}/" + cmType.module() + "/" + toJavadocLink(type) + "[" + type + "]";
-
+        return "[%s](https://helidon.io/docs/latest/apidocs/%s/%s)".formatted(type, cmType.module(), toJavadocLink(type));
     }
 
     private String toJavadocLink(String type) {
@@ -749,7 +743,7 @@ public class ConfigDocs {
         }
         if (allowedValues.stream()
                 .allMatch(it -> it.getDescription() == null || it.getDescription().isBlank())) {
-            // allowed values, but no description (we should eventually add javadoc link, if we can figure out
+            // allowed values, but no description (we should eventually add Javadoc link, if we can figure out
             // how to locate the URL for it
             return description;
         }
