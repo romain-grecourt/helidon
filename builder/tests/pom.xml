@@ -54,6 +54,7 @@
         <module>custom-void-method</module>
         <module>third-party-factory</module>
         <module>factory</module>
+        <module>configured</module>
     </modules>
 
 </project>

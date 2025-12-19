@@ -100,6 +100,14 @@ final class Types {
 
     static final TypeName REGISTRY_BUILDER_SUPPORT = TypeName.create("io.helidon.service.registry.RegistryBuilderSupport");
 
+    static final TypeName CONFIGURED = TypeName.create("io.helidon.config.metadata.Configured");
+    static final TypeName CONFIGURED_OPTION = TypeName.create("io.helidon.config.metadata.ConfiguredOption");
+    static final TypeName CONFIGURED_OPTION_KIND = TypeName.create("io.helidon.config.metadata.ConfiguredOption.Kind");
+    static final TypeName CONFIGURED_VALUE = TypeName.create("io.helidon.config.metadata.ConfiguredValue");
+
+    static final TypeName CONFIGURED_PROVIDER = TypeName.create("io.helidon.common.config.ConfiguredProvider");
+    static final TypeName NAMED_SERVICE = TypeName.create("io.helidon.common.config.NamedService");
+
     private Types() {
     }
 }

@@ -16,10 +16,7 @@
 
 import io.helidon.common.features.api.HelidonFlavor;
 
-import static io.helidon.common.features.api.Features.Description;
-import static io.helidon.common.features.api.Features.Flavor;
-import static io.helidon.common.features.api.Features.Name;
-import static io.helidon.common.features.api.Features.Path;
+import static io.helidon.common.features.api.Features.*;
 
 
 /**
@@ -35,8 +32,7 @@ module io.helidon.http.media.gson {
     requires io.helidon.http.media;
 
     requires static io.helidon.common.features.api;
-    requires io.helidon.common.media.type;
-    requires io.helidon.http;
+    requires static io.helidon.config.metadata;
 
     exports io.helidon.http.media.gson;
 

@@ -1,0 +1,54 @@
+{{!
+Copyright (c) 2025, 2026 Oracle and/or its affiliates.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+}}
+
+<table>
+    <thead>
+        <tr>
+            <th>Key</th>
+            <th>Kind</th>
+            <th>Type</th>
+{{~#if defaultValues~}}
+            <th>Default Value</th>
+{{~/if~}}
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+{{~#each options}}
+        <tr id="{{key}}">
+            <td>
+{{~#if type.fileName~}}
+                <a href="{{type.fileName}}">
+{{~/if~}}
+                <code>{{key}}</code>
+{{~#if type.fileName~}}
+                </a>
+{{~/if~}}
+            </td>
+            <td><code>{{type.kind}}</code></td>
+            <td><code>{{type.shortName}}</code></td>
+{{~#if defaultValues~}}
+            <td>
+{{~#if defaultValue~}}
+                <code>{{defaultValue}}</code>
+{{~/if~}}
+            </td>
+{{~/if~}}
+            <td>{{{description}}}</td>
+        </tr>
+{{~/each}}
+    </tbody>
+</table>

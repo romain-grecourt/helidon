@@ -14,10 +14,7 @@
  * limitations under the License.
  */
 
-import io.helidon.common.features.api.Features.Description;
-import io.helidon.common.features.api.Features.Flavor;
-import io.helidon.common.features.api.Features.Name;
-import io.helidon.common.features.api.Features.Path;
+import io.helidon.common.features.api.Features.*;
 import io.helidon.common.features.api.HelidonFlavor;
 
 /**
@@ -34,8 +31,7 @@ module io.helidon.http.media.jsonb {
     requires jakarta.json;
 
     requires static io.helidon.common.features.api;
-    requires io.helidon.common.media.type;
-    requires io.helidon.http;
+    requires static io.helidon.config.metadata;
 
     exports io.helidon.http.media.jsonb;
 

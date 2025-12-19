@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2023, 2026 Oracle and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.helidon.config.metadata.codegen;
+
+import io.helidon.common.types.TypeName;
+
+/**
+ * Type names.
+ */
+final class TypeNames {
+    static final TypeName CONFIGURED = TypeName.create("io.helidon.config.metadata.Configured");
+    static final TypeName OPTION = TypeName.create("io.helidon.config.metadata.ConfiguredOption");
+    static final TypeName OPTIONS = TypeName.create("io.helidon.config.metadata.ConfiguredOptions");
+    static final TypeName ITERABLE = TypeName.create(Iterable.class);
+    static final TypeName MAP = io.helidon.common.types.TypeNames.MAP;
+    static final TypeName BOXED_VOID = io.helidon.common.types.TypeNames.BOXED_VOID;
+    static final TypeName STRING = io.helidon.common.types.TypeNames.STRING;
+    static final TypeName OBJECT = io.helidon.common.types.TypeNames.OBJECT;
+    static final TypeName CHAR_ARRAY = TypeName.create(char[].class);
+    static final TypeName BOXED_DOUBLE = io.helidon.common.types.TypeNames.BOXED_DOUBLE;
+    static final TypeName BOXED_BOOLEAN = io.helidon.common.types.TypeNames.BOXED_BOOLEAN;
+    static final TypeName BOXED_BYTE = io.helidon.common.types.TypeNames.BOXED_BYTE;
+    static final TypeName BOXED_SHORT = io.helidon.common.types.TypeNames.BOXED_SHORT;
+    static final TypeName BOXED_FLOAT = io.helidon.common.types.TypeNames.BOXED_FLOAT;
+    static final TypeName BOXED_LONG = io.helidon.common.types.TypeNames.BOXED_LONG;
+    static final TypeName BOXED_INT = io.helidon.common.types.TypeNames.BOXED_INT;
+
+    private TypeNames() {
+    }
+}

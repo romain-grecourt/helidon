@@ -370,7 +370,7 @@ class BuilderCodegen implements CodegenExtension {
         // find all extensions, as these may modify handling of our types
         List<BuilderCodegenExtension> extensions = findExtensions(tmpPrototypeInfo);
 
-        // an extension may modify the prototype info (i.e. to add custom annotations etc).
+        // an extension may modify the prototype info (i.e. to add custom annotations etc.).
         for (BuilderCodegenExtension extension : extensions) {
             tmpPrototypeInfo = extension.prototypeInfo(tmpPrototypeInfo);
         }
@@ -413,12 +413,13 @@ class BuilderCodegen implements CodegenExtension {
                             .description("Service discovery flag for {@link #" + it.getterName()
                                                  + "()}. If set to {@code true}, services will be discovered from Java service "
                                                  + "loader, or Helidon ServiceRegistry.")
-                            .paramDescription("whether to enabled automatic service discovery")
+                            .paramDescription("whether to enable automatic service discovery")
                             .name(name)
                             .setterName(setterName)
                             .getterName(getterName)
                             .builderOptionOnly(true)
                             .declaredType(TypeNames.PRIMITIVE_BOOLEAN)
+                            .interfaceMethod(it.interfaceMethod())
                             .defaultValue(defaultConsumer -> defaultConsumer.addContent(String.valueOf(defaultValue)))
                             .update(optionBuilder -> copyConfiguredForDiscoverServices(it, optionBuilder))
                             .update(optionBuilder -> it.deprecation().ifPresent(optionBuilder::deprecation))
@@ -562,7 +563,7 @@ class BuilderCodegen implements CodegenExtension {
         return options.stream()
                 .filter(it -> it.name().equals("config"))
                 .anyMatch(it -> {
-                    // we only support Config, Optional<Config> for both common and config config
+                    // we only support Config, Optional<Config> for both common and config
                     var optionType = it.declaredType();
                     if (optionType.equals(CONFIG) || optionType.equals(COMMON_CONFIG)) {
                         return true;
@@ -711,6 +712,11 @@ class BuilderCodegen implements CodegenExtension {
 
         typeArguments.forEach(classModel::addGenericArgument);
 
+        if (prototypeInfo.configured().isPresent()) {
+            var schemaGen = new SchemaGenerator(this.ctx);
+            classModel.addAnnotation(schemaGen.type(prototypeInfo, options));
+        }
+
         prototypeInfo.annotations()
                 .forEach(classModel::addAnnotation);
 
@@ -760,7 +766,7 @@ class BuilderCodegen implements CodegenExtension {
         generateCustomMethods(classModel, prototypeInfo.prototypeFactories());
         generateCustomPrototypeMethods(classModel, prototypeInfo.prototypeMethods(), false);
 
-        // re-create all blueprint methods to have correct javadoc references
+        // re-create all blueprint methods to have correct Javadoc references
         generatePrototypeMethods(classModel, options);
 
         List<OptionInfo> optionList = options.stream()

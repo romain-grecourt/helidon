@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ module io.helidon.integrations.vault {
     requires transitive io.helidon.integrations.common.rest;
     requires transitive io.helidon.webclient;
     requires transitive io.helidon.faulttolerance;
+    requires io.helidon.config.metadata;
 
     exports io.helidon.integrations.vault;
     exports io.helidon.integrations.vault.spi;
@@ -45,5 +46,5 @@ module io.helidon.integrations.vault {
 
     // required for CDI
     opens io.helidon.integrations.vault to weld.core.impl, io.helidon.microprofile.cdi;
-	
+
 }

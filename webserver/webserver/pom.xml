@@ -89,25 +89,24 @@
             <artifactId>helidon-common-concurrency-limits</artifactId>
         </dependency>
         <dependency>
-            <!--
-            This dependency is not required, yet a lot of examples depend on it. Kept in for backward compatibility.
-            This used to be a transitive dependency of another module.
-             -->
             <groupId>io.helidon.config</groupId>
             <artifactId>helidon-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.helidon.config</groupId>
+            <artifactId>helidon-config-metadata</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.helidon.config</groupId>
             <artifactId>helidon-config-yaml</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Put gzip content encoder on test classpath to see whether it's loaded or not. -->
         <dependency>
             <artifactId>helidon-http-encoding-gzip</artifactId>
             <groupId>io.helidon.http.encoding</groupId>
             <scope>test</scope>
         </dependency>
-        <!-- Put JSON media support on test classpath to see whether it's loaded or not. -->
         <dependency>
             <artifactId>helidon-http-media-jsonp</artifactId>
             <groupId>io.helidon.http.media</groupId>
