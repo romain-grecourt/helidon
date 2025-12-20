@@ -47,7 +47,6 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
         /**
          * {@link AttrsEnd} constant.
          */
-        // TODO remove, not needed
         Event ATTRS_END = new AttrsEnd();
 
         /**

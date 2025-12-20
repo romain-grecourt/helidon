@@ -58,7 +58,7 @@ class JavadocParserTest {
     }
 
     @Test
-    void testSelfCloseUnquotedAttribute() {
+    void testSelfClosedUnquotedAttribute() {
         List<Event> symbols = parse("<button foo=bar/>");
         assertThat(symbols, contains(
                 new EltStart("button"),
@@ -140,23 +140,25 @@ class JavadocParserTest {
 
     @Test
     void testCdata() {
-        List<Event> events = parse("""
-                                                     <![CDATA[
-                                                     foo
-                                                     bar
-                                                     ]]>
-                                                     """);
+        List<Event> events =
+                parse("""
+                        <![CDATA[
+                        foo
+                        bar
+                        ]]>
+                        """);
         assertThat(events, contains(new Cdata("\nfoo\nbar\n")));
     }
 
     @Test
     void testComment() {
-        List<Event> events = parse("""
-                                                     <!--
-                                                     foo
-                                                     bar
-                                                     -->
-                                                     """);
+        List<Event> events =
+                parse("""
+                        <!--
+                        foo
+                        bar
+                        -->
+                        """);
         assertThat(events, contains(new Comment("\nfoo\nbar\n")));
     }
 

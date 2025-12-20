@@ -18,20 +18,16 @@ package io.helidon.config.metadata.docs;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import io.helidon.config.metadata.docs.JavadocParser.Event;
-
 /**
  * Javadoc element.
  */
-class JavadocElement {
-
-    // TODO:
-    //  - model as sealed interface (HTMLNode, BlockNode, InlineNode, TextNode)
+public sealed interface JavadocElement permits JavadocElement.Node,
+                                               JavadocElement.RootNode,
+                                               JavadocElement.TextNode {
 
     /**
      * Visitor.
@@ -53,109 +49,42 @@ class JavadocElement {
         }
     }
 
-    private final List<JavadocElement> children = new ArrayList<>();
-    private final Map<String, String> attributes;
-    private final String name;
-    private final JavadocElement parent;
-    private String value;
+    /**
+     * Parent node.
+     *
+     * @return parent, never {@code null}
+     */
+    JavadocElement parent();
 
     /**
-     * Create a new instance.
+     * Children.
      *
-     * @param name name
+     * @return children, never {@code null}
      */
-    JavadocElement(String name) {
-        this(null, name, Map.of(), "");
-    }
+    List<JavadocElement> children();
 
-    /**
-     * Create a new instance.
-     *
-     * @param parent     parent, may be {@code null}
-     * @param name       name
-     * @param attributes attributes
-     */
-    JavadocElement(JavadocElement parent, String name, Map<String, String> attributes, String value) {
-        this.parent = parent;
-        this.name = Objects.requireNonNull(name, "name is null");
-        this.attributes = Objects.requireNonNull(attributes, "attributes is null");
-        this.value = Objects.requireNonNull(value, "value is null");
-    }
-
-    /**
-     * Get the parent element.
-     *
-     * @return parent, or {@code null}
-     */
-    JavadocElement parent() {
-        return parent;
-    }
-
-    /**
-     * Get the element name.
-     *
-     * @return name, never {@code null}
-     */
-    String name() {
-        return name;
-    }
-
-    /**
-     * Get the element value.
-     *
-     * @return value, never {@code null}
-     */
-    String value() {
-        return value;
-    }
-
-    /**
-     * Get the children.
-     *
-     * @return chidlren, never {@code null}
-     */
-    List<JavadocElement> children() {
-        return children;
-    }
-
-    /**
-     * Get the attributes.
-     *
-     * @return attributes, never {@code null}
-     */
-    Map<String, String> attributes() {
-        return attributes;
-    }
-
-    /**
-     * Traverse this node (depth-first).
-     *
-     * @return list of nodes
-     */
-    List<JavadocElement> traverse() {
-        var nodes = new ArrayList<JavadocElement>();
-        visit(nodes::add);
-        return nodes;
-    }
+    // TODO:
+    //  - optional closing element (<li>, <p> etc.)
+    //  - javadoc escapes (@)
+    //  - javadoc nodes (E.g. {@link) -> <javadoc:link>)
 
     /**
      * Visit this element.
      *
      * @param visitor visitor
      */
-    void visit(Visitor visitor) {
-        Deque<JavadocElement> stack = new ArrayDeque<>();
-        stack.push(this);
-        JavadocElement parent = this.parent();
+    default void visit(Visitor visitor) {
+        Deque<JavadocElement> stack = new ArrayDeque<>(children());
+        var parent = this;
         while (!stack.isEmpty()) {
-            JavadocElement elt = stack.peek();
+            var elt = stack.peek();
             if (elt == parent) {
                 visitor.postVisitElement(elt);
                 parent = elt.parent();
                 stack.pop();
             } else {
                 visitor.visitElement(elt);
-                List<JavadocElement> children = elt.children();
+                var children = elt.children();
                 for (int i = children.size() - 1; i >= 0; i--) {
                     stack.push(children.get(i));
                 }
@@ -167,101 +96,126 @@ class JavadocElement {
         }
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof JavadocElement that)) {
-            return false;
-        }
-        return Objects.equals(children, that.children)
-               && Objects.equals(attributes, that.attributes)
-               && Objects.equals(name, that.name)
-               && Objects.equals(value, that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(children, attributes, name, parent, value);
-    }
-
-    @Override
-    public String toString() {
-        return "JavadocElement{" +
-               ", name='" + name + '\'' +
-               ", attributes=" + attributes +
-               ", value='" + value + '\'' +
-               '}';
+    /**
+     * Traverse this node (depth-first).
+     *
+     * @return list of nodes
+     */
+    default List<JavadocElement> traverse() {
+        var nodes = new ArrayList<JavadocElement>();
+        visit(nodes::add);
+        return nodes;
     }
 
     /**
-     * Parse a document.
+     * Parse an element.
      *
-     * @param input content to parse
-     * @return element, never null
+     * @param input input
+     * @return element, never {@code null}
      */
     static JavadocElement parse(String input) {
-        var parser = new JavadocParser(input);
-        var root = new JavadocElement(null, "", Map.of(), "");
-        var node = root;
-        var sb = new StringBuilder();
-        while (parser.hasNext()) {
-            var event = parser.next();
-            switch (event) {
-                case Event.EltStart(String name) -> {
-                    sb.setLength(0);
-                    node = new JavadocElement(node, name, readAttributes(parser), "");
-                    node.parent.children.add(node);
-                }
-                case Event.EltClose() -> {
-                    node.value = sb.toString();
-                    sb.setLength(0);
-                    node = node.parent;
-                    if (node == null) {
-                        throw new IllegalStateException("Unexpected close element: location=" + parser.cursor());
-                    }
-                }
-                case Event.Cdata(String str) -> sb.append(str);
-                case Event.Text(String str) -> {
-                    if (!str.isBlank()) {
-                        sb.append(str);
-                    }
-                }
-                default -> {
-                    // ignore
-                }
-            }
-        }
-        return root;
+        var reader = new JavadocReader(input);
+        return reader.readElement();
     }
 
-    private static Map<String, String> readAttributes(JavadocParser parser) {
-        Map<String, String> attributes = null;
-        String key = null;
-        while (parser.hasNext()) {
-            var event = parser.peek();
-            switch (event) {
-                case Event.AttrName(String name) -> {
-                    parser.skip();
-                    if (key != null) {
-                        if (attributes == null) {
-                            attributes = new LinkedHashMap<>();
-                        }
-                        attributes.put(key, "");
-                    }
-                    key = name;
-                }
-                case Event.AttrValue(String value) -> {
-                    parser.skip();
-                    if (attributes == null) {
-                        attributes = new LinkedHashMap<>();
-                    }
-                    attributes.put(key, value);
-                }
-                default -> {
-                    return attributes == null ? Map.of() : attributes;
-                }
-            }
+    /**
+     * HTML tree node.
+     *
+     * @param parent     parent, must be non {@code null}
+     * @param name       name, must be non {@code null}
+     * @param attributes attributes, must be non {@code null}
+     * @param children   children, must be non {@code null}
+     */
+    record Node(JavadocElement parent, String name, Map<String, String> attributes, List<JavadocElement> children)
+            implements JavadocElement {
+
+        /**
+         * HTML tree node.
+         *
+         * @param parent     parent, must be non {@code null}
+         * @param name       name, must be non {@code null}
+         * @param attributes attributes, must be non {@code null}
+         * @param children   children, must be non {@code null}
+         */
+        public Node(JavadocElement parent, String name, Map<String, String> attributes, List<JavadocElement> children) {
+            this.parent = Objects.requireNonNull(parent, "parent null!");
+            this.name = Objects.requireNonNull(name, "name is null!");
+            this.attributes = Objects.requireNonNull(attributes, "attributes is null!");
+            this.children = Objects.requireNonNull(children, "children is null!");
         }
-        throw new IllegalStateException("Unexpected EOF");
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Node node)) {
+                return false;
+            }
+            return Objects.equals(name, node.name)
+                   && Objects.equals(attributes, node.attributes);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, attributes);
+        }
+    }
+
+    /**
+     * Root node.
+     *
+     * @param children children, must be non {@code null}
+     */
+    record RootNode(List<JavadocElement> children) implements JavadocElement {
+
+        /**
+         * Root node.
+         *
+         * @param children children, never {@code null}
+         */
+        public RootNode(List<JavadocElement> children) {
+            this.children = Objects.requireNonNull(children, "children is null!");
+        }
+
+        @Override
+        public JavadocElement parent() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    /**
+     * Text node.
+     *
+     * @param parent parent
+     * @param value  value
+     */
+    record TextNode(JavadocElement parent, String value) implements JavadocElement {
+
+        /**
+         * Text node.
+         *
+         * @param parent parent
+         * @param value  value, must be non {@code null}
+         */
+        public TextNode(JavadocElement parent, String value) {
+            this.parent = Objects.requireNonNull(parent, "parent null!");
+            this.value = Objects.requireNonNull(value, "value null!");
+        }
+
+        @Override
+        public List<JavadocElement> children() {
+            return List.of();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof TextNode text)) {
+                return false;
+            }
+            return Objects.equals(value, text.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(value);
+        }
     }
 }
-
