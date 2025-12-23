@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.helidon.codegen.ClassCode;
+import io.helidon.codegen.CodegenContext;
 import io.helidon.codegen.classmodel.ClassModel;
 import io.helidon.common.types.ResolvedType;
 import io.helidon.common.types.TypeInfo;
@@ -102,5 +103,10 @@ class MavenRoundContext implements RegistryRoundContext {
 
     public List<DescriptorClassCode> descriptors() {
         return descriptors;
+    }
+
+    @Override
+    public CodegenContext sharedContext() {
+        return ctx;
     }
 }

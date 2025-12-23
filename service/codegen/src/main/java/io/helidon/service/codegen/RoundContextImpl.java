@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import io.helidon.codegen.ClassCode;
+import io.helidon.codegen.CodegenContext;
 import io.helidon.codegen.RoundContext;
 import io.helidon.codegen.classmodel.ClassModel;
 import io.helidon.common.types.ResolvedType;
@@ -164,5 +165,10 @@ class RoundContextImpl implements RegistryRoundContext {
     @Override
     public Optional<ClassModel.Builder> generatedType(TypeName type) {
         return delegate.generatedType(type);
+    }
+
+    @Override
+    public CodegenContext sharedContext() {
+        return ctx;
     }
 }

@@ -234,4 +234,9 @@ class RoundContextImpl implements RoundContext {
     Collection<ClassCode> newTypes() {
         return newTypes.values();
     }
+
+    @Override
+    public CodegenContext sharedContext() {
+        return ctx;
+    }
 }

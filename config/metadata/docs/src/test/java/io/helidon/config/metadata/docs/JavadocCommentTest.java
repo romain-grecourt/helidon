@@ -20,6 +20,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
@@ -27,6 +28,7 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaFileObject;
@@ -34,6 +36,8 @@ import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 
+import com.sun.source.doctree.DocTree;
+import com.sun.source.util.DocTrees;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -47,7 +51,16 @@ class JavadocCommentTest {
     @Test
     void testEscapes() {
         var comments = new ArrayList<String>();
-        var result = compile(new ProcessorImpl(comments), new JavaSourceFromString("JavadocEscapes", """
+        var result = compile(new BaseProcessor() {
+            @Override
+            public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+                var utils = processingEnv.getElementUtils();
+                for (var rootElement : roundEnv.getRootElements()) {
+                    comments.add(utils.getDocComment(rootElement));
+                }
+                return true;
+            }
+        }, new JavaSourceFromString("JavadocEscapes", """
                 /**
                  *@@
                  *@/
@@ -58,6 +71,75 @@ class JavadocCommentTest {
                 """));
         assertThat(result, is(true));
         assertThat(comments, is(List.of("@@\n@/\n@*\n")));
+    }
+
+    @Test
+    void escapeCloseCurly() {
+        var docTrees = new LinkedHashMap<Element, List<? extends DocTree>>();
+        var result = compile(new BaseProcessor() {
+            @Override
+            public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+                var dc = DocTrees.instance(processingEnv);
+                for (var rootElement : roundEnv.getRootElements()) {
+                    var dct = dc.getDocCommentTree(rootElement);
+                    if (dct != null) {
+                        List<? extends DocTree> fullBody = dct.getFullBody();
+                        docTrees.put(rootElement, dct.getFullBody());
+                    }
+                    for (var e : rootElement.getEnclosedElements()) {
+                        dct = dc.getDocCommentTree(e);
+                        if (dct != null) {
+                            docTrees.put(e, dct.getFullBody());
+                        }
+                    }
+                }
+                return true;
+            }
+        }, new JavaSourceFromString("Http2Config", """
+                /**
+                 * HTTP/2 server configuration.
+                 */
+                 public class Http2Config {
+                    private static final int CST = 69;
+                     /**
+                      * Value of CST is {@value #CST}.
+                      * Outbound flow control blocking timeout configured as {@link java.time.Duration}
+                      * or text in ISO-8601 format.
+                      * Blocking timeout defines an interval to wait for the outbound window size changes(incoming window updates).
+                      * Default value is {@code PT15S}.
+                      *
+                      * <table>
+                      *     <caption><b>ISO_8601 format examples:</b></caption>
+                      *     <tr><th>PT0.1S</th><th>100 milliseconds</th></tr>
+                      *     <tr><th>PT0.5S</th><th>500 milliseconds</th></tr>
+                      *     <tr><th>PT2S</th><th>2 seconds</th></tr>
+                      * </table>
+                      *
+                      * @return duration
+                      * @see <a href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO_8601 Durations</a>
+                      */
+                     String flowControlTimeout() {
+                        return "PT15S";
+                     }
+                 }
+                """));
+        assertThat(result, is(true));
+        assertThat(docTrees.size(), is(2));
+        for (var entry : docTrees.entrySet()) {
+            var element = entry.getKey();
+            var docTree = entry.getValue();
+            switch (element.getKind()) {
+                case CLASS -> {
+                    var name = element.getSimpleName().toString();
+                    assertThat(name, is("Http2Config"));
+                }
+                case METHOD -> {
+                    var name = element.getSimpleName().toString();
+                    assertThat(name, is("flowControlTimeout"));
+                }
+                default -> throw new AssertionError("Unexpected element kind: " + element.getKind());
+            }
+        }
     }
 
     static List<String> COMPILER_OPTS = List.of(
@@ -98,22 +180,7 @@ class JavadocCommentTest {
         }
     }
 
-    static class ProcessorImpl extends AbstractProcessor {
-
-        private final List<String> comments;
-
-        ProcessorImpl(List<String> comments) {
-            this.comments = comments;
-        }
-
-        @Override
-        public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-            var utils = processingEnv.getElementUtils();
-            for (var rootElement : roundEnv.getRootElements()) {
-                comments.add(utils.getDocComment(rootElement));
-            }
-            return true;
-        }
+    static abstract class BaseProcessor extends AbstractProcessor {
 
         @Override
         public Set<String> getSupportedAnnotationTypes() {
@@ -122,7 +189,7 @@ class JavadocCommentTest {
 
         @Override
         public SourceVersion getSupportedSourceVersion() {
-            return SourceVersion.RELEASE_21;
+            return SourceVersion.latestSupported();
         }
     }
 }

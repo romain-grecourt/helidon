@@ -124,4 +124,11 @@ public interface RoundContext {
      * @return discovered type information, or empty if the type cannot be discovered
      */
     Optional<TypeInfo> typeInfo(TypeName typeName);
+
+    /**
+     * Get the shared context.
+     *
+     * @return CodegenContext, never {@code null}
+     */
+    CodegenContext sharedContext();
 }

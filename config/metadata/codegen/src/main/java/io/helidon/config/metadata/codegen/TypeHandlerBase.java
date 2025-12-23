@@ -80,8 +80,8 @@ abstract class TypeHandlerBase {
         return result.toString();
     }
 
-    String javadoc(RoundContext roundContext, TypeInfo currentType, String docComment) {
-        return Javadoc.parse(roundContext, currentType, docComment);
+    String javadoc(RoundContext roundContext, TypeInfo type, TypedElementInfo element) {
+        return Javadoc.parse(roundContext, type, element);
     }
 
     String key(TypedElementInfo elementInfo, ConfiguredOptionData configuredOption) {
@@ -98,7 +98,7 @@ abstract class TypeHandlerBase {
                        ConfiguredOptionData configuredOption) {
         String desc = configuredOption.description();
         if (desc == null) {
-            return javadoc(roundContext, typeInfo, elementInfo.description().orElse(null));
+            return javadoc(roundContext, typeInfo, elementInfo);
         }
         return desc;
     }

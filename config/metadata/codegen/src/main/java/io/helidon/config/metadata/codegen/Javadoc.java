@@ -16,36 +16,37 @@
 
 package io.helidon.config.metadata.codegen;
 
-import java.util.regex.Pattern;
+import javax.lang.model.element.Element;
 
-import io.helidon.codegen.ElementInfoPredicates;
 import io.helidon.codegen.RoundContext;
+import io.helidon.common.types.ElementKind;
 import io.helidon.common.types.TypeInfo;
 import io.helidon.common.types.TypeName;
 import io.helidon.common.types.TypedElementInfo;
 
-import static io.helidon.codegen.CodegenUtil.capitalize;
+import com.sun.source.doctree.AttributeTree;
+import com.sun.source.doctree.DocTree;
+import com.sun.source.doctree.EndElementTree;
+import com.sun.source.doctree.EntityTree;
+import com.sun.source.doctree.LinkTree;
+import com.sun.source.doctree.LiteralTree;
+import com.sun.source.doctree.ReturnTree;
+import com.sun.source.doctree.SeeTree;
+import com.sun.source.doctree.StartElementTree;
+import com.sun.source.doctree.SummaryTree;
+import com.sun.source.doctree.TextTree;
+import com.sun.source.doctree.ValueTree;
+import com.sun.source.util.DocTrees;
+import com.sun.source.util.SimpleDocTreeVisitor;
 
-/*
-Possible improvements:
-- @link - create a proper javadoc reference (i.e. always fully qualified reference), such as:
-    {@link:io.helidon.common.Type#method(java.lang.String)}, so we can generate a nice reference for docs
-- @value - if possible, find the actual value (string, int etc.) and add it as `thevalue`
-- @see - create a proper javadoc reference (as for @link)
- */
 final class Javadoc {
-    private static final Pattern JAVADOC_CODE = Pattern.compile("\\{@code (.*?)}");
-    private static final Pattern JAVADOC_LINK = Pattern.compile("\\{@link (.*?)}");
-    private static final Pattern JAVADOC_LINKPLAIN = Pattern.compile("\\{@linkplain (.*?)}");
-    private static final Pattern JAVADOC_VALUE = Pattern.compile("\\{@value (.*?)}");
-    private static final Pattern JAVADOC_SEE = Pattern.compile("@see (.*?\n)");
 
     private Javadoc() {
     }
 
     // for existing usages
-    static String parse(RoundContext roundContext, TypeInfo currentType, String javadoc) {
-        return parse(roundContext, currentType, javadoc, true);
+    static String parse(RoundContext roundContext, TypeInfo type, TypedElementInfo element) {
+        return parse(roundContext, type, element, true);
     }
 
     /**
@@ -63,155 +64,192 @@ final class Javadoc {
      *     <li>{@code @return} is stripped from the text, and the first letter is capitalized</li>
      * </ul>
      *
-     * @param docComment "raw" javadoc from the source code
+     * @param roundContext  round context
+     * @param typeInfo      type info
+     * @param elementInfo   element info
+     * @param includeReturn whether to include the return
      * @return description of the option
      */
-    static String parse(RoundContext roundContext, TypeInfo currentType, String docComment, boolean includeReturn) {
-        if (docComment == null) {
-            return "";
-        }
-
-        String javadoc = docComment;
-        int index = javadoc.indexOf("@param");
-        if (index > -1) {
-            javadoc = docComment.substring(0, index);
-        }
-        // replace all {@code xxx} with 'xxx'
-        javadoc = JAVADOC_CODE.matcher(javadoc).replaceAll(it -> javadocCode(it.group(1)));
-        // replace all {@link ...} with just the link
-        javadoc = JAVADOC_LINK.matcher(javadoc).replaceAll(it -> javadocLink(it.group(1)));
-        // replace all {@link ...} with just the name
-        javadoc = JAVADOC_LINKPLAIN.matcher(javadoc).replaceAll(it -> javadocLink(it.group(1)));
-        // replace all {@value ...} with just the reference
-        javadoc = JAVADOC_VALUE.matcher(javadoc)
-                .replaceAll(it -> javadocConstantValue(roundContext, currentType, it.group(1)));
-
-        int count = 9;
-        index = javadoc.indexOf(" @return");
-        if (index == -1) {
-            count = 8;
-            index = javadoc.indexOf("@return");
-        }
-        if (index > -1) {
-            if (includeReturn) {
-                javadoc = javadoc.substring(0, index) + capitalize(javadoc.substring(index + count).trim());
-            } else {
-                // need to find the next @ not preceded by {
-                int endIndex = javadoc.length();
-                // and we need to start from the end of the current @return
-                int nextIndex = index + count;
-                while (true) {
-                    int nextAt = javadoc.indexOf('@', nextIndex);
-                    if (nextAt == -1 || nextAt == 0 || nextAt == javadoc.length() - 1) {
-                        break;
+    @SuppressWarnings("removal")
+    static String parse(RoundContext roundContext, TypeInfo typeInfo, TypedElementInfo elementInfo, boolean includeReturn) {
+        StringBuilder sb = new StringBuilder();
+        if (roundContext.sharedContext() instanceof io.helidon.codegen.apt.AptContext aptContext) {
+            var orig = elementInfo.originatingElement().orElse(null);
+            if (orig instanceof Element elt) {
+                var aptEnv = aptContext.aptEnv();
+                var dc = DocTrees.instance(aptEnv);
+                var dct = dc.getDocCommentTree(elt);
+                if (dct != null) {
+                    var visitor = new JavadocVisitor(roundContext, typeInfo, includeReturn);
+                    for (var e : dct.getFullBody()) {
+                        e.accept(visitor, sb);
                     }
-
-                    if (javadoc.charAt(nextAt - 1) == '{') {
-                        nextIndex = nextAt + 1;
-                        continue;
-                    }
-                    endIndex = nextAt;
-                    break;
                 }
-                javadoc = javadoc.substring(0, index) + javadoc.substring(endIndex);
             }
         }
-
-        // replace all {@see ...} with just the reference - after removing @return
-        javadoc = JAVADOC_SEE.matcher(javadoc).replaceAll(it -> javadocSee(it.group(1)));
-
-        return javadoc.trim();
+        return sb.toString().trim();
     }
 
-    private static String javadocSee(String originalValue) {
-        return "See " + javadocValue(originalValue);
-    }
+    private static final class JavadocVisitor extends SimpleDocTreeVisitor<StringBuilder, StringBuilder> {
+        private final RoundContext ctx;
+        private final TypeInfo typeInfo;
+        private final boolean includeReturn;
 
-    private static String javadocCode(String originalValue) {
-        return '`' + originalValue + '`';
-    }
-
-    private static String javadocLink(String originalValue) {
-        return javadocValue(originalValue);
-    }
-
-    private static String javadocValue(String originalValue) {
-        if (originalValue.startsWith("#")) {
-            return originalValue.substring(1);
+        JavadocVisitor(RoundContext ctx, TypeInfo typeInfo, boolean includeReturn) {
+            this.ctx = ctx;
+            this.typeInfo = typeInfo;
+            this.includeReturn = includeReturn;
         }
-        // Do not replace # in href links, such as
-        // <a href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO_8601 Durations</a>
-        int index = 0;
-        StringBuilder result = new StringBuilder();
-        while (true) {
-            int indexOfHref = originalValue.indexOf("href=\"", index);
-            if (indexOfHref == -1) {
-                result.append(removeHash(originalValue.substring(index)));
-                break;
-            }
-            int endOfHref = originalValue.indexOf('\"', indexOfHref + 6);
-            if (endOfHref == -1) {
-                // broken link, just append the rest
-                result.append(originalValue.substring(index));
-                break;
-            }
-            result.append(originalValue, index, endOfHref + 1);
-            index = endOfHref + 1;
+
+        @Override
+        public StringBuilder visitLink(LinkTree node, StringBuilder sb) {
+            sb.append("<code>");
+            sb.append(node.getReference().getSignature());
+            sb.append("</code>");
+            return sb;
         }
-        return result.toString();
-    }
 
-    private static String removeHash(String originalValue) {
-        return originalValue.replace('#', '.');
-    }
-
-    private static String javadocConstantValue(RoundContext roundContext, TypeInfo currentType, String originalValue) {
-        if (originalValue.startsWith("#")) {
-            // constant is in this class
-            String constantName = originalValue.substring(1);
-
-            return constantValue(currentType, originalValue, constantName);
-        } else {
-            int separator = originalValue.lastIndexOf('#');
-            if (separator < 0) {
-                return javadocValue(originalValue);
+        @Override
+        public StringBuilder visitLiteral(LiteralTree node, StringBuilder sb) {
+            if (node.getKind() == DocTree.Kind.CODE) {
+                sb.append("<code>");
+                sb.append(node.getBody().getBody());
+                sb.append("</code>");
+            } else {
+                sb.append(node.getBody().getBody());
             }
-            TypeName typeName = TypeName.create(originalValue.substring(0, separator));
-            if (typeName.packageName().isEmpty()) {
-                typeName = TypeName.builder(typeName)
-                        .packageName(currentType.typeName().packageName())
-                        .build();
-            }
-            String constantName = originalValue.substring(separator + 1);
-            // constant is in a different class, if there is no package information, we are in trouble - we will consider
-            // this to be in this package, otherwise we will just use the value as present in the javadoc
-            var constantType = roundContext.typeInfo(typeName);
-            if (constantType.isEmpty()) {
-                return javadocValue(originalValue);
-            }
-
-            return constantValue(constantType.get(), originalValue, constantName);
+            return sb;
         }
-    }
 
-    private static String constantValue(TypeInfo currentType, String originalValue, String constantName) {
-        var fieldValue = currentType.elementInfo()
-                .stream()
-                .filter(ElementInfoPredicates::isField)
-                .filter(ElementInfoPredicates::isStatic)
-                .filter(ElementInfoPredicates.elementName(constantName))
-                .findFirst()
-                .flatMap(TypedElementInfo::defaultValue);
-
-        if (fieldValue.isEmpty()) {
-            return javadocValue(originalValue);
+        @Override
+        public StringBuilder visitValue(ValueTree node, StringBuilder sb) {
+            var ref = node.getReference();
+            if (ref != null) {
+                var signature = ref.getSignature();
+                var index = signature.indexOf("#");
+                if (index >= 0) {
+                    TypeInfo refType = typeInfo;
+                    if (index > 0) {
+                        var typeName = TypeName.create(signature.substring(0, index - 1));
+                        refType = ctx.typeInfo(typeName).orElse(null);
+                    }
+                    if (refType != null) {
+                        var field = signature.substring(index + 1, signature.length() - 1);
+                        for (TypedElementInfo e : refType.elementInfo()) {
+                            if (e.kind() == ElementKind.FIELD && field.equals(e.elementName())) {
+                                sb.append("<code>");
+                                sb.append(e.originatingElementValue());
+                                sb.append("</code>");
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return sb;
         }
-        var constantValue = fieldValue.get();
-        // this is a value
-        // if it contains `, we must replace it
-        // if it contains $, we must escape it
-        constantValue = constantValue.replace('`', '"');
-        constantValue = constantValue.replaceAll("\\$", "\\\\\\$");
-        return "`" + constantValue + "`";
+
+        @Override
+        public StringBuilder visitText(TextTree node, StringBuilder sb) {
+            sb.append(node.getBody());
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitEntity(EntityTree node, StringBuilder sb) {
+            sb.append("&");
+            sb.append(node.getName());
+            sb.append(";");
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitSummary(SummaryTree node, StringBuilder sb) {
+            sb.append("<summary>\n");
+            for (var e : node.getSummary()) {
+                e.accept(this, sb);
+            }
+            sb.append("</summary>\n");
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitSee(SeeTree node, StringBuilder sb) {
+            sb.append("\nSee:\n");
+            sb.append("<ul>\n");
+            for (var e : node.getReference()) {
+                sb.append("<li>");
+                e.accept(this, sb);
+                sb.append("</li>\n");
+            }
+            sb.append("</ul>\n");
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitReturn(ReturnTree node, StringBuilder sb) {
+            if (includeReturn) {
+                for (var e : node.getDescription()) {
+                    e.accept(this, sb);
+                }
+            }
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitStartElement(StartElementTree node, StringBuilder sb) {
+            sb.append("<");
+            sb.append(node.getName());
+            for (var e : node.getAttributes()) {
+                e.accept(this, sb);
+            }
+            sb.append(">");
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitAttribute(AttributeTree node, StringBuilder sb) {
+            switch (node.getValueKind()) {
+                case EMPTY -> {
+                    sb.append(" ");
+                    sb.append(node.getName());
+                }
+                case SINGLE -> {
+                    for (var v : node.getValue()) {
+                        sb.append(" ");
+                        sb.append(node.getName());
+                        sb.append("='");
+                        v.accept(this, sb);
+                        sb.append("'");
+                    }
+                }
+                case DOUBLE -> {
+                    for (var v : node.getValue()) {
+                        sb.append(" ");
+                        sb.append(node.getName());
+                        sb.append("=\"");
+                        v.accept(this, sb);
+                        sb.append("\"");
+                    }
+                }
+                case UNQUOTED -> {
+                    for (var v : node.getValue()) {
+                        sb.append(" ");
+                        sb.append(node.getName());
+                        sb.append("=");
+                        v.accept(this, sb);
+                    }
+                }
+            }
+            return sb;
+        }
+
+        @Override
+        public StringBuilder visitEndElement(EndElementTree node, StringBuilder sb) {
+            sb.append("</");
+            sb.append(node.getName());
+            sb.append(">");
+            return sb;
+        }
     }
 }

@@ -21,7 +21,9 @@
  */
 module io.helidon.config.metadata.codegen {
     requires io.helidon.codegen;
+    requires io.helidon.codegen.apt;
     requires io.helidon.metadata.hson;
+    requires jdk.compiler;
 
     exports io.helidon.config.metadata.codegen;
 

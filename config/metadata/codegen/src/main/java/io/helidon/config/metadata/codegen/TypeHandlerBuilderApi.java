@@ -132,8 +132,8 @@ class TypeHandlerBuilderApi extends TypeHandlerBase implements TypeHandler {
 
     // for blueprints, we only want the description, not the return information (as it duplicates information)
     @Override
-    String javadoc(RoundContext roundContext, TypeInfo currentType, String docComment) {
-        return Javadoc.parse(roundContext, currentType, docComment, false);
+    String javadoc(RoundContext roundContext, TypeInfo type, TypedElementInfo element) {
+        return Javadoc.parse(roundContext, type, element, false);
     }
 
     private static TypeName prototype(TypeName blueprintType) {
