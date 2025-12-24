@@ -158,7 +158,7 @@ final class ConfiguredOptionData {
                 .filter(it -> it.kind() == ENUM_CONSTANT)
                 .forEach(it -> {
                     allowedValues.add(new AllowedValue(it.elementName(), it.description()
-                            .map(javadoc -> Javadoc.parse(roundContext, typeInfo, it))
+                            .map(javadoc -> JavadocProcessor.process(roundContext, typeInfo, it, true))
                             .orElse("")));
                 });
     }

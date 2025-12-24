@@ -63,7 +63,7 @@ public sealed interface JavadocElement permits JavadocElement.Node,
      */
     List<JavadocElement> children();
 
-    // TODO:
+    // NEXT:
     //  - optional closing element (<li>, <p> etc.)
     //  - javadoc escapes (@)
     //  - javadoc nodes (E.g. {@link) -> <javadoc:link>)

@@ -28,6 +28,7 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
     /**
      * Event.
      */
+    @SuppressWarnings("checkstyle:InterfaceIsType")
     sealed interface Event permits Event.Literal,
                                    Event.Text,
                                    Event.Comment,
@@ -92,6 +93,7 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
              *
              * @param value value
              */
+            @SuppressWarnings("checkstyle:RedundantModifier")
             public Doctype(String value) {
                 this.value = value.trim();
             }

@@ -81,7 +81,7 @@ abstract class TypeHandlerBase {
     }
 
     String javadoc(RoundContext roundContext, TypeInfo type, TypedElementInfo element) {
-        return Javadoc.parse(roundContext, type, element);
+        return JavadocProcessor.process(roundContext, type, element, true);
     }
 
     String key(TypedElementInfo elementInfo, ConfiguredOptionData configuredOption) {
