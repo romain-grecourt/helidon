@@ -16,6 +16,7 @@
 
 package io.helidon.config.metadata.docs;
 
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -35,24 +36,25 @@ public final class Main {
     /**
      * Start generating reference documentation.
      *
-     * @param args either empty (target path is discovered if possible), or a single parameter - the target path to generate docs
-     * @throws io.helidon.config.metadata.docs.ConfigDocsException in case the path is not correct, or a problem is discovered
-     *                                                             while generating the documentation
+     * @param args either empty (heuristics), or a single parameter (the output directory)
+     * @throws IllegalStateException if an error occurs
      */
     public static void main(String[] args) {
         LogConfig.configureRuntime();
-
-        Path targetPath;
-
-        if (args.length == 1) {
-            targetPath = Paths.get(args[0]);
+        Path outputDir;
+        if (args.length == 0) {
+            try {
+                var codeSource = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+                outputDir = codeSource.resolve("../../../../docs/config");
+            } catch (URISyntaxException e) {
+                throw new IllegalStateException(e);
+            }
+        } else if (args.length == 1) {
+            outputDir = Paths.get(args[0]).toAbsolutePath().normalize();
         } else {
-            throw new IllegalArgumentException("This tool can have zero or one parameters "
-                                               + "(path to generated code). Got " + args.length + " parameters");
+            throw new IllegalArgumentException("Invalid arguments, must be <= 1, got: " + args.length);
         }
-
-        Path path = targetPath.toAbsolutePath().normalize();
-        ConfigDocs docs = ConfigDocs.create(path);
+        var docs = new ConfigDocs(outputDir, ConfigMetadata.loadAll());
         docs.process();
     }
 }

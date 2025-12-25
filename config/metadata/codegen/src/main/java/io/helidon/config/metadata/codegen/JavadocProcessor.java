@@ -123,9 +123,11 @@ final class JavadocProcessor {
                             break;
                         }
                     }
-                    sb.append("\n");
-                    sb.append(buf);
-                    sb.append("\n");
+                    if (!buf.isEmpty()) {
+                        sb.append("\n");
+                        sb.append(buf);
+                        sb.append("\n");
+                    }
                 } else if (e instanceof SeeTree) {
                     var buf = e.accept(visitor, new StringBuilder());
                     seeBlocks.add(buf);

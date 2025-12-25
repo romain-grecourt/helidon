@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,6 @@
 
 package io.helidon.config.metadata.docs;
 
-/**
- * Type required for template processing for config reference.
- */
-public class CmReference {
-    private final String file;
-    private final String title;
+class ConfigDocsTest {
 
-    CmReference(String file, String title) {
-        this.file = file;
-        this.title = title;
-    }
-
-    /**
-     * File name that was generated.
-     *
-     * @return file name
-     */
-    public String file() {
-        return file;
-    }
-
-    /**
-     * Title of the file.
-     *
-     * @return title
-     */
-    public String title() {
-        return title;
-    }
 }

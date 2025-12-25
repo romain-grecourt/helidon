@@ -17,55 +17,38 @@
 package io.helidon.config.metadata.docs;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.lang.System.Logger.Level;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import io.helidon.config.metadata.docs.ConfigMetadata.CmModule;
+import io.helidon.config.metadata.docs.ConfigMetadata.CmOption;
+import io.helidon.config.metadata.docs.ConfigMetadata.CmType;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Template;
 import com.github.jknack.handlebars.io.URLTemplateSource;
-import jakarta.json.bind.Jsonb;
-import jakarta.json.bind.JsonbBuilder;
-import org.eclipse.yasson.YassonConfig;
+
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 
 /**
- * Entry point to generate config documentation for Helidon Config reference.
- * <p>
- * This module can either be used through {@link io.helidon.config.metadata.docs.Main}, or via this class.
+ * Entry point to generate Helidon config documentation.
  *
- * @see #create(java.nio.file.Path)
  * @see #process()
  */
-public class ConfigDocs {
+class ConfigDocs {
     private static final System.Logger LOGGER = System.getLogger(ConfigDocs.class.getName());
-    private static final String CONFIG_REFERENCE_FILE = "config_reference.md";
-    private static final String METADATA_JSON_LOCATION = "META-INF/helidon/config-metadata.json";
-    private static final Pattern COPYRIGHT_LINE_PATTERN = Pattern.compile(".*Copyright \\(c\\) (.*) Oracle and/or its "
-                                                                                  + "affiliates.");
-    private static final Jsonb JSON_B = JsonbBuilder.create(new YassonConfig().withFailOnUnknownProperties(true));
     private static final Map<String, String> TYPE_MAPPING;
 
     static {
@@ -80,89 +63,40 @@ public class ConfigDocs {
         TYPE_MAPPING = Map.copyOf(typeMapping);
     }
 
-    private final Path path;
-
-    private ConfigDocs(Path path) {
-        this.path = path;
-    }
+    private final Map<String, CmType> configTypes = new HashMap<>();
+    private final Map<CmType, CmModule> modulesByTypes = new HashMap<>();
+    private final Set<String> allTypes = new HashSet<>();
+    private final List<ConfigMetadata> metadatas;
+    private final Set<String> generatedFiles = new HashSet<>();
+    private final Path outputDir;
+    private final Template typeTemplate;
+    private final Template readmeTemplate;
 
     /**
-     * Create a new instance that will update config reference documentation in the {code targetPath}.
+     * Create a new instance.
      *
-     * @param targetPath path of the config reference documentation, must contain the {@value #CONFIG_REFERENCE_FILE}
-     *                   file, or be empty
-     * @return new instance of config documentation to call {@link #process()} on
+     * @param outputDir output directory, must {@code REAMDE.md} or be empty
+     * @throws IllegalArgumentException if the output directory is not valid
      */
-    public static ConfigDocs create(Path targetPath) {
-        return new ConfigDocs(targetPath);
-    }
-
-    static String titleFromFileName(String fileName) {
-        String title = fileName;
-        if (title.endsWith(".md")) {
-            title = title.substring(0, title.length() - 3);
-        }
-        if (title.startsWith("io_helidon_")) {
-            title = title.substring("io_helidon_".length());
-            int i = title.lastIndexOf('_');
-            if (i != -1) {
-                String simpleName = title.substring(i + 1);
-                String thePackage = title.substring(0, i);
-                title = simpleName + " (" + thePackage.replace('_', '.') + ")";
+    ConfigDocs(Path outputDir, List<ConfigMetadata> metadatas) {
+        validateOutputDir(outputDir);
+        this.outputDir = outputDir;
+        this.metadatas = metadatas;
+        for (var cm : metadatas) {
+            for (var module : cm.modules()) {
+                for (var type : module.types()) {
+                    configTypes.put(type.annotatedType(), type);
+                    allTypes.add(type.annotatedType());
+                    allTypes.add(type.type());
+                    modulesByTypes.put(type, module);
+                }
             }
         }
-        return title;
-    }
 
-    // translate HTML to Markdown
-    static String translateHtml(String text) {
-        String result = text;
-        // <p>
-        result = result.replaceAll("\n\\s*<p>", "\n");
-        result = result.replaceAll("\\s*<p>", "\n");
-        result = result.replaceAll("</p>", "");
-        // <ul><nl><li>
-        result = result.replaceAll("\\s*</li>\\s*", "");
-        result = result.replaceAll("\\s*</ul>\\s*", "\n\n");
-        result = result.replaceAll("\\s*</nl>\\s*", "\n\n");
-        result = result.replaceAll("\n\\s*<ul>\\s*", "\n");
-        result = result.replaceAll("\\s*<ul>\\s*", "\n");
-        result = result.replaceAll("\n\\s*<nl>\\s*", "\n");
-        result = result.replaceAll("\\s*<nl>\\s*", "\n");
-        result = result.replaceAll("<li>\\s*", "\n- ");
-        result = result.replaceAll("\n<br>", "\n");
-        result = result.replaceAll("<br>\n", "\n");
-        result = result.replaceAll("<br>", "\n");
-        // also fix javadoc issues
-        // {@value}
-        result = result.replaceAll("\\{@value\\s+#?(.*?)}", "`$1`");
-        // {@link}
-        result = result.replaceAll("\\{@link\\s+#?(.*?)}", "`$1`");
-        // escaped end of lines
-        result = result.replaceAll("\\n", "\n");
-        // <b>
-        result = replace(result, "<b>", "</b>", "__", "__");
-        // <i>
-        result = replace(result, "<i>", "</i>", "_", "_");
-        // <a href="">...</a>
-        result = replaceLinks(result);
-        // <pre>....</pre>
-        result = replacePre(result);
-        // tables
-        result = handleTables(result);
-
-        // <h4>, <h5>
-        result = replace(result, "<h1>", "</h1>", "\n#", "\n");
-        result = replace(result, "<h2>", "</h2>", "\n##", "\n");
-        result = replace(result, "<h3>", "</h3>", "\n###", "\n");
-        result = replace(result, "<h4>", "</h4>", "\n####", "\n");
-        result = replace(result, "<h5>", "</h5>", "\n#####", "\n");
-        result = replace(result, "<h6>", "</h6>", "\n######", "\n");
-
-        // remove trailing spaces
-        result = result.replaceAll(" +$", "");
-
-        return result;
+        // compile templates
+        Handlebars handlebars = new Handlebars();
+        typeTemplate = template(handlebars, "type.md.hbs");
+        readmeTemplate = template(handlebars, "README.md.hbs");
     }
 
     /**
@@ -172,392 +106,185 @@ public class ConfigDocs {
      * The documentation is updated, including copyright years
      */
     public void process() {
-        Path configReference = path.resolve(ConfigDocs.CONFIG_REFERENCE_FILE);
-        try {
-            checkTargetPath(configReference);
-        } catch (IOException e) {
-            throw new ConfigDocsException("Failed to check if target path exists and is valid", e);
-        }
-
-        Handlebars handlebars = new Handlebars();
-        Template typeTemplate = template(handlebars, "type-docs.md.hbs");
-        Template configReferenceTemplate = template(handlebars, "config_reference.md.hbs");
-
-        Enumeration<URL> files;
-        try {
-            files = ConfigDocs.class.getClassLoader().getResources(METADATA_JSON_LOCATION);
-        } catch (IOException e) {
-            throw new ConfigDocsException("Failed to load " + METADATA_JSON_LOCATION + " files from classpath", e);
-        }
-
-        List<CmModule> allModules = new LinkedList<>();
-
-        while (files.hasMoreElements()) {
-            URL url = files.nextElement();
-            try {
-                try (InputStream is = url.openStream()) {
-                    CmModule[] cmModules = JSON_B.fromJson(new InputStreamReader(is, StandardCharsets.UTF_8), CmModule[].class);
-                    allModules.addAll(Arrays.asList(cmModules));
-                }
-            } catch (IOException e) {
-                LOGGER.log(Level.ERROR, "Failed to process metadata JSON file in: " + url, e);
-            }
-        }
-
-        // map of annotated types to documentation
-        Map<String, CmType> configuredTypes = new HashMap<>();
-        Set<String> allTypes = new HashSet<>();
-
-        for (CmModule module : allModules) {
-            for (CmType type : module.getTypes()) {
-                type.module(module.getModule());
-                configuredTypes.put(type.getAnnotatedType(), type);
-                allTypes.add(type.getAnnotatedType());
-                allTypes.add(type.getType());
-            }
-        }
-
-        // translate HTML in description
-        translateHtml(configuredTypes);
         // add all inherited options to each type
-        resolveInheritance(configuredTypes);
-        // add all options from merged types as direct options to each type
-        resolveMerges(configuredTypes);
-        // resolve type reference (for Javadocs)
-        resolveTypeReference(configuredTypes);
-        // add titles (remove io.helidon from package or similar)
-        addTitle(configuredTypes);
+        resolveTypes();
 
-        List<String> generatedFiles = new LinkedList<>();
-        for (CmModule module : allModules) {
-            moduleDocs(allTypes, configuredTypes, typeTemplate, path, module, generatedFiles);
+        // add all options from merged types as direct options to each type
+        resolveMerges();
+
+        // generate config docs
+        for (var metadata : metadatas) {
+            for (var module : metadata.modules()) {
+                LOGGER.log(Level.INFO, "Documenting module " + module.module());
+                for (var type : module.types()) {
+                    generateConfigDoc(type);
+                }
+            }
         }
 
-        // sort alphabetically by page title
-        generatedFiles.sort(Comparator.comparing(ConfigDocs::titleFromFileName));
-
-        generateConfigReference(configReference, configReferenceTemplate, generatedFiles);
+        // generate README.md
+        generateReadme();
 
         // and now report obsolete files
         // filter out generated files
-        try (Stream<Path> x = Files.list(path)
+        try (Stream<Path> stream = Files.list(outputDir)
                 .filter(it -> it.getFileName().toString().endsWith(".md"))
-                .filter(it -> !it.getFileName().toString().equals(CONFIG_REFERENCE_FILE))
+                .filter(it -> !it.getFileName().toString().equals("README.md"))
                 .filter(it -> !generatedFiles.contains(String.valueOf(it.getFileName())))) {
-            x.forEach(it -> LOGGER.log(Level.WARNING, "File " + it.toAbsolutePath()
-                    + " should be deleted, as its config metadata no longer exists"));
+
+            var obsoleteFiles = stream.map(Path::toAbsolutePath).toList();
+            for (var file : obsoleteFiles) {
+                LOGGER.log(Level.WARNING, "File {0} should be deleted, as its config metadata no longer exists", file);
+            }
         } catch (IOException e) {
-            LOGGER.log(Level.ERROR, "Failed to discover obsolete files in " + path.toAbsolutePath(), e);
+            LOGGER.log(Level.ERROR, "Failed to discover obsolete files in " + outputDir.toAbsolutePath(), e);
         }
     }
 
-    private static String replacePre(String result) {
-        // pre - replace with code block
-        StringBuilder theBuilder = new StringBuilder();
-        int lastIndex = 0;
-        while (true) {
-            int index = result.indexOf("<pre>", lastIndex);
-            if (index == -1) {
-                // add the rest of the string
-                theBuilder.append(result.substring(lastIndex));
-                break;
-            }
-            int endIndex = result.indexOf("</pre>", index);
-            theBuilder.append(result, lastIndex, index);
-            theBuilder.append("\n```\n");
-            theBuilder.append(result, index + 5, endIndex);
-            theBuilder.append("\n```\n");
-            lastIndex = endIndex + 6;
-        }
-        return theBuilder.toString();
-    }
-
-    private static String handleTables(String result) {
-        // table - keep as is, just a pass-through
-        StringBuilder theBuilder = new StringBuilder();
-        int lastIndex = 0;
-        while (true) {
-            int index = result.indexOf("<table", lastIndex);
-            if (index == -1) {
-                // add the rest of the string
-                theBuilder.append(result.substring(lastIndex));
-                break;
-            }
-            int endIndex = result.indexOf("</table>", index);
-            theBuilder.append(result, lastIndex, index);
-            lastIndex = endIndex + 8;
-        }
-        return theBuilder.toString();
-    }
-
-    private static String replaceLinks(String result) {
-        //https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm[API Signing Key's fingerprint]
-        Pattern pattern = Pattern.compile("<a.*?href=\"(.*?)\">(.*?)</a>", Pattern.DOTALL);
-        return pattern.matcher(result).replaceAll(it -> "[%s](%s)".formatted(it.group(2), it.group(1)));
-    }
-
-    // replaces beginning and ending tags with a string, and removed end of lines in the text within
-    private static String replace(String source, String start, String end, String newStart, String newEnd) {
-        Pattern pattern = Pattern.compile(start + "(\\s*)(.*?)(\\s*)" + end, Pattern.DOTALL);
-        return pattern.matcher(source)
-                .replaceAll(it -> it.group(1)
-                        + newStart
-                        + it.group(2).replace('\n', ' ')
-                        + newEnd
-                        + it.group(3));
-    }
-
-    private static String title(String typeName) {
-        String title = typeName;
-        if (title.startsWith("io.helidon.")) {
-            title = title.substring("io.helidon.".length());
-            int i = title.lastIndexOf('.');
-            if (i != -1) {
-                String simpleName = title.substring(i + 1);
-                String thePackage = title.substring(0, i);
-                title = simpleName + " (" + thePackage + ")";
-            }
-        }
-        return title;
-    }
-
-    private static void moduleDocs(Set<String> allTypes,
-                                   Map<String, CmType> configuredTypes,
-                                   Template template,
-                                   Path modulePath,
-                                   CmModule module,
-                                   List<String> generatedFiles) {
-        Function<String, Boolean> exists = type -> {
-            // 1: check if part of this processing
-            if (allTypes.contains(type)) {
-                return true;
-            }
-            // 2: check if exists in target directory
-            String path = type.replace('.', '_') + ".md";
-            return Files.exists(modulePath.resolve(path));
-        };
-        LOGGER.log(Level.INFO, "Documenting module " + module.getModule());
-        // each type will have its own, such as:
-        // docs/io.helidon.common.configurable/LruCache.md
-        for (CmType type : module.getTypes()) {
-            try {
-                generateType(generatedFiles, configuredTypes, template, modulePath, type, exists);
-            } catch (IOException e) {
-                LOGGER.log(Level.ERROR, "Failed to generate docs for annotated type: " + type.getAnnotatedType(), e);
-            }
-        }
-    }
-
-    private static void generateType(List<String> generatedFiles,
-                                     Map<String, CmType> configuredTypes,
-                                     Template template,
-                                     Path modulePath,
-                                     CmType type,
-                                     Function<String, Boolean> exists) throws IOException {
-        sortOptions(type);
-
-        String fileName = fileName(type.getType());
-        Path typePath = modulePath.resolve(fileName);
-
-        boolean sameContent = false;
-        if (Files.exists(typePath)) {
-            // check if maybe the file content is not modified
-            CharSequence current = typeFile(configuredTypes,
-                                            template,
-                                            type,
-                                            exists,
-                                            currentCopyrightYears(typePath));
-            if (sameContent(typePath, current)) {
-                sameContent = true;
-            }
-        }
-
-        CharSequence fileContent = typeFile(configuredTypes,
-                                            template,
-                                            type,
-                                            exists,
-                                            newCopyrightYears(typePath));
-
-        generatedFiles.add(fileName);
-        if (!sameContent) {
-            // Write the target type
-            Files.writeString(typePath,
-                              fileContent,
-                              StandardOpenOption.TRUNCATE_EXISTING,
-                              StandardOpenOption.CREATE);
-        }
-
-        if (!type.getAnnotatedType().startsWith(type.getType())) {
-            // generate two docs, just to make sure we do not have a conflict
-            // example: Zipkin and Jaeger generate target type io.opentracing.Tracer, yet we need separate documents
-            fileName = fileName(type.getAnnotatedType());
-            Path annotatedTypePath = modulePath.resolve(fileName);
-            generatedFiles.add(fileName);
-            if (!sameContent) {
-                // Write the annotated type (needed for Jaeger & Zipkin that produce the same target)
-                Files.writeString(annotatedTypePath,
-                                  fileContent,
-                                  StandardOpenOption.TRUNCATE_EXISTING,
-                                  StandardOpenOption.CREATE);
-            }
-        }
-    }
-
-    private static boolean sameContent(Path path, CharSequence current) {
+    private void generateConfigDoc(CmType type) {
         try {
-            return Files.readString(path).equals(current.toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+            var sortedOptions = new ArrayList<>(type.options());
+            sortedOptions.sort(Comparator.comparing(CmOption::key));
 
-    private static String fileName(String typeName) {
-        return typeName.replace('.', '_') + ".md";
-    }
-
-    private static void sortOptions(CmType type) {
-        List<CmOption> options = new ArrayList<>(type.getOptions());
-        options.sort(Comparator.comparing(CmOption::getKey));
-        type.setOptions(options);
-    }
-
-    private static CharSequence configReferenceFile(Template template,
-                                                    List<String> generatedFiles,
-                                                    String copyrightYears) {
-        List<CmReference> references = new ArrayList<>();
-        for (String generatedFile : generatedFiles) {
-            references.add(new CmReference(generatedFile,
-                                           titleFromFileName(generatedFile)));
-        }
-        Map<String, Object> context = Map.of("year", copyrightYears,
-                                             "data", references);
-        try {
-            return template.apply(context);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static CharSequence typeFile(Map<String, CmType> configuredTypes,
-                                         Template template,
-                                         CmType type,
-                                         Function<String, Boolean> exists,
-                                         String copyrightYears) throws IOException {
-        boolean hasRequired = false;
-        boolean hasOptional = false;
-        for (CmOption option : type.getOptions()) {
-            if (option.isRequired()) {
-                hasRequired = true;
-            } else {
-                hasOptional = true;
-            }
-            option.setRefType(mapType(configuredTypes, option, exists));
-        }
-
-        Map<String, Object> context = Map.of("year", copyrightYears,
-                                             "hasRequired", hasRequired,
-                                             "hasOptional", hasOptional,
-                                             "type", type);
-        return template.apply(context);
-    }
-
-    private static String newCopyrightYears(Path path) {
-        String currentYear = String.valueOf(ZonedDateTime.now().getYear());
-
-        if (Files.exists(path)) {
-            // get current copyright year
-            String copyrightYears = currentCopyrightYears(path);
-            if (copyrightYears == null) {
-                return currentYear;
-            }
-            if (copyrightYears.endsWith(currentYear)) {
-                return copyrightYears;
-            }
-            int index = copyrightYears.indexOf(',');
-            if (index == -1) {
-                return copyrightYears + ", " + currentYear;
-            }
-            return copyrightYears.substring(0, index) + ", " + currentYear;
-        }
-        return currentYear;
-    }
-
-    private static String currentCopyrightYears(Path path) {
-        try (var lines = Files.lines(path)) {
-            return lines.flatMap(line -> {
-                        Matcher matcher = COPYRIGHT_LINE_PATTERN.matcher(line);
-                        if (matcher.matches()) {
-                            return Stream.of(matcher.group(1));
-                        }
-                        return Stream.empty();
-                    })
-                    .findFirst()
-                    .orElse(null);
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Could not discover existing copyright year for " + path.toAbsolutePath(), e);
-            return null;
-        }
-    }
-
-    private static String mapType(Map<String, CmType> configuredTypes,
-                                  CmOption option,
-                                  Function<String, Boolean> exists) {
-        String type = option.getType();
-        String mapped = TYPE_MAPPING.get(type);
-        CmOption.Kind kind = option.getKind();
-
-        String displayType = displayType(kind, mapped == null ? type : mapped);
-
-        if (mapped == null) {
-            if (option.getAllowedValues() != null && !option.getAllowedValues().isEmpty()) {
-                return mapAllowedValues(option, displayType);
-            }
-            if (option.isProvider()) {
-                String providerType = option.getProviderType();
-                providerType = (providerType == null) ? type : providerType;
-                StringBuilder typeString = new StringBuilder(byKind(kind, type));
-                typeString.append(" (service provider interface)");
-
-                // let's try to locate available service implementations on classpath
-                List<CmType> providers = findProviders(configuredTypes, providerType);
-                if (!providers.isEmpty()) {
-                    typeString.append("\n\nSuch as:\n\n");
-                    for (CmType provider : providers) {
-                        String linkText = displayType(CmOption.Kind.VALUE, provider.getType());
-                        if (provider.getPrefix() != null) {
-                            linkText = provider.getPrefix() + " (" + linkText + ")";
-                        }
-                        typeString.append(" - ")
-                                .append(toLink(provider.getType(), linkText, exists));
-                        typeString.append("\n");
-                    }
-                    typeString.append("\n");
+            var requiredOptions = new ArrayList<Map<String, Object>>();
+            for (var option : sortedOptions) {
+                if (option.required()) {
+                    requiredOptions.add(Map.of(
+                            "key", option.key(),
+                            "deprecated", option.deprecated(),
+                            "refType", refType(option),
+                            "providers", optionProviders(option),
+                            "allowedValues", option.allowedValues(),
+                            "defaultValue", option.defaultValue(),
+                            "description", option.description()));
                 }
-                return typeString.toString();
             }
-            return toLink(type, displayType, exists);
+
+            var optionalOptions = new ArrayList<Map<String, Object>>();
+            for (var option : sortedOptions) {
+                if (!option.required()) {
+                    optionalOptions.add(Map.of(
+                            "key", option.key(),
+                            "deprecated", option.deprecated(),
+                            "refType", refType(option),
+                            "providers", optionProviders(option),
+                            "allowedValues", option.allowedValues(),
+                            "defaultValue", option.defaultValue(),
+                            "description", option.description()));
+                }
+            }
+
+            var context = new HashMap<String, Object>();
+            var typeName = type.type();
+            context.put("title", titleFromTypeName(typeName));
+            context.put("description", type.description());
+            context.put("type", typeName);
+            if (typeName.startsWith("io.helidon")) {
+                var module = modulesByTypes.get(type);
+                if (module == null) {
+                    throw new IllegalStateException("Module not found for type: " + typeName);
+                }
+                var moduleName = module.module();
+                var javadocType = toJavadocLink(typeName);
+                var javadocUrl = "https://helidon.io/docs/latest/apidocs/%s/%s)".formatted(moduleName, javadocType);
+                context.put("javadocUrl", javadocUrl); // TODO update template to use it
+            }
+            context.put("standalone", type.standalone());
+            context.put("prefix", type.prefix());
+            context.put("provides", type.provides());
+            context.put("requiredOptions", requiredOptions);
+            context.put("optionalOptions", optionalOptions);
+
+            var content = typeTemplate.apply(context);
+
+            generateFile(fileNameFromTypeName(type.type()), content);
+
+            // generate a file for the annotated type to avoid conflicts
+            if (!type.annotatedType().startsWith(type.type())) {
+                generateFile(fileNameFromTypeName(type.annotatedType()), content);
+            }
+        } catch (IOException ex) {
+            LOGGER.log(Level.ERROR, "Failed to render content for type: " + type.type(), ex);
         }
-        return displayType;
     }
 
-    private static String toLink(String type, String displayType, Function<String, Boolean> exists) {
+    private void generateReadme() {
+        var readmeFile = outputDir.resolve("README.md");
+        LOGGER.log(Level.INFO, "Generating " + readmeFile);
+
+        try {
+            // sort alphabetically by page title
+            var sortedFiles = new ArrayList<>(generatedFiles);
+            sortedFiles.sort(Comparator.comparing(ConfigDocs::titleFromFileName));
+
+            var data = new ArrayList<Map<String, String>>();
+            for (var file : sortedFiles) {
+                var title = titleFromFileName(file);
+                data.add(Map.of("file", file, "title", title));
+            }
+            var content = readmeTemplate.apply(Map.of("data", data));
+
+            Files.writeString(readmeFile,
+                    content,
+                    TRUNCATE_EXISTING,
+                    CREATE);
+        } catch (IOException e) {
+            LOGGER.log(Level.ERROR, "Failed to generate readme " + readmeFile, e);
+        }
+    }
+
+    private boolean isDocumented(String typeName) {
+        if (allTypes.contains(typeName)) {
+            return true;
+        }
+        var path = fileNameFromTypeName(typeName);
+        return Files.exists(outputDir.resolve(path));
+    }
+
+    private String refType(CmOption option) {
+        var mapped = TYPE_MAPPING.get(option.type());
+        if (mapped != null) {
+            return mapped;
+        }
+        if (!option.provider()) {
+            var displayType = displayType(option.kind(), option.type());
+            return toLink(option.type(), displayType);
+        } else {
+            return byKind(option.kind(), option.type());
+        }
+    }
+
+    private List<Map<String, ?>> optionProviders(CmOption option) {
+        var providers = new ArrayList<Map<String, ?>>();
+        var type = option.type();
+        var providerType = option.providerType();
+        for (var e : findProviders(providerType == null ? type : providerType)) {
+            providers.add(Map.of(
+                    "prefix", e.prefix(),
+                    "path", e.type(), // TODO relative path of the .md file
+                    "name", e.shortType()));
+        }
+        return providers;
+    }
+
+    // TODO handle this in the template
+    private String toLink(String type, String displayType) {
         if (type.startsWith("io.helidon")) {
             if (type.equals("io.helidon.config.Config") || type.equals("io.helidon.common.config.Config")) {
                 return "Map&lt;string, string&gt; (documented for specific cases)";
             }
-            // make sure the file exists
-            if (exists.apply(type)) {
+            if (isDocumented(type)) {
                 return "[%s](%s.md)".formatted(displayType, type.replace('.', '_'));
             }
         }
         return displayType;
     }
 
-    private static List<CmType> findProviders(Map<String, CmType> configuredTypes, String providerInterface) {
-        return configuredTypes.values()
+    private List<CmType> findProviders(String typeName) {
+        return configTypes.values()
                 .stream()
-                .filter(it -> it.getProvides() != null)
-                .filter(it -> it.getProvides().contains(providerInterface))
+                .filter(it -> !it.provides().isEmpty())
+                .filter(it -> it.provides().contains(typeName))
                 .toList();
     }
 
@@ -590,105 +317,130 @@ public class ConfigDocs {
         };
     }
 
-    private static String mapAllowedValues(CmOption option, String displayType) {
-        List<CmAllowedValue> values = option.getAllowedValues();
-
-        return displayType
-                + " (" + values.stream().map(CmAllowedValue::getValue).collect(Collectors.joining(", ")) + ")";
-    }
-
-    // if the target path exists, it must either contain zero files, or the config reference
-    private void checkTargetPath(Path configReference) throws IOException {
-        // contains config reference
-        if (Files.exists(configReference) && Files.isRegularFile(configReference)) {
-            return;
-        }
-        if (!Files.exists(path)) {
-            Files.createDirectories(path);
-            return;
-        }
-        if (Files.isDirectory(path)) {
-            // must be empty
-            try (Stream<Path> stream = Files.list(path)) {
-                if (stream.findAny()
-                        .isPresent()) {
-
-                    throw new ConfigDocsException(
-                            "Cannot generate config reference documentation, unless target path contains "
-                            + CONFIG_REFERENCE_FILE + " file or it is empty. "
-                            + "Target path: " + path.toAbsolutePath() + " contains files");
+    private void resolveMerges() {
+        var remaining = new ArrayList<>(configTypes.values());
+        var resolvedTypes = new HashMap<String, CmType>();
+        boolean done = false;
+        while (!done) {
+            done = true;
+            for (int i = 0; i < remaining.size(); i++) {
+                var next = remaining.get(i);
+                boolean resolved = true;
+                var options = next.options();
+                for (int j = 0; j < options.size(); j++) {
+                    var option = options.get(j);
+                    var optionType = option.type();
+                    if (option.merge()) {
+                        // primitives and strings are always resolved
+                        if (!(TYPE_MAPPING.containsKey(optionType) || TYPE_MAPPING.containsValue(optionType))) {
+                            resolved = false;
+                            if (resolvedTypes.containsKey(optionType)) {
+                                options.remove(j);
+                                options.addAll(resolvedTypes.get(optionType).options());
+                                done = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (resolved) {
+                    resolvedTypes.put(next.type(), next);
+                    remaining.remove(i);
+                    done = false;
+                    break;
                 }
             }
-        } else {
-            throw new IllegalArgumentException("Target path must be a directory: "
-                                                       + path.toAbsolutePath().normalize());
+        }
+
+        if (!remaining.isEmpty()) {
+            for (var type : remaining) {
+                for (var option : type.options()) {
+                    if (option.merge()) {
+                        LOGGER.log(Level.WARNING, "Option {0}, merges: {1} in {2} (unknown)",
+                                option.key(), option.type(), type.annotatedType());
+                    }
+                }
+            }
         }
     }
 
-    private Template template(Handlebars handlebars, String template) {
-        URL resource = ConfigDocs.class.getResource(template);
-        if (resource == null) {
-            throw new ConfigDocsException("Failed to locate required handlebars template on classpath: " + template);
-        }
-        try {
-            return handlebars.compile(new URLTemplateSource(template, resource));
-        } catch (IOException e) {
-            throw new ConfigDocsException("Failed to load handlebars template on classpath: " + template, e);
-        }
-    }
-
-    private void generateConfigReference(Path configReference, Template template, List<String> generatedFiles) {
-        if (Files.exists(configReference)) {
-            // if content not modified, do not update copyright
-            CharSequence current = configReferenceFile(template,
-                                                       generatedFiles,
-                                                       currentCopyrightYears(configReference));
-            if (sameContent(configReference, current)) {
-                return;
+    private void resolveTypes() {
+        var remaining = new ArrayList<>(configTypes.values());
+        boolean resolved = true;
+        while (resolved) {
+            resolved = false;
+            for (int i = 0; i < remaining.size(); i++) {
+                var next = remaining.get(i);
+                if (next.inherits().isEmpty()) {
+                    configTypes.put(next.annotatedType(), next);
+                    resolved = true;
+                    remaining.remove(i);
+                    break;
+                } else {
+                    boolean allExist = true;
+                    for (String inherit : next.inherits()) {
+                        if (!configTypes.containsKey(inherit)) {
+                            allExist = false;
+                            break;
+                        }
+                    }
+                    if (allExist) {
+                        var resolvedType = resolveType(next);
+                        configTypes.put(next.type(), resolvedType);
+                        resolved = true;
+                        remaining.remove(i);
+                        break;
+                    }
+                }
             }
         }
 
-        CharSequence fileContent = configReferenceFile(template,
-                                                       generatedFiles,
-                                                       newCopyrightYears(configReference));
+        if (!remaining.isEmpty()) {
+            for (var type : remaining) {
+                LOGGER.log(Level.WARNING, "Type {0} inherits contains unknown type(s): {1}", type.type(), type.inherits());
+            }
+        }
+    }
 
+    private CmType resolveType(CmType type) {
+        // Allow option info on subclasses or implementations of interfaces to override option info from higher.
+        var allOptions = new HashMap<String, CmOption>();
+
+        // Traverse from higher to lower in the inheritance structure so more specific settings take precedence.
+        var it = type.inherits().listIterator(type.inherits().size());
+        while (it.hasPrevious()) {
+            var previous = it.previous();
+            for (var e : configTypes.get(previous).options()) {
+                allOptions.put(e.key(), e);
+            }
+        }
+
+        // Now apply options from the type being processed.
+        for (CmOption opt : type.options()) {
+            allOptions.put(opt.key(), opt);
+        }
+
+        return new CmType(
+                type.type(),
+                type.annotatedType(),
+                List.copyOf(allOptions.values()),
+                type.description(),
+                type.prefix(),
+                type.standalone(),
+                List.of(),
+                type.producers(),
+                type.provides());
+    }
+
+    private void generateFile(String name, CharSequence content) {
+        LOGGER.log(Level.INFO, "Generating " + name);
         try {
-            LOGGER.log(Level.INFO, "Updating " + configReference.toAbsolutePath());
-            Files.writeString(configReference,
-                              fileContent,
-                              StandardOpenOption.TRUNCATE_EXISTING,
-                              StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            LOGGER.log(Level.ERROR, "Failed to update " + configReference.toAbsolutePath(), e);
+            var outputFile = outputDir.resolve(name);
+            Files.writeString(outputFile, content, TRUNCATE_EXISTING, CREATE);
+            generatedFiles.add(name);
+        } catch (IOException ex) {
+            LOGGER.log(Level.ERROR, "Failed to generate: " + name, ex);
         }
-    }
-
-    private void addTitle(Map<String, CmType> configuredTypes) {
-        for (CmType value : configuredTypes.values()) {
-            value.setTitle(title(value.getType()));
-        }
-    }
-
-    private void resolveTypeReference(Map<String, CmType> configuredTypes) {
-        for (CmType value : configuredTypes.values()) {
-            value.setTypeReference(resolveTypeReference(value));
-        }
-    }
-
-    private String resolveTypeReference(CmType cmType) {
-        String type = cmType.getType();
-        if (type.startsWith("io.helidon")) {
-            // our type
-            return resolveModuleFromType(cmType);
-        } else {
-            // no reference
-            return type;
-        }
-    }
-
-    private String resolveModuleFromType(CmType cmType) {
-        String type = cmType.getType();
-        return "[%s](https://helidon.io/docs/latest/apidocs/%s/%s)".formatted(type, cmType.module(), toJavadocLink(type));
     }
 
     private String toJavadocLink(String type) {
@@ -722,151 +474,74 @@ public class ConfigDocs {
         return link.toString();
     }
 
-    private void translateHtml(Map<String, CmType> configuredTypes) {
-        for (CmType value : configuredTypes.values()) {
-            value.getOptions().forEach(this::translateHtml);
+    private static Template template(Handlebars handlebars, String template) {
+        URL resource = ConfigDocs.class.getResource(template);
+        if (resource == null) {
+            throw new IllegalStateException("Failed to locate required handlebars template on classpath: " + template);
+        }
+        try {
+            return handlebars.compile(new URLTemplateSource(template, resource));
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load handlebars template on classpath: " + template, e);
         }
     }
 
-    private void translateHtml(CmOption option) {
-        String description = option.getDescription();
-        description = addAllowedValues(description, option);
-        description = translateHtml(description);
-        option.setDescription(description);
-    }
-
-    private String addAllowedValues(String description, CmOption option) {
-        List<CmAllowedValue> allowedValues = option.getAllowedValues();
-        if (allowedValues == null || allowedValues.isEmpty()) {
-            // no allowed values
-            return description;
+    private static void validateOutputDir(Path outputDir) {
+        if (!Files.isDirectory(outputDir)) {
+            throw new IllegalArgumentException("Not a directory: " + outputDir);
         }
-        if (allowedValues.stream()
-                .allMatch(it -> it.getDescription() == null || it.getDescription().isBlank())) {
-            // allowed values, but no description (we should eventually add Javadoc link, if we can figure out
-            // how to locate the URL for it
-            return description;
-        }
-        StringBuilder sb = new StringBuilder("\n\nAllowed values:\n\n");
-        for (CmAllowedValue allowedValue : allowedValues) {
-            sb.append("- `")
-                    .append(allowedValue.getValue())
-                    .append("`: ")
-                    .append(allowedValue.getDescription())
-                    .append('\n');
-
-        }
-        return description + sb;
-    }
-
-    private void resolveMerges(Map<String, CmType> configuredTypes) {
-        List<CmType> remaining = new ArrayList<>(configuredTypes.values());
-        Map<String, CmType> resolved = new HashMap<>();
-        boolean shouldExit = false;
-        while (!shouldExit) {
-            shouldExit = true;
-
-            for (int i = 0; i < remaining.size(); i++) {
-                CmType next = remaining.get(i);
-                boolean isResolved = true;
-                List<CmOption> options = next.getOptions();
-                for (int j = 0; j < options.size(); j++) {
-                    CmOption option = options.get(j);
-                    String optionType = option.getType();
-                    if (option.isMerge()) {
-                        // primitives and strings are always resolved
-                        if (!(TYPE_MAPPING.containsKey(optionType) || TYPE_MAPPING.containsValue(optionType))) {
-                            isResolved = false;
-                            if (resolved.containsKey(optionType)) {
-                                options.remove(j);
-                                options.addAll(resolved.get(optionType).getOptions());
-                                shouldExit = false;
-                                break;
-                            }
+        try {
+            if (!Files.exists(outputDir)) {
+                Files.createDirectories(outputDir);
+            } else {
+                var readme = outputDir.resolve("README.md");
+                if (!(Files.exists(readme) && Files.isRegularFile(readme))) {
+                    // must be empty
+                    try (Stream<Path> stream = Files.list(outputDir)) {
+                        if (stream.findAny().isPresent()) {
+                            throw new IllegalStateException(
+                                    "Directory is not empty and does not contain README.md: " + outputDir);
                         }
                     }
                 }
-
-                if (isResolved) {
-                    resolved.put(next.getType(), next);
-                    remaining.remove(i);
-                    shouldExit = false;
-                    break;
-                }
             }
-        }
-
-        if (!remaining.isEmpty()) {
-            LOGGER.log(Level.WARNING, "There are types with merged type that is not on classpath: ");
-            for (CmType cmType : remaining) {
-                for (CmOption option : cmType.getOptions()) {
-                    if (option.isMerge()) {
-                        LOGGER.log(Level.WARNING, "    Option " + option.getKey() + ", merges: " + option.getType() + " in "
-                                + cmType.getAnnotatedType());
-                    }
-                }
-
-            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
-    private void resolveInheritance(Map<String, CmType> configuredTypes) {
-        Map<String, CmType> resolved = new HashMap<>();
-        List<CmType> remaining = new ArrayList<>(configuredTypes.values());
-
-        boolean didResolve = true;
-
-        while (didResolve) {
-            didResolve = false;
-            for (int i = 0; i < remaining.size(); i++) {
-                CmType next = remaining.get(i);
-                if (next.getInherits() == null) {
-                    resolved.put(next.getAnnotatedType(), next);
-                    didResolve = true;
-                    remaining.remove(i);
-                    break;
-                } else {
-                    boolean allExist = true;
-                    for (String inherit : next.getInherits()) {
-                        if (!resolved.containsKey(inherit)) {
-                            allExist = false;
-                            break;
-                        }
-                    }
-                    if (allExist) {
-                        resolveInheritance(resolved, next);
-                        resolved.put(next.getType(), next);
-                        didResolve = true;
-                        remaining.remove(i);
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!remaining.isEmpty()) {
-            System.err.println("There are types with inheritance that is not on classpath: ");
-            for (CmType cmType : remaining) {
-                System.err.println("Type " + cmType.getType() + ", inherits: " + cmType.getInherits());
-            }
-        }
+    private static String fileNameFromTypeName(String typeName) {
+        return typeName.replace('.', '_') + ".md";
     }
 
-    private void resolveInheritance(Map<String, CmType> resolved, CmType next) {
-        // Allow option info on subclasses or implementations of interfaces to override option info from higher.
-        Map<String, CmOption> options = new HashMap<>();
-
-        List<String> inherits = next.getInherits();
-        // Traverse from higher to lower in the inheritance structure so more specific settings take precedence.
-        ListIterator<String> inheritsIt = inherits.listIterator(inherits.size());
-        while (inheritsIt.hasPrevious()) {
-            resolved.get(inheritsIt.previous())
-                    .getOptions()
-                    .forEach(inheritedOption -> options.put(inheritedOption.getKey(), inheritedOption));
+    private static String titleFromTypeName(String typeName) {
+        String title = typeName;
+        if (title.startsWith("io.helidon.")) {
+            title = title.substring("io.helidon.".length());
+            int i = title.lastIndexOf('.');
+            if (i != -1) {
+                String simpleName = title.substring(i + 1);
+                String thePackage = title.substring(0, i);
+                title = simpleName + " (" + thePackage + ")";
+            }
         }
-        // Now apply options from the type being processed.
-        next.getOptions().forEach(opt -> options.put(opt.getKey(), opt));
-        next.setOptions(new ArrayList<>(options.values()));
-        next.setInherits(null);
+        return title;
+    }
+
+    private static String titleFromFileName(String fileName) {
+        var title = fileName;
+        if (title.endsWith(".md")) {
+            title = title.substring(0, title.length() - 3);
+        }
+        if (title.startsWith("io_helidon_")) {
+            title = title.substring("io_helidon_".length());
+            int i = title.lastIndexOf('_');
+            if (i != -1) {
+                var simpleName = title.substring(i + 1);
+                var thePackage = title.substring(0, i);
+                title = simpleName + " (" + thePackage.replace('_', '.') + ")";
+            }
+        }
+        return title;
     }
 }
