@@ -417,7 +417,7 @@ final class JavadocProcessor {
         }
 
         private TypeElement resolveType(TypeElement currentType, String typeName) {
-            // search by qualified name in current module first
+            // search by qualified key in current module first
             var module = elements.getModuleOf(currentType);
             if (module != null) {
                 var resolved = elements.getTypeElement(module, typeName);
@@ -468,7 +468,7 @@ final class JavadocProcessor {
                 }
             }
 
-            // search by qualified name in all modules
+            // search by qualified key in all modules
             resolved = elements.getTypeElement(typeName);
             if (resolved != null) {
                 return resolved;

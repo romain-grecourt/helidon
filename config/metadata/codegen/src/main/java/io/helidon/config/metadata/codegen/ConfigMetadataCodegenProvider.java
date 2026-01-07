@@ -23,10 +23,9 @@ import io.helidon.codegen.spi.CodegenExtension;
 import io.helidon.codegen.spi.CodegenExtensionProvider;
 import io.helidon.common.types.TypeName;
 
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.CONFIGURED;
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.META_CONFIGURED;
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.META_OPTION;
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.META_OPTIONS;
+import static io.helidon.config.metadata.codegen.Types.CONFIGURED;
+import static io.helidon.config.metadata.codegen.Types.OPTION;
+import static io.helidon.config.metadata.codegen.Types.OPTIONS;
 
 /**
  * A Java {@link java.util.ServiceLoader} service implementation to add config metadata code generation.
@@ -45,9 +44,8 @@ public class ConfigMetadataCodegenProvider implements CodegenExtensionProvider {
 
     @Override
     public Set<TypeName> supportedAnnotations() {
-        return Set.of(META_CONFIGURED,
-                      META_OPTION,
-                      META_OPTIONS,
-                      CONFIGURED);
+        return Set.of(CONFIGURED,
+                OPTION,
+                OPTIONS);
     }
 }

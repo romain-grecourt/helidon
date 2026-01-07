@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright (c) 2021, 2025 Oracle and/or its affiliates.
+    Copyright (c) 2021, 2026 Oracle and/or its affiliates.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -33,40 +33,22 @@
         Configuration Metadata processing.
     </description>
 
+    <properties>
+        <dependency-plugin-check-dependencies.skip>true</dependency-plugin-check-dependencies.skip>
+    </properties>
+
     <dependencies>
         <dependency>
+            <groupId>io.helidon.codegen</groupId>
+            <artifactId>helidon-codegen-apt</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.helidon.common</groupId>
-            <artifactId>helidon-common-types</artifactId>
+            <artifactId>helidon-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.helidon.common.processor</groupId>
-            <artifactId>helidon-common-processor</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.helidon.metadata</groupId>
-            <artifactId>helidon-metadata-hson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-all</artifactId>
-            <scope>test</scope>
+            <groupId>io.helidon.config.metadata</groupId>
+            <artifactId>helidon-config-metadata-codegen</artifactId>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <compilerArgument>-proc:none</compilerArgument>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

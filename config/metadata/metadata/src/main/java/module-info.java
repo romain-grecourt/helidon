@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /**
- * Configuration metadata annotations.
+ * Config metadata annotations.
  */
 module io.helidon.config.metadata {
 

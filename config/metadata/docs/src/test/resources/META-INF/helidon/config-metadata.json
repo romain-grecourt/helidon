@@ -1,0 +1,36 @@
+[
+    {
+        "module": "io.helidon.config.metadata.docs",
+        "types": [
+            {
+                "type": "io.helidon.config.metadata.docs.AcmeConfig",
+                "annotatedType": "io.helidon.config.metadata.docs.AcmeConfig",
+                "standalone": true,
+                "prefix": "acme",
+                "description": "This is the ACME configuration",
+                "provides": [
+                    "io.helidon.config.metadata.docs.AcmeProvider"
+                ],
+                "producers": [
+                    "io.helidon.config.metadata.docs.AcmeConfig#create(io.helidon.config.Config)",
+                    "io.helidon.config.metadata.docs.AcmeConfig#builder()"
+                ],
+                "options": [
+                    {
+                        "key": "option1",
+                        "type": "java.lang.Long",
+                        "description": "The first option.",
+                        "defaultValue": "8192",
+                        "method": "io.helidon.config.metadata.docs.AcmeConfig.Builder#option1(long)",
+                        "allowedValues": [
+                            {
+                                "value": "8192",
+                                "description": "eight one nine two"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]

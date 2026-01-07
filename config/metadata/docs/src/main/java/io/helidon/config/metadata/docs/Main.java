@@ -16,14 +16,13 @@
 
 package io.helidon.config.metadata.docs;
 
-import java.net.URISyntaxException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import io.helidon.config.metadata.model.ConfigMetadata;
 import io.helidon.logging.common.LogConfig;
 
 /**
- * Main class to start generating config reference documentation.
+ * Config docs generator entry point.
  */
 public final class Main {
     static {
@@ -34,27 +33,19 @@ public final class Main {
     }
 
     /**
-     * Start generating reference documentation.
+     * Process the config metadata from the classpath and generate the corresponding documentation.
      *
-     * @param args either empty (heuristics), or a single parameter (the output directory)
-     * @throws IllegalStateException if an error occurs
+     * @param args a single parameter (the output directory)
      */
     public static void main(String[] args) {
-        LogConfig.configureRuntime();
-        Path outputDir;
-        if (args.length == 0) {
-            try {
-                var codeSource = Paths.get(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-                outputDir = codeSource.resolve("../../../../docs/config");
-            } catch (URISyntaxException e) {
-                throw new IllegalStateException(e);
-            }
-        } else if (args.length == 1) {
-            outputDir = Paths.get(args[0]).toAbsolutePath().normalize();
-        } else {
-            throw new IllegalArgumentException("Invalid arguments, must be <= 1, got: " + args.length);
+        if (args.length != 1) {
+            System.err.println("Usage: output_directory");
+            System.exit(1);
         }
-        var docs = new ConfigDocs(outputDir, ConfigMetadata.loadAll());
+        LogConfig.configureRuntime();
+        var outputDir = Paths.get(args[0]).toAbsolutePath().normalize();
+        var metadata = ConfigMetadata.loadAll(Main.class.getClassLoader());
+        var docs = new ConfigDocs(outputDir, metadata);
         docs.process();
     }
 }

@@ -17,325 +17,95 @@
 package io.helidon.config.metadata.codegen;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.helidon.common.types.TypeName;
 import io.helidon.metadata.hson.Hson;
 
-final class ConfiguredType {
-    private final Set<ConfiguredProperty> allProperties = new HashSet<>();
-    private final List<ProducerMethod> producerMethods = new LinkedList<>();
-    /*
-     * The type that is built by a builder, or created using create method.
+/**
+ * Configured type.
+ *
+ * @param annotation     annotation
+ * @param targetClass    target class (runtime type)
+ * @param annotatedClass annotated class
+ * @param properties     properties
+ * @param producers      producers
+ * @param inherits       effective type hierarchy
+ */
+record ConfiguredType(
+        ConfiguredAnnotation annotation,
+        TypeName targetClass,
+        TypeName annotatedClass,
+        Set<ConfiguredProperty> properties,
+        List<ProducerMethod> producers,
+        List<TypeName> inherits) {
+
+    /**
+     * Convert to JSON.
+     *
+     * @return JSON
      */
-    private final TypeName targetClass;
-    /*
-    The type we are processing that has @Configured annotation
-     */
-    private final TypeName annotatedClass;
-    private final List<TypeName> inherited = new LinkedList<>();
-    private final ConfiguredAnnotation configured;
+    Hson.Struct toJson() {
+        var builder = Hson.Struct.builder();
 
-    ConfiguredType(ConfiguredAnnotation configured, TypeName annotatedClass, TypeName targetClass, boolean typeDefinition) {
-        this.annotatedClass = annotatedClass;
-        this.targetClass = targetClass;
-        this.configured = configured;
-    }
-
-    ConfiguredType addProducer(ProducerMethod producer) {
-        producerMethods.add(producer);
-        return this;
-    }
-
-    ConfiguredType addProperty(ConfiguredProperty property) {
-        allProperties.add(property);
-        return this;
-    }
-
-    List<ProducerMethod> producers() {
-        return producerMethods;
-    }
-
-    Set<ConfiguredProperty> properties() {
-        return allProperties;
-    }
-
-    String targetClass() {
-        return targetClass.fqName();
-    }
-
-    String annotatedClass() {
-        return annotatedClass.fqName();
-    }
-
-    boolean standalone() {
-        return configured.root();
-    }
-
-    String prefix() {
-        return configured.prefix().orElse(null);
-    }
-
-    void write(List<Hson.Struct> typeArray) {
-        var typeObject = Hson.Struct.builder();
-
-        typeObject.set("type", targetClass());
-        typeObject.set("annotatedType", annotatedClass());
-        if (standalone()) {
-            typeObject.set("standalone", true);
+        builder.set("type", targetClass.fqName());
+        builder.set("annotatedType", annotatedClass.fqName());
+        if (annotation.root()) {
+            builder.set("standalone", true);
         }
-        configured.prefix().ifPresent(it -> typeObject.set("prefix", it));
-        configured.description().ifPresent(it -> typeObject.set("description", it));
+        if (annotation.prefix() != null) {
+            builder.set("prefix", annotation.prefix());
+        }
+        if (annotation.description() != null) {
+            builder.set("description", annotation.description());
+        }
 
-        if (!inherited.isEmpty()) {
-            typeObject.setStrings("inherits", inherited.stream()
+        if (!inherits.isEmpty()) {
+            builder.setStrings("inherits", inherits.stream()
                     .map(TypeName::fqName)
                     .toList());
         }
 
-        if (!configured.provides().isEmpty()) {
-            typeObject.setStrings("provides", configured.provides());
+        if (!annotation.provides().isEmpty()) {
+            builder.setStrings("provides", annotation.provides());
         }
 
-        if (!producerMethods.isEmpty()) {
-            typeObject.setStrings("producers", producerMethods.stream()
+        if (!producers.isEmpty()) {
+            builder.setStrings("producers", producers.stream()
                     .map(Object::toString)
                     .collect(Collectors.toList()));
         }
 
-        List<Hson.Struct> options = new ArrayList<>();
-        for (ConfiguredProperty property : allProperties) {
-            writeProperty(options, "", property);
-        }
-        typeObject.setStructs("options", options);
+        // flatten all properties
+        var allProperties = new ArrayList<ConfiguredProperty>();
+        flatten(allProperties, annotation.prefix(), properties);
 
-        typeArray.add(typeObject.build());
+        builder.setStructs("options", allProperties.stream()
+                .map(ConfiguredProperty::toJson)
+                .toList());
+        return builder.build();
     }
 
-    @Override
-    public String toString() {
-        return targetClass.fqName();
+    /**
+     * The method that declares the option.
+     *
+     * @param owningClass  class
+     * @param methodName   method name
+     * @param methodParams method parameters
+     */
+    record ProducerMethod(TypeName owningClass, String methodName, List<TypeName> methodParams) {
     }
 
-    void addInherited(TypeName classOrIface) {
-        inherited.add(classOrIface);
-    }
-
-    private static String paramsToString(List<TypeName> params) {
-        return params.stream()
-                .map(TypeName::resolvedName)
-                .collect(Collectors.joining(", "));
-    }
-
-    private void writeProperty(List<Hson.Struct> optionsBuilder,
-                               String prefix,
-                               ConfiguredProperty property) {
-
-        var optionBuilder = Hson.Struct.builder();
-        if (property.key() != null && !property.key.isBlank()) {
-            optionBuilder.set("key", prefix(prefix, property.key()));
-        }
-        if (!"java.lang.String".equals(property.type)) {
-            optionBuilder.set("type", property.type());
-        }
-        optionBuilder.set("description", property.description());
-        if (property.defaultValue() != null) {
-            optionBuilder.set("defaultValue", property.defaultValue());
-        }
-        if (property.experimental) {
-            optionBuilder.set("experimental", true);
-        }
-        if (!property.optional) {
-            optionBuilder.set("required", true);
-        }
-        if (!property.kind().equals("VALUE")) {
-            optionBuilder.set("kind", property.kind());
-        }
-        if (property.provider) {
-            optionBuilder.set("provider", true);
-            optionBuilder.set("providerType", property.providerType.fqName());
-        }
-        if (property.deprecated()) {
-            optionBuilder.set("deprecated", true);
-        }
-        if (property.merge()) {
-            optionBuilder.set("merge", true);
-        }
-        String method = property.builderMethod();
-        if (method != null) {
-            optionBuilder.set("method", method);
-        }
-        if (property.configuredType != null) {
-            String finalPrefix;
-            if (property.kind().equals("LIST")) {
-                finalPrefix = prefix(prefix(prefix, property.key()), "*");
+    private static void flatten(List<ConfiguredProperty> result, String prefix, Set<ConfiguredProperty> properties) {
+        for (var p : properties) {
+            var fqKey = prefix == null ? p.key() : prefix + "." + p.key();
+            if (p.nestedType() != null) {
+                flatten(result, fqKey, p.nestedType().properties);
             } else {
-                finalPrefix = prefix(prefix, property.key());
+                result.add(p.flatten(fqKey));
             }
-            property.configuredType.properties()
-                    .forEach(it -> writeProperty(optionsBuilder, finalPrefix, it));
-        }
-        if (!property.allowedValues.isEmpty()) {
-            List<Hson.Struct> allowedValues = new ArrayList<>();
-
-            for (ConfiguredOptionData.AllowedValue allowedValue : property.allowedValues) {
-                var allowedJson = Hson.Struct.builder()
-                        .set("value", allowedValue.value());
-                if (!allowedValue.description().isBlank()) {
-                    allowedJson.set("description", allowedValue.description().trim());
-                }
-                allowedValues.add(allowedJson.build());
-            }
-
-            optionBuilder.setStructs("allowedValues", allowedValues);
-        }
-
-        optionsBuilder.add(optionBuilder.build());
-    }
-
-    private String prefix(String currentPrefix, String newSuffix) {
-        if (currentPrefix.isEmpty()) {
-            return newSuffix;
-        }
-        return currentPrefix + "." + newSuffix;
-    }
-
-    static final class ProducerMethod {
-        private final boolean isStatic;
-        private final TypeName owningClass;
-        private final String methodName;
-        private final List<TypeName> methodParams;
-
-        ProducerMethod(boolean isStatic, TypeName owningClass, String methodName, List<TypeName> methodParams) {
-            this.isStatic = isStatic;
-            this.owningClass = owningClass;
-            this.methodName = methodName;
-            this.methodParams = methodParams;
-        }
-
-        @Override
-        public String toString() {
-            return owningClass.fqName()
-                    + "#"
-                    + methodName + "("
-                    + paramsToString(methodParams) + ")";
-        }
-    }
-
-    static final class ConfiguredProperty {
-        private final String builderMethod;
-        private final String key;
-        private final String description;
-        private final String defaultValue;
-        private final String type;
-        private final boolean experimental;
-        private final boolean optional;
-        private final String kind;
-        private final boolean provider;
-        private final TypeName providerType;
-        private final boolean deprecated;
-        private final boolean merge;
-        private final List<ConfiguredOptionData.AllowedValue> allowedValues;
-        // if this is a nested type
-        private ConfiguredType configuredType;
-
-        ConfiguredProperty(String builderMethod,
-                           String key,
-                           String description,
-                           String defaultValue,
-                           TypeName type,
-                           boolean experimental,
-                           boolean optional,
-                           String kind,
-                           boolean provider,
-                           TypeName providerType,
-                           boolean deprecated,
-                           boolean merge,
-                           List<ConfiguredOptionData.AllowedValue> allowedValues) {
-            this.builderMethod = builderMethod;
-            this.key = key;
-            this.description = description;
-            this.defaultValue = defaultValue;
-            this.type = type.fqName();
-            this.experimental = experimental;
-            this.optional = optional;
-            this.kind = kind;
-            this.provider = provider;
-            this.providerType = providerType == null ? type : providerType;
-            this.deprecated = deprecated;
-            this.merge = merge;
-            this.allowedValues = allowedValues;
-        }
-
-        String builderMethod() {
-            return builderMethod;
-        }
-
-        String key() {
-            return key;
-        }
-
-        String description() {
-            return description;
-        }
-
-        String defaultValue() {
-            return defaultValue;
-        }
-
-        String type() {
-            return type;
-        }
-
-        boolean experimental() {
-            return experimental;
-        }
-
-        boolean optional() {
-            return optional;
-        }
-
-        String kind() {
-            return kind;
-        }
-
-        boolean deprecated() {
-            return deprecated;
-        }
-
-        boolean merge() {
-            return merge;
-        }
-
-        void nestedType(ConfiguredType nested) {
-            this.configuredType = nested;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            ConfiguredProperty that = (ConfiguredProperty) o;
-            return key.equals(that.key);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(key);
-        }
-
-        @Override
-        public String toString() {
-            return key;
         }
     }
 }

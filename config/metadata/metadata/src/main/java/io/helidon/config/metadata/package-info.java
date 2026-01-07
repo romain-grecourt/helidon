@@ -15,7 +15,6 @@
  */
 
 /**
- * Configuration metadata to support IDE auto completion
- * and generation of documentation.
+ * Config metadata annotations.
  */
 package io.helidon.config.metadata;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,59 +17,37 @@
 package io.helidon.config.metadata.codegen;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import io.helidon.common.types.Annotation;
-import io.helidon.common.types.TypeInfo;
 
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.CONFIGURED;
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.DESCRIPTION;
-import static io.helidon.config.metadata.codegen.ConfigMetadataTypes.PROTOTYPE_PROVIDES;
-
-record ConfiguredAnnotation(Optional<String> description,
-                            Optional<String> prefix,
+/**
+ * Mirror of {@link Types#CONFIGURED}.
+ *
+ * @param description       description, {@code null} if unset
+ * @param prefix            prefix, {@code null} if unset
+ * @param provides          provides
+ * @param root              root
+ * @param ignoreBuildMethod ignoreBuildMethod
+ */
+record ConfiguredAnnotation(String description,
+                            String prefix,
                             List<String> provides,
                             boolean root,
                             boolean ignoreBuildMethod) {
 
-    static ConfiguredAnnotation createMeta(Annotation annotation) {
+    /**
+     * Create a new instance.
+     *
+     * @param annotation annotation
+     * @return ConfiguredAnnotation
+     */
+    static ConfiguredAnnotation create(Annotation annotation) {
         return new ConfiguredAnnotation(
-                annotation.stringValue("description").filter(Predicate.not(String::isBlank)),
-                annotation.stringValue("prefix").filter(Predicate.not(String::isBlank)),
-                toProvidesMeta(annotation),
+                annotation.stringValue("description").orElse(null),
+                annotation.stringValue("prefix").filter(Predicate.not(String::isBlank)).orElse(null),
+                annotation.stringValues("provides").orElseGet(List::of),
                 annotation.booleanValue("root").orElse(false),
-                annotation.booleanValue("ignoreBuildMethod").orElse(false)
-        );
-    }
-
-    static ConfiguredAnnotation createBuilder(TypeInfo blueprint) {
-        Optional<String> config = blueprint.findAnnotation(CONFIGURED)
-                .flatMap(Annotation::stringValue)
-                .filter(Predicate.not(String::isBlank));
-        boolean isRoot = config.isPresent() && blueprint.findAnnotation(CONFIGURED)
-                .flatMap(it -> it.booleanValue("root"))
-                .orElse(true);
-
-        return new ConfiguredAnnotation(
-                blueprint.findAnnotation(DESCRIPTION).flatMap(Annotation::stringValue),
-                config,
-                toProvidesBuilder(blueprint),
-                isRoot,
-                false
-        );
-    }
-
-    private static List<String> toProvidesBuilder(TypeInfo blueprint) {
-        return blueprint.findAnnotation(PROTOTYPE_PROVIDES)
-                .flatMap(Annotation::stringValues)
-                .stream()
-                .flatMap(List::stream)
-                .toList();
-    }
-
-    private static List<String> toProvidesMeta(Annotation annotation) {
-        return annotation.stringValues("provides")
-                .orElseGet(List::of);
+                annotation.booleanValue("ignoreBuildMethod").orElse(false));
     }
 }
