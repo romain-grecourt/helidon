@@ -22,20 +22,22 @@ import java.lang.System.Logger.Level;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import io.helidon.common.Functions.CheckedSupplier;
-import io.helidon.config.metadata.model.ConfigMetadata;
-import io.helidon.config.metadata.model.ConfigMetadata.CmAllowedValue;
-import io.helidon.config.metadata.model.ConfigMetadata.CmOption;
-import io.helidon.config.metadata.model.ConfigMetadata.CmType;
+import io.helidon.config.metadata.model.CmModel;
+import io.helidon.config.metadata.model.CmModel.CmAllowedValue;
+import io.helidon.config.metadata.model.CmNode;
+import io.helidon.config.metadata.model.CmModel.CmOption;
+import io.helidon.config.metadata.model.CmResolver;
+import io.helidon.config.metadata.model.CmModel.CmType;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Template;
@@ -49,11 +51,10 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
  *
  * @see #process()
  */
-class ConfigDocs {
-    private static final System.Logger LOGGER = System.getLogger(ConfigDocs.class.getName());
+class CmDocCodegen {
+    private static final System.Logger LOGGER = System.getLogger(CmDocCodegen.class.getName());
 
-    private final ConfigMetadata metadata;
-    private final Map<String, List<Node>> usages;
+    private final CmResolver resolver;
     private final Path outputDir;
     private final Template typeTemplate;
     private final Template readmeTemplate;
@@ -64,28 +65,36 @@ class ConfigDocs {
      * @param outputDir output directory
      * @param metadata  config metadata
      */
-    ConfigDocs(Path outputDir, ConfigMetadata metadata) {
+    CmDocCodegen(Path outputDir, CmModel metadata) {
         this.outputDir = outputDir;
-        this.metadata = metadata.resolve();
-        this.usages = resolveUsages();
-        Handlebars handlebars = new Handlebars();
+        this.resolver = CmResolver.create(metadata);
+        var handlebars = new Handlebars();
         typeTemplate = template(handlebars, "type.md.hbs");
         readmeTemplate = template(handlebars, "README.md.hbs");
     }
+
+    // TODO investigate the duplicates (/tmp/config-refs-dups.txt)
 
     /**
      * Process the config metadata and generate the corresponding documentation.
      */
     void process() {
         var processedTypes = new TreeSet<String>();
-        for (var module : metadata.modules()) {
-            LOGGER.log(Level.INFO, "Processing module: {0}", module.module());
-            for (var type : module.types()) {
-                var fileName = type.type() + ".md";
-                generateFile(fileName, () -> typeTemplate.apply(typeContext(type)));
-                processedTypes.add(fileName);
-                // TODO investigate the duplicates (/tmp/config-refs-dups.txt)
-            }
+
+        // gather all types reachable from the true roots
+        var types = new HashSet<CmType>();
+        for (var root : resolver.tree()) {
+            root.visit(n -> {
+                n.type().ifPresent(types::add);
+                return true;
+            });
+        }
+
+        // document all reachable types
+        for (var type : types) {
+            var fileName = type.type() + ".md";
+            generateFile(fileName, () -> typeTemplate.apply(typeContext(type)));
+            processedTypes.add(fileName);
         }
 
         // generate index
@@ -111,35 +120,6 @@ class ConfigDocs {
         }
     }
 
-    private Map<String, List<Node>> resolveUsages() {
-        var stack = new ArrayDeque<Node>();
-        for (var module : metadata.modules()) {
-            for (var type : module.types()) {
-                if (type.standalone()) {
-                    stack.push(new Node(null, type.prefix().orElseThrow(), type.type()));
-                }
-            }
-        }
-
-        // depth-first traversal from the standalone types
-        var usages = new HashMap<String, List<Node>>();
-        while (!stack.isEmpty()) {
-            var node = stack.pop();
-            var options = metadata.type(node.type).map(CmType::options).orElse(List.of());
-            for (var i = options.size() - 1; i >= 0; i--) {
-                var option = options.get(i);
-                var optionType = option.type().orElse(CmOption.DEFAULT_TYPE);
-                var child = new Node(node, option.key(), optionType);
-                if (option.complex()) {
-                    // only record usage of complex types
-                    usages.computeIfAbsent(optionType, k -> new ArrayList<>()).add(node);
-                }
-                stack.push(child);
-            }
-        }
-        return usages;
-    }
-
     private Map<String, Object> typeContext(CmType type) {
         var context = new HashMap<String, Object>();
         var typeName = type.type();
@@ -155,7 +135,9 @@ class ConfigDocs {
                 .map(this::optionContext)
                 .toList());
 
-        context.put("usages", usages.getOrDefault(typeName, List.of()).stream()
+        context.put("usages", resolver.usage(typeName).stream()
+                .filter(it -> it.parent().isPresent())
+                .sorted(Comparator.comparing(CmNode::key))
                 .map(this::usageContext)
                 .toList());
         return context;
@@ -163,44 +145,49 @@ class ConfigDocs {
 
     private Map<String, Object> optionContext(CmOption option) {
         var context = new HashMap<String, Object>();
-        var tagsContext = new ArrayList<String>();
-        if (option.required()) {
-            tagsContext.add("required");
-        }
-        if (option.deprecated()) {
-            tagsContext.add("deprecated");
-        }
-        if (option.experimental()) {
-            tagsContext.add("experimental");
-        }
-        context.put("tags", tagsContext);
         context.put("key", option.key());
+        context.put("flags", optionFlagsContext(option));
         context.put("type", optionTypeContext(option));
-        context.put("allowedValues", option.allowedValues().stream()
+        context.put("rowspan", Math.max(option.allowedValues().size(), 1));
+        option.allowedValues().stream()
+                .limit(1)
+                .findFirst()
+                .ifPresent(it -> context.put("firstAllowedValue", allowedValueContext(it)));
+        context.put("otherAllowedValues", option.allowedValues().stream()
+                .skip(1)
                 .map(this::allowedValueContext)
                 .toList());
         option.description().ifPresent(it -> context.put("description", it));
         option.defaultValue().ifPresent(it -> context.put("defaultValue", it));
         context.put("providers", option.providerType().or(option::type)
-                .map(metadata::providers)
+                .map(resolver::providers)
                 .orElseGet(List::of));
+        return context;
+    }
+
+    private List<String> optionFlagsContext(CmOption option) {
+        var context = new ArrayList<String>();
+        if (option.required() || option.defaultValue().isEmpty()) {
+            context.add("required");
+        } else {
+            context.add("optional");
+        }
+        if (option.deprecated()) {
+            context.add("deprecated");
+        }
+        if (option.experimental()) {
+            context.add("experimental");
+        }
         return context;
     }
 
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
-        var type = option.type().orElse(CmOption.DEFAULT_TYPE);
-        context.put("type", switch (type) {
-            case "java.lang.String" -> "string";
-            case "java.lang.Integer" -> "int";
-            case "java.lang.Boolean" -> "boolean";
-            case "java.lang.Long" -> "long";
-            case "java.lang.Character" -> "char";
-            case "java.lang.Float" -> "float";
-            case "java.lang.Double" -> "double";
-            default -> type;
-        });
-        context.put("complex", option.complex());
+        var resolvedType = option.type().flatMap(resolver::type);
+        var configTypeName = resolvedType.map(CmType::type).orElse(CmOption.DEFAULT_TYPE);
+        context.put("resolved", resolvedType.isPresent());
+        context.put("shortName", shortType(configTypeName));
+        context.put("fullName", configTypeName);
         switch (option.kind().orElse(CmOption.DEFAULT_KIND)) {
             case VALUE -> context.put("isValue", true);
             case MAP -> context.put("isMap", true);
@@ -216,10 +203,10 @@ class ConfigDocs {
         return context;
     }
 
-    private Map<String, Object> usageContext(Node node) {
+    private Map<String, Object> usageContext(CmNode node) {
         var context = new HashMap<String, Object>();
-        context.put("enclosingType", node.enclosingType());
-        context.put("key", node.key);
+        context.put("enclosingType", node.parent().map(CmNode::typeName).orElseThrow());
+        context.put("key", node.key());
         context.put("path", node.path());
         return context;
     }
@@ -238,7 +225,7 @@ class ConfigDocs {
     }
 
     private static Template template(Handlebars handlebars, String template) {
-        URL resource = ConfigDocs.class.getResource(template);
+        URL resource = CmDocCodegen.class.getResource(template);
         if (resource == null) {
             throw new IllegalStateException("Failed to locate template: " + template);
         }
@@ -249,20 +236,11 @@ class ConfigDocs {
         }
     }
 
-    private record Node(Node parent, String key, String type) {
-
-        String enclosingType() {
-            return parent != null ? parent.type : null;
+    private static String shortType(String typeName) {
+        var index = typeName.lastIndexOf('.');
+        if (index >= 0) {
+            return typeName.substring(index + 1);
         }
-
-        String path() {
-            var sb = new StringBuilder(key);
-            var node = parent;
-            while(node != null) {
-                sb.insert(0, node.key + ".");
-                node = node.parent;
-            }
-            return sb.toString();
-        }
+        return typeName;
     }
 }

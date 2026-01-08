@@ -23,16 +23,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import io.helidon.config.metadata.model.ConfigMetadataImpl.CmAllowedValueImpl;
-import io.helidon.config.metadata.model.ConfigMetadataImpl.CmModuleImpl;
-import io.helidon.config.metadata.model.ConfigMetadataImpl.CmOptionImpl;
-import io.helidon.config.metadata.model.ConfigMetadataImpl.CmTypeImpl;
+import io.helidon.config.metadata.model.CmModelImpl.CmAllowedValueImpl;
+import io.helidon.config.metadata.model.CmModelImpl.CmModuleImpl;
+import io.helidon.config.metadata.model.CmModelImpl.CmOptionImpl;
+import io.helidon.config.metadata.model.CmModelImpl.CmTypeImpl;
 import io.helidon.metadata.hson.Hson;
 
 /**
  * Config metadata model.
  */
-public interface ConfigMetadata {
+public interface CmModel {
 
     /**
      * Classpath location.
@@ -45,8 +45,8 @@ public interface ConfigMetadata {
      * @param jsonArray JSON array
      * @return ConfigMetadata
      */
-    static ConfigMetadata fromJson(Hson.Array jsonArray) {
-        return new ConfigMetadataImpl(jsonArray);
+    static CmModel fromJson(Hson.Array jsonArray) {
+        return new CmModelImpl(jsonArray);
     }
 
     /**
@@ -54,7 +54,7 @@ public interface ConfigMetadata {
      *
      * @return metadatas
      */
-    static ConfigMetadata loadAll(ClassLoader cl) {
+    static CmModel loadAll(ClassLoader cl) {
         try {
             var structs = new ArrayList<Hson.Struct>();
             var files = cl.getResources(LOCATION);
@@ -68,41 +68,6 @@ public interface ConfigMetadata {
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
-    }
-
-    /**
-     * Resolve option overrides and merges.
-     *
-     * @return new resolved model
-     */
-    default ConfigMetadata resolve() {
-        return new ConfigMetadataResolver(this).resolve();
-    }
-
-    /**
-     * Find config metadata type that provide the given type.
-     *
-     * @param typeName provider type
-     * @return list of types
-     */
-    default List<CmType> providers(String typeName) {
-        return modules().stream()
-                .flatMap(it -> it.types().stream())
-                .filter(it -> it.provides().contains(typeName))
-                .toList();
-    }
-
-    /**
-     * Find a type by name.
-     *
-     * @param typeName type name
-     * @return type
-     */
-    default Optional<CmType> type(String typeName) {
-        return modules().stream()
-                .flatMap(it -> it.types().stream())
-                .filter(it -> it.type().equals(typeName))
-                .findFirst();
     }
 
     /**
@@ -170,9 +135,9 @@ public interface ConfigMetadata {
         /**
          * Annotated type name.
          *
-         * @return type name, never {@code null}
+         * @return type name
          */
-        String annotatedType();
+        Optional<String> annotatedType();
 
         /**
          * Options.
@@ -223,20 +188,6 @@ public interface ConfigMetadata {
          * @return list of provider type names
          */
         List<String> provides();
-
-        /**
-         * Get the short type name.
-         *
-         * @return short type name, never {@code null}
-         */
-        default String shortType() {
-            var type = type();
-            var index = type.lastIndexOf('.');
-            if (index >= 0) {
-                return type.substring(index + 1);
-            }
-            return type;
-        }
 
         /**
          * Convert to JSON.
@@ -308,7 +259,7 @@ public interface ConfigMetadata {
          *
          * @return method name, never {@code null}
          */
-        String method();
+        Optional<String> method();
 
         /**
          * The type of the config option.
@@ -375,23 +326,6 @@ public interface ConfigMetadata {
          * @return Kind
          */
         Optional<Kind> kind();
-
-        /**
-         * Indicate wether this option type is complex.
-         *
-         * @return {@code true} if complex, {@code false} otherwise
-         */
-        default boolean complex() {
-            return switch (type().orElse(DEFAULT_TYPE)) {
-                case "java.lang.String",
-                     "java.lang.Boolean",
-                     "java.lang.Long",
-                     "java.lang.Character",
-                     "java.lang.Float",
-                     "java.lang.Double" -> false;
-                default -> true;
-            };
-        }
 
         /**
          * Allowed values.

@@ -22,85 +22,95 @@ limitations under the License.
 ## Usages
 
 {{#if standalone~}}
-This type is standalone and configured under the root key `{{prefix}}`.
-{{else~}}
-<div class="usages">
-    <ul>
+This config type is standalone and configured under the root key `{{prefix}}`.
+{{~else~}}
+{{~#if usages.length~}}
+<ul class="usages">
 {{~#each usages}}
-        <li><a href="{{this.type}}.md#{{this.key}}"><code>{{this.path}}</code></a></li>
+    <li><a href="{{enclosingType}}.md#{{key}}"><code>{{path}}</code></a></li>
 {{~/each}}
-    </ul>
-</div>
+</ul>
+{{~/if~}}
 {{~/if}}
 
-## Configuration options
+## Options
 
 <table>
     <thead>
-    <tr>
-        <th>Key</th>
-        <th>Type</th>
-        <th>Allowed Values</th>
-        <th>Default Value</th>
-        <th>Description</th>
-    </tr>
+        <tr>
+            <th>Key</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Flags</th>
+            <th>Default Value</th>
+            <th colspan="2">Allowed Values</th>
+        </tr>
     </thead>
     <tbody>
 {{~#each options}}
-        <tr>
-            <td id="{{this.key}}">
-                <div><code>{{this.key}}</code></div>
-{{~#if this.tags.length~}}
-                    <div class="tags">
-                        <ul>
-{{~#each this.tags~}}
-                                <li class="{{this}}">{{this}}</li>
-{{~/each~}}
-                        </ul>
-                    </div>
-{{~/if}}
-            </td>
-            <td>
-                <div>
-                    <a href="{{#if type.complex}}{{type.type}}.md{{else}}builtins.md#{{type.type}}{{/if}}">
-{{~#if type.isValue}}
-                        <code>{{type.type}}</code>
-{{~/if}}
-{{~#if type.isList}}
-                        <code>List&lt;{{type.type}}&gt;</code>
+        <tr id="{{key}}">
+            <td rowspan="{{rowspan}}"><code>{{key}}</code></td>
+            <td rowspan="{{rowspan}}">
+{{~#if type.resolved~}}
+                <a href="{{type.fullName}}.md">
 {{~/if~}}
-{{~#if type.isMap}}
-                        <code>Map&lt;String,{{type.type}}&gt;</code>
-{{~/if}}
-                    </a>
-                </div>
-{{~#if providers.length}}
-                <div class="providers">
-                    Known providers:
-                    <ul>
-{{#each providers}}
-                        <li>{{prefix}}: <a href="{{path}}">{{name}}</a></li>
-{{~/each}}
-                    </ul>
-                </div>
-{{~/if}}
+{{~#if type.isValue~}}
+                    <code>{{type.shortName}}</code>
+{{~/if~}}
+{{~#if type.isList~}}
+                    <code>List&lt;{{type.shortName}}&gt;</code>
+{{~/if~}}
+{{~#if type.isMap~}}
+                    <code>Map&lt;String,{{type.shortName}}&gt;</code>
+{{~/if~}}
+{{~#if type.resolved~}}
+                </a>
+{{~/if~}}
             </td>
-            <td>
-{{~#if allowedValues.length}}
+            <td rowspan="{{rowspan}}">{{{description}}}</td>
+            <td rowspan="{{rowspan}}">
+{{~#if flags.length}}
                 <ul>
-{{~#each allowedValues}}
-                    <li><code>{{value}}</code> - <span>{{description}}</span></li>
+{{~#each flags}}
+                    <li>{{this}}</li>
 {{~/each}}
                 </ul>
+{{~else~}}
+-
 {{~/if}}
             </td>
-            <td>
-{{~#if defaultValue}}
+            <td rowspan="{{rowspan}}">
+{{~#if defaultValue~}}
                 <code>{{defaultValue}}</code>
-{{~/if}}
+{{~else~}}
+-
+{{~/if~}}
             </td>
-            <td>{{{description}}}</td>
+{{~#if firstAllowedValue}}
+            <td><code>{{firstAllowedValue.value}}</code></td>
+            <td>
+{{~#if firstAllowedValue.description~}}
+{{{firstAllowedValue.description}}}
+{{~else~}}
+-
+{{~/if~}}
+            </td>
+{{~else}}
+            <td colspan="2">-</td>
+{{~/if}}
         </tr>
+{{~#each otherAllowedValues}}
+        <tr>
+            <td><code>{{value}}</code></td>
+            <td>
+{{~#if description~}}
+{{{description}}}
+{{~else~}}
+-
+{{~/if~}}
+            </td>
+        </tr>
+{{~/each}}
 {{~/each}}
     </tbody>
 </table>

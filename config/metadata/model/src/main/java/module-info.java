@@ -19,5 +19,6 @@
  */
 module io.helidon.config.metadata.model {
     requires io.helidon.metadata.hson;
+    requires io.helidon.common;
     exports io.helidon.config.metadata.model;
 }

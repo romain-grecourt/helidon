@@ -1,34 +1,43 @@
 [
-    {
-        "module": "io.helidon.config.metadata.model",
-        "types": [
-            {
-                "type": "io.helidon.config.metadata.model.AcmeConfig",
-                "annotatedType": "io.helidon.config.metadata.model.AcmeConfig",
-                "prefix": "acme",
-                "provides": [
-                    "io.helidon.config.metadata.model.AcmeProvider"
-                ],
-                "producers": [
-                    "io.helidon.config.metadata.model.AcmeConfig#create(io.helidon.config.Config)",
-                    "io.helidon.config.metadata.model.AcmeConfig#builder()"
-                ],
-                "options": [
-                    {
-                        "key": "option1",
-                        "type": "java.lang.Long",
-                        "description": "The first option.",
-                        "defaultValue": "8192",
-                        "method": "io.helidon.config.metadata.model.AcmeConfig.Builder#option1(long)",
-                        "allowedValues": [
-                            {
-                                "value": "8192",
-                                "description": "eight one nine two"
-                            }
-                        ]
-                    }
-                ]
-            }
-        ]
-    }
+   {
+      "module": "com.acme",
+      "types": [
+         {
+            "type": "com.acme.AcmeConfig",
+            "annotatedType": "com.acme.AcmeConfig.Builder",
+            "description": "ACME configuration",
+            "prefix": "acme",
+            "provides": [
+               "com.acme.AcmeProvider"
+            ],
+            "producers": [
+               "com.acme.AcmeConfig#create(io.helidon.config.Config)",
+               "com.acme.AcmeConfig#builder()"
+            ],
+            "options": [
+               {
+                  "key": "mode",
+                  "type": "com.acme.AcmeMode",
+                  "description": "Mode",
+                  "defaultValue": "MODE1",
+                  "method": "com.acme.AcmeConfig.Builder#mode(com.acme.AcmeMode)",
+                  "allowedValues": [
+                     {
+                        "value": "MODE1",
+                        "description": "mode 1"
+                     },
+                     {
+                        "value": "MODE2",
+                        "description": "mode 2"
+                     },
+                     {
+                        "value": "MODE3",
+                        "description": "mode 3"
+                     }
+                  ]
+               }
+            ]
+         }
+      ]
+   }
 ]

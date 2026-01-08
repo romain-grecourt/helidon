@@ -1,0 +1,76 @@
+[
+    {
+        "module": "com.acme",
+        "types": [
+            {
+                "type": "com.acme.AcmeConfig",
+                "standalone": true,
+                "prefix": "acme",
+                "description": "ACME configuration.",
+                "inherits": [
+                    "com.acme.AcmeOptionConfig"
+                ],
+                "options": [
+                    {
+                        "key": "mode",
+                        "type": "com.acme.AcmeMode",
+                        "description": "Mode",
+                        "defaultValue": "MODE2",
+                        "allowedValues": [
+                            {
+                                "value": "MODE1",
+                                "description": "mode 1"
+                            },
+                            {
+                                "value": "MODE2",
+                                "description": "mode 2"
+                            },
+                            {
+                                "value": "MODE3",
+                                "description": "mode 3"
+                            }
+                        ]
+                    },
+                    {
+                        "key": "option1",
+                        "type": "com.acme.AcmeOptionConfig",
+                        "description": "Option 1",
+                        "deprecated": true
+                    },
+                    {
+                        "key": "option2",
+                        "type": "com.acme.AcmeOptionConfig",
+                        "description": "Option 2",
+                        "experimental": true
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeOptionConfig",
+                "description": "ACME Option configuration",
+                "options": [
+                    {
+                        "key": "mode",
+                        "type": "com.acme.AcmeMode",
+                        "description": "Mode",
+                        "defaultValue": "MODE2",
+                        "allowedValues": [
+                            {
+                                "value": "MODE1",
+                                "description": "mode 1"
+                            },
+                            {
+                                "value": "MODE2",
+                                "description": "mode 2"
+                            },
+                            {
+                                "value": "MODE3",
+                                "description": "mode 3"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+]

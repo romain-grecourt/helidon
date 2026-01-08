@@ -18,7 +18,7 @@ package io.helidon.config.metadata.docs;
 
 import java.nio.file.Paths;
 
-import io.helidon.config.metadata.model.ConfigMetadata;
+import io.helidon.config.metadata.model.CmModel;
 import io.helidon.logging.common.LogConfig;
 
 /**
@@ -44,8 +44,8 @@ public final class Main {
         }
         LogConfig.configureRuntime();
         var outputDir = Paths.get(args[0]).toAbsolutePath().normalize();
-        var metadata = ConfigMetadata.loadAll(Main.class.getClassLoader());
-        var docs = new ConfigDocs(outputDir, metadata);
+        var metadata = CmModel.loadAll(Main.class.getClassLoader());
+        var docs = new CmDocCodegen(outputDir, metadata);
         docs.process();
     }
 }

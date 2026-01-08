@@ -35,7 +35,7 @@ import io.helidon.metadata.hson.Hson;
 class ConfigMetadataCodegenExtension implements CodegenExtension {
     private static final String META_FILE = "META-INF/helidon/config-metadata.json";
 
-    private final Set<TypeName> configMetadata = new HashSet<>();
+    private final Set<TypeName> types = new HashSet<>();
     private final Map<TypeName, ConfiguredType> newOptions = new HashMap<>();
     private final Map<String, List<TypeName>> moduleTypes = new HashMap<>();
     private final CodegenContext ctx;
@@ -49,12 +49,12 @@ class ConfigMetadataCodegenExtension implements CodegenExtension {
         // we may have multiple rounds, let's collect what we can
         // the type info may change (i.e. we code generate something that is not available in the first round)
         roundContext.annotatedTypes(Types.CONFIGURED)
-                .forEach(it -> configMetadata.add(it.typeName()));
+                .forEach(it -> types.add(it.typeName()));
     }
 
     @Override
     public void processingOver(RoundContext roundContext) {
-        for (var e : configMetadata) {
+        for (var e : types) {
             var typeInfo = ctx.typeInfo(e).orElse(null);
             if (typeInfo != null) {
                 var handler = new TypeHandler(ctx, typeInfo);

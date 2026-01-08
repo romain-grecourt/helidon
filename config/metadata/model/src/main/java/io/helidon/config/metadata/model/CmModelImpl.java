@@ -15,34 +15,22 @@
  */
 package io.helidon.config.metadata.model;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
 import io.helidon.metadata.hson.Hson;
 
-record ConfigMetadataImpl(List<CmModule> modules,
-                          Map<String, CmType> typeCache,
-                          Map<String, List<CmType>> providersCache) implements ConfigMetadata {
+import static java.lang.System.identityHashCode;
 
-    ConfigMetadataImpl(Hson.Array array) {
-        this(array.getStructs().stream().map(CmModule::fromJson).toList(),
-                new HashMap<>(),
-                new HashMap<>());
-    }
+record CmModelImpl(List<CmModule> modules) implements CmModel {
 
-    @Override
-    public Optional<CmType> type(String typeName) {
-        return Optional.ofNullable(typeCache.computeIfAbsent(typeName,
-                k -> ConfigMetadata.super.type(k).orElse(null)));
-    }
-
-    @Override
-    public List<CmType> providers(String typeName) {
-        return providersCache.computeIfAbsent(typeName, ConfigMetadata.super::providers);
+    CmModelImpl(Hson.Array array) {
+        this(array.getStructs().stream().map(CmModule::fromJson).toList());
     }
 
     @Override
@@ -71,7 +59,7 @@ record ConfigMetadataImpl(List<CmModule> modules,
     }
 
     record CmTypeImpl(String type,
-                      String annotatedType,
+                      Optional<String> annotatedType,
                       List<CmOption> options,
                       Optional<String> description,
                       Optional<String> prefix,
@@ -82,7 +70,7 @@ record ConfigMetadataImpl(List<CmModule> modules,
 
         CmTypeImpl(Hson.Struct struct) {
             this(string(struct, "type"),
-                    string(struct, "annotatedType"),
+                    struct.stringValue("annotatedType"),
                     list(struct, "options", CmOption::fromJson),
                     struct.stringValue("description"),
                     struct.stringValue("prefix"),
@@ -96,7 +84,7 @@ record ConfigMetadataImpl(List<CmModule> modules,
         public Hson.Struct toJson() {
             var builder = Hson.Struct.builder();
             builder.set("type", type);
-            builder.set("annotatedType", annotatedType);
+            annotatedType.ifPresent(it -> builder.set("annotatedType", it));
             if (standalone) {
                 builder.set("standalone", true);
             }
@@ -118,25 +106,24 @@ record ConfigMetadataImpl(List<CmModule> modules,
         }
     }
 
-    record CmOptionImpl(
-            String key,
-            Optional<String> description,
-            String method,
-            Optional<String> type,
-            Optional<String> defaultValue,
-            boolean required,
-            boolean experimental,
-            boolean deprecated,
-            boolean provider,
-            Optional<String> providerType,
-            boolean merge,
-            Optional<Kind> kind,
-            List<CmAllowedValue> allowedValues) implements CmOption {
+    record CmOptionImpl(String key,
+                        Optional<String> description,
+                        Optional<String> method,
+                        Optional<String> type,
+                        Optional<String> defaultValue,
+                        boolean required,
+                        boolean experimental,
+                        boolean deprecated,
+                        boolean provider,
+                        Optional<String> providerType,
+                        boolean merge,
+                        Optional<Kind> kind,
+                        List<CmAllowedValue> allowedValues) implements CmOption {
 
         CmOptionImpl(Hson.Struct struct) {
             this(string(struct, "key"),
                     struct.stringValue("description"),
-                    string(struct, "method"),
+                    struct.stringValue("method"),
                     struct.stringValue("type"),
                     struct.stringValue("defaultValue"),
                     struct.booleanValue("required").orElse(false),
@@ -173,7 +160,7 @@ record ConfigMetadataImpl(List<CmModule> modules,
             if (merge) {
                 builder.set("merge", true);
             }
-            builder.set("method", method);
+            method.ifPresent(it -> builder.set("method", it));
             if (!allowedValues.isEmpty()) {
                 builder.setStructs("allowedValues", allowedValues.stream()
                         .map(CmAllowedValue::toJson)
