@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import io.helidon.config.metadata.model.CmModel.CmType;
+
 /**
  * {@link CmNode} implementation.
  */
@@ -29,14 +31,14 @@ final class CmNodeImpl implements CmNode {
     private final String path;
     private final String key;
     private final String typeName;
-    private final CmModel.CmType type;
+    private final CmType type;
     private final List<CmNodeImpl> children;
 
     CmNodeImpl(CmNode parent,
                String path,
                String key,
                String typeName,
-               CmModel.CmType type,
+               CmType type,
                List<CmNodeImpl> children) {
 
         this.parent = parent;
@@ -94,7 +96,7 @@ final class CmNodeImpl implements CmNode {
     }
 
     @Override
-    public Optional<CmModel.CmType> type() {
+    public Optional<CmType> type() {
         return Optional.ofNullable(type);
     }
 

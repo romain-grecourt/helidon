@@ -36,26 +36,33 @@ public interface CmResolver {
     }
 
     /**
-     * Find config metadata type that provide the given type.
+     * Find config types that provide the given contract.
      *
-     * @param typeName provider type
-     * @return list of types
+     * @param typeName contract type name
+     * @return list of config types
      */
     List<CmType> providers(String typeName);
 
     /**
-     * Find a type by name.
+     * Get the provided contract type names.
+     *
+     * @return list of type names
+     */
+    List<String> contracts();
+
+    /**
+     * Find a config type by name.
      *
      * @param typeName type name
-     * @return type
+     * @return config type
      */
     Optional<CmType> type(String typeName);
 
     /**
-     * Find usages of a type.
+     * Find usages of a config type.
      *
      * @param typeName type name
-     * @return list of tree nodes
+     * @return list of tree nodes (options)
      */
     List<CmNode> usage(String typeName);
 

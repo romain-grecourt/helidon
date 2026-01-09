@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Main entry point for Helidon metadata format parsing and writing.
@@ -139,6 +140,21 @@ public final class Hson {
         boolean booleanValue(String key, boolean defaultValue);
 
         /**
+         * Get a boolean value or throw an exception if not defined.
+         *
+         * @param key     key under this struct
+         * @param factory factory function that produces the exception thrown if not defined
+         * @return boolean value
+         * @throws T             produced by {@code factory} if the value is not defined
+         * @throws HsonException in case the key exists, but is not a
+         *                       {@link io.helidon.metadata.hson.Hson.Type#BOOLEAN}
+         * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation
+         */
+        default <T extends RuntimeException> boolean booleanValue(String key, Function<String, T> factory) throws T {
+            return booleanValue(key).orElseThrow(() -> factory.apply(key));
+        }
+
+        /**
          * Get struct value. If the value represents {@code null}, returns empty optional.
          *
          * @param key key under this struct
@@ -170,6 +186,21 @@ public final class Hson {
         String stringValue(String key, String defaultValue);
 
         /**
+         * Get a string value or throw an exception if not defined.
+         *
+         * @param key     key under this struct
+         * @param factory factory function that produces the exception thrown if not defined
+         * @return string value
+         * @throws T             produced by {@code factory} if the value is not defined
+         * @throws HsonException in case the key exists, but is not a
+         *                       {@link io.helidon.metadata.hson.Hson.Type#STRING}
+         * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation
+         */
+        default <T extends RuntimeException> String stringValue(String key, Function<String, T> factory) throws T {
+            return stringValue(key).orElseThrow(() -> factory.apply(key));
+        }
+
+        /**
          * Get int value.
          *
          * @param key key under this struct
@@ -187,9 +218,23 @@ public final class Hson {
          * @return int value, or default value if the key does not exist
          * @throws HsonException in case the key exists, but is not a
          *                       {@link io.helidon.metadata.hson.Hson.Type#NUMBER}
-         * @see #intValue(String)
          */
         int intValue(String key, int defaultValue);
+
+        /**
+         * Get an int value or throw an exception if not defined.
+         *
+         * @param key     key under this struct
+         * @param factory factory function that produces the exception thrown if not defined
+         * @return int value
+         * @throws T             produced by {@code factory} if the value is not defined
+         * @throws HsonException in case the key exists, but is not a
+         *                       {@link io.helidon.metadata.hson.Hson.Type#NUMBER}
+         * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation
+         */
+        default <T extends RuntimeException> int intValue(String key, Function<String, T> factory) throws T {
+            return intValue(key).orElseThrow(() -> factory.apply(key));
+        }
 
         /**
          * Get double value.
@@ -209,9 +254,23 @@ public final class Hson {
          * @return double value, or default value if the key does not exist
          * @throws HsonException in case the key exists, but is not a
          *                       {@link io.helidon.metadata.hson.Hson.Type#NUMBER}
-         * @see #doubleValue(String)
          */
         double doubleValue(String key, double defaultValue);
+
+        /**
+         * Get a double value or throw an exception if not defined.
+         *
+         * @param key     key under this struct
+         * @param factory factory function that produces the exception thrown if not defined
+         * @return double value, or default value if the key does not exist
+         * @throws T             produced by {@code factory} if the value is not defined
+         * @throws HsonException in case the key exists, but is not a
+         *                       {@link io.helidon.metadata.hson.Hson.Type#NUMBER}
+         * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation
+         */
+        default <T extends RuntimeException> double doubleValue(String key, Function<String, T> factory) throws T {
+            return doubleValue(key).orElseThrow(() -> factory.apply(key));
+        }
 
         /**
          * Get number value.
@@ -233,6 +292,19 @@ public final class Hson {
         BigDecimal numberValue(String key, BigDecimal defaultValue);
 
         /**
+         * Get number value or throw an exception if not defined.
+         *
+         * @param key     key under this struct
+         * @param factory factory function that produces the exception thrown if not defined
+         * @return big decimal value
+         * @throws T produced by {@code factory} if the value is not defined
+         * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation
+         */
+        default <T extends RuntimeException> BigDecimal numberValue(String key, Function<String, T> factory) throws T {
+            return numberValue(key).orElseThrow(() -> factory.apply(key));
+        }
+
+        /**
          * Get string array value.
          *
          * @param key key under this struct
@@ -251,6 +323,20 @@ public final class Hson {
          * @throws HsonException in case the key exists, but is not an array
          */
         Optional<List<Struct>> structArray(String key);
+
+        /**
+         * Get struct array value mapped with the given function.
+         *
+         * @param key    key under this struct
+         * @param mapper mapper function
+         * @param <T>    mapped type
+         * @return mapped struct array value, if the key exists
+         * @throws HsonException in case the key exists, is an array, but elements are not structs
+         * @throws HsonException in case the key exists, but is not an array
+         */
+        default <T> Optional<List<T>> structArray(String key, Function<Struct, T> mapper) {
+            return structArray(key).map(it -> it.stream().map(mapper).toList());
+        }
 
         /**
          * Get number array value.
@@ -458,7 +544,7 @@ public final class Hson {
                                              HsonValues.BooleanValue,
                                              HsonValues.NullValue,
                                              Struct,
-                                             Hson.Array {
+                                             Array {
         /**
          * Write the HSON value.
          *
@@ -505,7 +591,6 @@ public final class Hson {
             if (type() != Type.ARRAY) {
                 throw new HsonException("Attempting to read value of type " + type() + " as an array");
             }
-
             return (Array) this;
         }
 
@@ -520,7 +605,6 @@ public final class Hson {
             if (type() != Type.STRUCT) {
                 throw new HsonException("Attempting to get value of type " + type() + " as a Struct");
             }
-
             return (Struct) this;
         }
     }

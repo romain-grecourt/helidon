@@ -15,17 +15,11 @@
  */
 package io.helidon.config.metadata.model;
 
-import java.util.ArrayDeque;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Function;
 
 import io.helidon.metadata.hson.Hson;
-
-import static java.lang.System.identityHashCode;
+import io.helidon.metadata.hson.HsonNotFoundException;
 
 record CmModelImpl(List<CmModule> modules) implements CmModel {
 
@@ -43,8 +37,8 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
     record CmModuleImpl(String module, List<CmType> types) implements CmModule {
 
         CmModuleImpl(Hson.Struct struct) {
-            this(string(struct, "module"),
-                    list(struct, "types", CmType::fromJson));
+            this(struct.stringValue("module", HsonNotFoundException::new),
+                    struct.structArray("types", CmType::fromJson).orElseGet(List::of));
         }
 
         @Override
@@ -68,16 +62,30 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
                       List<String> producers,
                       List<String> provides) implements CmType {
 
+        CmTypeImpl {
+            if (standalone && prefix.isEmpty()) {
+                throw new IllegalArgumentException("Standalone type does not have a prefix: type=" + type);
+            }
+            if (!provides.isEmpty()) {
+                if (standalone) {
+                    throw new IllegalArgumentException("Standalone type cannot implement contract(s): type=" + type);
+                }
+                if (prefix.isEmpty()) {
+                    throw new IllegalArgumentException("Provider implementation does not have a prefix: type=" + type);
+                }
+            }
+        }
+
         CmTypeImpl(Hson.Struct struct) {
-            this(string(struct, "type"),
+            this(struct.stringValue("type", HsonNotFoundException::new),
                     struct.stringValue("annotatedType"),
-                    list(struct, "options", CmOption::fromJson),
+                    struct.structArray("options", CmOption::fromJson).orElseGet(List::of),
                     struct.stringValue("description"),
                     struct.stringValue("prefix"),
                     struct.booleanValue("standalone").orElse(false),
-                    list(struct, "inherits"),
-                    list(struct, "producers"),
-                    list(struct, "provides"));
+                    struct.stringArray("inherits").orElseGet(List::of),
+                    struct.stringArray("producers").orElseGet(List::of),
+                    struct.stringArray("provides").orElseGet(List::of));
         }
 
         @Override
@@ -120,8 +128,16 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
                         Optional<Kind> kind,
                         List<CmAllowedValue> allowedValues) implements CmOption {
 
+        CmOptionImpl {
+            if (required && defaultValue.isPresent()) {
+                throw new IllegalArgumentException(
+                        "Required option cannot have a default value: key=%s, type=%s"
+                                .formatted(key, type.orElse(null)));
+            }
+        }
+
         CmOptionImpl(Hson.Struct struct) {
-            this(string(struct, "key"),
+            this(struct.stringValue("key", HsonNotFoundException::new),
                     struct.stringValue("description"),
                     struct.stringValue("method"),
                     struct.stringValue("type"),
@@ -133,7 +149,7 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
                     struct.stringValue("providerType"),
                     struct.booleanValue("merge").orElse(false),
                     struct.stringValue("kind").map(Kind::valueOf),
-                    list(struct, "allowedValues", CmAllowedValue::fromJson));
+                    struct.structArray("allowedValues", CmAllowedValue::fromJson).orElseGet(List::of));
         }
 
         @Override
@@ -173,7 +189,7 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
     record CmAllowedValueImpl(String value, Optional<String> description) implements CmAllowedValue {
 
         CmAllowedValueImpl(Hson.Struct struct) {
-            this(string(struct, "value"),
+            this(struct.stringValue("value", HsonNotFoundException::new),
                     struct.stringValue("description"));
         }
 
@@ -184,22 +200,5 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
             description.ifPresent(it -> builder.set("description", it));
             return builder.build();
         }
-    }
-
-    private static String string(Hson.Struct struct, String key) {
-        return struct.stringValue(key).orElseThrow(() -> new IllegalStateException(key + " is required"));
-    }
-
-    private static <T> List<T> list(Hson.Struct struct, String key, Function<Hson.Struct, T> function) {
-        return struct.structArray(key).stream()
-                .flatMap(Collection::stream)
-                .map(function)
-                .toList();
-    }
-
-    private static List<String> list(Hson.Struct struct, String key) {
-        return struct.stringArray(key).stream()
-                .flatMap(Collection::stream)
-                .toList();
     }
 }

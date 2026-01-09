@@ -33,11 +33,11 @@ import io.helidon.config.metadata.model.CmModelImpl.CmTypeImpl;
 final class CmResolverImpl implements CmResolver {
 
     private final CmModel metadata;
-    private final Map<String, CmType> prefixes = new HashMap<>();
-    private final Map<String, CmType> types = new HashMap<>();
-    private final Map<String, CmType> resolvedTypes = new HashMap<>();
-    private final Map<String, List<CmType>> providers = new HashMap<>();
-    private final Map<String, List<CmNode>> usages = new HashMap<>();
+    private final Map<String, CmType> prefixes = new HashMap<>(); // standalone types by prefixes
+    private final Map<String, CmType> types = new HashMap<>(); // unresolved types
+    private final Map<String, CmType> resolvedTypes = new HashMap<>(); // resolved types
+    private final Map<String, List<CmType>> providers = new HashMap<>(); // providers by contract
+    private final Map<String, List<CmNode>> usages = new HashMap<>(); // tree nodes by option type
     private final List<CmNode> tree = new ArrayList<>();
     private final List<CmNode> readOnlyTree = Collections.unmodifiableList(tree);
 
@@ -56,6 +56,11 @@ final class CmResolverImpl implements CmResolver {
     @Override
     public List<CmType> providers(String typeName) {
         return Collections.unmodifiableList(providers.getOrDefault(typeName, List.of()));
+    }
+
+    @Override
+    public List<String> contracts() {
+        return List.copyOf(providers.keySet());
     }
 
     @Override

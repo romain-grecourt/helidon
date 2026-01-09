@@ -7,7 +7,7 @@ ACME configuration.
 
 ## Usages
 
-This config type is standalone and configured under the root key `acme`.
+This type is standalone and configured under the root key `acme`.
 
 ## Options
 

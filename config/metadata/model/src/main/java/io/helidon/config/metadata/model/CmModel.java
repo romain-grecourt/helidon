@@ -278,7 +278,7 @@ public interface CmModel {
 
         /**
          * Indicate whether this option is required.
-         * Implies an empty {@link #defaultValue()}.
+         * If {@code true}, {@link #defaultValue()} is always empty.
          *
          * @return {@code true} if required, {@code false} otherwise
          */
@@ -348,7 +348,7 @@ public interface CmModel {
          * @return CmOption
          */
         static CmOption fromJson(Hson.Struct jsonObject) {
-            return new CmOptionImpl(jsonObject);
+            return new CmOptionImpl(jsonObject.asStruct());
         }
     }
 

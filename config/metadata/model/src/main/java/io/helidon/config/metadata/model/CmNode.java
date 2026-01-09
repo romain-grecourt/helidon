@@ -18,6 +18,8 @@ package io.helidon.config.metadata.model;
 import java.util.List;
 import java.util.Optional;
 
+import io.helidon.config.metadata.model.CmModel.CmType;
+
 /**
  * Config metadata tree node.
  */
@@ -54,9 +56,9 @@ public interface CmNode {
     /**
      * Node resolved type.
      *
-     * @return resolved type
+     * @return resolved type, empty for value types
      */
-    Optional<CmModel.CmType> type();
+    Optional<CmType> type();
 
     /**
      * Node children (options).

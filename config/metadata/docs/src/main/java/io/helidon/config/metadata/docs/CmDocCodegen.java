@@ -28,10 +28,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-import io.helidon.common.Functions.CheckedSupplier;
 import io.helidon.config.metadata.model.CmModel;
 import io.helidon.config.metadata.model.CmModel.CmAllowedValue;
 import io.helidon.config.metadata.model.CmNode;
@@ -56,7 +56,8 @@ class CmDocCodegen {
 
     private final CmResolver resolver;
     private final Path outputDir;
-    private final Template typeTemplate;
+    private final Template configTemplate;
+    private final Template providerTemplate;
     private final Template readmeTemplate;
 
     /**
@@ -69,45 +70,74 @@ class CmDocCodegen {
         this.outputDir = outputDir;
         this.resolver = CmResolver.create(metadata);
         var handlebars = new Handlebars();
-        typeTemplate = template(handlebars, "type.md.hbs");
+        configTemplate = template(handlebars, "config.md.hbs");
+        providerTemplate = template(handlebars, "provider.md.hbs");
         readmeTemplate = template(handlebars, "README.md.hbs");
     }
-
-    // TODO investigate the duplicates (/tmp/config-refs-dups.txt)
 
     /**
      * Process the config metadata and generate the corresponding documentation.
      */
     void process() {
-        var processedTypes = new TreeSet<String>();
 
-        // gather all types reachable from the true roots
+        // process type names
+        var rootTypeNames = new TreeSet<String>();
+        var providerTypeNames = new TreeSet<String>();
+        var typeNames = new TreeSet<String>();
+
+        // nested types (non-root)
         var types = new HashSet<CmType>();
         for (var root : resolver.tree()) {
-            root.visit(n -> {
-                n.type().ifPresent(types::add);
-                return true;
-            });
+
+            var resolvedType = root.type()
+                    .orElseThrow(() -> new IllegalStateException("Root type is unresolved"));
+
+            // render the root type
+            var fileName = root.typeName() + ".md";
+            generateFile(fileName, configTemplate, typeContext(resolvedType));
+            rootTypeNames.add(root.typeName());
+
+            // gather all types reachable from the root
+            for (var child : root.children()) {
+                child.visit(n -> {
+                    n.type().ifPresent(types::add);
+                    return true;
+                });
+            }
         }
 
         // document all reachable types
         for (var type : types) {
-            var fileName = type.type() + ".md";
-            generateFile(fileName, () -> typeTemplate.apply(typeContext(type)));
-            processedTypes.add(fileName);
+            var typeName = type.type();
+            var fileName = typeName + ".md";
+            generateFile(fileName, configTemplate, typeContext(type));
+            typeNames.add(typeName);
+        }
+
+        // document all provider contracts
+        for (var typeName : resolver.contracts()) {
+            var fileName = typeName + ".md";
+            generateFile(fileName, providerTemplate, providerContext(typeName));
+            providerTypeNames.add(typeName);
         }
 
         // generate index
-        generateFile("README.md", () -> readmeTemplate.apply(Map.of("types", processedTypes)));
+        generateFile("README.md", readmeTemplate, readmeContext(rootTypeNames, typeNames, providerTypeNames));
 
         // remove obsolete files
         try (Stream<Path> stream = Files.list(outputDir)
                 .filter(it -> {
                     var fileName = it.getFileName().toString();
-                    return !Files.isDirectory(it)
-                           && fileName.endsWith(".md")
-                           && !fileName.equals("README.md")
-                           && !processedTypes.contains(fileName);
+                    if (!Files.isDirectory(it)
+                        && fileName.endsWith(".md")
+                        && !fileName.equals("README.md")) {
+
+                        var typeName = fileName.substring(0, fileName.length() - 3);
+                        return !rootTypeNames.contains(typeName)
+                               && !typeNames.contains(typeName)
+                               && !providerTypeNames.contains(typeName);
+                    }
+                    return false;
                 })) {
 
             var toRemove = stream.map(Path::toAbsolutePath).toList();
@@ -148,17 +178,24 @@ class CmDocCodegen {
         context.put("key", option.key());
         context.put("flags", optionFlagsContext(option));
         context.put("type", optionTypeContext(option));
+        option.description().ifPresent(it -> context.put("description", it));
+        option.defaultValue().ifPresent(it -> context.put("defaultValue", it));
+
+        // allowedValues are rendered with separate rows
+        // need at least one row
         context.put("rowspan", Math.max(option.allowedValues().size(), 1));
+
+        // the first value is rendered on the first row
         option.allowedValues().stream()
                 .limit(1)
                 .findFirst()
                 .ifPresent(it -> context.put("firstAllowedValue", allowedValueContext(it)));
+
+        // remaining values are rendered separately
         context.put("otherAllowedValues", option.allowedValues().stream()
                 .skip(1)
                 .map(this::allowedValueContext)
                 .toList());
-        option.description().ifPresent(it -> context.put("description", it));
-        option.defaultValue().ifPresent(it -> context.put("defaultValue", it));
         context.put("providers", option.providerType().or(option::type)
                 .map(resolver::providers)
                 .orElseGet(List::of));
@@ -177,6 +214,9 @@ class CmDocCodegen {
         }
         if (option.experimental()) {
             context.add("experimental");
+        }
+        if (option.provider()) {
+            context.add("provider");
         }
         return context;
     }
@@ -211,14 +251,49 @@ class CmDocCodegen {
         return context;
     }
 
-    private void generateFile(String name, CheckedSupplier<CharSequence, IOException> content) {
+    private Map<String, Object> providerContext(String typeName) {
+        var context = new HashMap<String, Object>();
+        context.put("type", typeName);
+        context.put("implementations", resolver.providers(typeName).stream()
+                .map(this::providerImplContext)
+                .toList());
+        context.put("usages", resolver.usage(typeName).stream()
+                .filter(it -> it.parent().isPresent())
+                .sorted(Comparator.comparing(CmNode::key))
+                .map(this::usageContext)
+                .toList());
+        return context;
+    }
+
+    private Map<String, Object> providerImplContext(CmType type) {
+        var context = new HashMap<String, Object>();
+        var prefix = type.prefix()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Provider implementation does not have a prefix: " + type.type()));
+        var typeName = type.type();
+        context.put("prefix", prefix);
+        context.put("typeFullName", typeName);
+        context.put("typeShortName", shortType(typeName));
+        context.put("description", type.description());
+        return context;
+    }
+
+    private Map<String, Object> readmeContext(Set<String> roots, Set<String> types, Set<String> providers) {
+        var context = new HashMap<String, Object>();
+        context.put("roots",roots);
+        context.put("types", types);
+        context.put("providers", providers);
+        return context;
+    }
+
+    private void generateFile(String name, Template template, Map<String, Object> context) {
         try {
-            if (!Files.exists(outputDir)) {
-                Files.createDirectories(outputDir);
-            }
             LOGGER.log(Level.INFO, "Generating " + name);
             var outputFile = outputDir.resolve(name);
-            Files.writeString(outputFile, content.get(), TRUNCATE_EXISTING, CREATE);
+            Files.createDirectories(outputFile.getParent());
+            try (var writer = Files.newBufferedWriter(outputFile, TRUNCATE_EXISTING, CREATE)) {
+                template.apply(context, writer);
+            }
         } catch (IOException ex) {
             throw new UncheckedIOException("Failed to generate: " + name, ex);
         }
