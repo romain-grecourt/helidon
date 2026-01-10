@@ -32,6 +32,7 @@ import io.helidon.metadata.hson.Hson;
 /**
  * Config metadata model.
  */
+@SuppressWarnings("DeprecatedIsStillUsed")
 public interface CmModel {
 
     /**
@@ -136,7 +137,9 @@ public interface CmModel {
          * Annotated type name.
          *
          * @return type name
+         * @deprecated use {@link #type()} instead
          */
+        @Deprecated(since = "4.4.0")
         Optional<String> annotatedType();
 
         /**
@@ -227,15 +230,15 @@ public interface CmModel {
          */
         enum Kind {
             /**
-             * Option is a single value (leaf node).
+             * Leaf node.
              */
             VALUE,
             /**
-             * Option is a list of values (either primitive, string or object nodes).
+             * List tree node.
              */
             LIST,
             /**
-             * Option is a map of strings to primitive type or String.
+             * Map tree node.
              */
             MAP
         }
@@ -243,9 +246,9 @@ public interface CmModel {
         /**
          * The key of the config option as used in config.
          *
-         * @return key, never {@code null}
+         * @return key, empty when {@link #merge()} is true
          */
-        String key();
+        Optional<String> key();
 
         /**
          * Description, derived from Javadoc.
@@ -258,7 +261,9 @@ public interface CmModel {
          * Method.
          *
          * @return method name, never {@code null}
+         * @deprecated use {@link CmType#producers() enclosing type producer} instead
          */
+        @Deprecated(forRemoval = true, since = "4.4.0")
         Optional<String> method();
 
         /**
@@ -299,9 +304,9 @@ public interface CmModel {
         boolean deprecated();
 
         /**
-         * Indicate whether this option is provided by other module(s).
+         * Indicate whether this option is abstract and provided by other module(s).
          *
-         * @return {@code true} if a provider, {@code false} other
+         * @return {@code true} if a provider, {@code false} otherwise
          */
         boolean provider();
 
@@ -309,7 +314,9 @@ public interface CmModel {
          * The provider interface type name used when {@link #provider()} is {@code true}.
          *
          * @return provider interface type name
+         * @deprecated use {@link #type()} instead
          */
+        @Deprecated(since = "4.4.0")
         Optional<String> providerType();
 
         /**
@@ -348,7 +355,7 @@ public interface CmModel {
          * @return CmOption
          */
         static CmOption fromJson(Hson.Struct jsonObject) {
-            return new CmOptionImpl(jsonObject.asStruct());
+            return new CmOptionImpl(jsonObject);
         }
     }
 

@@ -69,7 +69,7 @@ final class CmResolverImpl implements CmResolver {
     }
 
     @Override
-    public List<CmNode> tree() {
+    public List<CmNode> roots() {
         return readOnlyTree;
     }
 
@@ -116,28 +116,56 @@ final class CmResolverImpl implements CmResolver {
         // depth-first traversal
         while (!stack.isEmpty()) {
             var node = stack.pop();
+
+            // process options
             var options = node.type().map(CmType::options).orElse(List.of());
             for (var i = options.size() - 1; i >= 0; i--) {
                 var option = options.get(i);
-                var resolvedType = option.type().flatMap(this::type);
-                var resolvedTypeName = resolvedType.map(CmType::type).orElse(CmOption.DEFAULT_TYPE);
-                var path = node.path() + "." + option.key();
-                var child = new CmNodeImpl(
+                var optionType = option.type().flatMap(this::type);
+                var optionTypeName = optionType.map(CmType::type)
+                        .or(option::type)
+                        .orElse(CmOption.DEFAULT_TYPE);
+                var optionKey = option.key()
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Option does not have a key: enclosingType=" + node.typeName()));
+                var optionPath = node.path() + "." + optionKey;
+                var optionNode = new CmNodeImpl(
                         node,
-                        path,
-                        option.key(),
-                        resolvedTypeName,
-                        resolvedType.orElse(null),
+                        optionPath,
+                        optionKey,
+                        optionTypeName,
+                        optionType.orElse(null),
                         new ArrayList<>());
-                node.addChild(child);
-                if (resolvedType.isPresent()) {
-                    usages.computeIfAbsent(resolvedTypeName, k -> new ArrayList<>()).add(child);
-                    stack.push(child);
+                node.addChild(optionNode);
+
+                // process provider implementations
+                if (option.provider()) {
+                    for (var implType : providers.getOrDefault(optionTypeName, List.of())) {
+                        var implTypeName = implType.type();
+                        var implKey = implType.prefix().orElseThrow(() ->
+                                new IllegalStateException("Provider type does not have a prefix: " + implTypeName));
+                        var implPath = optionPath + "." + implKey;
+                        var implNode = new CmNodeImpl(
+                                optionNode,
+                                implPath,
+                                implKey,
+                                implTypeName,
+                                implType,
+                                new ArrayList<>());
+                        optionNode.addChild(implNode);
+                        usages.computeIfAbsent(implTypeName, k -> new ArrayList<>()).add(optionNode);
+                        stack.push(implNode);
+                    }
+                    usages.computeIfAbsent(optionTypeName, k -> new ArrayList<>()).add(optionNode);
+                } else if(optionType.isPresent()) {
+                    usages.computeIfAbsent(optionTypeName, k -> new ArrayList<>()).add(optionNode);
+                    stack.push(optionNode);
                 }
             }
         }
     }
 
+    @SuppressWarnings("deprecation")
     private CmType resolveType(CmType type) {
         // build the reverse hierarchy (parents first)
         var hierarchy = new ArrayList<CmType>();
@@ -157,7 +185,9 @@ final class CmResolverImpl implements CmResolver {
         var options = new HashMap<String, CmOption>();
         for (var t : hierarchy) {
             for (var e : mergeOptions(t)) {
-                options.put(e.key(), e);
+                var key = e.key().orElseThrow(() -> new IllegalStateException(
+                        "Merged option does not have a key: enclosingType=" + t.type()));
+                options.put(key, e);
             }
         }
 
@@ -183,8 +213,7 @@ final class CmResolverImpl implements CmResolver {
                 var resolvedType = option.type()
                         .flatMap(it -> Optional.ofNullable(types.get(it)))
                         .orElseThrow(() -> new IllegalStateException(
-                                "Cannot resolve merge option type: optionKey=%s, optionType=%s"
-                                        .formatted(option.key(), option.type().orElse(null))));
+                                "Cannot resolve merge option type: " + option.type().orElse(null)));
                 var options = resolvedType.options();
                 for (int i = options.size() - 1; i >= 0; i--) {
                     stack.push(options.get(i));

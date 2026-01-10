@@ -118,8 +118,7 @@ final class CmNodeImpl implements CmNode {
             return false;
         }
         var that = (CmNodeImpl) obj;
-        return Objects.equals(this.parent, that.parent)
-               && Objects.equals(this.path, that.path)
+        return Objects.equals(this.path, that.path)
                && Objects.equals(this.key, that.key)
                && Objects.equals(this.typeName, that.typeName)
                && Objects.equals(this.type, that.type);
@@ -133,7 +132,6 @@ final class CmNodeImpl implements CmNode {
     @Override
     public String toString() {
         return "CmNodeImpl["
-               + "parent=" + parent
                + ", path=" + path
                + ", key=" + key
                + ", typeName=" + typeName

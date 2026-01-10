@@ -3,71 +3,158 @@
         "module": "com.acme",
         "types": [
             {
-                "type": "com.acme.AcmeConfig",
+                "type": "com.acme.AcmeServerConfig",
                 "standalone": true,
-                "prefix": "acme",
-                "description": "ACME configuration.",
+                "prefix": "server",
+                "description": "ACME Server configuration.",
                 "inherits": [
-                    "com.acme.AcmeOptionConfig"
+                    "com.acme.AcmeListenerConfig"
                 ],
                 "options": [
                     {
-                        "key": "mode",
-                        "type": "com.acme.AcmeMode",
-                        "description": "Mode",
-                        "defaultValue": "MODE2",
-                        "allowedValues": [
-                            {
-                                "value": "MODE1",
-                                "description": "mode 1"
-                            },
-                            {
-                                "value": "MODE2",
-                                "description": "mode 2"
-                            },
-                            {
-                                "value": "MODE3",
-                                "description": "mode 3"
-                            }
-                        ]
+                        "key": "sockets",
+                        "type": "com.acme.AcmeListenerConfig",
+                        "description": "Sockets",
+                        "kind": "MAP"
                     },
                     {
-                        "key": "option1",
-                        "type": "com.acme.AcmeOptionConfig",
-                        "description": "Option 1",
-                        "deprecated": true
-                    },
-                    {
-                        "key": "option2",
-                        "type": "com.acme.AcmeOptionConfig",
-                        "description": "Option 2",
-                        "experimental": true
+                        "type": "com.acme.AcmeOptionsConfig",
+                        "merge": true
                     }
                 ]
             },
             {
-                "type": "com.acme.AcmeOptionConfig",
-                "description": "ACME Option configuration",
+                "type": "com.acme.AcmeListenerConfig",
+                "description": "ACME Listener configuration",
                 "options": [
                     {
-                        "key": "mode",
-                        "type": "com.acme.AcmeMode",
-                        "description": "Mode",
-                        "defaultValue": "MODE2",
+                        "key": "host",
+                        "description": "Listen address",
+                        "defaultValue": "0.0.0.0"
+                    },
+                    {
+                        "key": "port",
+                        "type": "java.lang.Integer",
+                        "description": "Listen port",
+                        "defaultValue": "0"
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeOptionsConfig",
+                "options": [
+                    {
+                        "key": "host",
+                        "description": "Listen address",
+                        "defaultValue": "localhost"
+                    },
+                    {
+                        "key": "port",
+                        "type": "java.lang.Integer",
+                        "description": "Listen port",
+                        "defaultValue": "8080"
+                    },
+                    {
+                        "key": "features",
+                        "type": "com.acme.AcmeFeature",
+                        "description": "Dynamic features",
+                        "kind": "LIST",
+                        "provider": true
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeLoggingConfig",
+                "description": "ACME Logging configuration",
+                "prefix": "logging",
+                "provides": [
+                    "com.acme.AcmeFeature"
+                ],
+                "options": [
+                    {
+                        "key": "loggers",
+                        "type": "com.acme.AcmeLoggerConfig",
+                        "description": "Loggers",
+                        "kind": "LIST"
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeLoggerConfig",
+                "description": "ACME Logger configuration",
+                "options": [
+                    {
+                        "key": "logger",
+                        "description": "Logger name"
+                    },
+                    {
+                        "key": "level",
+                        "description": "Logging level",
+                        "defaultValue": "INFO",
                         "allowedValues": [
                             {
-                                "value": "MODE1",
-                                "description": "mode 1"
+                                "value": "ERROR",
+                                "description": "Error level"
                             },
                             {
-                                "value": "MODE2",
-                                "description": "mode 2"
+                                "value": "WARNING",
+                                "description": "Warning level"
                             },
                             {
-                                "value": "MODE3",
-                                "description": "mode 3"
+                                "value": "INFO",
+                                "description": "Info level"
+                            },
+                            {
+                                "value": "DEBUG",
+                                "description": "Debug level"
                             }
                         ]
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeAuditConfig",
+                "description": "ACME Audit configuration",
+                "prefix": "audit",
+                "provides": [
+                    "com.acme.AcmeFeature"
+                ],
+                "options": [
+                    {
+                        "key": "strict",
+                        "type": "java.lang.Boolean",
+                        "description": "Fail on error"
+                    },
+                    {
+                        "key": "paths",
+                        "description": "Audited paths",
+                        "kind": "MAP"
+                    }
+                ]
+            },
+            {
+                "type": "com.acme.AcmeTracingConfig",
+                "description": "ACME Tracing configuration",
+                "prefix": "tracing",
+                "provides": [
+                    "com.acme.AcmeFeature"
+                ],
+                "options": [
+                    {
+                        "key": "host",
+                        "description": "Tracing backend host",
+                        "required": true
+                    },
+                    {
+                        "key": "port",
+                        "type": "java.lang.Integer",
+                        "description": "Tracing backend port",
+                        "defaultValue": "16686"
+                    },
+                    {
+                        "key": "tags",
+                        "description": "System tags",
+                        "kind": "LIST"
                     }
                 ]
             }

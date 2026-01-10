@@ -114,7 +114,7 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         }
     }
 
-    record CmOptionImpl(String key,
+    record CmOptionImpl(Optional<String> key,
                         Optional<String> description,
                         Optional<String> method,
                         Optional<String> type,
@@ -137,7 +137,7 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         }
 
         CmOptionImpl(Hson.Struct struct) {
-            this(struct.stringValue("key", HsonNotFoundException::new),
+            this(struct.stringValue("key"),
                     struct.stringValue("description"),
                     struct.stringValue("method"),
                     struct.stringValue("type"),
@@ -155,7 +155,7 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         @Override
         public Hson.Struct toJson() {
             var builder = Hson.Struct.builder();
-            builder.set("key", key);
+            key.ifPresent(it -> builder.set("key", it));
             type.ifPresent(it -> builder.set("type", it));
             description.ifPresent(it -> builder.set("description", it));
             defaultValue.ifPresent(it -> builder.set("defaultValue", it));

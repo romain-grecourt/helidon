@@ -87,7 +87,7 @@ class CmDocCodegen {
 
         // nested types (non-root)
         var types = new HashSet<CmType>();
-        for (var root : resolver.tree()) {
+        for (var root : resolver.roots()) {
 
             var resolvedType = root.type()
                     .orElseThrow(() -> new IllegalStateException("Root type is unresolved"));
@@ -153,14 +153,14 @@ class CmDocCodegen {
     private Map<String, Object> typeContext(CmType type) {
         var context = new HashMap<String, Object>();
         var typeName = type.type();
-        type.description().ifPresent(it -> context.put("description", it));
+        context.put("description", type.description().orElse("-"));
         context.put("type", typeName);
         context.put("standalone", type.standalone());
         type.prefix().ifPresent(it -> context.put("prefix", it));
         context.put("provides", type.provides());
 
         var sortedOptions = new ArrayList<>(type.options());
-        sortedOptions.sort(Comparator.comparing(CmOption::key));
+        sortedOptions.sort(Comparator.comparing(it -> it.key().orElseThrow()));
         context.put("options", sortedOptions.stream()
                 .map(this::optionContext)
                 .toList());
@@ -170,35 +170,36 @@ class CmDocCodegen {
                 .sorted(Comparator.comparing(CmNode::key))
                 .map(this::usageContext)
                 .toList());
+
+        context.put("allowedValues", sortedOptions.stream()
+                .anyMatch(it -> !it.allowedValues().isEmpty()));
         return context;
     }
 
     private Map<String, Object> optionContext(CmOption option) {
         var context = new HashMap<String, Object>();
-        context.put("key", option.key());
+        context.put("key", option.key().orElseThrow());
         context.put("flags", optionFlagsContext(option));
         context.put("type", optionTypeContext(option));
-        option.description().ifPresent(it -> context.put("description", it));
+        context.put("description", option.description().orElse("-"));
         option.defaultValue().ifPresent(it -> context.put("defaultValue", it));
 
-        // allowedValues are rendered with separate rows
-        // need at least one row
-        context.put("rowspan", Math.max(option.allowedValues().size(), 1));
+        if (!option.allowedValues().isEmpty()) {
+            // other cell need to merge
+            context.put("rowspan", option.allowedValues().size());
 
-        // the first value is rendered on the first row
-        option.allowedValues().stream()
-                .limit(1)
-                .findFirst()
-                .ifPresent(it -> context.put("firstAllowedValue", allowedValueContext(it)));
+            // allowedValues[0] is rendered on the first row
+            option.allowedValues().stream()
+                    .limit(1)
+                    .findFirst()
+                    .ifPresent(it -> context.put("allowedValue1", allowedValueContext(it)));
 
-        // remaining values are rendered separately
-        context.put("otherAllowedValues", option.allowedValues().stream()
-                .skip(1)
-                .map(this::allowedValueContext)
-                .toList());
-        context.put("providers", option.providerType().or(option::type)
-                .map(resolver::providers)
-                .orElseGet(List::of));
+            // allowedValues[i > 0] are rendered in separate rows
+            context.put("allowedValueX", option.allowedValues().stream()
+                    .skip(1)
+                    .map(this::allowedValueContext)
+                    .toList());
+        }
         return context;
     }
 
@@ -224,22 +225,20 @@ class CmDocCodegen {
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
         var resolvedType = option.type().flatMap(resolver::type);
-        var configTypeName = resolvedType.map(CmType::type).orElse(CmOption.DEFAULT_TYPE);
-        context.put("resolved", resolvedType.isPresent());
+        var configTypeName = resolvedType.map(CmType::type)
+                .or(option::type)
+                .orElse(CmOption.DEFAULT_TYPE);
+        context.put("resolved", option.provider() || resolvedType.isPresent());
         context.put("shortName", shortType(configTypeName));
         context.put("fullName", configTypeName);
-        switch (option.kind().orElse(CmOption.DEFAULT_KIND)) {
-            case VALUE -> context.put("isValue", true);
-            case MAP -> context.put("isMap", true);
-            case LIST -> context.put("isList", true);
-        }
+        context.put("kind", option.kind().orElse(CmOption.DEFAULT_KIND).name());
         return context;
     }
 
     private Map<String, Object> allowedValueContext(CmAllowedValue allowedValue) {
         var context = new HashMap<String, Object>();
         context.put("value", allowedValue.value());
-        allowedValue.description().ifPresent(it -> context.put("description", it));
+        context.put("description", allowedValue.description().orElse("-"));
         return context;
     }
 
@@ -274,7 +273,7 @@ class CmDocCodegen {
         context.put("prefix", prefix);
         context.put("typeFullName", typeName);
         context.put("typeShortName", shortType(typeName));
-        context.put("description", type.description());
+        context.put("description", type.description().orElse("-"));
         return context;
     }
 

@@ -57,8 +57,9 @@ class CmDocCodegenTest {
             var expectedFiles = stream.toList();
             for (var expectedFile : expectedFiles) {
 
-                var actualFile = outputDir.resolve(expectedFile.getFileName());
-                assertThat(Files.exists(actualFile), is(true));
+                var expectedFileName = expectedFile.getFileName();
+                var actualFile = outputDir.resolve(expectedFileName);
+                assertThat(expectedFileName + " does not exist", Files.exists(actualFile), is(true));
 
                 var expected = Files.readString(expectedFile);
                 var actual = Files.readString(actualFile);
@@ -66,8 +67,4 @@ class CmDocCodegenTest {
             }
         }
     }
-
-    // TODO test List
-    // TODO test Map
-    // TODO test Provider
 }

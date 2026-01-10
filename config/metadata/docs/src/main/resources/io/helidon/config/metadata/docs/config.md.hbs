@@ -40,75 +40,57 @@ This type is standalone and configured under the root key `{{prefix}}`.
         <tr>
             <th>Key</th>
             <th>Type</th>
+            <th>Kind</th>
             <th>Description</th>
             <th>Flags</th>
             <th>Default Value</th>
+{{~#if allowedValues~}}
             <th colspan="2">Allowed Values</th>
+{{~/if}}
         </tr>
     </thead>
     <tbody>
 {{~#each options}}
         <tr id="{{key}}">
-            <td rowspan="{{rowspan}}"><code>{{key}}</code></td>
-            <td rowspan="{{rowspan}}">
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}><code>{{key}}</code></td>
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}>
 {{~#if type.resolved~}}
                 <a href="{{type.fullName}}.md">
 {{~/if~}}
-{{~#if type.isValue~}}
-                    <code>{{type.shortName}}</code>
-{{~/if~}}
-{{~#if type.isList~}}
-                    <code>List&lt;{{type.shortName}}&gt;</code>
-{{~/if~}}
-{{~#if type.isMap~}}
-                    <code>Map&lt;String,{{type.shortName}}&gt;</code>
-{{~/if~}}
+                <code>{{type.shortName}}</code>
 {{~#if type.resolved~}}
                 </a>
 {{~/if~}}
             </td>
-            <td rowspan="{{rowspan}}">{{{description}}}</td>
-            <td rowspan="{{rowspan}}">
-{{~#if flags.length}}
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}><code>{{type.kind}}</code></td>
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}>{{{description}}}</td>
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}>
                 <ul>
 {{~#each flags}}
                     <li>{{this}}</li>
 {{~/each}}
                 </ul>
-{{~else~}}
--
-{{~/if}}
             </td>
-            <td rowspan="{{rowspan}}">
+            <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}>
 {{~#if defaultValue~}}
                 <code>{{defaultValue}}</code>
 {{~else~}}
 -
 {{~/if~}}
             </td>
-{{~#if firstAllowedValue}}
-            <td><code>{{firstAllowedValue.value}}</code></td>
-            <td>
-{{~#if firstAllowedValue.description~}}
-{{{firstAllowedValue.description}}}
+{{~#if allowedValue1}}
+            <td><code>{{allowedValue1.value}}</code></td>
+            <td>{{{allowedValue1.description}}}</td>
 {{~else~}}
--
-{{~/if~}}
-            </td>
-{{~else}}
+{{~#if ../allowedValues}}
             <td colspan="2">-</td>
+{{~/if~}}
 {{~/if}}
         </tr>
-{{~#each otherAllowedValues}}
+{{~#each allowedValueX}}
         <tr>
             <td><code>{{value}}</code></td>
-            <td>
-{{~#if description~}}
-{{{description}}}
-{{~else~}}
--
-{{~/if~}}
-            </td>
+            <td>{{{description}}}</td>
         </tr>
 {{~/each}}
 {{~/each}}

@@ -71,7 +71,7 @@ class CmModelTest {
                         hasProperty("provides", CmType::provides, is(hasItems(
                                 "com.acme.AcmeProvider"))),
                         hasProperty("options", CmType::options, is(hasItem(allOf(List.of(
-                                hasProperty("key", CmOption::key, is("mode")),
+                                hasProperty("key", CmOption::key, is(Optional.of("mode"))),
                                 hasProperty("description", CmOption::description, is(Optional.of("Mode"))),
                                 hasProperty("method", CmOption::method, is(Optional.of(
                                         "com.acme.AcmeConfig.Builder#mode(com.acme.AcmeMode)"))),
@@ -124,6 +124,18 @@ class CmModelTest {
                     hasProperty("module", CmModule::module, is("com.acme")))
             ));
         }
+    }
+
+    @Test
+    void testIdemPotent() {
+        var is = getClass().getResourceAsStream("/" + CmModel.LOCATION);
+        assertThat(is, is(not(nullValue())));
+
+        var expected = CmModel.fromJson(parseJson(is));
+        var expectedJson = formatJson(expected.toJson());
+        var actual = CmModel.fromJson(parseJson(new ByteArrayInputStream(expectedJson.getBytes())));
+
+        assertThat(actual, is(expected));
     }
 
     static Hson.Array parseJson(InputStream is) {

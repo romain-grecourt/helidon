@@ -39,7 +39,7 @@ public interface CmResolver {
      * Find config types that provide the given contract.
      *
      * @param typeName contract type name
-     * @return list of config types
+     * @return list of tree nodes
      */
     List<CmType> providers(String typeName);
 
@@ -71,5 +71,5 @@ public interface CmResolver {
      *
      * @return list of root tree nodes
      */
-    List<CmNode> tree();
+    List<CmNode> roots();
 }
