@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Oracle and/or its affiliates
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,14 +63,14 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
 
         CmTypeImpl {
             if (standalone && prefix.isEmpty()) {
-                throw new IllegalArgumentException("Standalone type does not have a prefix: type=" + type);
+                throw new IllegalArgumentException("Standalone type does not have a prefix: " + type);
             }
             if (!provides.isEmpty()) {
                 if (standalone) {
-                    throw new IllegalArgumentException("Standalone type cannot implement contract(s): type=" + type);
+                    throw new IllegalArgumentException("Standalone type cannot implement contract(s): " + type);
                 }
                 if (prefix.isEmpty()) {
-                    throw new IllegalArgumentException("Provider implementation does not have a prefix: type=" + type);
+                    throw new IllegalArgumentException("Provider implementation does not have a prefix: " + type);
                 }
             }
         }
@@ -118,35 +118,35 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
 
     record CmOptionImpl(Optional<String> key,
                         Optional<String> description,
-                        Optional<String> type,
+                        String type,
                         Optional<String> defaultValue,
                         boolean required,
                         boolean experimental,
                         boolean deprecated,
                         boolean provider,
                         boolean merge,
-                        Optional<Kind> kind,
+                        Kind kind,
                         List<CmAllowedValue> allowedValues) implements CmOption {
 
         CmOptionImpl {
             if (required && defaultValue.isPresent()) {
                 throw new IllegalArgumentException(
                         "Required option cannot have a default value: key=%s, type=%s"
-                                .formatted(key, type.orElse(null)));
+                                .formatted(key, type));
             }
         }
 
         CmOptionImpl(Hson.Struct struct) {
             this(struct.stringValue("key"),
                     struct.stringValue("description"),
-                    struct.stringValue("type"),
+                    struct.stringValue("type").orElse(DEFAULT_TYPE),
                     struct.stringValue("defaultValue"),
                     struct.booleanValue("required").orElse(false),
                     struct.booleanValue("experimental").orElse(false),
                     struct.booleanValue("deprecated").orElse(false),
                     struct.booleanValue("provider").orElse(false),
                     struct.booleanValue("merge").orElse(false),
-                    struct.stringValue("kind").map(Kind::valueOf),
+                    struct.stringValue("kind").map(Kind::valueOf).orElse(DEFAULT_KIND),
                     struct.structArray("allowedValues", CmAllowedValue::fromJson).orElseGet(List::of));
         }
 
@@ -167,7 +167,9 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         public Hson.Struct toJson() {
             var builder = Hson.Struct.builder();
             key.ifPresent(it -> builder.set("key", it));
-            type.ifPresent(it -> builder.set("type", it));
+            if (!type.equals(DEFAULT_TYPE)) {
+                builder.set("type", type);
+            }
             description.ifPresent(it -> builder.set("description", it));
             defaultValue.ifPresent(it -> builder.set("defaultValue", it));
             if (experimental) {
@@ -176,7 +178,9 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
             if (required) {
                 builder.set("required", true);
             }
-            kind.ifPresent(it -> builder.set("kind", it.name()));
+            if (!kind.equals(DEFAULT_KIND)) {
+                builder.set("kind", kind.name());
+            }
             if (provider) {
                 builder.set("provider", true);
             }

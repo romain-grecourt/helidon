@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,6 +144,7 @@ public final class Hson {
          *
          * @param key     key under this struct
          * @param factory factory function that produces the exception thrown if not defined
+         * @param <T>     exception type
          * @return boolean value
          * @throws T             produced by {@code factory} if the value is not defined
          * @throws HsonException in case the key exists, but is not a
@@ -190,6 +191,7 @@ public final class Hson {
          *
          * @param key     key under this struct
          * @param factory factory function that produces the exception thrown if not defined
+         * @param <T>     exception type
          * @return string value
          * @throws T             produced by {@code factory} if the value is not defined
          * @throws HsonException in case the key exists, but is not a
@@ -226,6 +228,7 @@ public final class Hson {
          *
          * @param key     key under this struct
          * @param factory factory function that produces the exception thrown if not defined
+         * @param <T>     exception type
          * @return int value
          * @throws T             produced by {@code factory} if the value is not defined
          * @throws HsonException in case the key exists, but is not a
@@ -262,6 +265,7 @@ public final class Hson {
          *
          * @param key     key under this struct
          * @param factory factory function that produces the exception thrown if not defined
+         * @param <T>     exception type
          * @return double value, or default value if the key does not exist
          * @throws T             produced by {@code factory} if the value is not defined
          * @throws HsonException in case the key exists, but is not a
@@ -296,6 +300,7 @@ public final class Hson {
          *
          * @param key     key under this struct
          * @param factory factory function that produces the exception thrown if not defined
+         * @param <T>     exception type
          * @return big decimal value
          * @throws T produced by {@code factory} if the value is not defined
          * @see io.helidon.metadata.hson.HsonNotFoundException#HsonNotFoundException(String) factory implementation

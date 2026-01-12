@@ -15,9 +15,7 @@
  */
 package io.helidon.config.metadata.codegen;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import io.helidon.common.types.Annotation;
 import io.helidon.common.types.TypeName;

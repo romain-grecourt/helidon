@@ -32,10 +32,10 @@ import java.util.stream.Stream;
 
 import io.helidon.config.metadata.model.CmModel;
 import io.helidon.config.metadata.model.CmModel.CmAllowedValue;
-import io.helidon.config.metadata.model.CmNode;
 import io.helidon.config.metadata.model.CmModel.CmOption;
-import io.helidon.config.metadata.model.CmResolver;
 import io.helidon.config.metadata.model.CmModel.CmType;
+import io.helidon.config.metadata.model.CmNode;
+import io.helidon.config.metadata.model.CmResolver;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Template;
@@ -218,16 +218,15 @@ class CmDocCodegen {
 
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
-        var resolvedType = option.type().flatMap(resolver::type);
-        var configTypeName = resolvedType.map(CmType::type)
-                .or(option::type)
-                .orElse(CmOption.DEFAULT_TYPE);
-        if (option.provider() || resolvedType.isPresent()) {
-            context.put("fileName", configTypeName + ".md");
+        var optionType = resolver.type(option.type());
+        var optionTypeName = optionType.map(CmType::type)
+                .orElse(option.type());
+        if (option.provider() || optionType.isPresent()) {
+            context.put("fileName", optionTypeName + ".md");
         }
-        context.put("shortName", shortType(configTypeName));
-        context.put("fullName", configTypeName);
-        context.put("kind", option.kind().orElse(CmOption.DEFAULT_KIND).name());
+        context.put("shortName", shortType(optionTypeName));
+        context.put("fullName", optionTypeName);
+        context.put("kind", option.kind().name());
         return context;
     }
 
@@ -293,7 +292,10 @@ class CmDocCodegen {
         try {
             LOGGER.log(Level.INFO, "Generating " + name);
             var outputFile = outputDir.resolve(name);
-            Files.createDirectories(outputFile.getParent());
+            var outputFileParent = outputFile.getParent();
+            if (outputFileParent != null) {
+                Files.createDirectories(outputFileParent);
+            }
             try (var writer = Files.newBufferedWriter(outputFile, TRUNCATE_EXISTING, CREATE)) {
                 template.apply(context, writer);
             }

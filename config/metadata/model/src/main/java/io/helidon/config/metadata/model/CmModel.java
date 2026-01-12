@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Oracle and/or its affiliates
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,8 +50,19 @@ public interface CmModel {
     }
 
     /**
+     * Create from JSON.
+     *
+     * @param is input stream
+     * @return ConfigMetadata
+     */
+    static CmModel fromJson(InputStream is) {
+        return new CmModelImpl(Hson.parse(is).asArray());
+    }
+
+    /**
      * Load all {@value #LOCATION} from the classpath.
      *
+     * @param cl class loader
      * @return metadatas
      */
     static CmModel loadAll(ClassLoader cl) {
@@ -155,14 +166,13 @@ public interface CmModel {
 
         /**
          * Indicate whether this is a standalone config object.
-         * An optional prefix may be specified with {@link #prefix()}.
          *
          * @return {@code true} if standalone, {@code false} otherwise
          */
         boolean standalone();
 
         /**
-         * Get all the exposed type names.
+         * Get all the inherited type names.
          *
          * @return list of type names
          */
@@ -249,11 +259,10 @@ public interface CmModel {
 
         /**
          * The type of the config option.
-         * If the type is empty, it is assumed to be {@value #DEFAULT_TYPE}.
          *
-         * @return type name
+         * @return type name, never {@code null}
          */
-        Optional<String> type();
+        String type();
 
         /**
          * Default value.
@@ -292,7 +301,7 @@ public interface CmModel {
         boolean provider();
 
         /**
-         * Indicate wether to merge the child nodes directly with parent node without a key
+         * Indicate wether to merge the child nodes directly with parent node without a key.
          *
          * @return {@code true} to merge, {@code false} otherwise
          */
@@ -300,11 +309,10 @@ public interface CmModel {
 
         /**
          * Kind of this option.
-         * If the kind is empty, it is assumed to be {@link #DEFAULT_KIND}
          *
-         * @return Kind
+         * @return Kind, never {@code null}
          */
-        Optional<Kind> kind();
+        Kind kind();
 
         /**
          * Allowed values.

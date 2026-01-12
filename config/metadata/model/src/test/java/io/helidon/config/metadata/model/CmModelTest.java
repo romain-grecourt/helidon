@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Oracle and/or its affiliates
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,14 +71,14 @@ class CmModelTest {
                         hasProperty("options", CmType::options, is(hasItem(allOf(List.of(
                                 hasProperty("key", CmOption::key, is(Optional.of("mode"))),
                                 hasProperty("description", CmOption::description, is(Optional.of("Mode"))),
-                                hasProperty("type", CmOption::type, is(Optional.of("com.acme.AcmeMode"))),
+                                hasProperty("type", CmOption::type, is("com.acme.AcmeMode")),
                                 hasProperty("defaultValue", CmOption::defaultValue, is(Optional.of("MODE1"))),
                                 hasProperty("required", CmOption::required, is(false)),
                                 hasProperty("experimental", CmOption::experimental, is(false)),
                                 hasProperty("deprecated", CmOption::deprecated, is(false)),
                                 hasProperty("provider", CmOption::provider, is(false)),
                                 hasProperty("merge", CmOption::merge, is(false)),
-                                hasProperty("kind", CmOption::kind, is(Optional.empty())),
+                                hasProperty("kind", CmOption::kind, is(CmOption.Kind.VALUE)),
                                 hasProperty("allowedValues", CmOption::allowedValues, is(allOf(
                                         hasItem(allOf(
                                                 hasProperty("value", CmAllowedValue::value, is("MODE1")),

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Oracle and/or its affiliates
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,10 +124,8 @@ final class CmResolverImpl implements CmResolver {
             var options = node.type().map(CmType::options).orElse(List.of());
             for (var i = options.size() - 1; i >= 0; i--) {
                 var option = options.get(i);
-                var optionType = option.type().flatMap(this::type);
-                var optionTypeName = optionType.map(CmType::type)
-                        .or(option::type)
-                        .orElse(CmOption.DEFAULT_TYPE);
+                var optionTypeName = option.type();
+                var optionType = type(optionTypeName);
                 var optionKey = option.key()
                         .orElseThrow(() -> new IllegalStateException(
                                 "Option does not have a key: enclosingType=" + node.typeName()));
@@ -160,7 +158,7 @@ final class CmResolverImpl implements CmResolver {
                         stack.push(implNode);
                     }
                     usages.computeIfAbsent(optionTypeName, k -> new TreeSet<>()).add(optionNode);
-                } else if(optionType.isPresent()) {
+                } else if (optionType.isPresent()) {
                     usages.computeIfAbsent(optionTypeName, k -> new TreeSet<>()).add(optionNode);
                     stack.push(optionNode);
                 }
@@ -211,10 +209,10 @@ final class CmResolverImpl implements CmResolver {
         while (!stack.isEmpty()) {
             var option = stack.pop();
             if (option.merge()) {
-                var resolvedType = option.type()
-                        .flatMap(it -> Optional.ofNullable(types.get(it)))
-                        .orElseThrow(() -> new IllegalStateException(
-                                "Cannot resolve merge option type: " + option.type().orElse(null)));
+                var resolvedType = types.get(option.type());
+                if (resolvedType == null) {
+                    throw new IllegalStateException("Cannot resolve merge option type: " + option.type());
+                }
                 var options = resolvedType.options();
                 for (int i = options.size() - 1; i >= 0; i--) {
                     stack.push(options.get(i));

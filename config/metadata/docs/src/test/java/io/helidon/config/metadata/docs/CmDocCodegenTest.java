@@ -22,7 +22,6 @@ import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 import io.helidon.config.metadata.model.CmModel;
-import io.helidon.metadata.hson.Hson;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,7 +46,7 @@ class CmDocCodegenTest {
 
         // generate docs
         var is = Files.newInputStream(classesDir.resolve("config-metadata.json"));
-        var metadata = CmModel.fromJson(Hson.parse(is).asArray());
+        var metadata = CmModel.fromJson(is);
         new CmDocCodegen(outputDir, metadata).process();
 
         // verify content

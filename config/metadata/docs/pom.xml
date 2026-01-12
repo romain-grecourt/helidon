@@ -56,25 +56,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-jdk14</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!--suppress VulnerableLibrariesLocal -->
-        <dependency>
-            <groupId>io.helidon</groupId>
-            <artifactId>helidon-all</artifactId>
-            <type>pom</type>
-            <scope>runtime</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.helidon.logging</groupId>
-                    <artifactId>helidon-logging-slf4j</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.helidon.logging</groupId>
-                    <artifactId>helidon-logging-log4j</artifactId>
-                </exclusion>
-            </exclusions>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -87,4 +69,16 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgument>-proc:none</compilerArgument>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
