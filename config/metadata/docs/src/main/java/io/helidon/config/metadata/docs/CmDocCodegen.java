@@ -23,9 +23,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,9 +54,10 @@ class CmDocCodegen {
 
     private final CmResolver resolver;
     private final Path outputDir;
+    private final Template rootTemplate;
     private final Template configTemplate;
     private final Template providerTemplate;
-    private final Template readmeTemplate;
+    private final Template manifestTemplate;
 
     /**
      * Create a new instance.
@@ -70,59 +69,61 @@ class CmDocCodegen {
         this.outputDir = outputDir;
         this.resolver = CmResolver.create(metadata);
         var handlebars = new Handlebars();
+        rootTemplate = template(handlebars, "root.md.hbs");
         configTemplate = template(handlebars, "config.md.hbs");
         providerTemplate = template(handlebars, "provider.md.hbs");
-        readmeTemplate = template(handlebars, "README.md.hbs");
+        manifestTemplate = template(handlebars, "manifest.md.hbs");
     }
 
     /**
      * Process the config metadata and generate the corresponding documentation.
      */
     void process() {
+        // config types
+        var rootTypes = new TreeSet<CmType>();
+        var nestedTypes = new TreeSet<CmType>();
 
-        // process type names
-        var rootTypeNames = new TreeSet<String>();
+        // type names
+        var configTypeNames = new TreeSet<String>();
         var providerTypeNames = new TreeSet<String>();
-        var typeNames = new TreeSet<String>();
 
-        // nested types (non-root)
-        var types = new HashSet<CmType>();
+        // traverse the roots
         for (var root : resolver.roots()) {
 
-            var resolvedType = root.type()
-                    .orElseThrow(() -> new IllegalStateException("Root type is unresolved"));
-
             // render the root type
-            var fileName = root.typeName() + ".md";
-            generateFile(fileName, configTemplate, typeContext(resolvedType));
-            rootTypeNames.add(root.typeName());
+            var rootType = root.type().orElseThrow(() -> new IllegalStateException("Root type is unresolved"));
+            var rootTypeName = rootType.type();
+            generateFile(rootTypeName + ".md", configTemplate, configContext(rootType));
+            configTypeNames.add(rootTypeName);
+            rootTypes.add(rootType);
 
-            // gather all types reachable from the root
+            // gather all nested types
             for (var child : root.children()) {
                 child.visit(n -> {
-                    n.type().ifPresent(types::add);
+                    n.type().ifPresent(nestedTypes::add);
                     return true;
                 });
             }
         }
 
-        // document all reachable types
-        for (var type : types) {
+        // generate README.md
+        generateFile("README.md", rootTemplate, rootContext(rootTypes));
+
+        // document all nested types
+        for (var type : nestedTypes) {
             var typeName = type.type();
-            var fileName = typeName + ".md";
-            generateFile(fileName, configTemplate, typeContext(type));
-            typeNames.add(typeName);
+            generateFile(typeName + ".md", configTemplate, configContext(type));
+            configTypeNames.add(typeName);
         }
 
         // document all provider contracts
         for (var typeName : resolver.contracts()) {
-            var fileName = typeName + ".md";
-            generateFile(fileName, providerTemplate, providerContext(typeName));
+            generateFile(typeName + ".md", providerTemplate, providerContext(typeName));
             providerTypeNames.add(typeName);
         }
 
-        // generate index
-        generateFile("README.md", readmeTemplate, readmeContext(rootTypeNames, typeNames, providerTypeNames));
+        // generate listing
+        generateFile("manifest.md", manifestTemplate, manifestContext(configTypeNames, providerTypeNames));
 
         // remove obsolete files
         try (Stream<Path> stream = Files.list(outputDir)
@@ -130,12 +131,11 @@ class CmDocCodegen {
                     var fileName = it.getFileName().toString();
                     if (!Files.isDirectory(it)
                         && fileName.endsWith(".md")
-                        && !fileName.equals("README.md")) {
+                        && !fileName.equals("README.md")
+                        && !fileName.equals("manifest.md")) {
 
                         var typeName = fileName.substring(0, fileName.length() - 3);
-                        return !rootTypeNames.contains(typeName)
-                               && !typeNames.contains(typeName)
-                               && !providerTypeNames.contains(typeName);
+                        return !configTypeNames.contains(typeName) && !providerTypeNames.contains(typeName);
                     }
                     return false;
                 })) {
@@ -150,28 +150,22 @@ class CmDocCodegen {
         }
     }
 
-    private Map<String, Object> typeContext(CmType type) {
+    private Map<String, Object> configContext(CmType type) {
         var context = new HashMap<String, Object>();
         var typeName = type.type();
         context.put("description", type.description().orElse("-"));
         context.put("type", typeName);
-        context.put("standalone", type.standalone());
-        type.prefix().ifPresent(it -> context.put("prefix", it));
-        context.put("provides", type.provides());
 
-        var sortedOptions = new ArrayList<>(type.options());
-        sortedOptions.sort(Comparator.comparing(it -> it.key().orElseThrow()));
-        context.put("options", sortedOptions.stream()
+        var options = new TreeSet<>(type.options());
+        context.put("options", options.stream()
                 .map(this::optionContext)
                 .toList());
 
         context.put("usages", resolver.usage(typeName).stream()
-                .filter(it -> it.parent().isPresent())
-                .sorted(Comparator.comparing(CmNode::key))
                 .map(this::usageContext)
                 .toList());
 
-        context.put("allowedValues", sortedOptions.stream()
+        context.put("allowedValues", options.stream()
                 .anyMatch(it -> !it.allowedValues().isEmpty()));
         return context;
     }
@@ -228,10 +222,25 @@ class CmDocCodegen {
         var configTypeName = resolvedType.map(CmType::type)
                 .or(option::type)
                 .orElse(CmOption.DEFAULT_TYPE);
-        context.put("resolved", option.provider() || resolvedType.isPresent());
+        if (option.provider() || resolvedType.isPresent()) {
+            context.put("fileName", configTypeName + ".md");
+        }
         context.put("shortName", shortType(configTypeName));
         context.put("fullName", configTypeName);
         context.put("kind", option.kind().orElse(CmOption.DEFAULT_KIND).name());
+        return context;
+    }
+
+    private Map<String, Object> typeContext(CmType type) {
+        var context = new HashMap<String, Object>();
+        var prefix = type.prefix()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Type does not have a prefix: " + type.type()));
+        var typeName = type.type();
+        context.put("prefix", prefix);
+        context.put("fileName", typeName + ".md");
+        context.put("shortName", shortType(typeName));
+        context.put("description", type.description().orElse("-"));
         return context;
     }
 
@@ -244,7 +253,10 @@ class CmDocCodegen {
 
     private Map<String, Object> usageContext(CmNode node) {
         var context = new HashMap<String, Object>();
-        context.put("enclosingType", node.parent().map(CmNode::typeName).orElseThrow());
+        var fileName = node.parent()
+                .map(it -> it.typeName() + ".md")
+                .orElse("README.md");
+        context.put("fileName", fileName);
         context.put("key", node.key());
         context.put("path", node.path());
         return context;
@@ -254,34 +266,26 @@ class CmDocCodegen {
         var context = new HashMap<String, Object>();
         context.put("type", typeName);
         context.put("implementations", resolver.providers(typeName).stream()
-                .map(this::providerImplContext)
+                .map(this::typeContext)
                 .toList());
         context.put("usages", resolver.usage(typeName).stream()
-                .filter(it -> it.parent().isPresent())
-                .sorted(Comparator.comparing(CmNode::key))
                 .map(this::usageContext)
                 .toList());
         return context;
     }
 
-    private Map<String, Object> providerImplContext(CmType type) {
+    private Map<String, Object> rootContext(Set<CmType> roots) {
         var context = new HashMap<String, Object>();
-        var prefix = type.prefix()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Provider implementation does not have a prefix: " + type.type()));
-        var typeName = type.type();
-        context.put("prefix", prefix);
-        context.put("typeFullName", typeName);
-        context.put("typeShortName", shortType(typeName));
-        context.put("description", type.description().orElse("-"));
+        context.put("roots", roots.stream()
+                .map(this::typeContext)
+                .toList());
         return context;
     }
 
-    private Map<String, Object> readmeContext(Set<String> roots, Set<String> types, Set<String> providers) {
+    private Map<String, Object> manifestContext(Set<String> configTypes, Set<String> providerTypes) {
         var context = new HashMap<String, Object>();
-        context.put("roots",roots);
-        context.put("types", types);
-        context.put("providers", providers);
+        context.put("configTypes", configTypes);
+        context.put("providerTypes", providerTypes);
         return context;
     }
 

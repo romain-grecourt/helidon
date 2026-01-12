@@ -110,6 +110,11 @@ final class CmNodeImpl implements CmNode {
     }
 
     @Override
+    public int compareTo(CmNode o) {
+        return key.compareTo(o.key());
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj == this) {
             return true;

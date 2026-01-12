@@ -21,17 +21,11 @@ limitations under the License.
 
 ## Usages
 
-{{#if standalone~}}
-This type is standalone and configured under the root key `{{prefix}}`.
-{{~else~}}
-{{~#if usages.length~}}
 <ul class="usages">
 {{~#each usages}}
-    <li><a href="{{enclosingType}}.md#{{key}}"><code>{{path}}</code></a></li>
+    <li><a href="{{fileName}}#{{key}}"><code>{{path}}</code></a></li>
 {{~/each}}
 </ul>
-{{~/if~}}
-{{~/if}}
 
 ## Options
 
@@ -54,11 +48,11 @@ This type is standalone and configured under the root key `{{prefix}}`.
         <tr id="{{key}}">
             <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}><code>{{key}}</code></td>
             <td {{~#if rowspan}} rowspan="{{rowspan}}"{{/if}}>
-{{~#if type.resolved~}}
-                <a href="{{type.fullName}}.md">
+{{~#if type.fileName~}}
+                <a href="{{type.fileName}}">
 {{~/if~}}
                 <code>{{type.shortName}}</code>
-{{~#if type.resolved~}}
+{{~#if type.fileName~}}
                 </a>
 {{~/if~}}
             </td>
@@ -96,3 +90,7 @@ This type is standalone and configured under the root key `{{prefix}}`.
 {{~/each}}
     </tbody>
 </table>
+
+---
+
+See the [manifest](manifest.md) for all available types.

@@ -53,7 +53,6 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
     }
 
     record CmTypeImpl(String type,
-                      Optional<String> annotatedType,
                       List<CmOption> options,
                       Optional<String> description,
                       Optional<String> prefix,
@@ -78,7 +77,6 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
 
         CmTypeImpl(Hson.Struct struct) {
             this(struct.stringValue("type", HsonNotFoundException::new),
-                    struct.stringValue("annotatedType"),
                     struct.structArray("options", CmOption::fromJson).orElseGet(List::of),
                     struct.stringValue("description"),
                     struct.stringValue("prefix"),
@@ -89,10 +87,14 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         }
 
         @Override
+        public int compareTo(CmType o) {
+            return type.compareTo(o.type());
+        }
+
+        @Override
         public Hson.Struct toJson() {
             var builder = Hson.Struct.builder();
             builder.set("type", type);
-            annotatedType.ifPresent(it -> builder.set("annotatedType", it));
             if (standalone) {
                 builder.set("standalone", true);
             }
@@ -116,14 +118,12 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
 
     record CmOptionImpl(Optional<String> key,
                         Optional<String> description,
-                        Optional<String> method,
                         Optional<String> type,
                         Optional<String> defaultValue,
                         boolean required,
                         boolean experimental,
                         boolean deprecated,
                         boolean provider,
-                        Optional<String> providerType,
                         boolean merge,
                         Optional<Kind> kind,
                         List<CmAllowedValue> allowedValues) implements CmOption {
@@ -139,17 +139,28 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
         CmOptionImpl(Hson.Struct struct) {
             this(struct.stringValue("key"),
                     struct.stringValue("description"),
-                    struct.stringValue("method"),
                     struct.stringValue("type"),
                     struct.stringValue("defaultValue"),
                     struct.booleanValue("required").orElse(false),
                     struct.booleanValue("experimental").orElse(false),
                     struct.booleanValue("deprecated").orElse(false),
                     struct.booleanValue("provider").orElse(false),
-                    struct.stringValue("providerType"),
                     struct.booleanValue("merge").orElse(false),
                     struct.stringValue("kind").map(Kind::valueOf),
                     struct.structArray("allowedValues", CmAllowedValue::fromJson).orElseGet(List::of));
+        }
+
+        @Override
+        public int compareTo(CmOption o) {
+            var thisKey = key.orElse(null);
+            var thatKey = o.key().orElse(null);
+            if (thisKey != null) {
+                if (thatKey != null) {
+                    return thisKey.compareTo(thatKey);
+                }
+                return -1;
+            }
+            return 1;
         }
 
         @Override
@@ -169,14 +180,12 @@ record CmModelImpl(List<CmModule> modules) implements CmModel {
             if (provider) {
                 builder.set("provider", true);
             }
-            providerType.ifPresent(it -> builder.set("providerType", it));
             if (deprecated) {
                 builder.set("deprecated", true);
             }
             if (merge) {
                 builder.set("merge", true);
             }
-            method.ifPresent(it -> builder.set("method", it));
             if (!allowedValues.isEmpty()) {
                 builder.setStructs("allowedValues", allowedValues.stream()
                         .map(CmAllowedValue::toJson)

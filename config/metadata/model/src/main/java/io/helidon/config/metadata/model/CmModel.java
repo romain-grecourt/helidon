@@ -32,7 +32,6 @@ import io.helidon.metadata.hson.Hson;
 /**
  * Config metadata model.
  */
-@SuppressWarnings("DeprecatedIsStillUsed")
 public interface CmModel {
 
     /**
@@ -124,7 +123,7 @@ public interface CmModel {
     /**
      * Config metadata type.
      */
-    interface CmType {
+    interface CmType extends Comparable<CmType> {
 
         /**
          * Type name.
@@ -132,15 +131,6 @@ public interface CmModel {
          * @return type name, never {@code null}
          */
         String type();
-
-        /**
-         * Annotated type name.
-         *
-         * @return type name
-         * @deprecated use {@link #type()} instead
-         */
-        @Deprecated(since = "4.4.0")
-        Optional<String> annotatedType();
 
         /**
          * Options.
@@ -213,7 +203,7 @@ public interface CmModel {
     /**
      * Config metadata option.
      */
-    interface CmOption {
+    interface CmOption extends Comparable<CmOption> {
 
         /**
          * Default value for {@link #type()}.
@@ -258,15 +248,6 @@ public interface CmModel {
         Optional<String> description();
 
         /**
-         * Method.
-         *
-         * @return method name, never {@code null}
-         * @deprecated use {@link CmType#producers() enclosing type producer} instead
-         */
-        @Deprecated(forRemoval = true, since = "4.4.0")
-        Optional<String> method();
-
-        /**
          * The type of the config option.
          * If the type is empty, it is assumed to be {@value #DEFAULT_TYPE}.
          *
@@ -309,15 +290,6 @@ public interface CmModel {
          * @return {@code true} if a provider, {@code false} otherwise
          */
         boolean provider();
-
-        /**
-         * The provider interface type name used when {@link #provider()} is {@code true}.
-         *
-         * @return provider interface type name
-         * @deprecated use {@link #type()} instead
-         */
-        @Deprecated(since = "4.4.0")
-        Optional<String> providerType();
 
         /**
          * Indicate wether to merge the child nodes directly with parent node without a key

@@ -4,7 +4,6 @@
       "types": [
          {
             "type": "com.acme.AcmeConfig",
-            "annotatedType": "com.acme.AcmeConfig.Builder",
             "description": "ACME configuration",
             "prefix": "acme",
             "provides": [
@@ -20,7 +19,6 @@
                   "type": "com.acme.AcmeMode",
                   "description": "Mode",
                   "defaultValue": "MODE1",
-                  "method": "com.acme.AcmeConfig.Builder#mode(com.acme.AcmeMode)",
                   "allowedValues": [
                      {
                         "value": "MODE1",

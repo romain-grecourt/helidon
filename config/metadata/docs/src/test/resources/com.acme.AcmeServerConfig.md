@@ -7,7 +7,9 @@ ACME Server configuration.
 
 ## Usages
 
-This type is standalone and configured under the root key `server`.
+<ul class="usages">
+    <li><a href="README.md#server"><code>server</code></a></li>
+</ul>
 
 ## Options
 
@@ -74,3 +76,7 @@ This type is standalone and configured under the root key `server`.
         </tr>
     </tbody>
 </table>
+
+---
+
+See the [manifest](manifest.md) for all available types.

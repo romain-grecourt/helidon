@@ -39,3 +39,7 @@ This type is a provider contract.
         </tr>
     </tbody>
 </table>
+
+---
+
+See the [manifest](manifest.md) for all available types.

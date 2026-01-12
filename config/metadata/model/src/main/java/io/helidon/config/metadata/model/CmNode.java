@@ -23,7 +23,7 @@ import io.helidon.config.metadata.model.CmModel.CmType;
 /**
  * Config metadata tree node.
  */
-public interface CmNode {
+public interface CmNode extends Comparable<CmNode> {
 
     /**
      * Parent node.

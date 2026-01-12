@@ -30,7 +30,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 /**
- * Tests {@link @ConfigDocs}.
+ * Tests {@link CmDocCodegenTest}.
  */
 class CmDocCodegenTest {
 

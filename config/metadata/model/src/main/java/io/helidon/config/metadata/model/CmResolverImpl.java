@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import io.helidon.config.metadata.model.CmModel.CmOption;
 import io.helidon.config.metadata.model.CmModel.CmType;
@@ -37,7 +39,7 @@ final class CmResolverImpl implements CmResolver {
     private final Map<String, CmType> types = new HashMap<>(); // unresolved types
     private final Map<String, CmType> resolvedTypes = new HashMap<>(); // resolved types
     private final Map<String, List<CmType>> providers = new HashMap<>(); // providers by contract
-    private final Map<String, List<CmNode>> usages = new HashMap<>(); // tree nodes by option type
+    private final Map<String, Set<CmNode>> usages = new HashMap<>(); // tree nodes by option type
     private final List<CmNode> tree = new ArrayList<>();
     private final List<CmNode> readOnlyTree = Collections.unmodifiableList(tree);
 
@@ -64,8 +66,8 @@ final class CmResolverImpl implements CmResolver {
     }
 
     @Override
-    public List<CmNode> usage(String typeName) {
-        return Collections.unmodifiableList(usages.getOrDefault(typeName, List.of()));
+    public Set<CmNode> usage(String typeName) {
+        return Collections.unmodifiableSet(usages.getOrDefault(typeName, Set.of()));
     }
 
     @Override
@@ -109,6 +111,7 @@ final class CmResolverImpl implements CmResolver {
             var resolvedType = resolvedTypes.get(typeName);
             var key = segments[segments.length - 1];
             var node = new CmNodeImpl(null, prefix, key, typeName, resolvedType, new ArrayList<>());
+            usages.computeIfAbsent(typeName, k -> new TreeSet<>()).add(node);
             tree.add(node);
             stack.push(node);
         }
@@ -153,19 +156,18 @@ final class CmResolverImpl implements CmResolver {
                                 implType,
                                 new ArrayList<>());
                         optionNode.addChild(implNode);
-                        usages.computeIfAbsent(implTypeName, k -> new ArrayList<>()).add(optionNode);
+                        usages.computeIfAbsent(implTypeName, k -> new TreeSet<>()).add(optionNode);
                         stack.push(implNode);
                     }
-                    usages.computeIfAbsent(optionTypeName, k -> new ArrayList<>()).add(optionNode);
+                    usages.computeIfAbsent(optionTypeName, k -> new TreeSet<>()).add(optionNode);
                 } else if(optionType.isPresent()) {
-                    usages.computeIfAbsent(optionTypeName, k -> new ArrayList<>()).add(optionNode);
+                    usages.computeIfAbsent(optionTypeName, k -> new TreeSet<>()).add(optionNode);
                     stack.push(optionNode);
                 }
             }
         }
     }
 
-    @SuppressWarnings("deprecation")
     private CmType resolveType(CmType type) {
         // build the reverse hierarchy (parents first)
         var hierarchy = new ArrayList<CmType>();
@@ -194,7 +196,6 @@ final class CmResolverImpl implements CmResolver {
         // return a copy with updates
         return new CmTypeImpl(
                 type.type(),
-                type.annotatedType(),
                 List.copyOf(options.values()), // read-only copy of the resolved options
                 type.description(),
                 type.prefix(),

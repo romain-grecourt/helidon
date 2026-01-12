@@ -59,8 +59,6 @@ class CmModelTest {
                 hasProperty("module", CmModule::module, is("com.acme")),
                 hasProperty("types", CmModule::types, is(hasItem(allOf(List.of(
                         hasProperty("type", CmType::type, is("com.acme.AcmeConfig")),
-                        hasProperty("annotatedType", CmType::annotatedType, is(Optional.of(
-                                "com.acme.AcmeConfig.Builder"))),
                         hasProperty("description", CmType::description, is(Optional.of("ACME configuration"))),
                         hasProperty("prefix", CmType::prefix, is(Optional.of("acme"))),
                         hasProperty("standalone", CmType::standalone, is(false)),
@@ -73,15 +71,12 @@ class CmModelTest {
                         hasProperty("options", CmType::options, is(hasItem(allOf(List.of(
                                 hasProperty("key", CmOption::key, is(Optional.of("mode"))),
                                 hasProperty("description", CmOption::description, is(Optional.of("Mode"))),
-                                hasProperty("method", CmOption::method, is(Optional.of(
-                                        "com.acme.AcmeConfig.Builder#mode(com.acme.AcmeMode)"))),
                                 hasProperty("type", CmOption::type, is(Optional.of("com.acme.AcmeMode"))),
                                 hasProperty("defaultValue", CmOption::defaultValue, is(Optional.of("MODE1"))),
                                 hasProperty("required", CmOption::required, is(false)),
                                 hasProperty("experimental", CmOption::experimental, is(false)),
                                 hasProperty("deprecated", CmOption::deprecated, is(false)),
                                 hasProperty("provider", CmOption::provider, is(false)),
-                                hasProperty("providerType", CmOption::providerType, is(Optional.empty())),
                                 hasProperty("merge", CmOption::merge, is(false)),
                                 hasProperty("kind", CmOption::kind, is(Optional.empty())),
                                 hasProperty("allowedValues", CmOption::allowedValues, is(allOf(

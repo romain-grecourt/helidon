@@ -1,18 +1,23 @@
 
 # Config Reference
 
-## Root Types
+<table>
+    <thead>
+    <tr>
+        <th>Key</th>
+        <th>Type</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+        <tr id="server">
+            <td><code>server</code></td>
+            <td><a href="com.acme.AcmeServerConfig.md"><code>AcmeServerConfig</code></a></td>
+            <td>ACME Server configuration.</td>
+        </tr>
+    </tbody>
+</table>
 
-- [com.acme.AcmeServerConfig](com.acme.AcmeServerConfig.md)
+---
 
-## Config Types
-
-- [com.acme.AcmeAuditConfig](com.acme.AcmeAuditConfig.md)
-- [com.acme.AcmeListenerConfig](com.acme.AcmeListenerConfig.md)
-- [com.acme.AcmeLoggerConfig](com.acme.AcmeLoggerConfig.md)
-- [com.acme.AcmeLoggingConfig](com.acme.AcmeLoggingConfig.md)
-- [com.acme.AcmeTracingConfig](com.acme.AcmeTracingConfig.md)
-
-## Provider Types
-
-- [com.acme.AcmeFeature](com.acme.AcmeFeature.md)
+See the [manifest](manifest.md) for all available types.

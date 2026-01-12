@@ -66,3 +66,7 @@ ACME Logger configuration
         </tr>
     </tbody>
 </table>
+
+---
+
+See the [manifest](manifest.md) for all available types.

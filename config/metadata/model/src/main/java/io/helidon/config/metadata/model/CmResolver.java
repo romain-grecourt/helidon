@@ -17,6 +17,7 @@ package io.helidon.config.metadata.model;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import io.helidon.config.metadata.model.CmModel.CmType;
 
@@ -62,9 +63,9 @@ public interface CmResolver {
      * Find usages of a config type.
      *
      * @param typeName type name
-     * @return list of tree nodes (options)
+     * @return set of tree nodes (options)
      */
-    List<CmNode> usage(String typeName);
+    Set<CmNode> usage(String typeName);
 
     /**
      * Get the tree view of the config metadata.
