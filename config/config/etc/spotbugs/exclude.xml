@@ -108,5 +108,14 @@
         <Class name="io.helidon.config.ConfigException"/>
         <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
     </Match>
-
+    <Match>
+        <!-- inheritance of the same interface from common/config -->
+        <Class name="io.helidon.config.ConfiguredProvider"/>
+        <Bug pattern="NM_SAME_SIMPLE_NAME_AS_INTERFACE"/>
+    </Match>
+    <Match>
+        <!-- inheritance of the same interface from common/config -->
+        <Class name="io.helidon.config.NamedService"/>
+        <Bug pattern="NM_SAME_SIMPLE_NAME_AS_INTERFACE"/>
+    </Match>
 </FindBugsFilter>
