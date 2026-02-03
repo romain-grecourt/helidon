@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 import io.helidon.builder.api.RuntimeType;
-import io.helidon.common.config.Config;
+import io.helidon.config.Config;
 import io.helidon.http.Headers;
 
 /**
@@ -41,6 +41,20 @@ public interface ContentEncodingContext extends RuntimeType.Api<ContentEncodingC
      *
      * @param config configuration to use
      * @return content encoding support
+     * @deprecated use {@link #create(io.helidon.config.Config)} instead
+     */
+    @Deprecated(since = "4.4.0", forRemoval = true)
+    @SuppressWarnings("removal")
+    static ContentEncodingContext create(io.helidon.common.config.Config config) {
+        return builder().config(config).build();
+    }
+
+    /**
+     * Create a new encoding support and apply provided configuration.
+     *
+     * @param config configuration to use
+     * @return content encoding support
+     * @since 4.4.0
      */
     static ContentEncodingContext create(Config config) {
         return builder().config(config).build();

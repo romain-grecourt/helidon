@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2024, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,15 +23,13 @@ import java.util.regex.Pattern;
 
 import io.helidon.builder.api.Prototype;
 import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.config.ConfiguredProvider;
-import io.helidon.common.config.NamedService;
 import io.helidon.service.registry.ServiceRegistry;
 
 /**
  * Methods used from generated code in builders when
  * {@link io.helidon.builder.api.Prototype.Configured} is used.
  */
-@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+@SuppressWarnings("ALL")
 public final class ConfigBuilderSupport {
     // matches string between ${ } with a negative lookbehind if there is no backslash
     private static final String REGEX_REFERENCE = "(?<!\\\\)\\$\\{([^}:]+)(:.+?)?}";
@@ -59,14 +57,16 @@ public final class ConfigBuilderSupport {
      * @param <T>             type of the service provider (contract)
      * @return instances from the user augmented with instances from the registry
      */
-    public static <S extends NamedService, T extends ConfiguredProvider<S>> List<S>
-    discoverServices(Config config,
-                     String configKey,
-                     Optional<ServiceRegistry> serviceRegistry,
-                     Class<T> providerType,
-                     Class<S> configType,
-                     boolean allFromRegistry,
-                     List<S> existingValues)  {
+    public static <
+            S extends io.helidon.common.config.NamedService,
+            T extends io.helidon.common.config.ConfiguredProvider<S>> List<S
+            > discoverServices(Config config,
+                               String configKey,
+                               Optional<ServiceRegistry> serviceRegistry,
+                               Class<T> providerType,
+                               Class<S> configType,
+                               boolean allFromRegistry,
+                               List<S> existingValues) {
 
         return ProvidedUtil.discoverServices(config,
                                              configKey,
@@ -92,11 +92,11 @@ public final class ConfigBuilderSupport {
      * @param <T>              type of the service
      * @return an instance, if available in the registry, or if provided by the user (user's value wins)
      */
-    public static <T extends NamedService> Optional<T>
+    public static <T extends io.helidon.common.config.NamedService> Optional<T>
     discoverService(Config config,
                     String configKey,
                     Optional<ServiceRegistry> serviceRegistry,
-                    Class<? extends ConfiguredProvider<T>> providerType,
+                    Class<? extends io.helidon.common.config.ConfiguredProvider<T>> providerType,
                     Class<T> configType,
                     boolean discoverServices,
                     Optional<T> existingValue) {
@@ -129,8 +129,10 @@ public final class ConfigBuilderSupport {
      * @param <T>                  type of the configured service provider that creates instances of S
      * @return list of discovered services, ordered by {@link io.helidon.common.Weight} (highest weight is first in the list)
      */
-    public static <S extends NamedService, T extends ConfiguredProvider<S>> List<S>
-    discoverServices(Config config,
+    public static <
+            S extends io.helidon.common.config.NamedService,
+            T extends io.helidon.common.config.ConfiguredProvider<S>
+            > List<S> discoverServices(Config config,
                      String configKey,
                      Class<T> providerType,
                      Class<S> configType,
@@ -163,8 +165,10 @@ public final class ConfigBuilderSupport {
      * @return the first service (ordered by {@link io.helidon.common.Weight} that is discovered, or empty optional if none
      *         is found
      */
-    public static <S extends NamedService, T extends ConfiguredProvider<S>> Optional<S>
-    discoverService(Config config,
+    public static <
+            S extends io.helidon.common.config.NamedService,
+            T extends io.helidon.common.config.ConfiguredProvider<S>
+            > Optional<S> discoverService(Config config,
                     String configKey,
                     Class<T> providerType,
                     Class<S> configType,

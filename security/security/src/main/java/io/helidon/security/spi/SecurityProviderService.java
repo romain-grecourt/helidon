@@ -16,13 +16,14 @@
 
 package io.helidon.security.spi;
 
+import io.helidon.common.DeprecationSupport;
 import io.helidon.config.Config;
 
 /**
  * Service to use with ServiceLoader to map configuration to
  * provider.
  * <p>
- * Method {@link #create(io.helidon.config.Config)} must be implemented even though it is marked as default (this is for
+ * Method {@link #providerInstance(io.helidon.config.Config)} must be implemented even though it is marked as default (this is for
  * backward compatibility within Helidon 4); this method will not be default in a future version of Helidon
  */
 public interface SecurityProviderService {
@@ -59,15 +60,15 @@ public interface SecurityProviderService {
      *
      * @param config Config with provider configuration
      * @return provider instance created from the {@link io.helidon.common.config.Config} provided
-     * @deprecated implement {@link #create(io.helidon.config.Config)} instead,
+     * @deprecated implement {@link #providerInstance(io.helidon.config.Config)} instead,
      * IMPORTANT NOTE: if you are calling this method, and
-     * you want the update your code, you should call {@link #create(io.helidon.config.Config)}, catch
+     * you want the update your code, you should call {@link #providerInstance(io.helidon.config.Config)}, catch
      * {@link java.lang.UnsupportedOperationException}, and call this method as a fallback
      */
     @SuppressWarnings("removal")
     @Deprecated(forRemoval = true, since = "4.4.0")
     default SecurityProvider providerInstance(io.helidon.common.config.Config config) {
-        return create(Config.config(config));
+        return providerInstance(Config.config(config));
     }
 
     /**
@@ -77,8 +78,12 @@ public interface SecurityProviderService {
      * @param config Config with provider configuration
      * @return provider instance created from the {@link io.helidon.config.Config} provided
      */
-    default SecurityProvider create(Config config) {
-        throw new UnsupportedOperationException("A " + SecurityProviderService.class.getName() + " implementation must "
-                                                        + "implement the create(io.helidon.config.Config) method");
+    @SuppressWarnings("removal")
+    default SecurityProvider providerInstance(Config config) {
+        // default to preserve backward compatibility
+        // require the deprecated variant to be implemented
+        DeprecationSupport.requireOverride(this, SecurityProviderService.class, "providerInstance",
+                io.helidon.common.config.Config.class);
+        return providerInstance((io.helidon.common.config.Config) config);
     }
 }

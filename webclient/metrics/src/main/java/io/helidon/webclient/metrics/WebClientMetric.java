@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024 Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import io.helidon.common.config.Config;
+import io.helidon.config.Config;
 import io.helidon.http.Method;
 import io.helidon.metrics.api.MeterRegistry;
 import io.helidon.metrics.api.Metrics;
@@ -223,6 +223,19 @@ abstract class WebClientMetric implements WebClientService {
 
         /**
          * Configure a metric from configuration.
+         *
+         * @param config configuration to configure this metric
+         * @return updated builder instance
+         * @deprecated use {@link #config(io.helidon.config.Config)} instead
+         */
+        @Deprecated(since = "4.4.0", forRemoval = true)
+        @SuppressWarnings("removal")
+        public Builder config(io.helidon.common.config.Config config) {
+            return config(Config.config(config));
+        }
+
+        /**
+         * Configure a metric from configuration.
          * The following configuration key are used:
          * <table>
          * <caption>Client Metric configuration options</caption>
@@ -256,6 +269,7 @@ abstract class WebClientMetric implements WebClientService {
          *
          * @param config configuration to configure this metric
          * @return updated builder instance
+         * @since 4.4.0
          */
         public Builder config(Config config) {
             config.get("methods").asList(String.class).ifPresent(this::methods);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@ import java.util.function.Consumer;
 import io.helidon.builder.api.Prototype;
 import io.helidon.builder.api.RuntimeType;
 import io.helidon.common.GenericType;
-import io.helidon.common.config.Config;
 import io.helidon.common.media.type.MediaTypes;
+import io.helidon.config.Config;
 import io.helidon.http.HeaderNames;
 import io.helidon.http.Headers;
 import io.helidon.http.HttpMediaType;
@@ -76,6 +76,20 @@ public class JsonbSupport implements MediaSupport, RuntimeType.Api<JsonbSupportC
      *
      * @param config must not be {@code null}
      * @return a new {@link JsonbSupport}
+     * @deprecated use {@link #create(io.helidon.config.Config)} instead
+     */
+    @Deprecated(since = "4.4.0", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static MediaSupport create(io.helidon.common.config.Config config) {
+        return create(Config.config(config), DEFAULT_JSON_B_NAME);
+    }
+
+    /**
+     * Creates a new {@link JsonbSupport}.
+     *
+     * @param config must not be {@code null}
+     * @return a new {@link JsonbSupport}
+     * @since 4.4.0
      */
     public static MediaSupport create(Config config) {
         return create(config, DEFAULT_JSON_B_NAME);
@@ -88,6 +102,21 @@ public class JsonbSupport implements MediaSupport, RuntimeType.Api<JsonbSupportC
      * @param name   name of this instance
      * @return a new {@link JsonbSupport}
      * @see #create(io.helidon.common.config.Config)
+     */
+    @Deprecated(since = "4.4.0", forRemoval = true)
+    @SuppressWarnings("removal")
+    public static MediaSupport create(io.helidon.common.config.Config config, String name) {
+        return create(Config.config(config), name);
+    }
+
+    /**
+     * Creates a new {@link JsonbSupport}.
+     *
+     * @param config must not be {@code null}
+     * @param name   name of this instance
+     * @return a new {@link JsonbSupport}
+     * @see #create(io.helidon.config.Config)
+     * @since 4.4.0
      */
     public static MediaSupport create(Config config, String name) {
         return builder()

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023 Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.config.Config;
 import io.helidon.common.media.type.MediaTypes;
+import io.helidon.config.Config;
 import io.helidon.http.Headers;
 import io.helidon.http.HttpMediaType;
 import io.helidon.http.WritableHeaders;
@@ -57,6 +57,20 @@ public class MultiPartSupport implements MediaSupport {
      *
      * @param config must not be {@code null}
      * @return a new {@link MultiPartSupport}
+     * @deprecated use {@link #create(io.helidon.config.Config)} instead
+     */
+    @SuppressWarnings("removal")
+    @Deprecated(since = "4.4.0", forRemoval = true)
+    public static MediaSupport create(io.helidon.common.config.Config config) {
+        return create(Config.config(config), "multi-part");
+    }
+
+    /**
+     * Creates a new {@link MultiPartSupport}.
+     *
+     * @param config must not be {@code null}
+     * @return a new {@link MultiPartSupport}
+     * @since 4.4.0
      */
     public static MediaSupport create(Config config) {
         return create(config, "multi-part");
@@ -66,8 +80,23 @@ public class MultiPartSupport implements MediaSupport {
      * Creates a new named {@link MultiPartSupport}.
      *
      * @param config must not be {@code null}
-     * @param name name of the multi-part support
+     * @param name name of the multipart support
      * @return a new {@link MultiPartSupport}
+     * @deprecated use {@link #create(io.helidon.config.Config, String)} instead
+     */
+    @SuppressWarnings("removal")
+    @Deprecated(since = "4.4.0", forRemoval = true)
+    public static MediaSupport create(io.helidon.common.config.Config config, String name) {
+        return create(Config.config(config), name);
+    }
+
+    /**
+     * Creates a new named {@link MultiPartSupport}.
+     *
+     * @param config must not be {@code null}
+     * @param name name of the multipart support
+     * @return a new {@link MultiPartSupport}
+     * @since 4.4.0
      */
     public static MediaSupport create(Config config, String name) {
         return new MultiPartSupport(name);
@@ -227,7 +256,7 @@ public class MultiPartSupport implements MediaSupport {
     }
 
     private static boolean unsupportedWrite(GenericType<?> type) {
-        // write is supported for any subtype of writable multi-part
+        // write is supported for any subtype of writable multipart
         if (type.equals(WriteableMultiPart.GENERIC_TYPE)) {
             return false;
         }

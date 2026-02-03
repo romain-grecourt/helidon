@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025 Oracle and/or its affiliates.
+ * Copyright (c) 2023, 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import java.util.concurrent.ExecutorService;
 
 import io.helidon.builder.api.Option;
 import io.helidon.builder.api.Prototype;
-import io.helidon.common.config.Config;
 import io.helidon.common.media.type.ParserMode;
 import io.helidon.common.socket.SocketOptions;
 import io.helidon.common.uri.UriFragment;
@@ -57,7 +56,8 @@ interface HttpClientConfigBlueprint extends HttpConfigBaseBlueprint {
      * @return client URI mapped
      */
     @Deprecated(forRemoval = true, since = "4.3.0")
-    static ClientUri createBaseUri(Config config) {
+    @SuppressWarnings("removal")
+    static ClientUri createBaseUri(io.helidon.common.config.Config config) {
         return config.as(URI.class).map(ClientUri::create).orElseThrow();
     }
 

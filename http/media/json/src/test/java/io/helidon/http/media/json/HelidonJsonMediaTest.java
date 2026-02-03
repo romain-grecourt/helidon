@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Objects;
 
 import io.helidon.common.GenericType;
-import io.helidon.common.config.Config;
+import io.helidon.config.Config;
 import io.helidon.common.media.type.MediaTypes;
 import io.helidon.common.testing.http.junit5.HttpHeaderMatcher;
 import io.helidon.http.HeaderValues;
