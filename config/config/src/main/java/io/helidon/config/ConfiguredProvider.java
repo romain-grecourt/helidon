@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2026 Oracle and/or its affiliates.
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,36 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package io.helidon.config;
 
-package io.helidon.common.config;
+import io.helidon.common.DeprecationSupport;
 
 /**
  * Providers that can be loaded from configuration should implement this interface.
- * The configuration is expected to be similar to this (using YAML as an example):
- * <pre>
- *   configured-option:
- *     discover-services: true # this is the default
- *     providers:
- *       provider1-config-key:
- *         provider1-config: value
- *       provider2-config-key:
- *         provider2-config: value
- * </pre>
  *
  * @param <T> type of the service this provider provides
- *
- * @deprecated this class will be moved to {@code helidon-config} module in Helidon 5
  */
 @SuppressWarnings("removal")
-@Deprecated(since = "4.3.0", forRemoval = true)
-public interface ConfiguredProvider<T extends NamedService> {
+public interface ConfiguredProvider<T extends NamedService> extends io.helidon.common.config.ConfiguredProvider<T> {
+
     /**
-     * Key this service implementation is stored under. This is also considered the service "type" when used
-     * in a list in configuration, to allow the same service defined more than once.
-     *
-     * @return key of this implementation
+     * {@inheritDoc}
      */
+    @Override
     String configKey();
+
+    @Override
+    @SuppressWarnings("removal")
+    default T create(io.helidon.common.config.Config config, String name) {
+        // default to avoid forcing deprecated symbols references
+        return create(Config.config(config), name);
+    }
 
     /**
      * Create a new instance from the configuration located
@@ -53,5 +47,10 @@ public interface ConfiguredProvider<T extends NamedService> {
      *
      * @return a new instance created from this config node
      */
-    T create(Config config, String name);
+    default T create(Config config, String name) {
+        // default to preserve backward compatibility
+        // require the deprecated variant to be implemented
+        DeprecationSupport.requireOverride(this, ConfiguredProvider.class, "create", io.helidon.common.config.Config.class);
+        return create((io.helidon.common.config.Config) config, name);
+    }
 }

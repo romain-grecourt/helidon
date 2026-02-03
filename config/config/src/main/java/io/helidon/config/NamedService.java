@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2026 Oracle and/or its affiliates.
+ * Copyright (c) 2026 Oracle and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,28 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package io.helidon.common.config;
+package io.helidon.config;
 
 /**
- * To be used with {@link io.helidon.common.config.ConfiguredProvider}, each configured service may have a name.
- *
- * @deprecated this class will be moved to {@code helidon-config} module in Helidon 5
+ * To be used with {@link io.helidon.config.ConfiguredProvider}, each configured service may have a name.
  */
-@Deprecated(since = "4.3.0", forRemoval = true)
-public interface NamedService {
+@SuppressWarnings("removal")
+public interface NamedService extends io.helidon.common.config.NamedService {
     /**
-     * Name of this implementation, as provided in {@link io.helidon.common.config.ConfiguredProvider#create(Config, String)}.
+     * Name of this implementation, as provided in
+     * {@link io.helidon.config.ConfiguredProvider#create(io.helidon.common.config.Config, String)}.
      *
      * @return name of this service
      */
+    @Override
     String name();
 
     /**
      * Type of this implementation, to distinguish instances of same type, with different {@link #name()}.
-     * Use for example {@link ConfiguredProvider#configKey()} to define the type.
+     * Use for example {@link io.helidon.config.ConfiguredProvider#configKey()} to define the type.
      *
      * @return type of this service
      */
+    @Override
     String type();
 }
