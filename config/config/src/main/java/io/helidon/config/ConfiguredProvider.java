@@ -31,8 +31,14 @@ public interface ConfiguredProvider<T extends NamedService> extends io.helidon.c
     @Override
     String configKey();
 
+    /**
+     * {@inheritDoc}
+     *
+     * @deprecated use {@link #create(Config, String)} instead
+     */
     @Override
     @SuppressWarnings("removal")
+    @Deprecated(since = "4.4.0", forRemoval = true)
     default T create(io.helidon.common.config.Config config, String name) {
         // default to avoid forcing deprecated symbols references
         return create(Config.config(config), name);
@@ -43,9 +49,11 @@ public interface ConfiguredProvider<T extends NamedService> extends io.helidon.c
      * on the provided node.
      *
      * @param config located at {@link #configKey()} node
-     * @param name name of the configured implementation
-     *
+     * @param name   name of the configured implementation
      * @return a new instance created from this config node
+     * @apiNote the default method implementation is provided for backward compatibility
+     *         and <b>will be removed in the next major version</b>
+     * @since 4.4.0
      */
     default T create(Config config, String name) {
         // default to preserve backward compatibility
