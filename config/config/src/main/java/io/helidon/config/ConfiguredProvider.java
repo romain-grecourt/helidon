@@ -47,12 +47,13 @@ public interface ConfiguredProvider<T extends NamedService> extends io.helidon.c
     /**
      * Create a new instance from the configuration located
      * on the provided node.
+     * <p>
+     * API Note: the default method implementation is provided for backward compatibility
+     * and <b>will be removed in the next major version</b>
      *
      * @param config located at {@link #configKey()} node
      * @param name   name of the configured implementation
      * @return a new instance created from this config node
-     * @apiNote the default method implementation is provided for backward compatibility
-     *         and <b>will be removed in the next major version</b>
      * @since 4.4.0
      */
     default T create(Config config, String name) {
