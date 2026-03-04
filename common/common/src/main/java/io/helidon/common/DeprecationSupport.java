@@ -36,6 +36,25 @@ public final class DeprecationSupport {
     }
 
     /**
+     * Test if a method is overridden.
+     *
+     * @param obj            object whose class should override the method
+     * @param declaringClass class that declares the method to be overridden
+     * @param methodName     the name of the method to be overridden
+     * @param parameterTypes the parameter types of the method to be overridden
+     * @return {@code true}  if overridden, {@code false} otherwise
+     * @throws IllegalStateException         if the method is not found using reflection
+     */
+    public static boolean isOverridden(Object obj, Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        try {
+            var classMethod = obj.getClass().getMethod(methodName, parameterTypes);
+            return classMethod.getDeclaringClass() != declaringClass;
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
      * Require a method override.
      *
      * @param obj            object whose class should override the method

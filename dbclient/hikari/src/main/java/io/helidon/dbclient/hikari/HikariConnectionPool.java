@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import io.helidon.common.HelidonServiceLoader;
-import io.helidon.common.config.Config;
+import io.helidon.config.Config;
 import io.helidon.dbclient.DbClientException;
 import io.helidon.dbclient.hikari.spi.HikariMetricsProvider;
 import io.helidon.dbclient.jdbc.CloseableJdbcConnectionPool;
