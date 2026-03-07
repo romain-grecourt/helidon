@@ -17,7 +17,7 @@
 /**
  * Annotation processor generating JSON metadata for configuration.
  * <p>
- * This module is deprecated, use {@code helidon-config-metadata-codegen} together with {@code helidon-codegen-apt}.
+ * <b>Replaced with {@code helidon-config-metadata-codegen} together with {@code helidon-codegen-apt}.</b>
  */
 @Deprecated(forRemoval = true, since = "4.1.0")
 package io.helidon.config.metadata.processor;

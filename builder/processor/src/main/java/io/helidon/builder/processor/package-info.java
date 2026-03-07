@@ -16,9 +16,8 @@
 
 /**
  * The Builder annotation processing package.
- *
- * @deprecated replaced with helidon-builder-codegen in
- *     combination with helidon-codegen-apt
+ * <p>
+ * <b>Replaced with {@code helidon-builder-codegen} together with {@code helidon-codegen-apt}.</b>
  */
 @Deprecated(forRemoval = true, since = "4.1.0")
 package io.helidon.builder.processor;
