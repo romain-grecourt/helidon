@@ -20,9 +20,9 @@ limitations under the License.
             <th>Key</th>
             <th>Kind</th>
             <th>Type</th>
-{{~#if defaultValues~}}
+{{~#if defaultValues}}
             <th>Default Value</th>
-{{~/if~}}
+{{~/if}}
             <th>Description</th>
         </tr>
     </thead>
@@ -40,13 +40,13 @@ limitations under the License.
             </td>
             <td><code>{{type.kind}}</code></td>
             <td><code>{{type.shortName}}</code></td>
-{{~#if defaultValues~}}
+{{~#if defaultValues}}
             <td>
 {{~#if defaultValue~}}
                 <code>{{defaultValue}}</code>
 {{~/if~}}
             </td>
-{{~/if~}}
+{{~/if}}
             <td>{{{description}}}</td>
         </tr>
 {{~/each}}

@@ -54,7 +54,7 @@ class CmDocCodegen {
 
     private final CmResolver resolver;
     private final Path outputDir;
-    private final Template rootTemplate;
+    private final Template readmeTemplate;
     private final Template configTemplate;
     private final Template enumTemplate;
     private final Template providerTemplate;
@@ -71,7 +71,7 @@ class CmDocCodegen {
         this.resolver = CmResolver.create(metadata);
         var loader = new ClassPathTemplateLoader("/io/helidon/config/metadata/docs");
         var handlebars = new Handlebars(loader);
-        rootTemplate = template(handlebars, "root.md");
+        readmeTemplate = template(handlebars, "README.md");
         configTemplate = template(handlebars, "config.md");
         enumTemplate = template(handlebars, "enum.md");
         providerTemplate = template(handlebars, "provider.md");
@@ -84,7 +84,7 @@ class CmDocCodegen {
     void process() {
 
         // generate README.md
-        generateFile("README.md", rootTemplate, rootContext());
+        generateFile("README.md", readmeTemplate, rootContext());
 
         var typeNames = new HashSet<String>();
 

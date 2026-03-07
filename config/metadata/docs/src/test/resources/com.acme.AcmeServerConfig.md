@@ -24,7 +24,9 @@ ACME Server configuration.
         <tr>
             <th>Key</th>
             <th>Kind</th>
-            <th>Type</th><th>Default Value</th><th>Description</th>
+            <th>Type</th>
+            <th>Default Value</th>
+            <th>Description</th>
         </tr>
     </thead>
     <tbody>

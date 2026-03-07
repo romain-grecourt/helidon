@@ -26,14 +26,16 @@ ACME Logger configuration
         <tr>
             <th>Key</th>
             <th>Kind</th>
-            <th>Type</th><th>Description</th>
+            <th>Type</th>
+            <th>Description</th>
         </tr>
     </thead>
     <tbody>
         <tr id="logger">
             <td><code>logger</code></td>
             <td><code>VALUE</code></td>
-            <td><code>String</code></td><td>Logger name</td>
+            <td><code>String</code></td>
+            <td>Logger name</td>
         </tr>
     </tbody>
 </table>
