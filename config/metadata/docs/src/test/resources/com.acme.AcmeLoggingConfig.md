@@ -31,7 +31,8 @@ ACME Logging configuration
         <tr id="loggers">
             <td><a href="com.acme.AcmeLoggerConfig.md"><code>loggers</code></a></td>
             <td><code>LIST</code></td>
-            <td><code>c.a.AcmeLoggerConfig</code></td><td>Loggers</td>
+            <td><code>c.a.AcmeLoggerConfig</code></td>
+            <td>Loggers</td>
         </tr>
     </tbody>
 </table>

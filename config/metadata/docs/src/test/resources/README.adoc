@@ -1,0 +1,12 @@
+= Config Reference
+
+|===
+|Key|Type|Description
+
+|[[server]] xref:com.acme.AcmeServerConfig.adoc[`server`]
+|`c.a.AcmeServerConfig`
+|pass:[ACME Server configuration.]
+
+|===
+
+See the xref:manifest.adoc[manifest] for all available types.

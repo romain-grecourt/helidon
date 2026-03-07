@@ -1,0 +1,23 @@
+= com.acme.AcmeLoggingConfig
+
+== Description
+
+++++
+ACME Logging configuration.
+++++
+
+== Usages
+
+* xref:com.acme.AcmeFeature.adoc#logging[`server.features.logging`]
+
+== Options
+
+|===
+|Key|Kind|Type|Description
+
+|[[loggers]] xref:com.acme.AcmeLoggerConfig.adoc[`loggers`]
+|`LIST`
+|`c.a.AcmeLoggerConfig`
+|pass:[Loggers]
+
+|===

@@ -1,0 +1,36 @@
+= com.acme.AcmeTracingConfig
+
+== Description
+
+++++
+ACME Tracing configuration.
+++++
+
+== Usages
+
+* xref:com.acme.AcmeFeature.adoc#tracing[`server.features.tracing`]
+
+== Options
+
+|===
+|Key|Kind|Type|Default Value|Description
+
+|[[host]] `host`
+|`VALUE`
+|`String`
+|
+|pass:[Tracing backend host]
+
+|[[port]] `port`
+|`VALUE`
+|`Integer`
+|`16686`
+|pass:[Tracing backend port]
+
+|[[tags]] `tags`
+|`LIST`
+|`String`
+|
+|pass:[System tags]
+
+|===

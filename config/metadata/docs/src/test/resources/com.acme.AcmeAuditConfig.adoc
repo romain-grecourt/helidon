@@ -1,0 +1,28 @@
+= com.acme.AcmeAuditConfig
+
+== Description
+
+++++
+ACME Audit configuration.
+++++
+
+== Usages
+
+* xref:com.acme.AcmeFeature.adoc#audit[`server.features.audit`]
+
+== Options
+
+|===
+|Key|Kind|Type|Description
+
+|[[paths]] `paths`
+|`MAP`
+|`String`
+|pass:[Audited paths]
+
+|[[strict]] `strict`
+|`VALUE`
+|`Boolean`
+|pass:[Fail on error]
+
+|===

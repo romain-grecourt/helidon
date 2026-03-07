@@ -24,19 +24,22 @@ ACME Audit configuration
         <tr>
             <th>Key</th>
             <th>Kind</th>
-            <th>Type</th><th>Description</th>
+            <th>Type</th>
+            <th>Description</th>
         </tr>
     </thead>
     <tbody>
         <tr id="paths">
             <td><code>paths</code></td>
             <td><code>MAP</code></td>
-            <td><code>String</code></td><td>Audited paths</td>
+            <td><code>String</code></td>
+            <td>Audited paths</td>
         </tr>
         <tr id="strict">
             <td><code>strict</code></td>
             <td><code>VALUE</code></td>
-            <td><code>Boolean</code></td><td>Fail on error</td>
+            <td><code>Boolean</code></td>
+            <td>Fail on error</td>
         </tr>
     </tbody>
 </table>

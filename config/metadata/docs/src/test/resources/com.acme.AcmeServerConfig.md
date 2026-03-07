@@ -31,22 +31,30 @@ ACME Server configuration.
         <tr id="features">
             <td><a href="com.acme.AcmeFeature.md"><code>features</code></a></td>
             <td><code>LIST</code></td>
-            <td><code>c.a.AcmeFeature</code></td><td></td><td>Dynamic features</td>
+            <td><code>c.a.AcmeFeature</code></td>
+            <td></td>
+            <td>Dynamic features</td>
         </tr>
         <tr id="host">
             <td><code>host</code></td>
             <td><code>VALUE</code></td>
-            <td><code>String</code></td><td><code>localhost</code></td><td>Listen address</td>
+            <td><code>String</code></td>
+            <td><code>localhost</code></td>
+            <td>Listen address</td>
         </tr>
         <tr id="port">
             <td><code>port</code></td>
             <td><code>VALUE</code></td>
-            <td><code>Integer</code></td><td><code>8080</code></td><td>Listen port</td>
+            <td><code>Integer</code></td>
+            <td><code>8080</code></td>
+            <td>Listen port</td>
         </tr>
         <tr id="sockets">
             <td><a href="com.acme.AcmeListenerConfig.md"><code>sockets</code></a></td>
             <td><code>MAP</code></td>
-            <td><code>c.a.AcmeListenerConfig</code></td><td></td><td>Sockets</td>
+            <td><code>c.a.AcmeListenerConfig</code></td>
+            <td></td>
+            <td>Sockets</td>
         </tr>
     </tbody>
 </table>

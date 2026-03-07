@@ -1,0 +1,30 @@
+= com.acme.AcmeLoggerConfigLevel
+
+== Description
+
+++++
+This type is an enumeration.
+++++
+
+== Usages
+
+* xref:com.acme.AcmeLoggerConfig.adoc#level[`server.features.logging.loggers.level`]
+
+== Allowed Values
+
+|===
+|Value|Description
+
+|`ERROR`
+|pass:[Error level]
+
+|`WARNING`
+|pass:[Warning level]
+
+|`INFO`
+|pass:[Info level]
+
+|`DEBUG`
+|pass:[Debug level]
+
+|===

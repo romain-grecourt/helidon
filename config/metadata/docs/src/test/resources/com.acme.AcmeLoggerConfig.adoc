@@ -1,0 +1,43 @@
+= com.acme.AcmeLoggerConfig
+
+== Description
+
+++++
+ACME Logger configuration
+++++
+
+== Usages
+
+* xref:com.acme.AcmeLoggingConfig.adoc#loggers[`server.features.logging.loggers`]
+
+== Options
+
+|===
+|Key|Kind|Type|Description
+
+|===
+
+=== Experimental Options
+
+|===
+|Key|Kind|Type|Description
+
+|[[logger]] `logger`
+|`VALUE`
+|`String`
+|pass:[Logger name]
+
+|===
+
+=== Deprecated Options
+
+|===
+|Key|Kind|Type|Default Value|Description
+
+|[[level]] xref:com.acme.AcmeLoggerConfigLevel.adoc[`level`]
+|`VALUE`
+|`c.a.AcmeLoggerConfigLevel`
+|`INFO`
+|pass:[Logging level]
+
+|===

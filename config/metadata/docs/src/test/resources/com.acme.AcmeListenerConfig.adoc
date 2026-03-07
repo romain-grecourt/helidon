@@ -1,0 +1,30 @@
+= com.acme.AcmeListenerConfig
+
+== Description
+
+++++
+ACME Listener configuration.
+++++
+
+== Usages
+
+* xref:com.acme.AcmeServerConfig.adoc#sockets[`server.sockets`]
+
+== Options
+
+|===
+|Key|Kind|Type|Default Value|Description
+
+|[[host]] `host`
+|`VALUE`
+|`String`
+|`0.0.0.0`
+|pass:[Listen address]
+
+|[[port]] `port`
+|`VALUE`
+|`Integer`
+|`0`
+|pass:[Listen port]
+
+|===

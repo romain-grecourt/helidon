@@ -36,7 +36,8 @@ ACME Listener configuration
         <tr id="port">
             <td><code>port</code></td>
             <td><code>VALUE</code></td>
-            <td><code>Integer</code></td><td><code>0</code></td><td>Listen port</td>
+            <td><code>Integer</code></td><td><code>0</code></td>
+            <td>Listen port</td>
         </tr>
     </tbody>
 </table>

@@ -19,18 +19,6 @@ ACME Logger configuration
     }
 </style>
 
-<table>
-    <thead>
-        <tr>
-            <th>Key</th>
-            <th>Kind</th>
-            <th>Type</th><th>Description</th>
-        </tr>
-    </thead>
-    <tbody>
-    </tbody>
-</table>
-
 ### Experimental Options
 
 <table>
@@ -57,14 +45,18 @@ ACME Logger configuration
         <tr>
             <th>Key</th>
             <th>Kind</th>
-            <th>Type</th><th>Default Value</th><th>Description</th>
+            <th>Type</th>
+            <th>Default Value</th>
+            <th>Description</th>
         </tr>
     </thead>
     <tbody>
         <tr id="level">
             <td><a href="com.acme.AcmeLoggerConfigLevel.md"><code>level</code></a></td>
             <td><code>VALUE</code></td>
-            <td><code>c.a.AcmeLoggerConfigLevel</code></td><td><code>INFO</code></td><td>Logging level</td>
+            <td><code>c.a.AcmeLoggerConfigLevel</code></td>
+            <td><code>INFO</code></td>
+            <td>Logging level</td>
         </tr>
     </tbody>
 </table>
