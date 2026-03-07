@@ -34,6 +34,9 @@ import io.helidon.codegen.JavadocTree.Text;
  */
 class JavadocParser implements Iterator<JavadocParser.Event> {
 
+    /**
+     * Parser event.
+     */
     @SuppressWarnings("checkstyle:InterfaceIsType")
     sealed interface Event permits EltClose,
                                    Text,
@@ -49,25 +52,58 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
                                    Event.InlineTag,
                                    Event.BlockTag {
 
+        /**
+         * Constant for {@link Stopper}.
+         */
         Event STOPPER = new Stopper();
+
+        /**
+         * Constant for {@link SelfClose}.
+         */
         Event SELF_CLOSE = new SelfClose();
 
-        record AttrName(String value) implements Event {
+        /**
+         * HTML attribute name.
+         *
+         * @param name name
+         */
+        record AttrName(String name) implements Event {
         }
 
-        record EltStart(String value) implements Event {
+        /**
+         * HTML element start.
+         *
+         * @param name name
+         */
+        record EltStart(String name) implements Event {
         }
 
+        /**
+         * End of attribute or inline tag.
+         */
         record Stopper() implements Event {
         }
 
+        /**
+         * HTML element self close.
+         */
         record SelfClose() implements Event {
         }
 
-        record InlineTag(String name) implements Event {
+        /**
+         * Inline tag.
+         *
+         * @param tag tag
+         */
+        record InlineTag(String tag) implements Event {
         }
 
-        record BlockTag(String name) implements Event {
+        /**
+         * Block tag.
+         *
+         * @param tag tag
+         */
+        record BlockTag(String tag) implements Event {
         }
     }
 
@@ -100,7 +136,7 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
         }
     }
 
-    enum Handler {
+    private enum Handler {
         DOCTYPE(p -> p.readChar('>'), 1, s -> new Doctype(s.strip()), State.TOKEN),
         CDATA(p -> p.readString("]]>"), 3, Cdata::new, State.TOKEN),
         COMMENT(p -> p.readString("-->"), 3, Comment::new, State.TOKEN),
@@ -131,7 +167,7 @@ class JavadocParser implements Iterator<JavadocParser.Event> {
         }
     }
 
-    enum State {
+    private enum State {
         START,
         TOKEN,
         LINE,

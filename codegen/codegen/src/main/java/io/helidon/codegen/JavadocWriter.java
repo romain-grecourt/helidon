@@ -40,7 +40,6 @@ import io.helidon.codegen.JavadocTree.Text;
  *     <li>{@code link}: rendered as <code>&lt;code&gt;</code></li>
  *     <li>{@code linkplain}: rendered as <code>&lt;code&gt;</code></li>
  * </ul>
- * </p>
  * <p>
  * Block tags ignored.
  * </p>
