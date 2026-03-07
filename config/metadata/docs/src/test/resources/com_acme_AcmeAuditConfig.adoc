@@ -11,7 +11,9 @@ ACME Audit configuration.
 
 * xref:com_acme_AcmeFeature.adoc#audit[`server.features.audit`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 |===
@@ -28,5 +30,7 @@ ACME Audit configuration.
 |pass:[Fail on error]
 
 |===
+// end::config[]
+
 '''
 See the xref:manifest.adoc[manifest] for all available types.

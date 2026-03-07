@@ -11,7 +11,9 @@ ACME Logging configuration.
 
 * xref:com_acme_AcmeFeature.adoc#logging[`server.features.logging`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 |===
@@ -23,5 +25,7 @@ ACME Logging configuration.
 |pass:[Loggers]
 
 |===
+// end::config[]
+
 '''
 See the xref:manifest.adoc[manifest] for all available types.

@@ -11,7 +11,9 @@ ACME Server configuration..
 
 * xref:config_reference.adoc#server[`server`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 |===
@@ -42,5 +44,7 @@ ACME Server configuration..
 |pass:[Sockets]
 
 |===
+// end::config[]
+
 '''
 See the xref:manifest.adoc[manifest] for all available types.

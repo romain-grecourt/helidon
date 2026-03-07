@@ -11,7 +11,9 @@ ACME Listener configuration.
 
 * xref:com_acme_AcmeServerConfig.adoc#sockets[`server.sockets`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 |===
@@ -30,5 +32,7 @@ ACME Listener configuration.
 |pass:[Listen port]
 
 |===
+// end::config[]
+
 '''
 See the xref:manifest.adoc[manifest] for all available types.

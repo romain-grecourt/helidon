@@ -11,7 +11,9 @@ ACME Logger configuration.
 
 * xref:com_acme_AcmeLoggingConfig.adoc#loggers[`server.features.logging.loggers`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 === Experimental Options
@@ -40,6 +42,8 @@ ACME Logger configuration.
 |pass:[Logging level]
 
 |===
+
+// end::config[]
 
 '''
 See the xref:manifest.adoc[manifest] for all available types.

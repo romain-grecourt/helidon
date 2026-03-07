@@ -11,7 +11,9 @@ ACME Tracing configuration.
 
 * xref:com_acme_AcmeFeature.adoc#tracing[`server.features.tracing`]
 
-== Options
+// tag::config[]
+
+== Configuration options
 
 
 |===
@@ -36,5 +38,7 @@ ACME Tracing configuration.
 |pass:[System tags]
 
 |===
+// end::config[]
+
 '''
 See the xref:manifest.adoc[manifest] for all available types.
