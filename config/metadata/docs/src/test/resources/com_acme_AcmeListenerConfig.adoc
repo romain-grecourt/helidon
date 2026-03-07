@@ -9,7 +9,7 @@ ACME Listener configuration.
 
 == Usages
 
-* xref:com.acme.AcmeServerConfig.adoc#sockets[`server.sockets`]
+* xref:com_acme_AcmeServerConfig.adoc#sockets[`server.sockets`]
 
 == Options
 

@@ -9,7 +9,7 @@ This type is an enumeration.
 
 == Usages
 
-* xref:com.acme.AcmeLoggerConfig.adoc#level[`server.features.logging.loggers.level`]
+* xref:com_acme_AcmeLoggerConfig.adoc#level[`server.features.logging.loggers.level`]
 
 == Allowed Values
 

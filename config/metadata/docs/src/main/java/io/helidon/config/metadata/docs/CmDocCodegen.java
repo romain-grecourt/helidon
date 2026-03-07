@@ -86,26 +86,29 @@ class CmDocCodegen {
         // generate README.adoc
         generateFile("config_reference.adoc", rootTemplate, rootContext());
 
-        var typeNames = new HashSet<String>();
+        var fileNames = new HashSet<String>();
 
         // document all types
         for (var type : resolver.types()) {
             var typeName = type.type();
-            generateFile(typeName + ".adoc", configTemplate, configContext(type));
-            typeNames.add(typeName);
+            var fileName = fileName(typeName);
+            generateFile(fileName, configTemplate, configContext(type));
+            fileNames.add(fileName);
         }
 
         // document all provider contracts
         for (var typeName : resolver.contracts()) {
-            generateFile(typeName + ".adoc", providerTemplate, providerContext(typeName));
-            typeNames.add(typeName);
+            var fileName = fileName(typeName);
+            generateFile(fileName, providerTemplate, providerContext(typeName));
+            fileNames.add(fileName);
         }
 
         // document enum types
         for (var type : resolver.enums()) {
             var typeName = type.type();
-            generateFile(typeName + ".adoc", enumTemplate, enumContext(type));
-            typeNames.add(typeName);
+            var fileName = fileName(typeName);
+            generateFile(fileName, enumTemplate, enumContext(type));
+            fileNames.add(fileName);
         }
 
         // generate listing
@@ -120,8 +123,7 @@ class CmDocCodegen {
                         && !fileName.equals("config_reference.adoc")
                         && !fileName.equals("manifest.adoc")) {
 
-                        var typeName = fileName.substring(0, fileName.length() - ".adoc".length());
-                        return !typeNames.contains(typeName);
+                        return !fileNames.contains(fileName);
                     }
                     return false;
                 })) {
@@ -203,7 +205,7 @@ class CmDocCodegen {
         var optionType = resolver.type(option.type());
         var optionTypeName = optionType.map(CmType::type).orElse(option.type());
         if (option.provider() || optionType.isPresent() || resolver.isEnum(optionTypeName)) {
-            context.put("fileName", optionTypeName);
+            context.put("fileName", fileName(optionTypeName));
         }
         context.put("shortName", shortTypeName(optionTypeName));
         context.put("fullName", optionTypeName);
@@ -217,7 +219,7 @@ class CmDocCodegen {
         context.put("prefix", type.prefix()
                 .orElseThrow(() -> new IllegalStateException(
                         "Type does not have a prefix: " + typeName)));
-        context.put("fileName", typeName);
+        context.put("fileName", fileName(typeName));
         context.put("shortName", shortTypeName(typeName));
         context.put("description", typeDescription(type));
         return context;
@@ -234,7 +236,8 @@ class CmDocCodegen {
         var context = new HashMap<String, Object>();
         var fileName = node.parent()
                 .map(CmNode::typeName)
-                .orElse("config_reference");
+                .map(CmDocCodegen::fileName)
+                .orElse("config_reference.adoc");
         context.put("fileName", fileName);
         context.put("key", node.key());
         context.put("path", node.path());
@@ -269,11 +272,22 @@ class CmDocCodegen {
         var context = new HashMap<String, Object>();
         context.put("configTypes", resolver.types().stream()
                 .map(CmType::type)
+                .map(this::fileContext)
                 .toList());
-        context.put("providerTypes", resolver.contracts());
+        context.put("providerTypes", resolver.contracts().stream()
+                .map(this::fileContext)
+                .toList());
         context.put("enumTypes", resolver.enums().stream()
                 .map(CmEnum::type)
+                .map(this::fileContext)
                 .toList());
+        return context;
+    }
+
+    private Map<String, Object> fileContext(String typeName) {
+        var context = new HashMap<String, Object>();
+        context.put("fileName", fileName(typeName));
+        context.put("typeName", typeName);
         return context;
     }
 
@@ -286,10 +300,10 @@ class CmDocCodegen {
         return description;
     }
 
-    private void generateFile(String name, Template template, Map<String, Object> context) {
+    private void generateFile(String fileName, Template template, Map<String, Object> context) {
         try {
-            LOGGER.log(Level.INFO, "Generating " + name);
-            var outputFile = outputDir.resolve(name);
+            LOGGER.log(Level.INFO, "Generating " + fileName);
+            var outputFile = outputDir.resolve(fileName);
             var outputFileParent = outputFile.getParent();
             if (outputFileParent != null) {
                 Files.createDirectories(outputFileParent);
@@ -298,7 +312,7 @@ class CmDocCodegen {
                 template.apply(context, writer);
             }
         } catch (IOException ex) {
-            throw new UncheckedIOException("Failed to generate: " + name, ex);
+            throw new UncheckedIOException("Failed to generate: " + fileName, ex);
         }
     }
 
@@ -308,5 +322,9 @@ class CmDocCodegen {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load template: " + template, e);
         }
+    }
+
+    private static String fileName(String typeName) {
+        return typeName.replace('.', '_') + ".adoc";
     }
 }

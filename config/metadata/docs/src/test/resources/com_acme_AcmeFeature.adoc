@@ -10,7 +10,7 @@ This type is a provider contract.
 == Usages
 
 
-* xref:com.acme.AcmeServerConfig.adoc#features[`server.features`]
+* xref:com_acme_AcmeServerConfig.adoc#features[`server.features`]
 
 
 == Implementations
@@ -18,15 +18,15 @@ This type is a provider contract.
 |===
 |Key|Type|Description
 
-|[[audit]] xref:com.acme.AcmeAuditConfig.adoc[`audit`]
+|[[audit]] xref:com_acme_AcmeAuditConfig.adoc[`audit`]
 |`c.a.AcmeAuditConfig`
 |pass:[ACME Audit configuration]
 
-|[[logging]] xref:com.acme.AcmeLoggingConfig.adoc[`logging`]
+|[[logging]] xref:com_acme_AcmeLoggingConfig.adoc[`logging`]
 |`c.a.AcmeLoggingConfig`
 |pass:[ACME Logging configuration]
 
-|[[tracing]] xref:com.acme.AcmeTracingConfig.adoc[`tracing`]
+|[[tracing]] xref:com_acme_AcmeTracingConfig.adoc[`tracing`]
 |`c.a.AcmeTracingConfig`
 |pass:[ACME Tracing configuration]
 

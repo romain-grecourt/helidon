@@ -9,7 +9,7 @@ ACME Logging configuration.
 
 == Usages
 
-* xref:com.acme.AcmeFeature.adoc#logging[`server.features.logging`]
+* xref:com_acme_AcmeFeature.adoc#logging[`server.features.logging`]
 
 == Options
 
@@ -17,7 +17,7 @@ ACME Logging configuration.
 |===
 |Key|Kind|Type|Description
 
-|[[loggers]]xref:com.acme.AcmeLoggerConfig.adoc[`loggers`]
+|[[loggers]]xref:com_acme_AcmeLoggerConfig.adoc[`loggers`]
 |`LIST`
 |`c.a.AcmeLoggerConfig`
 |pass:[Loggers]

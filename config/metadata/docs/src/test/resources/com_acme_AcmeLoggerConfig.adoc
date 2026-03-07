@@ -9,7 +9,7 @@ ACME Logger configuration.
 
 == Usages
 
-* xref:com.acme.AcmeLoggingConfig.adoc#loggers[`server.features.logging.loggers`]
+* xref:com_acme_AcmeLoggingConfig.adoc#loggers[`server.features.logging.loggers`]
 
 == Options
 
@@ -33,7 +33,7 @@ ACME Logger configuration.
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[level]]xref:com.acme.AcmeLoggerConfigLevel.adoc[`level`]
+|[[level]]xref:com_acme_AcmeLoggerConfigLevel.adoc[`level`]
 |`VALUE`
 |`c.a.AcmeLoggerConfigLevel`
 |`INFO`

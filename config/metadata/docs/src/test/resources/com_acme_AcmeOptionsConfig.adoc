@@ -17,7 +17,7 @@
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[features]]xref:com.acme.AcmeFeature.adoc[`features`]
+|[[features]]xref:com_acme_AcmeFeature.adoc[`features`]
 |`LIST`
 |`c.a.AcmeFeature`
 |

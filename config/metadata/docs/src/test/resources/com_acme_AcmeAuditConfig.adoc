@@ -9,7 +9,7 @@ ACME Audit configuration.
 
 == Usages
 
-* xref:com.acme.AcmeFeature.adoc#audit[`server.features.audit`]
+* xref:com_acme_AcmeFeature.adoc#audit[`server.features.audit`]
 
 == Options
 

@@ -9,7 +9,7 @@ ACME Tracing configuration.
 
 == Usages
 
-* xref:com.acme.AcmeFeature.adoc#tracing[`server.features.tracing`]
+* xref:com_acme_AcmeFeature.adoc#tracing[`server.features.tracing`]
 
 == Options
 
