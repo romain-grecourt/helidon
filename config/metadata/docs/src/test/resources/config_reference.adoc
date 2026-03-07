@@ -1,3 +1,4 @@
+
 = Config Reference
 
 |===
@@ -9,4 +10,5 @@
 
 |===
 
+'''
 See the xref:manifest.adoc[manifest] for all available types.

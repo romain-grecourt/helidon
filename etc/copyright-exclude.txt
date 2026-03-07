@@ -71,3 +71,5 @@ service.loader
 .repo
 reflection.proto
 manifest
+docs/src/main/asciidoc/config
+config/metadata/docs/src/test/resources/

@@ -1,3 +1,4 @@
+
 = com.acme.AcmeAuditConfig
 
 == Description
@@ -12,17 +13,22 @@ ACME Audit configuration.
 
 == Options
 
+
 |===
 |Key|Kind|Type|Description
 
-|[[paths]] `paths`
+|[[paths]]`paths`
 |`MAP`
 |`String`
 |pass:[Audited paths]
 
-|[[strict]] `strict`
+|[[strict]]`strict`
 |`VALUE`
 |`Boolean`
 |pass:[Fail on error]
 
 |===
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

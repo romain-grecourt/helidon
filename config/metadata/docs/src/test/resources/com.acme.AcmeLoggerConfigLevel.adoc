@@ -1,3 +1,4 @@
+
 = com.acme.AcmeLoggerConfigLevel
 
 == Description
@@ -28,3 +29,6 @@ This type is an enumeration.
 |pass:[Debug level]
 
 |===
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

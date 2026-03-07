@@ -51,7 +51,7 @@ class CmDocCodegenTest {
 
         // verify content
         try (Stream<Path> stream = Files.list(classesDir)
-                .filter(it -> it.getFileName().toString().endsWith(".md"))) {
+                .filter(it -> it.getFileName().toString().endsWith(".adoc"))) {
 
             var expectedFiles = stream.toList();
             for (var expectedFile : expectedFiles) {

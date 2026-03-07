@@ -1,3 +1,4 @@
+
 = com.acme.AcmeTracingConfig
 
 == Description
@@ -12,25 +13,30 @@ ACME Tracing configuration.
 
 == Options
 
+
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[host]] `host`
+|[[host]]`host`
 |`VALUE`
 |`String`
 |
 |pass:[Tracing backend host]
 
-|[[port]] `port`
+|[[port]]`port`
 |`VALUE`
 |`Integer`
 |`16686`
 |pass:[Tracing backend port]
 
-|[[tags]] `tags`
+|[[tags]]`tags`
 |`LIST`
 |`String`
 |
 |pass:[System tags]
 
 |===
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

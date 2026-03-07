@@ -1,3 +1,4 @@
+
 = com.acme.AcmeLoggingConfig
 
 == Description
@@ -12,12 +13,17 @@ ACME Logging configuration.
 
 == Options
 
+
 |===
 |Key|Kind|Type|Description
 
-|[[loggers]] xref:com.acme.AcmeLoggerConfig.adoc[`loggers`]
+|[[loggers]]xref:com.acme.AcmeLoggerConfig.adoc[`loggers`]
 |`LIST`
 |`c.a.AcmeLoggerConfig`
 |pass:[Loggers]
 
 |===
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

@@ -54,7 +54,7 @@ class CmDocCodegen {
 
     private final CmResolver resolver;
     private final Path outputDir;
-    private final Template readmeTemplate;
+    private final Template rootTemplate;
     private final Template configTemplate;
     private final Template enumTemplate;
     private final Template providerTemplate;
@@ -71,11 +71,11 @@ class CmDocCodegen {
         this.resolver = CmResolver.create(metadata);
         var loader = new ClassPathTemplateLoader("/io/helidon/config/metadata/docs");
         var handlebars = new Handlebars(loader);
-        readmeTemplate = template(handlebars, "README.md");
-        configTemplate = template(handlebars, "config.md");
-        enumTemplate = template(handlebars, "enum.md");
-        providerTemplate = template(handlebars, "provider.md");
-        manifestTemplate = template(handlebars, "manifest.md");
+        rootTemplate = template(handlebars, "config_reference.adoc");
+        configTemplate = template(handlebars, "config.adoc");
+        enumTemplate = template(handlebars, "enum.adoc");
+        providerTemplate = template(handlebars, "provider.adoc");
+        manifestTemplate = template(handlebars, "manifest.adoc");
     }
 
     /**
@@ -83,44 +83,44 @@ class CmDocCodegen {
      */
     void process() {
 
-        // generate README.md
-        generateFile("README.md", readmeTemplate, rootContext());
+        // generate README.adoc
+        generateFile("config_reference.adoc", rootTemplate, rootContext());
 
         var typeNames = new HashSet<String>();
 
         // document all types
         for (var type : resolver.types()) {
             var typeName = type.type();
-            generateFile(typeName + ".md", configTemplate, configContext(type));
+            generateFile(typeName + ".adoc", configTemplate, configContext(type));
             typeNames.add(typeName);
         }
 
         // document all provider contracts
         for (var typeName : resolver.contracts()) {
-            generateFile(typeName + ".md", providerTemplate, providerContext(typeName));
+            generateFile(typeName + ".adoc", providerTemplate, providerContext(typeName));
             typeNames.add(typeName);
         }
 
         // document enum types
         for (var type : resolver.enums()) {
             var typeName = type.type();
-            generateFile(typeName + ".md", enumTemplate, enumContext(type));
+            generateFile(typeName + ".adoc", enumTemplate, enumContext(type));
             typeNames.add(typeName);
         }
 
         // generate listing
-        generateFile("manifest.md", manifestTemplate, manifestContext());
+        generateFile("manifest.adoc", manifestTemplate, manifestContext());
 
         // remove obsolete files
         try (Stream<Path> stream = Files.list(outputDir)
                 .filter(it -> {
                     var fileName = it.getFileName().toString();
                     if (!Files.isDirectory(it)
-                        && fileName.endsWith(".md")
-                        && !fileName.equals("README.md")
-                        && !fileName.equals("manifest.md")) {
+                        && fileName.endsWith(".adoc")
+                        && !fileName.equals("config_reference.adoc")
+                        && !fileName.equals("manifest.adoc")) {
 
-                        var typeName = fileName.substring(0, fileName.length() - 3);
+                        var typeName = fileName.substring(0, fileName.length() - ".adoc".length());
                         return !typeNames.contains(typeName);
                     }
                     return false;
@@ -198,12 +198,14 @@ class CmDocCodegen {
         return context;
     }
 
+    // TODO remove dots from filenames, current toolchain not liky
+
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
         var optionType = resolver.type(option.type());
         var optionTypeName = optionType.map(CmType::type).orElse(option.type());
         if (option.provider() || optionType.isPresent() || resolver.isEnum(optionTypeName)) {
-            context.put("fileName", optionTypeName + ".md");
+            context.put("fileName", optionTypeName);
         }
         context.put("shortName", shortTypeName(optionTypeName));
         context.put("fullName", optionTypeName);
@@ -217,7 +219,7 @@ class CmDocCodegen {
         context.put("prefix", type.prefix()
                 .orElseThrow(() -> new IllegalStateException(
                         "Type does not have a prefix: " + typeName)));
-        context.put("fileName", typeName + ".md");
+        context.put("fileName", typeName);
         context.put("shortName", shortTypeName(typeName));
         context.put("description", typeDescription(type));
         return context;
@@ -233,8 +235,8 @@ class CmDocCodegen {
     private Map<String, Object> usageContext(CmNode node) {
         var context = new HashMap<String, Object>();
         var fileName = node.parent()
-                .map(it -> it.typeName() + ".md")
-                .orElse("README.md");
+                .map(it -> it.typeName())
+                .orElse("config_reference");
         context.put("fileName", fileName);
         context.put("key", node.key());
         context.put("path", node.path());

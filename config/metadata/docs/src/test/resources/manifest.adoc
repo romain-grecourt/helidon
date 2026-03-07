@@ -1,6 +1,7 @@
+
 = Config Types
 
-See the xref:README.adoc[root] type.
+See the xref:config_reference.adoc[root] type.
 
 == Config Types
 
@@ -19,3 +20,7 @@ See the xref:README.adoc[root] type.
 == Enum Types
 
 * xref:com.acme.AcmeLoggerConfigLevel.adoc[com.acme.AcmeLoggerConfigLevel]
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

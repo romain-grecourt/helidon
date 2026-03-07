@@ -13,28 +13,32 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 }}
-# Config Types
+= {{type}}
 
-See the [root](README.md) type.
+== Description
 
-## Config Types
+++++
+This type is a provider contract.
+++++
 
-{{#each configTypes~}}
-- [{{this}}]({{this}}.md)
-{{/each~}}
+== Usages
 
-{{~#if providerTypes.length}}
-## Provider Types
+{{#each usages}}
+* xref:{{fileName}}.adoc#{{key}}[`{{path}}`]
+{{/each}}
 
-{{#each providerTypes~}}
-- [{{this}}]({{this}}.md)
-{{/each~}}
-{{~/if~}}
+== Implementations
 
-{{~#if enumTypes.length}}
-## Enum Types
+|===
+|Key|Type|Description
+{{~#each implementations}}
 
-{{#each enumTypes~}}
-- [{{this}}]({{this}}.md)
-{{/each~}}
-{{~/if~}}
+|[[{{prefix}}]] xref:{{fileName}}.adoc[`{{prefix}}`]
+|`{{shortName}}`
+|pass:[{{{description}}}]
+{{~/each}}
+
+|===
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

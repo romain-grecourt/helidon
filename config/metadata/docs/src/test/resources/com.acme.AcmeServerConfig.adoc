@@ -1,42 +1,48 @@
+
 = com.acme.AcmeServerConfig
 
 == Description
 
 ++++
-ACME Server configuration.
+ACME Server configuration..
 ++++
 
 == Usages
 
-* xref:README.adoc#server[`server`]
+* xref:config_reference.adoc#server[`server`]
 
 == Options
+
 
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[features]] xref:com.acme.AcmeFeature.adoc[`features`]
+|[[features]]xref:com.acme.AcmeFeature.adoc[`features`]
 |`LIST`
 |`c.a.AcmeFeature`
 |
 |pass:[Dynamic features]
 
-|[[host]] `host`
+|[[host]]`host`
 |`VALUE`
 |`String`
 |`localhost`
 |pass:[Listen address]
 
-|[[port]] `port`
+|[[port]]`port`
 |`VALUE`
 |`Integer`
 |`8080`
 |pass:[Listen port]
 
-|[[sockets]] xref:com.acme.AcmeListenerConfig.adoc[`sockets`]
+|[[sockets]]xref:com.acme.AcmeListenerConfig.adoc[`sockets`]
 |`MAP`
 |`c.a.AcmeListenerConfig`
 |
 |pass:[Sockets]
 
 |===
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

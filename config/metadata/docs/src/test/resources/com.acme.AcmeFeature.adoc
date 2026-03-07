@@ -1,3 +1,4 @@
+
 = com.acme.AcmeFeature
 
 == Description
@@ -8,7 +9,9 @@ This type is a provider contract.
 
 == Usages
 
+
 * xref:com.acme.AcmeServerConfig.adoc#features[`server.features`]
+
 
 == Implementations
 
@@ -28,3 +31,6 @@ This type is a provider contract.
 |pass:[ACME Tracing configuration]
 
 |===
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.

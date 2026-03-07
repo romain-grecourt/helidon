@@ -1,9 +1,10 @@
+
 = com.acme.AcmeLoggerConfig
 
 == Description
 
 ++++
-ACME Logger configuration
+ACME Logger configuration.
 ++++
 
 == Usages
@@ -12,32 +13,34 @@ ACME Logger configuration
 
 == Options
 
-|===
-|Key|Kind|Type|Description
 
-|===
 
 === Experimental Options
 
 |===
 |Key|Kind|Type|Description
 
-|[[logger]] `logger`
+|[[logger]]`logger`
 |`VALUE`
 |`String`
 |pass:[Logger name]
 
 |===
 
+
 === Deprecated Options
 
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[level]] xref:com.acme.AcmeLoggerConfigLevel.adoc[`level`]
+|[[level]]xref:com.acme.AcmeLoggerConfigLevel.adoc[`level`]
 |`VALUE`
 |`c.a.AcmeLoggerConfigLevel`
 |`INFO`
 |pass:[Logging level]
 
 |===
+
+
+'''
+See the xref:manifest.adoc[manifest] for all available types.
