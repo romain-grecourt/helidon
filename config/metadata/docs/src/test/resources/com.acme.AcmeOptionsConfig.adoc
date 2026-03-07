@@ -36,7 +36,5 @@
 |pass:[Listen port]
 
 |===
-
-
 '''
 See the xref:manifest.adoc[manifest] for all available types.

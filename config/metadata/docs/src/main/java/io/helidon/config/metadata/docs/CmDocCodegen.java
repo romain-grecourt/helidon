@@ -198,8 +198,6 @@ class CmDocCodegen {
         return context;
     }
 
-    // TODO remove dots from filenames, current toolchain not liky
-
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
         var optionType = resolver.type(option.type());
@@ -235,7 +233,7 @@ class CmDocCodegen {
     private Map<String, Object> usageContext(CmNode node) {
         var context = new HashMap<String, Object>();
         var fileName = node.parent()
-                .map(it -> it.typeName())
+                .map(CmNode::typeName)
                 .orElse("config_reference");
         context.put("fileName", fileName);
         context.put("key", node.key());

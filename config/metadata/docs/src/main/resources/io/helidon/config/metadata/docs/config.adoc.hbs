@@ -29,23 +29,22 @@ limitations under the License.
 
 == Options
 
-{{#if options.options}}
-{{> options.adoc options~}}
+{{#if options.options~}}
+{{> options.adoc options}}
 {{~/if~}}
 
 {{~#if experimentalOptions.options}}
-
 === Experimental Options
 
 {{> options.adoc experimentalOptions}}
 {{~/if~}}
 
 {{~#if deprecatedOptions.options}}
-
 === Deprecated Options
 
-{{> options.adoc deprecatedOptions~}}
-{{~/if}}
+{{> options.adoc deprecatedOptions}}
+{{/if~}}
+
 
 '''
 See the xref:manifest.adoc[manifest] for all available types.

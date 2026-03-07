@@ -14,8 +14,8 @@ ACME Logger configuration.
 == Options
 
 
-
 === Experimental Options
+
 
 |===
 |Key|Kind|Type|Description
@@ -27,8 +27,8 @@ ACME Logger configuration.
 
 |===
 
-
 === Deprecated Options
+
 
 |===
 |Key|Kind|Type|Default Value|Description
@@ -40,7 +40,6 @@ ACME Logger configuration.
 |pass:[Logging level]
 
 |===
-
 
 '''
 See the xref:manifest.adoc[manifest] for all available types.

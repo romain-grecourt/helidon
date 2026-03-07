@@ -23,7 +23,5 @@ ACME Logging configuration.
 |pass:[Loggers]
 
 |===
-
-
 '''
 See the xref:manifest.adoc[manifest] for all available types.

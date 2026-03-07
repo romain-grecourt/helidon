@@ -42,7 +42,5 @@ ACME Server configuration..
 |pass:[Sockets]
 
 |===
-
-
 '''
 See the xref:manifest.adoc[manifest] for all available types.

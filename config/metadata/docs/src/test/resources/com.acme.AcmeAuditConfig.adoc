@@ -28,7 +28,5 @@ ACME Audit configuration.
 |pass:[Fail on error]
 
 |===
-
-
 '''
 See the xref:manifest.adoc[manifest] for all available types.
