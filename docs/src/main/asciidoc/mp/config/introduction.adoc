@@ -227,7 +227,7 @@ Config sources can be configured using the following properties.
 
 The class responsible for configuration is:
 
-include::{rootdir}/config/org_eclipse_microprofile_config_Config.adoc[leveloffset=+1,tag=config]
+include::{rootdir}/config/io_helidon_config_mp_MpConfigBuilder.adoc[leveloffset=+1,tag=config]
 
 Current properties may be set in `application.yaml` or in `microprofile-config.properties` with `mp.config` prefix.
 

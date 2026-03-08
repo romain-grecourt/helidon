@@ -84,6 +84,53 @@ class TypeHandlerTest {
     }
 
     @Test
+    void testExternalBuilderTargetType() throws IOException {
+        var result = new TestCompiler()
+                .autoWorkDir()
+                .classpath(Configured.class, Builder.class)
+                .processors(AptProcessor::new)
+                .source("AcmeListener.java", """
+                        package com.acme.server;
+                        
+                        public interface AcmeListener {
+                        }
+                        """)
+                .source("AcmeConfig.java", """
+                        package com.acme;
+                        
+                        import io.helidon.config.metadata.Configured;
+                        
+                        interface AcmeConfig {
+                            /**
+                             * ACME configuration builder.
+                             */
+                            @Configured
+                            interface Builder extends io.helidon.common.Builder<Builder, com.acme.server.AcmeListener> {
+                            }
+                        }
+                        """)
+                .compile();
+        assertThat(result.success(), is(true));
+
+        var schema = result.classOutput().resolve(CmModel.LOCATION);
+        assertThat(Files.exists(schema), is(true));
+
+        var actual = formatJson(Files.readString(schema));
+        assertThat(actual, is(formatJson("""
+                [
+                    {
+                        "module": "unnamed module",
+                        "types": [
+                            {
+                                "type": "com.acme.AcmeConfig.Builder",
+                                "description": "ACME configuration builder"
+                            }
+                        ]
+                    }
+                ]""")));
+    }
+
+    @Test
     void testNormalType() throws IOException {
         var result = new TestCompiler()
                 .autoWorkDir()

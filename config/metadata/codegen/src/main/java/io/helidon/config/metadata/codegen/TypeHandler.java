@@ -90,6 +90,7 @@ class TypeHandler {
     }
 
     private TypeInfo targetType(TypeInfo annotatedTypeInfo) {
+        var pkg = annotatedTypeInfo.typeName().packageName();
         for (var typeInfo : resolver.typeHierarchy(annotatedTypeInfo)) {
             var enclosingTypeName = typeInfo.typeName();
             for (var e : typeInfo.elementInfo()) {
@@ -102,7 +103,10 @@ class TypeHandler {
                         targetTypeInfo = resolver.resolveTypeParameter(returnTypeName, enclosingTypeName);
                     }
                     if (targetTypeInfo != null) {
-                        return targetTypeInfo;
+                        var targetPkg = targetTypeInfo.typeName().packageName();
+                        if (targetPkg.equals(pkg)){
+                            return targetTypeInfo;
+                        }
                     }
                 }
             }
