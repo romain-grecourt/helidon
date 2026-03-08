@@ -16,12 +16,9 @@
 package io.helidon.config.metadata.model;
 
 import java.lang.System.Logger.Level;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -154,8 +151,7 @@ final class CmResolverImpl implements CmResolver {
                 var typeName = type.type();
                 var resolvedType = resolvedTypes.get(typeName);
                 var key = segments[segments.length - 1];
-                var id = id(typeName, prefix);
-                var node = new CmNodeImpl(null, prefix, id, key, typeName, resolvedType, new ArrayList<>());
+                var node = new CmNodeImpl(null, prefix, key, typeName, resolvedType, new ArrayList<>());
                 usage(typeName, node);
                 tree.add(node);
             }
@@ -170,8 +166,7 @@ final class CmResolverImpl implements CmResolver {
             var resolvedType = resolvedTypes.get(typeName);
             if (resolvedType != null) {
                 var key = resolvedType.prefix().orElse("<unreachable>");
-                var id = id(typeName, key);
-                var node = new CmNodeImpl(null, key, id, key, typeName, resolvedType, new ArrayList<>());
+                var node = new CmNodeImpl(null, key, key, typeName, resolvedType, new ArrayList<>());
                 traverse(List.of(node));
             }
         }
@@ -200,12 +195,10 @@ final class CmResolverImpl implements CmResolver {
                 if (optionType != null) {
                     types.add(optionTypeName);
                 }
-                var optionId = id(enclosingTypeName, optionKey);
                 var optionPath = node.path() + "." + optionKey;
                 var optionNode = new CmNodeImpl(
                         node,
                         optionPath,
-                        optionId,
                         optionKey,
                         optionTypeName,
                         optionType,
@@ -231,12 +224,10 @@ final class CmResolverImpl implements CmResolver {
                             LOGGER.log(Level.WARNING, "Provider type does not have a prefix: {0}", implTypeName);
                             continue;
                         }
-                        var implId = id(optionTypeName, implKey);
                         var implPath = optionPath + "." + implKey;
                         var implNode = new CmNodeImpl(
                                 optionNode,
                                 implPath,
-                                implId,
                                 implKey,
                                 implTypeName,
                                 implType,
@@ -405,10 +396,6 @@ final class CmResolverImpl implements CmResolver {
                     return captalized;
                 })
                 .collect(Collectors.joining("", typeName, ""));
-    }
-
-    private String id(String typeName, String key) {
-        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("UnusedReturnValue")

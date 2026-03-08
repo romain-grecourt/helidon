@@ -192,7 +192,7 @@ class CmDocCodegen {
             LOGGER.log(Level.WARNING, "Option does not have a description: {0}", key);
             description = "<code>N/A</code>";
         }
-        context.put("id", node.id());
+        context.put("id", id(node));
         context.put("key", key);
         context.put("type", optionTypeContext(option));
         context.put("description", description);
@@ -216,7 +216,7 @@ class CmDocCodegen {
     private Map<String, Object> typeContext(CmNode node) {
         var context = new HashMap<String, Object>();
         var typeName = node.typeName();
-        context.put("id", node.id());
+        context.put("id", id(node));
         context.put("prefix", node.path());
         context.put("fileName", fileName(typeName));
         context.put("shortName", shortTypeName(typeName));
@@ -238,7 +238,7 @@ class CmDocCodegen {
                 .map(CmDocCodegen::fileName)
                 .orElse("config_reference.adoc");
         context.put("fileName", fileName);
-        context.put("id", node.id());
+        context.put("id", id(node));
         context.put("path", node.path());
         return context;
     }
@@ -260,7 +260,7 @@ class CmDocCodegen {
     private Map<String, Object> rootContext() {
         var context = new HashMap<String, Object>();
         context.put("roots", resolver.roots().stream()
-                .sorted(Comparator.comparing(CmNode::id)
+                .sorted(Comparator.comparing(CmNode::key)
                         .thenComparing(CmNode::typeName))
                 .map(this::typeContext)
                 .toList());
@@ -297,6 +297,10 @@ class CmDocCodegen {
             description = "<code>N/A</code>";
         }
         return description;
+    }
+
+    private String id(CmNode node) {
+        throw new UnsupportedOperationException();
     }
 
     private void generateFile(String fileName, Template template, Map<String, Object> context) {

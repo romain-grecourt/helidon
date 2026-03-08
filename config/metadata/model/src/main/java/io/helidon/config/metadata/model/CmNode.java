@@ -45,13 +45,6 @@ public interface CmNode extends Comparable<CmNode> {
     String path();
 
     /**
-     * Node id, unique within the parent node.
-     *
-     * @return id
-     */
-    String id();
-
-    /**
      * Node key.
      * May not be unique within the parent node.
      *
