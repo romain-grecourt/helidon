@@ -1,4 +1,5 @@
 
+ifndef::rootdir[:rootdir: {docdir}/..]
 = com.acme.AcmeServerConfig
 
 == Description
@@ -9,7 +10,7 @@ ACME Server configuration..
 
 == Usages
 
-* xref:config_reference.adoc#server[`server`]
+* xref:{rootdir}/config/config_reference.adoc#a24bff-server[`server`]
 
 // tag::config[]
 
@@ -19,25 +20,25 @@ ACME Server configuration..
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[features]]xref:com_acme_AcmeFeature.adoc[`features`]
+|[[a98f1c-features]] xref:{rootdir}/config/com_acme_AcmeFeature.adoc[`features`]
 |`LIST`
 |`c.a.AcmeFeature`
 |
 |pass:[Dynamic features]
 
-|[[host]]`host`
+|[[a1de27-host]] `host`
 |`VALUE`
 |`String`
 |`localhost`
 |pass:[Listen address]
 
-|[[port]]`port`
+|[[aa90d2-port]] `port`
 |`VALUE`
 |`Integer`
 |`8080`
 |pass:[Listen port]
 
-|[[sockets]]xref:com_acme_AcmeListenerConfig.adoc[`sockets`]
+|[[a9af8e-sockets]] xref:{rootdir}/config/com_acme_AcmeListenerConfig.adoc[`sockets`]
 |`MAP`
 |`c.a.AcmeListenerConfig`
 |
@@ -47,4 +48,4 @@ ACME Server configuration..
 // end::config[]
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

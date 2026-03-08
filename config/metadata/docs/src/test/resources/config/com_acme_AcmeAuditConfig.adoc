@@ -1,4 +1,5 @@
 
+ifndef::rootdir[:rootdir: {docdir}/..]
 = com.acme.AcmeAuditConfig
 
 == Description
@@ -9,7 +10,7 @@ ACME Audit configuration.
 
 == Usages
 
-* xref:com_acme_AcmeFeature.adoc#audit[`server.features.audit`]
+* xref:{rootdir}/config/com_acme_AcmeFeature.adoc#ada579-audit[`server.features.audit`]
 
 // tag::config[]
 
@@ -19,12 +20,12 @@ ACME Audit configuration.
 |===
 |Key|Kind|Type|Description
 
-|[[paths]]`paths`
+|[[a564d0-paths]] `paths`
 |`MAP`
 |`String`
 |pass:[Audited paths]
 
-|[[strict]]`strict`
+|[[aa6872-strict]] `strict`
 |`VALUE`
 |`Boolean`
 |pass:[Fail on error]
@@ -33,4 +34,4 @@ ACME Audit configuration.
 // end::config[]
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

@@ -105,8 +105,10 @@ final class Types {
     static final TypeName CONFIGURED_OPTION_KIND = TypeName.create("io.helidon.config.metadata.ConfiguredOption.Kind");
     static final TypeName CONFIGURED_VALUE = TypeName.create("io.helidon.config.metadata.ConfiguredValue");
 
-    static final TypeName CONFIGURED_PROVIDER = TypeName.create("io.helidon.common.config.ConfiguredProvider");
-    static final TypeName NAMED_SERVICE = TypeName.create("io.helidon.common.config.NamedService");
+    static final TypeName COMMON_CONFIGURED_PROVIDER = TypeName.create("io.helidon.common.config.ConfiguredProvider");
+    static final TypeName COMMON_NAMED_SERVICE = TypeName.create("io.helidon.common.config.NamedService");
+    static final TypeName CONFIGURED_PROVIDER = TypeName.create("io.helidon.config.ConfiguredProvider");
+    static final TypeName NAMED_SERVICE = TypeName.create("io.helidon.config.NamedService");
 
     private Types() {
     }

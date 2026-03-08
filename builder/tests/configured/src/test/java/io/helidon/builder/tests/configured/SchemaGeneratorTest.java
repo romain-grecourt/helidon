@@ -1309,6 +1309,78 @@ class SchemaGeneratorTest {
                         package com.acme;
                         
                         @SuppressWarnings("ALL")
+                        interface AcmeService extends io.helidon.config.NamedService {
+                        }
+                        """)
+                .source("AcmeLogging.java", """
+                        package com.acme;
+                        import io.helidon.builder.api.RuntimeType;
+                        
+                        @SuppressWarnings("ALL")
+                        interface AcmeLogging extends AcmeService, RuntimeType.Api<AcmeLoggingConfig> {
+                            static AcmeLogging create(AcmeLoggingConfig config) {
+                                throw new UnsupportedOperationException();
+                            }
+                            static AcmeLogging create(java.util.function.Consumer<AcmeLoggingConfig.Builder> consumer) {
+                                throw new UnsupportedOperationException();
+                            }
+                            static AcmeLoggingConfig.Builder builder() {
+                                throw new UnsupportedOperationException();
+                            }
+                        }
+                        """)
+                .source("AcmeServiceProvider.java", """
+                        package com.acme;
+                        
+                        @SuppressWarnings("ALL")
+                        interface AcmeServiceProvider extends io.helidon.config.ConfiguredProvider<AcmeService> {
+                        }
+                        """)
+                .source("AcmeLoggingConfigBlueprint.java", """
+                        package com.acme;
+                        
+                        import java.util.Optional;
+                        import io.helidon.builder.api.Prototype;
+                        import io.helidon.builder.api.Option;
+                        
+                        /**
+                         * ACME logging config.
+                         */
+                        @Prototype.Blueprint
+                        @Prototype.Configured(value = "logging", root = false)
+                        @Prototype.Provides(AcmeServiceProvider.class)
+                        interface AcmeLoggingConfigBlueprint extends Prototype.Factory<AcmeLogging> {
+                        }
+                        """)
+                .compile();
+        assertThat(result.success(), is(true));
+        var schema = result.sourceOutput().resolve("com/acme/AcmeLoggingConfig.java");
+        assertThat(Files.exists(schema), is(true));
+
+        var actual = Files.readString(schema);
+        assertThat(actual, matches("""
+                //...
+                package com.acme;
+                //...
+                @Configured(prefix = "logging", description = "ACME logging config", provides = AcmeService.class)
+                //...
+                public interface AcmeLoggingConfig extends AcmeLoggingConfigBlueprint, Prototype.Api {
+                //...
+                }
+                """));
+    }
+
+    @Test
+    void testParameterizedProviderType() throws IOException {
+        var result = new TestCompiler()
+                .autoWorkDir()
+                .classpath(CLASSPATH)
+                .processors(AptProcessor::new)
+                .opts(OPTS)
+                .source("AcmeService.java", """
+                        package com.acme;
+                        
+                        @SuppressWarnings("ALL")
                         interface AcmeService extends io.helidon.common.config.NamedService {
                         }
                         """)

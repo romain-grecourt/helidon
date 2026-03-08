@@ -25,10 +25,9 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -189,19 +188,14 @@ class CmDocCodegen {
     }
 
     private Map<String, Object> optionContext(CmType enclosingType, CmOption option) {
-        var key = option.key().orElseThrow();
-        var enclosingTypeName = enclosingType.type();
-        var node = resolver.option(enclosingTypeName, key).orElseThrow(() ->
-                new IllegalStateException("Unable to resolve option node: enclosingType: %s, key: %s"
-                        .formatted(enclosingTypeName, key)));
-
         var context = new HashMap<String, Object>();
+        var key = option.key().orElseThrow();
         var description = option.description().orElse(null);
         if (description == null || description.isBlank()) {
             LOGGER.log(Level.WARNING, "Option does not have a description: {0}", key);
             description = "<code>N/A</code>";
         }
-        context.put("id", id(node));
+        context.put("id", id(enclosingType.type(), key));
         context.put("key", key);
         context.put("type", optionTypeContext(option));
         context.put("description", description);
@@ -211,9 +205,11 @@ class CmDocCodegen {
 
     private Map<String, Object> optionTypeContext(CmOption option) {
         var context = new HashMap<String, Object>();
-        var optionType = resolver.type(option.type());
-        var optionTypeName = optionType.map(CmType::type).orElse(option.type());
-        if (option.provider() || optionType.isPresent() || resolver.isEnum(optionTypeName)) {
+        var optionTypeName = option.type();
+        boolean resolved = resolver.type(optionTypeName).isPresent();
+        if ((option.provider() && !optionTypeName.equals(CmOption.DEFAULT_TYPE))
+            || resolved
+            || resolver.isEnum(optionTypeName)) {
             context.put("fileName", fileName(optionTypeName));
         }
         context.put("shortName", shortTypeName(optionTypeName));
@@ -222,14 +218,16 @@ class CmDocCodegen {
         return context;
     }
 
-    private Map<String, Object> typeContext(CmNode node) {
+    private Map<String, Object> typeContext(String refName, CmType type) {
         var context = new HashMap<String, Object>();
-        var typeName = node.typeName();
-        context.put("id", id(node));
-        context.put("prefix", node.path());
+        var typeName = type.type();
+        var prefix = type.prefix().orElseThrow(() ->
+                new IllegalStateException("Type does not have a prefix: " + typeName));
+        context.put("id", id(refName, prefix));
+        context.put("prefix", prefix);
         context.put("fileName", fileName(typeName));
         context.put("shortName", shortTypeName(typeName));
-        context.put("description", typeDescription(node.type().orElseThrow()));
+        context.put("description", typeDescription(type));
         return context;
     }
 
@@ -242,12 +240,12 @@ class CmDocCodegen {
 
     private Map<String, Object> usageContext(CmNode node) {
         var context = new HashMap<String, Object>();
-        var fileName = node.parent()
+        var refName = node.parent()
                 .map(CmNode::typeName)
-                .map(CmDocCodegen::fileName)
-                .orElse("config_reference.adoc");
-        context.put("fileName", fileName);
-        context.put("id", id(node));
+                .orElse("config_reference");
+
+        context.put("fileName", fileName(refName));
+        context.put("id", id(refName, node.key()));
         context.put("path", node.path());
         return context;
     }
@@ -255,11 +253,10 @@ class CmDocCodegen {
     private Map<String, Object> providerContext(String typeName) {
         var context = new HashMap<String, Object>();
         context.put("type", typeName);
-        //        context.put("implementations", resolver.providers(typeName).stream()
-        //                .sorted()
-        //                .map(this::typeContext)
-        //                .toList());
-        context.put("implementations", List.of());
+        context.put("implementations", resolver.providers(typeName).stream()
+                .sorted()
+                .map(it -> typeContext(typeName, it))
+                .toList());
         context.put("usages", resolver.usage(typeName).stream()
                 .map(this::usageContext)
                 .toList());
@@ -269,9 +266,10 @@ class CmDocCodegen {
     private Map<String, Object> rootContext() {
         var context = new HashMap<String, Object>();
         context.put("roots", resolver.roots().stream()
-                .sorted(Comparator.comparing(CmNode::key)
-                        .thenComparing(CmNode::typeName))
-                .map(this::typeContext)
+                .flatMap(it -> it.type().stream())
+                .sorted(Comparator.comparing((CmType it) -> it.prefix().orElseThrow())
+                        .thenComparing(CmType::type))
+                .map(it -> typeContext("config_reference", it))
                 .toList());
         return context;
     }
@@ -308,12 +306,6 @@ class CmDocCodegen {
         return description;
     }
 
-    private String id(CmNode node) {
-        return node.parent()
-                .map(parent -> id(parent.typeName(), node.key()))
-                .orElse(node.key());
-    }
-
     private String id(String typeName, String optionName) {
         var key = typeName + "#" + optionName;
         var existing = ids.get(key);
@@ -332,9 +324,11 @@ class CmDocCodegen {
         // sanitize for anchor
         var suffix = optionName.replaceAll("[^A-Za-z0-9_-]", "-");
 
-        // start with 6 characters and increase
-        for (int i = 6; i <= hash.length(); i++) {
-            var prefix = hash.substring(0, i);
+        // start with 5 characters and increase
+        for (int i = 5; i <= hash.length(); i++) {
+            // anchors follow XML id rules
+            // always start with 'a'
+            var prefix = "a" + hash.substring(0, i);
             if (allIds.add(prefix)) {
                 var id = prefix + "-" + suffix;
                 ids.put(key, id);

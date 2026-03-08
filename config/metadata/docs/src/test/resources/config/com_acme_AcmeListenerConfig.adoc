@@ -1,4 +1,5 @@
 
+ifndef::rootdir[:rootdir: {docdir}/..]
 = com.acme.AcmeListenerConfig
 
 == Description
@@ -9,7 +10,7 @@ ACME Listener configuration.
 
 == Usages
 
-* xref:com_acme_AcmeServerConfig.adoc#sockets[`server.sockets`]
+* xref:{rootdir}/config/com_acme_AcmeServerConfig.adoc#a9af8e-sockets[`server.sockets`]
 
 // tag::config[]
 
@@ -19,13 +20,13 @@ ACME Listener configuration.
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[host]]`host`
+|[[a4cb25-host]] `host`
 |`VALUE`
 |`String`
 |`0.0.0.0`
 |pass:[Listen address]
 
-|[[port]]`port`
+|[[a139d5-port]] `port`
 |`VALUE`
 |`Integer`
 |`0`
@@ -35,4 +36,4 @@ ACME Listener configuration.
 // end::config[]
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

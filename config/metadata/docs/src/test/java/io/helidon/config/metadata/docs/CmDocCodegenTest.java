@@ -39,9 +39,9 @@ class CmDocCodegenTest {
         var targetDir = classesDir.getParent();
 
         // ensure unique directory
-        var outputDir = targetDir.resolve("config-docs-ut/test1");
+        var outputDir = targetDir.resolve("config-docs-ut/test1/config");
         for (int i = 1; Files.exists(outputDir); i++) {
-            outputDir = targetDir.resolve("config-docs-ut" + "-" + i + "/test1");
+            outputDir = targetDir.resolve("config-docs-ut" + "-" + i + "/test1/config");
         }
 
         // generate docs
@@ -50,7 +50,7 @@ class CmDocCodegenTest {
         new CmDocCodegen(outputDir, metadata).process();
 
         // verify content
-        try (Stream<Path> stream = Files.list(classesDir)
+        try (Stream<Path> stream = Files.list(classesDir.resolve("config"))
                 .filter(it -> it.getFileName().toString().endsWith(".adoc"))) {
 
             var expectedFiles = stream.toList();

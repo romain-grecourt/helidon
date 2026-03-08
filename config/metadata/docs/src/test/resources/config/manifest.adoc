@@ -20,7 +20,3 @@ See the xref:config_reference.adoc[root] type.
 == Enum Types
 
 * xref:com_acme_AcmeLoggerConfigLevel.adoc[com.acme.AcmeLoggerConfigLevel]
-
-
-'''
-See the xref:manifest.adoc[manifest] for all available types.

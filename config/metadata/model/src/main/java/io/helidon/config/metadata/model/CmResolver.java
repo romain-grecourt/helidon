@@ -20,7 +20,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.helidon.config.metadata.model.CmModel.CmEnum;
-import io.helidon.config.metadata.model.CmModel.CmOption;
 import io.helidon.config.metadata.model.CmModel.CmType;
 
 /**

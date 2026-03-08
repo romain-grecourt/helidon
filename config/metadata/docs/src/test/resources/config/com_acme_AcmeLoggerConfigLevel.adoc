@@ -1,4 +1,5 @@
 
+ifndef::rootdir[:rootdir: {docdir}/..]
 = com.acme.AcmeLoggerConfigLevel
 
 == Description
@@ -9,7 +10,7 @@ This type is an enumeration.
 
 == Usages
 
-* xref:com_acme_AcmeLoggerConfig.adoc#level[`server.features.logging.loggers.level`]
+* xref:com_acme_AcmeLoggerConfig.adoc#a4ce95-level[`server.features.logging.loggers.level`]
 
 == Allowed Values
 
@@ -31,4 +32,4 @@ This type is an enumeration.
 |===
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

@@ -139,12 +139,14 @@ class TypeResolver {
         return false;
     }
 
-    boolean isSubtype(TypeInfo typeInfo1, TypeName typeName) {
-        var rawTypeName = typeName.genericTypeName();
+    boolean isSubtype(TypeInfo typeInfo1, TypeName... typeNames) {
         for (var superTypeInfo : typeHierarchy(typeInfo1)) {
             var superRawTypeName = superTypeInfo.typeName().genericTypeName();
-            if (rawTypeName.equals(superRawTypeName)) {
-                return true;
+            for (var typeName : typeNames) {
+                var rawTypeName = typeName.genericTypeName();
+                if (rawTypeName.equals(superRawTypeName)) {
+                    return true;
+                }
             }
         }
         return false;

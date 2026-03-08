@@ -51,7 +51,7 @@ final class CmResolverImpl implements CmResolver {
     private final Map<String, CmType> types = new HashMap<>(); // unresolved types
     private final Map<String, CmType> resolvedTypes = new TreeMap<>(); // resolved types
     private final Map<String, List<CmType>> providers = new TreeMap<>(); // providers by contract
-    private final Set<String> emptyProviders = new HashSet<>(); // provider contracts with no implementation
+    private final Set<String> errors = new HashSet<>(); // errors logged once
     private final Map<String, CmEnum> enums = new TreeMap<>();
     private final Map<String, Set<CmNode>> usages = new HashMap<>(); // tree nodes by option type
     private final Map<String, Map<String, CmNode>> optionsNodes = new HashMap<>(); // option nodes by type
@@ -142,36 +142,31 @@ final class CmResolverImpl implements CmResolver {
         for (var entry : prefixes.entrySet()) {
             var prefix = entry.getKey();
             for (var type : entry.getValue()) {
-                var segments = prefix.split("\\.");
-                if (segments.length > 1 && prefixes.containsKey(segments[0])) {
-                    // not a true root
-                    continue;
-                }
-
                 var typeName = type.type();
                 var resolvedType = resolvedTypes.get(typeName);
-                var key = segments[segments.length - 1];
-                var node = new CmNodeImpl(null, prefix, key, typeName, resolvedType, new ArrayList<>());
-                usage(typeName, node);
+                var node = new CmNodeImpl(null, prefix, prefix, typeName, resolvedType, new ArrayList<>());
+                usage(usages, typeName, node);
                 tree.add(node);
             }
         }
 
-        var types = traverse(tree);
+        var types = traverse(tree, usages);
         types.forEach(unreachableTypes::remove);
 
         // process each unreachable type as a root
+        // use a local usages map to avoid pollution
+        var unreachableUsages = new HashMap<String, Set<CmNode>>();
         for (var typeName : unreachableTypes) {
             var resolvedType = resolvedTypes.get(typeName);
             if (resolvedType != null) {
-                var key = resolvedType.prefix().orElse("<unreachable>");
+                var key = resolvedType.prefix().orElse("<?>");
                 var node = new CmNodeImpl(null, key, key, typeName, resolvedType, new ArrayList<>());
-                traverse(List.of(node));
+                types.addAll(traverse(List.of(node), unreachableUsages));
             }
         }
     }
 
-    private List<String> traverse(List<CmNodeImpl> roots) {
+    private List<String> traverse(List<CmNodeImpl> roots, Map<String, Set<CmNode>> usages) {
         // depth-first traversal
         var stack = new ArrayDeque<>(roots);
         var types = new ArrayList<String>();
@@ -210,14 +205,21 @@ final class CmResolverImpl implements CmResolver {
 
                 // process provider implementations
                 if (option.provider()) {
+                    if (optionTypeName.equals(CmOption.DEFAULT_TYPE)) {
+                        if (errors.add("provider-no-type: " + optionTypeName)) {
+                            LOGGER.log(Level.WARNING, "Provider option without type: {0}#{1}", enclosingTypeName, optionKey);
+                        }
+                        continue;
+                    }
                     var implTypes = providers.computeIfAbsent(optionTypeName, k -> List.of());
-                    if (implTypes.isEmpty() && emptyProviders.add(optionTypeName)) {
-                        LOGGER.log(Level.WARNING, "Provider contract does not have implementations: {0}", optionTypeName);
+                    if (implTypes.isEmpty()) {
+                        if (errors.add("provider-no-impl: " + optionTypeName)) {
+                            LOGGER.log(Level.WARNING, "Provider contract does not have implementations: {0}", optionTypeName);
+                        }
                         continue;
                     }
                     for (var implType : implTypes) {
                         var implTypeName = implType.type();
-                        types.add(implTypeName);
                         var implKey = implType.prefix().orElse(null);
                         if (implKey == null) {
                             LOGGER.log(Level.WARNING, "Provider type does not have a prefix: {0}", implTypeName);
@@ -232,37 +234,34 @@ final class CmResolverImpl implements CmResolver {
                                 implType,
                                 new ArrayList<>());
                         optionNode.addChild(implNode);
-                        usage(implTypeName, implNode);
+                        usage(usages, implTypeName, implNode);
                         stack.push(implNode);
+                        types.add(implTypeName);
                     }
-                    usage(optionTypeName, optionNode);
+                    usage(usages, optionTypeName, optionNode);
                 } else if (optionType != null) {
                     if (!optionTypeName.equals(node.typeName())) {
                         // an option may reference its enclosing type
                         // prevent infinite recursion
-                        usage(optionTypeName, optionNode);
+                        usage(usages, optionTypeName, optionNode);
                         stack.push(optionNode);
                     }
                 } else if (enums.containsKey(optionTypeName)) {
-                    usage(optionTypeName, optionNode);
+                    usage(usages, optionTypeName, optionNode);
                 }
             }
         }
         return types;
     }
 
-    private void usage(String typeName, CmNode node) {
-        usages.computeIfAbsent(typeName, k -> new TreeSet<>(Comparator.comparing(CmNode::path)))
-                .add(node);
-    }
-
     private CmType resolveType(CmType type) {
         // build the reverse hierarchy (parents first)
         var hierarchy = new ArrayList<CmType>();
         for (var e : type.inherits()) {
+            var superTypeName = type.type();
             var t = types.get(e);
             if (t == null) {
-                LOGGER.log(Level.WARNING, "Cannot resolve inherited type of {0}: {1}", type.type(), e);
+                LOGGER.log(Level.WARNING, "Cannot resolve inherited type of {0}: {1}", superTypeName, e);
             } else {
                 hierarchy.addFirst(t);
             }
@@ -272,7 +271,7 @@ final class CmResolverImpl implements CmResolver {
         // traverse the reverse hierarchy to override options
         var options = new HashMap<String, CmOption>();
         for (var t : hierarchy) {
-            for (var e : mergeOptions(t)) {
+            for (var e : resolveOptions(t)) {
                 var key = e.key().orElse(null);
                 if (key != null) {
                     var resolvedOption = resolveOption(type, e);
@@ -294,9 +293,7 @@ final class CmResolverImpl implements CmResolver {
                 type.provides());
     }
 
-    private final Set<String> merged = new HashSet<>();
-
-    private List<CmOption> mergeOptions(CmType type) {
+    private List<CmOption> resolveOptions(CmType type) {
         var merged = new ArrayList<CmOption>();
         var stack = new ArrayDeque<>(type.options());
         while (!stack.isEmpty()) {
@@ -305,7 +302,6 @@ final class CmResolverImpl implements CmResolver {
                 var optionTypeName = option.type();
                 var resolvedType = types.get(optionTypeName);
                 if (resolvedType != null) {
-                    this.merged.add(optionTypeName);
                     var options = resolvedType.options();
                     for (int i = options.size() - 1; i >= 0; i--) {
                         stack.push(options.get(i));
@@ -315,7 +311,7 @@ final class CmResolverImpl implements CmResolver {
                     LOGGER.log(Level.WARNING, "Cannot resolve merge option type: {0}", option.type());
                 }
             } else {
-                merged.add(resolveOption(type, option));
+                merged.add(option);
             }
         }
         return merged;
@@ -368,6 +364,11 @@ final class CmResolverImpl implements CmResolver {
                 return false;
             }
         }
+    }
+
+    private static void usage(Map<String, Set<CmNode>> usages, String typeName, CmNode node) {
+        usages.computeIfAbsent(typeName, k -> new TreeSet<>(Comparator.comparing(CmNode::path)))
+                .add(node);
     }
 
     private static void validateDefaultValue(CmOption option) {
