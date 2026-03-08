@@ -159,7 +159,6 @@ final class CmResolverImpl implements CmResolver {
 
         var types = traverse(tree);
         types.forEach(unreachableTypes::remove);
-        merged.forEach(unreachableTypes::remove);
 
         // process each unreachable type as a root
         for (var typeName : unreachableTypes) {
@@ -189,7 +188,7 @@ final class CmResolverImpl implements CmResolver {
                 var optionType = type(optionTypeName).orElse(null);
                 var optionKey = option.key().orElse(null);
                 if (optionKey == null) {
-                    LOGGER.log(Level.WARNING, "Type contains an option without key: {0}", node.typeName());
+                    LOGGER.log(Level.WARNING, "Type contains an option without key: {0}", enclosingTypeName);
                     continue;
                 }
                 if (optionType != null) {
@@ -206,7 +205,7 @@ final class CmResolverImpl implements CmResolver {
                 node.addChild(optionNode);
 
                 // maintain a mapping of option nodes
-                optionsNodes.computeIfAbsent(node.typeName(), k -> new HashMap<>())
+                optionsNodes.computeIfAbsent(enclosingTypeName, k -> new HashMap<>())
                         .put(optionKey, optionNode);
 
                 // process provider implementations

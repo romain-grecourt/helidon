@@ -19,13 +19,18 @@ package io.helidon.config.metadata.docs;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.System.Logger.Level;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -60,6 +65,9 @@ class CmDocCodegen {
     private final Template enumTemplate;
     private final Template providerTemplate;
     private final Template manifestTemplate;
+    private final MessageDigest digest;
+    private final Map<String, String> ids = new HashMap<>(); // ids cache (key: type#option)
+    private final Set<String> allIds = new HashSet<>(); // all unique ids
 
     /**
      * Create a new instance.
@@ -70,6 +78,7 @@ class CmDocCodegen {
     CmDocCodegen(Path outputDir, CmModel metadata) {
         this.outputDir = outputDir;
         this.resolver = CmResolver.create(metadata);
+        this.digest = initDigest();
         var loader = new ClassPathTemplateLoader("/io/helidon/config/metadata/docs");
         var handlebars = new Handlebars(loader);
         rootTemplate = template(handlebars, "config_reference.adoc");
@@ -148,7 +157,7 @@ class CmDocCodegen {
                 .map(this::usageContext)
                 .toList());
         context.put("options", optionsContext(type, o -> !o.deprecated() && !o.experimental()));
-        context.put("experimentalOptions", optionsContext(type, o ->  !o.deprecated() && o.experimental()));
+        context.put("experimentalOptions", optionsContext(type, o -> !o.deprecated() && o.experimental()));
         context.put("deprecatedOptions", optionsContext(type, CmOption::deprecated));
         return context;
     }
@@ -246,10 +255,10 @@ class CmDocCodegen {
     private Map<String, Object> providerContext(String typeName) {
         var context = new HashMap<String, Object>();
         context.put("type", typeName);
-//        context.put("implementations", resolver.providers(typeName).stream()
-//                .sorted()
-//                .map(this::typeContext)
-//                .toList());
+        //        context.put("implementations", resolver.providers(typeName).stream()
+        //                .sorted()
+        //                .map(this::typeContext)
+        //                .toList());
         context.put("implementations", List.of());
         context.put("usages", resolver.usage(typeName).stream()
                 .map(this::usageContext)
@@ -300,7 +309,42 @@ class CmDocCodegen {
     }
 
     private String id(CmNode node) {
-        throw new UnsupportedOperationException();
+        return node.parent()
+                .map(parent -> id(parent.typeName(), node.key()))
+                .orElse(node.key());
+    }
+
+    private String id(String typeName, String optionName) {
+        var key = typeName + "#" + optionName;
+        var existing = ids.get(key);
+        if (existing != null) {
+            return existing;
+        }
+
+        // include option in the hash to be robust
+        var input = new StringBuilder(typeName).reverse()
+                .append("#")
+                .append(optionName)
+                .toString();
+        byte[] bytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+        var hash = HexFormat.of().formatHex(bytes);
+
+        // sanitize for anchor
+        var suffix = optionName.replaceAll("[^A-Za-z0-9_-]", "-");
+
+        // start with 6 characters and increase
+        for (int i = 6; i <= hash.length(); i++) {
+            var prefix = hash.substring(0, i);
+            if (allIds.add(prefix)) {
+                var id = prefix + "-" + suffix;
+                ids.put(key, id);
+                return id;
+            }
+        }
+
+        throw new IllegalStateException(
+                "Could not generate unique id, type: %s, option: %s"
+                        .formatted(typeName, optionName));
     }
 
     private void generateFile(String fileName, Template template, Map<String, Object> context) {
@@ -329,5 +373,13 @@ class CmDocCodegen {
 
     private static String fileName(String typeName) {
         return typeName.replace('.', '_') + ".adoc";
+    }
+
+    private static MessageDigest initDigest() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }
