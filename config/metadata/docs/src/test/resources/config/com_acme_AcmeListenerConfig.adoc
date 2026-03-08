@@ -10,7 +10,7 @@ ACME Listener configuration.
 
 == Usages
 
-* xref:{rootdir}/config/com_acme_AcmeServerConfig.adoc#a9af8e-sockets[`server.sockets`]
+* xref:{rootdir}/config/com_acme_AcmeServerConfig.adoc#ae7817-sockets[`server.sockets`]
 
 // tag::config[]
 
@@ -20,13 +20,13 @@ ACME Listener configuration.
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[a4cb25-host]] `host`
+|[[a39602-host]] `host`
 |`VALUE`
 |`String`
 |`0.0.0.0`
 |pass:[Listen address]
 
-|[[a139d5-port]] `port`
+|[[a313b7-port]] `port`
 |`VALUE`
 |`Integer`
 |`0`

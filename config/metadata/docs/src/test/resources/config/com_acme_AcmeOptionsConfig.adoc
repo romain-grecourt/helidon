@@ -19,19 +19,19 @@ ifndef::rootdir[:rootdir: {docdir}/..]
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[af428b-features]] xref:{rootdir}/config/com_acme_AcmeFeature.adoc[`features`]
+|[[a5a0ed-features]] xref:{rootdir}/config/com_acme_AcmeFeature.adoc[`features`]
 |`LIST`
 |`c.a.AcmeFeature`
-|
+|{nbsp}
 |pass:[Dynamic features]
 
-|[[a6ff5c-host]] `host`
+|[[a41f37-host]] `host`
 |`VALUE`
 |`String`
 |`localhost`
 |pass:[Listen address]
 
-|[[a40020-port]] `port`
+|[[adfe08-port]] `port`
 |`VALUE`
 |`Integer`
 |`8080`

@@ -195,7 +195,7 @@ class CmDocCodegen {
             LOGGER.log(Level.WARNING, "Option does not have a description: {0}", key);
             description = "<code>N/A</code>";
         }
-        context.put("id", id(enclosingType.type(), key));
+        context.put("id", id(enclosingType.type(), key, option.type()));
         context.put("key", key);
         context.put("type", optionTypeContext(option));
         context.put("description", description);
@@ -223,7 +223,7 @@ class CmDocCodegen {
         var typeName = type.type();
         var prefix = type.prefix().orElseThrow(() ->
                 new IllegalStateException("Type does not have a prefix: " + typeName));
-        context.put("id", id(refName, prefix));
+        context.put("id", id(refName, prefix, typeName));
         context.put("prefix", prefix);
         context.put("fileName", fileName(typeName));
         context.put("shortName", shortTypeName(typeName));
@@ -245,7 +245,7 @@ class CmDocCodegen {
                 .orElse("config_reference");
 
         context.put("fileName", fileName(refName));
-        context.put("id", id(refName, node.key()));
+        context.put("id", id(refName, node.key(), node.typeName()));
         context.put("path", node.path());
         return context;
     }
@@ -306,23 +306,21 @@ class CmDocCodegen {
         return description;
     }
 
-    private String id(String typeName, String optionName) {
-        var key = typeName + "#" + optionName;
+    private String id(String typeName, String optionKey, String optionType) {
+        var key = typeName + "#" + optionKey + ":" + optionType;
         var existing = ids.get(key);
         if (existing != null) {
             return existing;
         }
 
-        // include option in the hash to be robust
-        var input = new StringBuilder(typeName).reverse()
-                .append("#")
-                .append(optionName)
-                .toString();
+        var reverseTypeName = new StringBuilder(typeName).reverse().toString();
+        var reverseOptionTypeName = new StringBuilder(optionType).reverse().toString();
+        var input = reverseTypeName + "#" + optionKey + ":" + reverseOptionTypeName;
         byte[] bytes = digest.digest(input.getBytes(StandardCharsets.UTF_8));
         var hash = HexFormat.of().formatHex(bytes);
 
         // sanitize for anchor
-        var suffix = optionName.replaceAll("[^A-Za-z0-9_-]", "-");
+        var suffix = optionKey.replaceAll("[^A-Za-z0-9_-]", "-");
 
         // start with 5 characters and increase
         for (int i = 5; i <= hash.length(); i++) {
@@ -338,7 +336,7 @@ class CmDocCodegen {
 
         throw new IllegalStateException(
                 "Could not generate unique id, type: %s, option: %s"
-                        .formatted(typeName, optionName));
+                        .formatted(typeName, optionKey));
     }
 
     private void generateFile(String fileName, Template template, Map<String, Object> context) {

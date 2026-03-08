@@ -10,7 +10,7 @@ ACME Audit configuration.
 
 == Usages
 
-* xref:{rootdir}/config/com_acme_AcmeFeature.adoc#ada579-audit[`server.features.audit`]
+* xref:{rootdir}/config/com_acme_AcmeFeature.adoc#ac01f1-audit[`server.features.audit`]
 
 // tag::config[]
 
@@ -20,12 +20,12 @@ ACME Audit configuration.
 |===
 |Key|Kind|Type|Description
 
-|[[a564d0-paths]] `paths`
+|[[a29446-paths]] `paths`
 |`MAP`
 |`String`
 |pass:[Audited paths]
 
-|[[aa6872-strict]] `strict`
+|[[ab5012-strict]] `strict`
 |`VALUE`
 |`Boolean`
 |pass:[Fail on error]

@@ -10,7 +10,7 @@ ACME Logger configuration.
 
 == Usages
 
-* xref:{rootdir}/config/com_acme_AcmeLoggingConfig.adoc#abe058-loggers[`server.features.logging.loggers`]
+* xref:{rootdir}/config/com_acme_AcmeLoggingConfig.adoc#a41ab7-loggers[`server.features.logging.loggers`]
 
 // tag::config[]
 
@@ -23,7 +23,7 @@ ACME Logger configuration.
 |===
 |Key|Kind|Type|Description
 
-|[[a83a6f-logger]] `logger`
+|[[ae582b-logger]] `logger`
 |`VALUE`
 |`String`
 |pass:[Logger name]
@@ -36,7 +36,7 @@ ACME Logger configuration.
 |===
 |Key|Kind|Type|Default Value|Description
 
-|[[a4ce95-level]] xref:{rootdir}/config/com_acme_AcmeLoggerConfigLevel.adoc[`level`]
+|[[af5ffa-level]] xref:{rootdir}/config/com_acme_AcmeLoggerConfigLevel.adoc[`level`]
 |`VALUE`
 |`c.a.AcmeLoggerConfigLevel`
 |`INFO`

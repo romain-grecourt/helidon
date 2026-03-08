@@ -7,7 +7,7 @@ ifndef::rootdir[:rootdir: {docdir}/..]
 |===
 |Key|Type|Description
 
-|[[a24bff-server]] xref:com_acme_AcmeServerConfig.adoc[`server`]
+|[[a71ff7-server]] xref:com_acme_AcmeServerConfig.adoc[`server`]
 |`c.a.AcmeServerConfig`
 |pass:[ACME Server configuration.]
 

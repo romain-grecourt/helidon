@@ -10,7 +10,7 @@ ACME Logging configuration.
 
 == Usages
 
-* xref:{rootdir}/config/com_acme_AcmeFeature.adoc#a716be-logging[`server.features.logging`]
+* xref:{rootdir}/config/com_acme_AcmeFeature.adoc#ada799-logging[`server.features.logging`]
 
 // tag::config[]
 
@@ -20,7 +20,7 @@ ACME Logging configuration.
 |===
 |Key|Kind|Type|Description
 
-|[[abe058-loggers]] xref:{rootdir}/config/com_acme_AcmeLoggerConfig.adoc[`loggers`]
+|[[a41ab7-loggers]] xref:{rootdir}/config/com_acme_AcmeLoggerConfig.adoc[`loggers`]
 |`LIST`
 |`c.a.AcmeLoggerConfig`
 |pass:[Loggers]

@@ -21,7 +21,7 @@ limitations under the License.
 |`{{type.kind}}`
 |`{{type.shortName}}`
 {{~#if ../defaultValues}}
-|{{~#if defaultValue~}}`{{defaultValue}}`{{~/if}}
+|{{#if defaultValue~}}`{{defaultValue}}`{{else}}{nbsp}{{/if}}
 {{~/if}}
 |pass:[{{{description}}}]
 {{~/each}}
