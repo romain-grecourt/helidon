@@ -105,7 +105,7 @@ A Config Source with higher ordinal has higher priority as compared to the Confi
 lower ordinal. The values taken from the high-priority Config Source overrides the values
 from low-priority Config Source. The default value is 100.
 
-NOTE: In MP, the ordering is not defined for sources that have the same ordinal. 
+NOTE: In MP, the ordering is not defined for sources that have the same ordinal.
 
 
 This helps to customize the configuration of Config Sources using external Config Source
@@ -227,7 +227,7 @@ Config sources can be configured using the following properties.
 
 The class responsible for configuration is:
 
-include::{rootdir}/config/io_helidon_config_mp_MpConfigBuilder.adoc[leveloffset=+1,tag=config]
+include::{rootdir}/config/org_eclipse_microprofile_config_Config.adoc[leveloffset=+1,tag=config]
 
 Current properties may be set in `application.yaml` or in `microprofile-config.properties` with `mp.config` prefix.
 

@@ -29,6 +29,7 @@ import io.helidon.config.metadata.model.CmModel.CmType;
 final class CmNodeImpl implements CmNode {
     private final CmNode parent;
     private final String path;
+    private final String id;
     private final String key;
     private final String typeName;
     private final CmType type;
@@ -36,6 +37,7 @@ final class CmNodeImpl implements CmNode {
 
     CmNodeImpl(CmNode parent,
                String path,
+               String id,
                String key,
                String typeName,
                CmType type,
@@ -43,6 +45,7 @@ final class CmNodeImpl implements CmNode {
 
         this.parent = parent;
         this.path = path;
+        this.id = id;
         this.key = key;
         this.typeName = typeName;
         this.type = type;
@@ -86,6 +89,11 @@ final class CmNodeImpl implements CmNode {
     }
 
     @Override
+    public String id() {
+        return id;
+    }
+
+    @Override
     public String key() {
         return key;
     }
@@ -111,7 +119,7 @@ final class CmNodeImpl implements CmNode {
 
     @Override
     public int compareTo(CmNode o) {
-        return key.compareTo(o.key());
+        return id.compareTo(o.id());
     }
 
     @Override
@@ -124,6 +132,7 @@ final class CmNodeImpl implements CmNode {
         }
         var that = (CmNodeImpl) obj;
         return Objects.equals(this.path, that.path)
+               && Objects.equals(this.id, that.id)
                && Objects.equals(this.key, that.key)
                && Objects.equals(this.typeName, that.typeName)
                && Objects.equals(this.type, that.type);
@@ -138,6 +147,7 @@ final class CmNodeImpl implements CmNode {
     public String toString() {
         return "CmNodeImpl{"
                + ", path=" + path
+               + ", id=" + id
                + ", key=" + key
                + ", typeName=" + typeName
                + ", type=" + type

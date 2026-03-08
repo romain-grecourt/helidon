@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 }}
+ifndef::rootdir[:rootdir: {docdir}/..]
 = {{type}}
 
 == Description
@@ -24,7 +25,7 @@ limitations under the License.
 == Usages
 
 {{#each usages~}}
-* xref:{{fileName}}#{{key}}[`{{path}}`]
+* xref:{rootdir}/config/{{fileName}}#{{id}}[`{{path}}`]
 {{~/each}}
 
 // tag::config[]
@@ -50,4 +51,4 @@ limitations under the License.
 // end::config[]
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 }}
+ifndef::rootdir[:rootdir: {docdir}/..]
 = {{type}}
 
 == Description
@@ -24,7 +25,7 @@ This type is an enumeration.
 == Usages
 
 {{#each usages~}}
-* xref:{{fileName}}#{{key}}[`{{path}}`]
+* xref:{{fileName}}#{{id}}[`{{path}}`]
 {{~/each}}
 
 == Allowed Values
@@ -40,4 +41,4 @@ This type is an enumeration.
 |===
 
 '''
-See the xref:manifest.adoc[manifest] for all available types.
+See the xref:{rootdir}/config/manifest.adoc[manifest] for all available types.

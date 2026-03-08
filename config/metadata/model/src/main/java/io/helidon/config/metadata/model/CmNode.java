@@ -22,6 +22,11 @@ import io.helidon.config.metadata.model.CmModel.CmType;
 
 /**
  * Config metadata tree node.
+ * <p>
+ * <b>This class is NOT part of any supported API.
+ * If you write code that depends on this, you do so at your own risk.
+ * This code and its internal interfaces are subject to change or deletion without notice.</b>
+ * </p>
  */
 public interface CmNode extends Comparable<CmNode> {
 
@@ -40,7 +45,15 @@ public interface CmNode extends Comparable<CmNode> {
     String path();
 
     /**
+     * Node id, unique within the parent node.
+     *
+     * @return id
+     */
+    String id();
+
+    /**
      * Node key.
+     * May not be unique within the parent node.
      *
      * @return key, never {@code null}
      */

@@ -20,10 +20,16 @@ import java.util.Optional;
 import java.util.Set;
 
 import io.helidon.config.metadata.model.CmModel.CmEnum;
+import io.helidon.config.metadata.model.CmModel.CmOption;
 import io.helidon.config.metadata.model.CmModel.CmType;
 
 /**
  * Config metadata resolver.
+ * <p>
+ * <b>This class is NOT part of any supported API.
+ * If you write code that depends on this, you do so at your own risk.
+ * This code and its internal interfaces are subject to change or deletion without notice.</b>
+ * </p>
  */
 public interface CmResolver {
 
@@ -59,6 +65,15 @@ public interface CmResolver {
      * @return config type
      */
     Optional<CmType> type(String typeName);
+
+    /**
+     * Get the node for an option.
+     *
+     * @param enclosingTypeName enclosing type name
+     * @param optionName        option name
+     * @return node
+     */
+    Optional<CmNode> option(String enclosingTypeName, String optionName);
 
     /**
      * Find usages of a config type.

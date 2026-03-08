@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import io.helidon.config.metadata.model.CmModel;
@@ -143,22 +144,12 @@ class CmDocCodegen {
         var typeName = type.type();
         context.put("description", typeDescription(type));
         context.put("type", typeName);
-
         context.put("usages", resolver.usage(typeName).stream()
                 .map(this::usageContext)
                 .toList());
-
-        context.put("options", optionsContext(type.options().stream()
-                .filter(o -> !o.deprecated() && !o.experimental())
-                .toList()));
-
-        context.put("experimentalOptions", optionsContext(type.options().stream()
-                .filter(o -> !o.deprecated() && o.experimental())
-                .toList()));
-
-        context.put("deprecatedOptions", optionsContext(type.options().stream()
-                .filter(CmOption::deprecated)
-                .toList()));
+        context.put("options", optionsContext(type, o -> !o.deprecated() && !o.experimental()));
+        context.put("experimentalOptions", optionsContext(type, o ->  !o.deprecated() && o.experimental()));
+        context.put("deprecatedOptions", optionsContext(type, CmOption::deprecated));
         return context;
     }
 
@@ -175,24 +166,33 @@ class CmDocCodegen {
         return context;
     }
 
-    private Map<String, Object> optionsContext(List<CmOption> options) {
+    private Map<String, Object> optionsContext(CmType enclosingType, Predicate<CmOption> predicate) {
         var context = new HashMap<String, Object>();
+        var options = enclosingType.options().stream()
+                .filter(predicate)
+                .toList();
         context.put("options", options.stream().sorted()
-                .map(this::optionContext)
+                .map(option -> optionContext(enclosingType, option))
                 .toList());
         context.put("defaultValues", options.stream()
                 .anyMatch(it -> it.defaultValue().isPresent()));
         return context;
     }
 
-    private Map<String, Object> optionContext(CmOption option) {
-        var context = new HashMap<String, Object>();
+    private Map<String, Object> optionContext(CmType enclosingType, CmOption option) {
         var key = option.key().orElseThrow();
+        var enclosingTypeName = enclosingType.type();
+        var node = resolver.option(enclosingTypeName, key).orElseThrow(() ->
+                new IllegalStateException("Unable to resolve option node: enclosingType: %s, key: %s"
+                        .formatted(enclosingTypeName, key)));
+
+        var context = new HashMap<String, Object>();
         var description = option.description().orElse(null);
         if (description == null || description.isBlank()) {
             LOGGER.log(Level.WARNING, "Option does not have a description: {0}", key);
             description = "<code>N/A</code>";
         }
+        context.put("id", node.id());
         context.put("key", key);
         context.put("type", optionTypeContext(option));
         context.put("description", description);
@@ -213,15 +213,14 @@ class CmDocCodegen {
         return context;
     }
 
-    private Map<String, Object> typeContext(CmType type) {
+    private Map<String, Object> typeContext(CmNode node) {
         var context = new HashMap<String, Object>();
-        var typeName = type.type();
-        context.put("prefix", type.prefix()
-                .orElseThrow(() -> new IllegalStateException(
-                        "Type does not have a prefix: " + typeName)));
+        var typeName = node.typeName();
+        context.put("id", node.id());
+        context.put("prefix", node.path());
         context.put("fileName", fileName(typeName));
         context.put("shortName", shortTypeName(typeName));
-        context.put("description", typeDescription(type));
+        context.put("description", typeDescription(node.type().orElseThrow()));
         return context;
     }
 
@@ -239,7 +238,7 @@ class CmDocCodegen {
                 .map(CmDocCodegen::fileName)
                 .orElse("config_reference.adoc");
         context.put("fileName", fileName);
-        context.put("key", node.key());
+        context.put("id", node.id());
         context.put("path", node.path());
         return context;
     }
@@ -247,10 +246,11 @@ class CmDocCodegen {
     private Map<String, Object> providerContext(String typeName) {
         var context = new HashMap<String, Object>();
         context.put("type", typeName);
-        context.put("implementations", resolver.providers(typeName).stream()
-                .sorted()
-                .map(this::typeContext)
-                .toList());
+//        context.put("implementations", resolver.providers(typeName).stream()
+//                .sorted()
+//                .map(this::typeContext)
+//                .toList());
+        context.put("implementations", List.of());
         context.put("usages", resolver.usage(typeName).stream()
                 .map(this::usageContext)
                 .toList());
@@ -260,9 +260,8 @@ class CmDocCodegen {
     private Map<String, Object> rootContext() {
         var context = new HashMap<String, Object>();
         context.put("roots", resolver.roots().stream()
-                .flatMap(it -> it.type().stream())
-                .sorted(Comparator.comparing((CmType it) -> it.prefix().orElseThrow())
-                        .thenComparing(CmType::type))
+                .sorted(Comparator.comparing(CmNode::id)
+                        .thenComparing(CmNode::typeName))
                 .map(this::typeContext)
                 .toList());
         return context;

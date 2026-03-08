@@ -17,7 +17,7 @@ limitations under the License.
 |Key|Kind|Type{{#if defaultValues}}|Default Value{{/if}}|Description
 {{~#each options}}
 
-|[[{{key}}]] {{~#if type.fileName~}}xref:{{type.fileName}}[`{{key}}`]{{~else~}}`{{key}}`{{~/if}}
+|[[{{id}}]] {{~#if type.fileName~}}xref:{rootdir}/config/{{type.fileName}}[`{{key}}`]{{~else~}}`{{key}}`{{~/if}}
 |`{{type.kind}}`
 |`{{type.shortName}}`
 {{~#if ../defaultValues}}

@@ -16,9 +16,12 @@
 package io.helidon.config.metadata.model;
 
 import java.lang.System.Logger.Level;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -51,9 +54,12 @@ final class CmResolverImpl implements CmResolver {
     private final Map<String, CmType> types = new HashMap<>(); // unresolved types
     private final Map<String, CmType> resolvedTypes = new TreeMap<>(); // resolved types
     private final Map<String, List<CmType>> providers = new TreeMap<>(); // providers by contract
+    private final Set<String> emptyProviders = new HashSet<>(); // provider contracts with no implementation
     private final Map<String, CmEnum> enums = new TreeMap<>();
     private final Map<String, Set<CmNode>> usages = new HashMap<>(); // tree nodes by option type
-    private final List<CmNode> tree = new ArrayList<>();
+    private final Map<String, Map<String, CmNode>> optionsNodes = new HashMap<>(); // option nodes by type
+    private final Set<String> unreachableTypes = new HashSet<>();
+    private final List<CmNodeImpl> tree = new ArrayList<>();
     private final List<CmNode> readOnlyTree = Collections.unmodifiableList(tree);
 
     CmResolverImpl(CmModel metadata) {
@@ -66,6 +72,11 @@ final class CmResolverImpl implements CmResolver {
     @Override
     public Optional<CmType> type(String typeName) {
         return Optional.ofNullable(resolvedTypes.get(typeName));
+    }
+
+    @Override
+    public Optional<CmNode> option(String enclosingTypeName, String optionName) {
+        return Optional.ofNullable(optionsNodes.getOrDefault(enclosingTypeName, Map.of()).get(optionName));
     }
 
     @Override
@@ -126,12 +137,11 @@ final class CmResolverImpl implements CmResolver {
                 }
             }
             resolvedTypes.put(k, type);
+            unreachableTypes.add(type.type());
         });
     }
 
     private void initTree() {
-        var emptyProviders = new HashSet<String>();
-        var stack = new ArrayDeque<CmNodeImpl>();
         for (var entry : prefixes.entrySet()) {
             var prefix = entry.getKey();
             for (var type : entry.getValue()) {
@@ -144,37 +154,67 @@ final class CmResolverImpl implements CmResolver {
                 var typeName = type.type();
                 var resolvedType = resolvedTypes.get(typeName);
                 var key = segments[segments.length - 1];
-                var node = new CmNodeImpl(null, prefix, key, typeName, resolvedType, new ArrayList<>());
+                var id = id(typeName, prefix);
+                var node = new CmNodeImpl(null, prefix, id, key, typeName, resolvedType, new ArrayList<>());
                 usage(typeName, node);
                 tree.add(node);
-                stack.push(node);
             }
         }
 
+        var types = traverse(tree);
+        types.forEach(unreachableTypes::remove);
+        merged.forEach(unreachableTypes::remove);
+
+        // process each unreachable type as a root
+        for (var typeName : unreachableTypes) {
+            var resolvedType = resolvedTypes.get(typeName);
+            if (resolvedType != null) {
+                var key = resolvedType.prefix().orElse("<unreachable>");
+                var id = id(typeName, key);
+                var node = new CmNodeImpl(null, key, id, key, typeName, resolvedType, new ArrayList<>());
+                traverse(List.of(node));
+            }
+        }
+    }
+
+    private List<String> traverse(List<CmNodeImpl> roots) {
         // depth-first traversal
+        var stack = new ArrayDeque<>(roots);
+        var types = new ArrayList<String>();
         while (!stack.isEmpty()) {
             var node = stack.pop();
+            var enclosingTypeName = node.typeName();
+            types.add(enclosingTypeName);
 
             // process options
             var options = node.type().map(CmType::options).orElse(List.of());
             for (var i = options.size() - 1; i >= 0; i--) {
                 var option = options.get(i);
                 var optionTypeName = option.type();
-                var optionType = type(optionTypeName);
+                var optionType = type(optionTypeName).orElse(null);
                 var optionKey = option.key().orElse(null);
                 if (optionKey == null) {
                     LOGGER.log(Level.WARNING, "Type contains an option without key: {0}", node.typeName());
                     continue;
                 }
+                if (optionType != null) {
+                    types.add(optionTypeName);
+                }
+                var optionId = id(enclosingTypeName, optionKey);
                 var optionPath = node.path() + "." + optionKey;
                 var optionNode = new CmNodeImpl(
                         node,
                         optionPath,
+                        optionId,
                         optionKey,
                         optionTypeName,
-                        optionType.orElse(null),
+                        optionType,
                         new ArrayList<>());
                 node.addChild(optionNode);
+
+                // maintain a mapping of option nodes
+                optionsNodes.computeIfAbsent(node.typeName(), k -> new HashMap<>())
+                        .put(optionKey, optionNode);
 
                 // process provider implementations
                 if (option.provider()) {
@@ -185,15 +225,18 @@ final class CmResolverImpl implements CmResolver {
                     }
                     for (var implType : implTypes) {
                         var implTypeName = implType.type();
+                        types.add(implTypeName);
                         var implKey = implType.prefix().orElse(null);
                         if (implKey == null) {
                             LOGGER.log(Level.WARNING, "Provider type does not have a prefix: {0}", implTypeName);
                             continue;
                         }
+                        var implId = id(optionTypeName, implKey);
                         var implPath = optionPath + "." + implKey;
                         var implNode = new CmNodeImpl(
                                 optionNode,
                                 implPath,
+                                implId,
                                 implKey,
                                 implTypeName,
                                 implType,
@@ -203,7 +246,7 @@ final class CmResolverImpl implements CmResolver {
                         stack.push(implNode);
                     }
                     usage(optionTypeName, optionNode);
-                } else if (optionType.isPresent()) {
+                } else if (optionType != null) {
                     if (!optionTypeName.equals(node.typeName())) {
                         // an option may reference its enclosing type
                         // prevent infinite recursion
@@ -215,6 +258,7 @@ final class CmResolverImpl implements CmResolver {
                 }
             }
         }
+        return types;
     }
 
     private void usage(String typeName, CmNode node) {
@@ -260,14 +304,18 @@ final class CmResolverImpl implements CmResolver {
                 type.provides());
     }
 
+    private final Set<String> merged = new HashSet<>();
+
     private List<CmOption> mergeOptions(CmType type) {
         var merged = new ArrayList<CmOption>();
         var stack = new ArrayDeque<>(type.options());
         while (!stack.isEmpty()) {
             var option = stack.pop();
             if (option.merge()) {
-                var resolvedType = types.get(option.type());
+                var optionTypeName = option.type();
+                var resolvedType = types.get(optionTypeName);
                 if (resolvedType != null) {
+                    this.merged.add(optionTypeName);
                     var options = resolvedType.options();
                     for (int i = options.size() - 1; i >= 0; i--) {
                         stack.push(options.get(i));
@@ -277,7 +325,7 @@ final class CmResolverImpl implements CmResolver {
                     LOGGER.log(Level.WARNING, "Cannot resolve merge option type: {0}", option.type());
                 }
             } else {
-                merged.add(option);
+                merged.add(resolveOption(type, option));
             }
         }
         return merged;
@@ -285,30 +333,31 @@ final class CmResolverImpl implements CmResolver {
 
     private CmOption resolveOption(CmType type, CmOption option) {
         validateDefaultValue(option);
+        var optionKey = option.key().orElseThrow();
+        var optionType = option.type();
         var allowedValues = option.allowedValues();
         if (!allowedValues.isEmpty()) {
-            var optionKey = option.key().orElseThrow();
-            var optionType = option.type();
             if (isSyntheticEnum(option)) {
                 optionType = syntheticTypeName(type.type(), optionKey);
                 enums.put(optionType, CmEnum.of(optionType, allowedValues));
             } else {
                 enums.putIfAbsent(optionType, CmEnum.of(optionType, allowedValues));
             }
-            return CmOption.builder()
-                    .key(optionKey)
-                    .type(optionType)
-                    .kind(option.kind())
-                    .description(option.description().orElse(null))
-                    .defaultValue(option.defaultValue().orElse(null))
-                    .merge(option.merge())
-                    .deprecated(option.deprecated())
-                    .experimental(option.experimental())
-                    .required(option.required())
-                    .provider(option.provider())
-                    .build();
         }
-        return option;
+        var description = option.description().orElse(null);
+        var defaultValue = option.defaultValue().orElse(null);
+        return CmOption.builder()
+                .key(optionKey)
+                .type(optionType)
+                .kind(option.kind())
+                .description(description)
+                .defaultValue(defaultValue)
+                .merge(option.merge())
+                .deprecated(option.deprecated())
+                .experimental(option.experimental())
+                .required(option.required())
+                .provider(option.provider())
+                .build();
     }
 
     private boolean isSyntheticEnum(CmOption option) {
@@ -356,6 +405,10 @@ final class CmResolverImpl implements CmResolver {
                     return captalized;
                 })
                 .collect(Collectors.joining("", typeName, ""));
+    }
+
+    private String id(String typeName, String key) {
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("UnusedReturnValue")
