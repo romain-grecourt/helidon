@@ -104,7 +104,7 @@ class TypeHandler {
                     }
                     if (targetTypeInfo != null) {
                         var targetPkg = targetTypeInfo.typeName().packageName();
-                        if (targetPkg.equals(pkg)){
+                        if (targetPkg.equals(pkg) || resolver.isSubtype(typeInfo, TypeNames.PROTOTYPE_FACTORY)) {
                             return targetTypeInfo;
                         }
                     }

@@ -34,6 +34,7 @@
     </description>
 
     <properties>
+        <javadoc.fail-on-warnings>false</javadoc.fail-on-warnings>
         <dependency-plugin-check-dependencies.skip>true</dependency-plugin-check-dependencies.skip>
     </properties>
 

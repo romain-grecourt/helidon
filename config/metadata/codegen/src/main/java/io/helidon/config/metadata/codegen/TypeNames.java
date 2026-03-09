@@ -22,6 +22,7 @@ import io.helidon.common.types.TypeName;
  * Type names.
  */
 final class TypeNames {
+    static final TypeName PROTOTYPE_FACTORY = TypeName.create("io.helidon.builder.api.Prototype.Factory");
     static final TypeName CONFIGURED = TypeName.create("io.helidon.config.metadata.Configured");
     static final TypeName OPTION = TypeName.create("io.helidon.config.metadata.ConfiguredOption");
     static final TypeName OPTIONS = TypeName.create("io.helidon.config.metadata.ConfiguredOptions");
