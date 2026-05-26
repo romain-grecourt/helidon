@@ -97,7 +97,6 @@ public class Http2ClientImpl implements Http2Client, HttpClientSpi {
                 .maxRedirects(clientRequest.maxRedirects())
                 .proxy(clientRequest.proxy())
                 .tls(clientRequest.tls())
-                .headers(clientRequest.headers())
                 .fragment(clientUri.fragment());
     }
 

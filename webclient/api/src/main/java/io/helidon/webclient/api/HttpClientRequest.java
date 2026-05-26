@@ -66,7 +66,7 @@ public class HttpClientRequest extends ClientRequestBase<HttpClientRequest, Http
                       Boolean send100Continue,
                       LruCache<LoomClient.EndpointKey, HttpClientSpi> clientSpiCache) {
         super(clientConfig, webClient.cookieManager(), "any", method, clientUri,
-              send100Continue, clientConfig.properties(), null, true);
+              send100Continue, clientConfig.properties());
         this.webClient = webClient;
         this.clients = protocolsToClients;
         this.protocols = protocols;

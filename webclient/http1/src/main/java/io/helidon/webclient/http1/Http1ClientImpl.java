@@ -88,7 +88,6 @@ class Http1ClientImpl implements Http1Client, HttpClientSpi {
                 .keepAlive(clientRequest.keepAlive())
                 .proxy(clientRequest.proxy())
                 .tls(clientRequest.tls())
-                .headers(clientRequest.headers())
                 .fragment(clientUri.fragment());
     }
 

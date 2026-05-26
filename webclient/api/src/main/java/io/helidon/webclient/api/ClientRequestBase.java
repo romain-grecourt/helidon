@@ -125,7 +125,7 @@ public abstract class ClientRequestBase<T extends ClientRequest<T>, R extends Ht
                                 Map<String, String> properties,
                                 ClientUri redirectSourceUri) {
         this(clientConfig, cookieManager, protocolId, method, clientUri, sendExpectContinue, properties, redirectSourceUri,
-             false);
+             null);
     }
 
     protected ClientRequestBase(HttpClientConfig clientConfig,
@@ -136,7 +136,7 @@ public abstract class ClientRequestBase<T extends ClientRequest<T>, R extends Ht
                                 Boolean sendExpectContinue,
                                 Map<String, String> properties,
                                 ClientUri redirectSourceUri,
-                                boolean observableHeaders) {
+                                ClientRequestHeaders requestHeaders) {
         this.clientConfig = clientConfig;
         this.cookieManager = cookieManager;
         this.protocolId = protocolId;
@@ -148,8 +148,7 @@ public abstract class ClientRequestBase<T extends ClientRequest<T>, R extends Ht
         this.filterRedirectHeaders = clientConfig.filterRedirectHeaders();
         this.redirectSensitiveHeaders = clientConfig.redirectSensitiveHeaders();
 
-        ClientRequestHeaders defaultHeaders = clientConfig.defaultRequestHeaders();
-        this.headers = observableHeaders ? new ObservableClientRequestHeaders(defaultHeaders) : defaultHeaders;
+        this.headers = requestHeaders == null ? clientConfig.defaultRequestHeaders() : requestHeaders;
         this.readTimeout = clientConfig.socketOptions().readTimeout();
         this.readContinueTimeout = clientConfig.readContinueTimeout();
         this.mediaContext = clientConfig.mediaContext();
