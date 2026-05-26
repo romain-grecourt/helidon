@@ -16,6 +16,7 @@
 
 package io.helidon.webclient.tests.http2;
 
+import java.nio.charset.StandardCharsets;
 import java.util.OptionalLong;
 import java.util.function.Supplier;
 
@@ -23,6 +24,7 @@ import io.helidon.common.configurable.Resource;
 import io.helidon.common.pki.Keys;
 import io.helidon.common.tls.Tls;
 import io.helidon.http.Header;
+import io.helidon.http.HeaderName;
 import io.helidon.http.HeaderNames;
 import io.helidon.http.HeaderValues;
 import io.helidon.http.Method;
@@ -55,6 +57,7 @@ class Http2ClientTest {
     private static final String TEST_HEADER_NAME = "custom_header";
     private static final String TEST_HEADER_VALUE = "as!fd";
     private static final Header TEST_HEADER = HeaderValues.create(HeaderNames.create(TEST_HEADER_NAME), TEST_HEADER_VALUE);
+    private static final HeaderName LATE_HEADER = HeaderNames.create("X-Late-Header");
     private final Http1Client http1Client;
     private final Supplier<Http2Client> tlsClient;
     private final Supplier<Http2Client> plainClient;
@@ -105,6 +108,13 @@ class Http2ClientTest {
         // explicitly on HTTP/2 only, to make sure we do upgrade
         router.route(Http2Route.route(Method.GET, "/", (req, res) -> res.header(TEST_HEADER)
                 .send(MESSAGE)));
+        router.route(Http2Route.route(Method.POST, "/late-header",
+                                      (req, res) -> {
+                                          String entity = req.content().as(String.class);
+                                          String lateHeader = req.headers().get(LATE_HEADER).get();
+                                          String contentLength = req.headers().get(HeaderNames.CONTENT_LENGTH).get();
+                                          res.send(lateHeader + ":" + contentLength + ":" + entity);
+                                      }));
     }
 
     @SetUpRoute("https")
@@ -142,6 +152,31 @@ class Http2ClientTest {
         assertThat(request.headers().contentLength(), is(OptionalLong.of(0)));
 
         client.closeResource();
+    }
+
+    @Test
+    void testGenericOutputStreamLateHeader() {
+        var client = WebClient.builder()
+                .baseUri("http://localhost:" + plainPort + "/")
+                .addProtocolConfig(Http2ClientProtocolConfig.builder()
+                                           .priorKnowledge(true)
+                                           .build())
+                .build();
+
+        HttpClientRequest request = client.post()
+                .path("/late-header")
+                .protocolId("h2");
+
+        try (var response = request.outputStream(output -> {
+            request.header(HeaderValues.create(LATE_HEADER, "late"));
+            request.header(HeaderValues.create(HeaderNames.CONTENT_LENGTH, "4"));
+            output.write("data".getBytes(StandardCharsets.UTF_8));
+            output.close();
+        })) {
+            assertThat(response.as(String.class), is("late:4:data"));
+        } finally {
+            client.closeResource();
+        }
     }
 
     @Test

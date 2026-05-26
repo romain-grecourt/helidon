@@ -140,12 +140,13 @@ class Http2CallOutputStreamChain extends Http2CallChainBase {
         private final CompletableFuture<WebClientServiceResponse> whenComplete;
         private final HttpClientConfig clientConfig;
         private final WritableHeaders<?> headers;
-        private final long contentLength;
 
+        private long contentLength;
         private long bytesWritten;
         private boolean noData = true;
         private boolean closed;
         private boolean interrupted;
+        private boolean headersPrepared;
         private int numberOfRedirects = 0;
         private Http2ClientStream stream;
         private Http2ClientRequestImpl lastRequest;
@@ -246,6 +247,8 @@ class Http2CallOutputStreamChain extends Http2CallChainBase {
         }
 
         private void sendHeader() {
+            prepareHeaderState();
+
             if (clientConfig.sendExpectContinue() && !noData) {
                 headers.set(HeaderValues.EXPECT_100);
             }
@@ -284,6 +287,14 @@ class Http2CallOutputStreamChain extends Http2CallChainBase {
                     }
                 }
             }
+        }
+
+        private void prepareHeaderState() {
+            if (headersPrepared) {
+                return;
+            }
+            this.contentLength = headers.contentLength().orElse(-1);
+            this.headersPrepared = true;
         }
 
         private void redirect(Status lastStatus, Headers headerValues) {

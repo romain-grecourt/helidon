@@ -19,6 +19,7 @@ package io.helidon.webclient.http1;
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import io.helidon.common.GenericType;
 import io.helidon.common.buffers.BufferData;
@@ -26,6 +27,7 @@ import io.helidon.http.ClientRequestHeaders;
 import io.helidon.http.Header;
 import io.helidon.http.HeaderNames;
 import io.helidon.http.Method;
+import io.helidon.http.ObservableHeaders;
 import io.helidon.http.Status;
 import io.helidon.http.media.EntityWriter;
 import io.helidon.http.media.InstanceWriter;
@@ -263,7 +265,10 @@ class Http1ClientRequestImpl extends ClientRequestBase<Http1ClientRequest, Http1
         // will create a copy, so we could invoke this method multiple times
         ClientUri resolvedUri = resolvedUri();
 
-        WebClientServiceResponse serviceResponse = invokeServices(callChain, whenSent, whenComplete, resolvedUri);
+        Supplier<WebClientServiceResponse> invoke = () -> invokeServices(callChain, whenSent, whenComplete, resolvedUri);
+        WebClientServiceResponse serviceResponse = delegate == null
+                ? invoke.get()
+                : ObservableHeaders.mirrorWhile(delegate.headers(), headers(), invoke);
 
         CompletableFuture<Void> complete = new CompletableFuture<>();
         complete.thenAccept(ignored -> serviceResponse.whenComplete().complete(serviceResponse))
@@ -303,5 +308,4 @@ class Http1ClientRequestImpl extends ClientRequestBase<Http1ClientRequest, Http1
     boolean outputStreamRedirect() {
         return outputStreamRedirect;
     }
-
 }

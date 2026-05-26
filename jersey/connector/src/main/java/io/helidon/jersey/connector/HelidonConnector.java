@@ -17,14 +17,12 @@
 package io.helidon.jersey.connector;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.time.Duration;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -350,105 +348,23 @@ class HelidonConnector implements Connector {
     }
 
     private static HttpClientResponse writeEntity(ClientRequest request, HttpClientRequest httpRequest) {
-        // pre-entity headers snapshot
-        var baseline = new LinkedHashMap<String, List<String>>();
-        request.getStringHeaders().forEach((key, value) -> baseline.put(key, List.copyOf(value)));
+        var snapshot = new HashMap<String, List<String>>();
+        request.getStringHeaders().forEach((key, value) -> snapshot.put(key, List.copyOf(value)));
 
-        var bridge = new EntityWriteBridge();
-
-        // Jersey may set more headers when writing the entity
-        request.setStreamProvider(length -> {
-            // sync late headers
-            request.getStringHeaders().forEach((key, value) -> {
-                if (!value.equals(baseline.get(key))) {
-                    httpRequest.headers().set(HeaderNames.create(key), value);
-                }
+        return httpRequest.outputStream(outputStream -> {
+            request.setStreamProvider(length -> {
+                request.getStringHeaders().forEach((key, value) -> {
+                    if (!value.equals(snapshot.get(key))) {
+                        httpRequest.headers().set(HeaderNames.create(key), value);
+                    }
+                });
+                return outputStream;
             });
-
-            // submit async HttpClientRequest.outputStream
-            // and return the OutputStreamHandler's OutputStream
-            return bridge.outputStream(httpRequest);
-        });
-
-        // serialize the Jersey entity
-        // and unblock the WebClient callback when writing completes
-        bridge.writeEntity(request);
-
-        // await result of HttpClientRequest.outputStream
-        return bridge.response();
-    }
-
-    private static final class EntityWriteBridge {
-        private final CompletableFuture<OutputStream> outputStream = new CompletableFuture<>();
-        private final CompletableFuture<Void> entityWritten = new CompletableFuture<>();
-        private Future<HttpClientResponse> response;
-
-        OutputStream outputStream(HttpClientRequest httpRequest) throws IOException {
-            response = EXECUTOR_SERVICE.get().submit(() -> {
-                try {
-                    return httpRequest.outputStream(os -> {
-                        outputStream.complete(os);
-                        try {
-                            entityWritten.get();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            throw new IOException(e);
-                        } catch (ExecutionException e) {
-                            throw ioe(e.getCause());
-                        }
-                    });
-                } catch (Exception | Error e) {
-                    outputStream.completeExceptionally(e);
-                    throw e;
-                }
-            });
-
-            try {
-                return outputStream.get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException(e);
-            } catch (ExecutionException e) {
-                throw ioe(e.getCause());
-            }
-        }
-
-        void writeEntity(ClientRequest request) {
             try {
                 request.writeEntity();
-                entityWritten.complete(null);
             } catch (IOException e) {
-                entityWritten.completeExceptionally(e);
-                throw new ProcessingException(e);
-            } catch (RuntimeException | Error e) {
-                entityWritten.completeExceptionally(e);
-                throw e;
+                throw new ProcessingException(new UncheckedIOException(e));
             }
-        }
-
-        HttpClientResponse response() {
-            try {
-                return response.get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new ProcessingException(e);
-            } catch (ExecutionException e) {
-                var cause = e.getCause();
-                switch (cause) {
-                    case RuntimeException re -> throw re;
-                    case Error error -> throw error;
-                    default -> throw new ProcessingException(cause);
-                }
-            }
-        }
-
-        static IOException ioe(Throwable t) {
-            return switch (t) {
-                case IOException ioe -> ioe;
-                case RuntimeException ex -> throw ex;
-                case Error error -> throw error;
-                default -> new IOException(t);
-            };
-        }
+        });
     }
 }

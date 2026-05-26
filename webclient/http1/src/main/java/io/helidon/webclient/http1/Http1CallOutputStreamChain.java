@@ -189,6 +189,7 @@ class Http1CallOutputStreamChain extends Http1CallChainBase {
         private boolean noData = true;
         private boolean closed;
         private boolean interrupted;
+        private boolean headersPrepared;
         private ClientConnection connection;
         private SocketContext ctx;
         private DataWriter writer;
@@ -241,6 +242,10 @@ class Http1CallOutputStreamChain extends Http1CallChainBase {
                 throw new IOException("Output stream already closed");
             }
 
+            if (noData) {
+                prepareHeaders();
+            }
+
             // if not chunked and length known, write directly checking length at close
             if (!chunked && contentLength > 0) {
                 if (!whenSent.isDone()) {
@@ -279,6 +284,7 @@ class Http1CallOutputStreamChain extends Http1CallChainBase {
                 return;
             }
             this.closed = true;
+            prepareHeaders();
             if (chunked) {
                 if (firstPacket != null) {
                     sendFirstChunk();
@@ -370,6 +376,8 @@ class Http1CallOutputStreamChain extends Http1CallChainBase {
         }
 
         private void sendPrologueAndHeader() {
+            prepareHeaders();
+
             // setting for expect 100 header, can be overridden for each request
             boolean expects100Continue = connection.allowExpectContinue()
                     && !noData
@@ -464,6 +472,15 @@ class Http1CallOutputStreamChain extends Http1CallChainBase {
                     }
                 }
             }
+        }
+
+        private void prepareHeaders() {
+            if (headersPrepared) {
+                return;
+            }
+            this.contentLength = headers.contentLength().orElse(-1);
+            this.chunked = contentLength == -1 || headers.containsToken(HeaderValues.TRANSFER_ENCODING_CHUNKED);
+            this.headersPrepared = true;
         }
 
         private void redirect(Status lastStatus, WritableHeaders<?> headerValues) {
